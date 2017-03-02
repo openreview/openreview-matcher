@@ -9,7 +9,8 @@ from collections import defaultdict
 class Matcher(object):
     def __init__(self, user_group, paper_notes, user_metadata_notes, paper_metadata_notes, params):
         self.params = params
-        self.solutions = {}
+        self.solution = None
+        self.assignments = None
 
         self.betas_by_forum = {note.forum: (note.content[self.params['minusers']], note.content[self.params['maxusers']]) for note in paper_metadata_notes}
         self.alphas_by_forum = {note.content['name']: (note.content['minpapers'], note.content['maxpapers']) for note in user_metadata_notes if note.content['name'] in user_group.members}
@@ -71,14 +72,8 @@ class Matcher(object):
     def solve(self, name=None):
         solution = self.solver.solve()
 
-        if name:
-            self.solutions[name] = solution
-
-        return solution
-
-    def get_assignments(self, solution):
         # Extracting the paper-reviewer assignment
-        self.users_by_forum = defaultdict(list)
+        users_by_forum = defaultdict(list)
         for var_name in solution:
 
             var_val = var_name.split('x_')[1].split(',')
@@ -88,12 +83,14 @@ class Matcher(object):
             match = solution[var_name]
 
             if match==1:
-                self.users_by_forum[self.forum_by_number[paper_index+1]].append(self.user_by_index[user_index])
+                users_by_forum[self.forum_by_number[paper_index+1]].append(self.user_by_index[user_index])
 
-            assignments = [(self.users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(self.users_by_forum[forum]))]
+            assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
             assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
 
-        return assignments
+        self.assignments = assignments
+
+        return self.assignments
 
 
 class Solver(object):
