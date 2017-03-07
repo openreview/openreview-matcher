@@ -12,8 +12,8 @@ class Matcher(object):
         self.solution = None
         self.assignments = None
 
-        self.betas_by_forum = {note.forum: (note.content[self.params['minusers']], note.content[self.params['maxusers']]) for note in paper_metadata_notes}
-        self.alphas_by_forum = {note.content['name']: (note.content['minpapers'], note.content['maxpapers']) for note in user_metadata_notes if note.content['name'] in user_group.members}
+        self.betas_by_forum = {note.forum: (self.params['minusers'], self.params['maxusers']) for note in paper_metadata_notes}
+        self.alphas_by_forum = {note.content['name']: (self.params['minpapers'], self.params['maxpapers']) for note in user_metadata_notes if note.content['name'] in user_group.members}
 
         self.forum_by_number = {note.number: note.forum for note in paper_notes}
         self.number_by_forum = {note.forum: note.number for note in paper_notes}
@@ -44,7 +44,7 @@ class Matcher(object):
         scores = defaultdict(list)
 
         for note in paper_metadata_notes:
-            for user_info in [r for r in note.content['users'] if r['user'] in user_group]:
+            for user_info in [r for r in note.content[self.params['metadata_group']] if r['user'] in user_group]:
                 key = (note.forum, user_info['user'])
                 scores[key].append(user_info['score'])
 
@@ -85,8 +85,8 @@ class Matcher(object):
             if match==1:
                 users_by_forum[self.forum_by_number[paper_index+1]].append(self.user_by_index[user_index])
 
-            assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
-            assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
+        assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
+        assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
 
         self.assignments = assignments
 
