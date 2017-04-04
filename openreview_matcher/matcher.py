@@ -12,15 +12,17 @@ class Matcher(object):
         self.solution = None
         self.assignments = None
 
-        self.betas_by_forum = {note.forum: (note.content[self.params['minusers']], note.content[self.params['maxusers']]) for note in paper_metadata_notes}
-        self.alphas_by_forum = {note.content['name']: (note.content['minpapers'], note.content['maxpapers']) for note in user_metadata_notes if note.content['name'] in user_group.members}
+        self.betas_by_forum = {note.forum: (self.params['minusers'], self.params['maxusers']) for note in paper_metadata_notes}
+        self.alphas_by_forum = {note.content['name']: (self.params['minpapers'], self.params['maxpapers']) for note in user_metadata_notes if note.content['name'] in user_group.members}
 
         self.forum_by_number = {note.number: note.forum for note in paper_notes}
         self.number_by_forum = {note.forum: note.number for note in paper_notes}
 
         self.index_by_user = {user: i for i, user in enumerate(user_group.members)}
         self.user_by_index = {i: user for i, user in enumerate(user_group.members)}
-        self.index_by_forum = {i: self.number_by_forum[i]-1 for i in self.number_by_forum.keys()}
+
+        self.index_by_forum = {forum: i for i, forum in enumerate(self.number_by_forum.keys())}
+        self.forum_by_index = {i: forum for i, forum in enumerate(self.number_by_forum.keys())}
 
         self.scores_by_forum_user = self.get_scores(paper_metadata_notes, user_group.members)
         self.weights, self.hard_constraint_dict = self.get_weights(self.scores_by_forum_user, self.index_by_forum, self.index_by_user)
@@ -44,7 +46,7 @@ class Matcher(object):
         scores = defaultdict(list)
 
         for note in paper_metadata_notes:
-            for user_info in [r for r in note.content['users'] if r['user'] in user_group]:
+            for user_info in [r for r in note.content[self.params['metadata_group']] if r['user'] in user_group]:
                 key = (note.forum, user_info['user'])
                 scores[key].append(user_info['score'])
 
@@ -52,14 +54,16 @@ class Matcher(object):
 
     def get_weights(self, scores_by_forum_user, index_by_forum, index_by_user):
         # Defining and Updating the weight matrix
-        num_reviewers = len(set([reviewer[1] for reviewer in self.scores_by_forum_user.keys()]))
-        num_papers = len(set([paper[0] for paper in self.scores_by_forum_user.keys()]))
 
+        #num_reviewers = len(set([reviewer[1] for reviewer in self.scores_by_forum_user.keys()]))
+        #num_papers = len(set([paper[0] for paper in self.scores_by_forum_user.keys()]))
+
+        num_reviewers = len(index_by_user)
+        num_papers = len(index_by_forum)
         weights = np.zeros((num_reviewers, num_papers))
         hard_constraint_dict = {}
 
         for (note_id, user), score_array in self.scores_by_forum_user.iteritems():
-
             # Separating the infinite ones with the normal scores and get the mean of the normal ones
             hard_constraint_value = self.get_hard_constraint_value(score_array)
             if hard_constraint_value == -1:
@@ -83,10 +87,10 @@ class Matcher(object):
             match = solution[var_name]
 
             if match==1:
-                users_by_forum[self.forum_by_number[paper_index+1]].append(self.user_by_index[user_index])
+                users_by_forum[self.forum_by_index[paper_index]].append(self.user_by_index[user_index])
 
-            assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
-            assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
+        assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
+        assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
 
         self.assignments = assignments
 
