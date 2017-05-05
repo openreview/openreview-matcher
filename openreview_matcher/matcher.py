@@ -16,6 +16,8 @@ class Matcher(object):
 
             @papers_to_match - a list of openreview.Note objects to be matched
 
+            @metadata - a list of openreview.Note objects representing metadata
+
             @config - a dict containing the following attributes:
                 "minusers": the minimum number of users to be assigned per paper
                 "maxusers": the maximum number of users to be assigned per paper
@@ -79,7 +81,7 @@ class Matcher(object):
                 print metadata.content.keys()
                 raise e
             for user in features_by_user:
-                scores_by_forum_user[(metadata.forum, user)] = features_by_user[user]
+                scores_by_forum_user[(metadata.forum, user)] = features_by_user[user].values()
 
         # Defining and Updating the weight matrix
         scores = np.zeros((len(self.usergroup_to_match.members), len(self.papers_to_match)))
