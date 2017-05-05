@@ -4,33 +4,55 @@ import time
 import uuid
 import gurobipy
 import numpy as np
+import openreview
 from collections import defaultdict
 
 class Matcher(object):
-    def __init__(self, user_group, paper_notes, user_metadata_notes, paper_metadata_notes, metadata_group_name):
+
+    def __init__(self, group=None, papers=None, metadata=None, config=None):
+        """
+        Arguments:
+            @group - an openreview.Group object containing the users to be matched
+
+            @papers_to_match - a list of openreview.Note objects to be matched
+
+            @config - a dict containing the following attributes:
+                "minusers": the minimum number of users to be assigned per paper
+                "maxusers": the maximum number of users to be assigned per paper
+                "minpapers": the minimum number of papers to be assigned per user
+                "maxpapers": the maximum number of papers to be assigned per user
+                "weights": a list of weights
+
+        """
 
         self.solution = None
         self.assignments = None
 
-        minusers = paper_metadata_notes[0].content['min%s' % metadata_group_name]
-        maxusers = paper_metadata_notes[0].content['max%s' % metadata_group_name]
-        betas = [(minusers, maxusers)] * len(paper_metadata_notes)
+        self.paper_metadata = metadata
+        self.usergroup_to_match = group
+        self.papers_to_match = papers
 
-        minpapers = user_metadata_notes[0].content['minpapers']
-        maxpapers = user_metadata_notes[0].content['maxpapers']
-        alphas = [(minpapers, maxpapers)] * len(user_metadata_notes)
+        minusers = config['minusers']
+        maxusers = config['maxusers']
+        betas = [(minusers, maxusers)] * len(self.paper_metadata)
 
-        self.number_by_forum = {note.forum: note.number for note in paper_notes}
+        minpapers = config['minpapers']
+        maxpapers = config['maxpapers']
+        alphas = [(minpapers, maxpapers)] * len(self.usergroup_to_match.members)
 
-        self.index_by_user = {user: i for i, user in enumerate(user_group.members)}
-        self.user_by_index = {i: user for i, user in enumerate(user_group.members)}
+        self.feature_weights = config['weights']
 
-        self.index_by_forum = {forum: i for i, forum in enumerate(self.number_by_forum.keys())}
-        self.forum_by_index = {i: forum for i, forum in enumerate(self.number_by_forum.keys())}
+        self.number_by_forum = {note.forum: note.number for note in self.papers_to_match}
 
-        self.weights, self.hard_constraint_dict = self.get_weights(paper_metadata_notes, user_group, self.index_by_forum, self.index_by_user, metadata_group_name)
+        self.index_by_user = {user: i for i, user in enumerate(self.usergroup_to_match.members)}
+        self.user_by_index = {i: user for i, user in enumerate(self.usergroup_to_match.members)}
 
-        self.solver = Solver(alphas, betas, self.weights, self.hard_constraint_dict)
+        self.index_by_forum = {note.forum: i for i, note in enumerate(self.papers_to_match)}
+        self.forum_by_index = {i: note.forum for i, note in enumerate(self.papers_to_match)}
+
+        self.scores, self.hard_constraint_dict = self.get_scores()
+
+        self.solver = Solver(alphas, betas, self.scores, self.hard_constraint_dict)
 
     def get_hard_constraint_value(self, score_array):
         """
@@ -45,29 +67,33 @@ class Matcher(object):
                 return 0
         return -1
 
-    def get_weights(self, paper_metadata_notes, user_group, index_by_forum, index_by_user, metadata_group_name):
+    def get_scores(self):
+        """
+        TODO
+        """
         scores_by_forum_user = defaultdict(list)
-
-        for note in paper_metadata_notes:
-            for user_info in [r for r in note.content[metadata_group_name] if r['user'] in user_group.members]:
-                key = (note.forum, user_info['user'])
-                scores_by_forum_user[key].append(user_info['score'])
+        for metadata in self.paper_metadata:
+            try:
+                features_by_user = metadata.content['groups'][self.usergroup_to_match.id]
+            except KeyError as e:
+                print metadata.content.keys()
+                raise e
+            for user in features_by_user:
+                scores_by_forum_user[(metadata.forum, user)] = features_by_user[user]
 
         # Defining and Updating the weight matrix
-        num_reviewers = len(index_by_user)
-        num_papers = len(index_by_forum)
-        weights = np.zeros((num_reviewers, num_papers))
+        scores = np.zeros((len(self.usergroup_to_match.members), len(self.papers_to_match)))
         hard_constraint_dict = {}
 
         for (forum, user), score_array in scores_by_forum_user.iteritems():
             # Separating the infinite ones with the normal scores and get the mean of the normal ones
             hard_constraint_value = self.get_hard_constraint_value(score_array)
             if hard_constraint_value == -1:
-                weights[self.index_by_user[user], self.index_by_forum[forum]] = np.mean(np.array(score_array))
+                scores[self.index_by_user[user], self.index_by_forum[forum]] = np.mean(np.dot(np.array(score_array), np.array(self.feature_weights)))
             else:
                 hard_constraint_dict[self.index_by_user[user], self.index_by_forum[forum]] = hard_constraint_value
 
-        return (weights, hard_constraint_dict)
+        return (scores, hard_constraint_dict)
 
     def solve(self, name=None):
         solution = self.solver.solve()
@@ -94,7 +120,8 @@ class Matcher(object):
 
 
 class Solver(object):
-    """An iterative paper matching problem instance that tries to maximize
+    """
+    An iterative paper matching problem instance that tries to maximize
     the sum total affinity of all reviewer paper matches
     Attributes:
       num_reviewers - the number of reviewers
