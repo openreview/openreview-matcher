@@ -78,7 +78,6 @@ class Matcher(object):
             try:
                 features_by_user = metadata.content['groups'][self.usergroup_to_match.id]
             except KeyError as e:
-                print metadata.content.keys()
                 raise e
             for user in features_by_user:
                 scores_by_forum_user[(metadata.forum, user)] = features_by_user[user].values()
