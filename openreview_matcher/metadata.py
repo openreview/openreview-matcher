@@ -1,5 +1,6 @@
 import abc
 import openreview
+import pdb
 
 class OpenReviewFeature(object):
     """
@@ -45,7 +46,6 @@ def get_metadata(papers, groups, features, metadata=[]):
         a list of openreview.Note objects representing metadata. Each metadata note is added to the forum that it refers to.
 
     """
-
     for f in features:
         assert isinstance(f, OpenReviewFeature), 'all features must be of type features.OpenReviewFeature'
 
@@ -57,22 +57,24 @@ def get_metadata(papers, groups, features, metadata=[]):
         'invitation': conf + "/-/Paper/Metadata",
         'readers': [conf],
         'writers': [conf],
-        'content': {
-            'groups': {group.id: {} for group in groups.values()},
-        },
         'signatures': [conf]
     }
 
     for n in papers:
 
+        content = {'groups': {group.id: {} for group in groups.values()}}
+
         if n.forum not in metadata_by_forum:
-            metadata_by_forum[n.forum] = openreview.Note(forum = n.forum, **empty_metadata_params)
+            metadata_by_forum[n.forum] = openreview.Note(forum = n.forum, content = content, **empty_metadata_params.copy())
         else:
-            metadata_by_forum[n.forum].content = empty_metadata_params['content'].copy()
+            metadata_by_forum[n.forum].content = content
 
         for group in groups.values():
+
             for signature in group.members:
-                feature_vector = {f.name: f.score(signature, n.forum) for f in features}
-                metadata_by_forum[n.forum].content['groups'][group.id][signature] = feature_vector
+                featurevec = {f.name: f.score(signature, n.forum) for f in features if f.score(signature, n.forum)>0}
+                if featurevec != {}:
+                    metadata_by_forum[n.forum].content['groups'][group.id][signature] = featurevec
+
 
     return metadata_by_forum.values()

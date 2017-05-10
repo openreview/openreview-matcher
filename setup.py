@@ -10,6 +10,6 @@ setup(name='openreview-matching',
       packages=['openreview_matcher'],
       install_requires=[
           'numpy',
-          'openreview'
+          'openreview-py'
       ],
       zip_safe=False)
