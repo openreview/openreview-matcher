@@ -23,7 +23,7 @@ class Matcher(object):
                 "maxusers": the maximum number of users to be assigned per paper
                 "minpapers": the minimum number of papers to be assigned per user
                 "maxpapers": the maximum number of papers to be assigned per user
-                "weights": a list of weights
+                "weights": a dictionary of weights, keyed by feature name
 
         """
 
@@ -71,28 +71,29 @@ class Matcher(object):
 
     def get_scores(self):
         """
-        TODO
+        get_scores multiplies the feature values recorded in the metadata with their weights,
+        as given by self.config['weights']
         """
-        scores_by_forum_user = defaultdict(list)
-        for metadata in self.paper_metadata:
-            try:
-                features_by_user = metadata.content['groups'][self.usergroup_to_match.id]
-            except KeyError as e:
-                raise e
-            for user in features_by_user:
-                scores_by_forum_user[(metadata.forum, user)] = features_by_user[user].values()
 
         # Defining and Updating the weight matrix
         scores = np.zeros((len(self.usergroup_to_match.members), len(self.papers_to_match)))
         hard_constraint_dict = {}
 
-        for (forum, user), score_array in scores_by_forum_user.iteritems():
-            # Separating the infinite ones with the normal scores and get the mean of the normal ones
-            hard_constraint_value = self.get_hard_constraint_value(score_array)
-            if hard_constraint_value == -1:
-                scores[self.index_by_user[user], self.index_by_forum[forum]] = np.mean(np.dot(np.array(score_array), np.array(self.feature_weights)))
-            else:
-                hard_constraint_dict[self.index_by_user[user], self.index_by_forum[forum]] = hard_constraint_value
+        for metadata in self.paper_metadata:
+
+            features_by_user = metadata.content['groups'][self.usergroup_to_match.id]
+
+            for user in features_by_user:
+                user_features = defaultdict(lambda: 0, features_by_user[user])
+
+                hard_constraint_value = self.get_hard_constraint_value(user_features.values())
+
+                if hard_constraint_value == -1:
+                    feature_scores = {feature: self.feature_weights[feature]*user_features[feature] for feature in self.feature_weights}
+                    scores[self.index_by_user[user], self.index_by_forum[metadata.forum]] = np.mean(feature_scores.values())
+
+                else:
+                    hard_constraint_dict[self.index_by_user[user], self.index_by_forum[metadata.forum]] = hard_constraint_value
 
         return (scores, hard_constraint_dict)
 

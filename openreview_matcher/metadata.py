@@ -27,18 +27,18 @@ class OpenReviewFeature(object):
         pass
 
 
-
-def get_metadata(papers, groups, features, metadata=[]):
+def generate_metadata(forum_ids, groups, features, invitation, metadata=[]):
     """
     Generates metadata notes for each paper in @papers, with features defined in the list @features, for each group in
     the list @groups
 
     Arguments:
-        @papers - a list of openreview.Note objects. Generate and return a metadata note for every paper in this list.
+        @forum_ids - a list of forum IDs. Generate and return a metadata note for every forum in this list.
         @groups - a list of openreview.Group objects. Metadata notes will have a separate record for each group in the
             list. Features will be computed against every paper in @papers and every member of each group in @groups.
         @features - a list of OpenReviewFeature objects. Each OpenReviewFeature has a method, "score()", which computes
             a value given a user signature and a forum ID.
+        @conference - the group ID of the conference that this metadata applies to.
         @metadata (optional) - a list of openreview.Note objects representing existing metadata notes to be overwritten.
             Use if metadata has already been posted before.
 
@@ -49,32 +49,31 @@ def get_metadata(papers, groups, features, metadata=[]):
     for f in features:
         assert isinstance(f, OpenReviewFeature), 'all features must be of type features.OpenReviewFeature'
 
-    conf = papers[0].invitation.split('/-/')[0]
-
     metadata_by_forum = {n.forum: n for n in metadata}
 
+    conference = invitation.split('/-/')[0]
+
     empty_metadata_params = {
-        'invitation': conf + "/-/Paper/Metadata",
-        'readers': [conf],
-        'writers': [conf],
-        'signatures': [conf]
+        'invitation': invitation,
+        'readers': [conference],
+        'writers': [conference],
+        'signatures': [conference]
     }
 
-    for n in papers:
-
+    for forum in forum_ids:
         content = {'groups': {group.id: {} for group in groups.values()}}
 
-        if n.forum not in metadata_by_forum:
-            metadata_by_forum[n.forum] = openreview.Note(forum = n.forum, content = content, **empty_metadata_params.copy())
+        if forum not in metadata_by_forum:
+            metadata_by_forum[forum] = openreview.Note(forum = forum, content = content, **empty_metadata_params.copy())
         else:
-            metadata_by_forum[n.forum].content = content
+            metadata_by_forum[forum].content = content
 
         for group in groups.values():
 
             for signature in group.members:
-                featurevec = {f.name: f.score(signature, n.forum) for f in features if f.score(signature, n.forum)>0}
+                featurevec = {f.name: f.score(signature, forum) for f in features if f.score(signature, forum) > 0}
                 if featurevec != {}:
-                    metadata_by_forum[n.forum].content['groups'][group.id][signature] = featurevec
+                    metadata_by_forum[forum].content['groups'][group.id][signature] = featurevec
 
 
     return metadata_by_forum.values()
