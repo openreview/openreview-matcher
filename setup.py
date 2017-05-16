@@ -9,6 +9,7 @@ setup(name='openreview-matching',
       license='MIT',
       packages=['openreview_matcher'],
       install_requires=[
-          'numpy'
+          'numpy',
+          'openreview-py'
       ],
       zip_safe=False)
