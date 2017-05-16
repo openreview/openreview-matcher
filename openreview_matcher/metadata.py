@@ -24,7 +24,7 @@ class OpenReviewFeature(object):
         @forum - forum of paper
 
         """
-        pass
+        return 0.0
 
 
 def generate_metadata(forum_ids, groups, features, invitation, metadata=[]):
