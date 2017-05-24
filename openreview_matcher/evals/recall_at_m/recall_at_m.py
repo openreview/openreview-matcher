@@ -3,8 +3,8 @@ import argparse
 
 from collections import defaultdict
 
-from openreview_matcher.eval import base_evaluator
-from openreview_matcher.util import utils
+from openreview_matcher.evals import base_evaluator
+from openreview_matcher import utils
 
 class Evaluator(base_evaluator.Evaluator):
     """

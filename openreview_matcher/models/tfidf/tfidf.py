@@ -5,7 +5,7 @@ from collections import Counter
 
 from gensim.models.tfidfmodel import TfidfModel
 from gensim import corpora
-from openreview_matcher.util import preprocess
+from openreview_matcher.models import preprocess
 from openreview_matcher.models import base_model
 
 class Model(base_model.Model):

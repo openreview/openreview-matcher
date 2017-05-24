@@ -5,7 +5,7 @@ import argparse
 import json
 import numpy as np
 
-from openreview_matcher.util import utils
+from openreview_matcher import utils
 
 """
 
@@ -66,7 +66,7 @@ def get_params(model_name):
         return None
 
 def save_model(model, model_name):
-    serialize_dir = './saved_models/%s' % model_name
+    serialize_dir = './saved_models'
     if not os.path.isdir(serialize_dir): os.makedirs(serialize_dir)
     serialize_path = serialize_dir+'/%s.pkl' % model_name
     print "    serializing model at %s." % serialize_path
@@ -74,8 +74,8 @@ def save_model(model, model_name):
 
 def load_model(model_name):
     try:
-        print "    loading %s model from saved_models/%s/%s.pkl" % (model_name, model_name, model_name)
-        model = utils.load_obj('./saved_models/%s/%s.pkl' % (model_name, model_name))
+        print "    loading %s model from saved_models/%s.pkl" % (model_name, model_name)
+        model = utils.load_obj('./saved_models/%s.pkl' % model_name)
         return model
     except IOError as e:
         print "    [ERROR] unable to find serialized model \"%s\". To train and save the model, run: " % model_name
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     if args.evals:
         for eval_number, eval_name in enumerate(eval_names):
-            eval_source = imp.load_source(eval_name, './openreview_matcher/eval/%s/%s.py' % (eval_name, eval_name))
+            eval_source = imp.load_source(eval_name, './openreview_matcher/evals/%s/%s.py' % (eval_name, eval_name))
             evaluator = eval_source.Evaluator()
 
             if ranklists_by_model: print "evaluating %s (evaluation %s of %s):" % (eval_name, eval_number+1, len(eval_names))

@@ -1,5 +1,5 @@
 import abc
-from openreview_matcher.util import utils
+from openreview_matcher import utils
 
 class Model(object):
     """

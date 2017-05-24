@@ -7,7 +7,7 @@ from operator import itemgetter
 import numpy as np
 import random
 import string
-from models import base_model
+from openreview_matcher.models import base_model
 
 class Model(base_model.Model):
     """ Implementation of Bag of Words with Dirichlet Smooth model """
