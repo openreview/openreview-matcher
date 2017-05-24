@@ -2,10 +2,9 @@ import re
 
 from collections import defaultdict
 
-from models import base_model
-
 import numpy as np
-from util import utils
+from openreview_matcher import utils
+from openreview_matcher.models import base_model
 
 class Model(base_model.Model):
     def __init__(self,params=None):
