@@ -7,6 +7,7 @@ from gensim.models.tfidfmodel import TfidfModel
 from gensim import corpora
 from openreview_matcher.models import preprocess
 from openreview_matcher.models import base_model
+from openreview_matcher.keyphrases import pos_regex
 
 class Model(base_model.Model):
     def __init__(self, params=None):
@@ -94,7 +95,7 @@ class Model(base_model.Model):
 
         return sum([forum_vector[k] * reviewer_vector[k] for k in forum_vector])
 
-    def preprocess_notes(self, content, dictionary, chunker=preprocess.extract_candidate_chunks):
+    def preprocess_notes(self, content, dictionary):
         """
         Arguments
             @notes: a list of dictionaries, representing paper records.
@@ -105,7 +106,7 @@ class Model(base_model.Model):
             to yield a list of tokens (one list of tokens per note in the "notes" argument)
         """
 
-        tokens = chunker(content)
+        tokens = pos_regex.extract(content,mode='chunks')
 
         dictionary.add_documents([tokens])
         yield tokens

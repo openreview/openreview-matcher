@@ -2,6 +2,12 @@ import itertools
 import string
 import nltk
 
+def extract(text, mode='chunks', stemmer=None):
+    if mode=='chunks':
+        return extract_candidate_chunks(text, stemmer=stemmer)
+    if mode=='words':
+        return extract_candidate_words(text, stemmer=stemmer)
+
 def extract_candidate_chunks(text, grammar=r'NP: {<JJ>*<NN>}', delimiter='_', stemmer=None):
 
     # exclude candidates that are stop words or entirely punctuation
