@@ -2,7 +2,7 @@ import itertools
 import string
 import nltk
 
-def extract(text, mode='chunks', stemmer=None):
+def preprocess(text, mode='chunks', stemmer=None):
     if mode=='chunks':
         return extract_candidate_chunks(text, stemmer=stemmer)
     if mode=='words':

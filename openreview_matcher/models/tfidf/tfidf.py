@@ -7,7 +7,7 @@ from gensim.models.tfidfmodel import TfidfModel
 from gensim import corpora
 from openreview_matcher.models import preprocess
 from openreview_matcher.models import base_model
-from openreview_matcher.keyphrases import pos_regex
+from openreview_matcher.preprocessors import pos_regex
 
 class Model(base_model.Model):
     def __init__(self, params=None):
@@ -43,14 +43,20 @@ class Model(base_model.Model):
         """
 
         for record in train_data:
-            for tokens in self.preprocess_notes(record['content']['archive'], self.tfidf_dictionary):
+
+
+            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
+                self.tfidf_dictionary.add_documents([tokens])
+
                 if 'forum' in record:
                     self.bow_by_forum[record['forum']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
                 self.document_tokens += [tokens]
 
         for archive in archive_data:
 
-            for tokens in self.preprocess_notes(archive['content']['archive'], self.tfidf_dictionary):
+            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
+                self.tfidf_dictionary.add_documents([tokens])
+
                 if 'reviewer_id' in archive:
                     self.bow_by_signature[archive['reviewer_id']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
                 self.document_tokens += [tokens]
@@ -94,21 +100,5 @@ class Model(base_model.Model):
         reviewer_vector = defaultdict(lambda: 0, {idx: score for (idx, score) in self.tfidf_model[reviewer_bow]})
 
         return sum([forum_vector[k] * reviewer_vector[k] for k in forum_vector])
-
-    def preprocess_notes(self, content, dictionary):
-        """
-        Arguments
-            @notes: a list of dictionaries, representing paper records.
-            @dictionary: a gensim tfidf dictionary.
-
-        Returns
-            a generator object, which can be iterated over in a memory-friendly manner
-            to yield a list of tokens (one list of tokens per note in the "notes" argument)
-        """
-
-        tokens = pos_regex.extract(content,mode='chunks')
-
-        dictionary.add_documents([tokens])
-        yield tokens
 
 

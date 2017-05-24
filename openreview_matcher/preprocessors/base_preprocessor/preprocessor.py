@@ -1,4 +1,4 @@
 # todo: design keyphrase extractor base class
 
-def extract():
+def preprocess():
 	pass
