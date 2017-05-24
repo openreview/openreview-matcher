@@ -1,6 +1,6 @@
 # openreview-matching
 
-A module for computing paper-reviewer matches in OpenReview. Supports all stages of the reviewer matching process, including metadata creation, feature definitions, and optimizing with constraints. Also supports the training, testing, and evaluation of various (custom) models of reviewer expertise, which may then be used as a feature for matching.
+A package for supporting paper-reviewer matching in OpenReview. Supports all stages of the reviewer matching process, including metadata creation, feature definitions, and optimizing with constraints. Also supports the training, testing, and evaluation of various (custom) models of reviewer expertise, which may then be used as a feature for matching.
 
 ## Installation
 This package is not available on pip. To install, clone this repository, and run `pip install <openreview-matching directory>`
