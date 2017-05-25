@@ -17,7 +17,7 @@ class Model(base_model.Model):
         scores = [(signature, self.score(signature, note_record['forum'])) for signature in self.reviewers]
         return [signature for signature, score in sorted(scores, key=lambda x: x[1], reverse=True)]
 
-    def score(self, signature, forum):
+    def score(self, signature, note_record):
         return np.random.random()
 
 

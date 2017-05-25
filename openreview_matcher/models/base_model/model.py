@@ -56,6 +56,13 @@ class Model(object):
         forum = test_record['forum']
         return []
 
+    @abc.abstractmethod
+    def score(self, signature, note_record):
+        """
+        Returns a score from 0.0 to 1.0, representing the degree of fit between the paper and the reviewer
+
+        """
+        return 0.0
 
     def serialize(self, outfile):
         """
