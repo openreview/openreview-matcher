@@ -18,8 +18,7 @@ class Evaluator(base_evaluator.Evaluator):
 
     """
 
-
-    def __init__(self):
+    def __init__(self, params=None):
 
         datapath = os.path.join(os.path.dirname(__file__), '../samples/uai_data')
 
