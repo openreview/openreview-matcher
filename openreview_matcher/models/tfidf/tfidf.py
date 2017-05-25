@@ -43,23 +43,21 @@ class Model(base_model.Model):
         """
 
         for record in train_data:
+            tokens = pos_regex.preprocess(record['content']['archive'], mode='chunks')
+            self.tfidf_dictionary.add_documents([tokens])
 
-
-            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
-                self.tfidf_dictionary.add_documents([tokens])
-
-                if 'forum' in record:
-                    self.bow_by_forum[record['forum']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
-                self.document_tokens += [tokens]
+            if 'forum' in record:
+                self.bow_by_forum[record['forum']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
+            self.document_tokens += [tokens]
 
         for archive in archive_data:
 
-            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
-                self.tfidf_dictionary.add_documents([tokens])
+            tokens = pos_regex.preprocess(record['content']['archive'], mode='chunks')
+            self.tfidf_dictionary.add_documents([tokens])
 
-                if 'reviewer_id' in archive:
-                    self.bow_by_signature[archive['reviewer_id']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
-                self.document_tokens += [tokens]
+            if 'reviewer_id' in archive:
+                self.bow_by_signature[archive['reviewer_id']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
+            self.document_tokens += [tokens]
 
         # get the BOW representation for every document and put it in corpus_bows
         self.corpus_bows = [self.tfidf_dictionary.doc2bow(doc) for doc in self.document_tokens]
@@ -84,12 +82,12 @@ class Model(base_model.Model):
         """
 
         forum = note_record['forum']
-        scores = [(signature, self.tfidf_distance(signature, forum)) for signature, _ in self.bow_by_signature.iteritems()]
+        scores = [(signature, self.score(signature, forum)) for signature, _ in self.bow_by_signature.iteritems()]
         rank_list = [signature for signature, score in sorted(scores, key=lambda x: x[1], reverse=True)]
 
         return rank_list
 
-    def tfidf_distance(self, signature, forum):
+    def score(self, signature, forum):
         """
         Returns a score from 0.0 to 1.0, representing the degree of fit between the paper and the reviewer
 
