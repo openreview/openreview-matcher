@@ -10,7 +10,7 @@ import string
 from openreview_matcher.models import base_model
 
 class Model(base_model.Model):
-    """ Implementation of Bag of Words with Dirichlet Smooth model """
+    """ Implementation of Bag of Words with Dirichlet Smooth """
 
     def __init__(self, params=None):
         self.corpus_metadata = {}
@@ -18,7 +18,7 @@ class Model(base_model.Model):
 
     def fit(self, train_data, archive_data):
         """
-        Fits the BoW model on a corpus of training data by creating a bag of words represention for the corpus
+        Fits the BoW model on a corpus of training data by creating a bag of words representation for the corpus
 
         Arguments:
             @training_papers: a list of training documents
@@ -34,11 +34,10 @@ class Model(base_model.Model):
         self.corpus_metadata["total_words"] = sum(dtm_corpus[0])
         self.corpus_metadata["bow"] = dict(zip(bow_corpus.get_feature_names(), np.asarray(dtm_corpus.sum(axis=0)).ravel()))
 
-
         # Build a BOW for each reviewer using their archive of papers
         reviewer_to_papers = defaultdict(list)
         for record in archive_data:
-            if(record["content"]['archive']):
+            if record["content"]['archive']:
                 reviewer_to_papers[record["reviewer_id"]].append(record["content"]['archive'])
 
         self.reviewer_metadata["names"] = reviewer_to_papers.keys()
@@ -52,64 +51,64 @@ class Model(base_model.Model):
 
         return self
 
-    def predict(self, test_record):
+    def predict(self, note_record):
         """
         Uses the trained BoW model to predict on reviewer expertise scores with test papers
 
         Arguments
-            @test_record: a single test record containing forum_id
+            @note_record: a single test record containing forum_id
 
         Returns
             a list of reviewer IDs in descending order of expertise score
         """
 
-        forum_id = test_record["forum"]
-        paper = test_record["content"]['archive']
-
-        paper_to_reviewer_scores = [] # a list of tuples containing reviewer expertise scores (reviewer_id, score)
+        paper_to_reviewer_scores = []  # a list of tuples containing reviewer expertise scores (reviewer_id, score)
 
         for reviewer in self.reviewer_metadata["names"]:
 
-            reviewer_paper_expertise_score = self.__compute_bow_prediction_between_reviewer_and_paper(reviewer, paper) # compute expertise score between a reviewer and a paper
+            reviewer_paper_expertise_score = self.score(reviewer, note_record)
             paper_to_reviewer_scores.append((reviewer, reviewer_paper_expertise_score))
 
-        ranked_reviewer_list = [reviewer_scores[0] for reviewer_scores in sorted(paper_to_reviewer_scores, key=itemgetter(1))]
+        ranked_reviewer_list = [reviewer_scores[0] for reviewer_scores in sorted(paper_to_reviewer_scores,
+                                                                                 key=itemgetter(1))]
         return ranked_reviewer_list
 
-    def __compute_bow_prediction_between_reviewer_and_paper(self, reviewer, paper_content):
+    def score(self, signature, note_record):
+        """ 
+        Computes an expertise score between a reviewer and a paper
+        
+        Arguments
+            signature: reviewer_id
+            forum: paper_id
+            
+        Returns
+            An expertise score (float) between a reviewer and paper
         """
-        Computes a score between an expertise score between a reviewer and a paper
 
-        Arguments:
-            @reviewer_metadata: dict containing reviewer information
-            @corpus_metadata: dict containing corpus information
-            @paper_content: text of a single paper
-
-        Returns:
-            A float representing the score between a reviewer and a paper
-        """
-
+        forum_content = note_record["content"]["archive"]
         bow_paper = CountVectorizer()
-        dtm_paper = bow_paper.fit_transform((paper_content,)).toarray()
         vocab_paper = np.array(bow_paper.get_feature_names())
-        P = len(paper_content.split())
-        Nar = self.reviewer_metadata[reviewer]["total_words"] # total number of words in reviewer's archive
-        mu = 1 # smoothing parameter
-        N = self.corpus_metadata["total_words"] # total number of words in the corpus
+        P = len(forum_content.split())
+        Nar = self.reviewer_metadata[signature]["total_words"]  # total number of words in reviewer's archive
+        mu = 1  # smoothing parameter
+        N = self.corpus_metadata["total_words"]  # total number of words in the corpus
         score = 0
-
         for word in vocab_paper:
 
             # set default values for wAr and w is "word" is not in the dictionary
-            if word not in self.reviewer_metadata[reviewer]["bow"]:  wAr = 0
-            else: wAr = self.reviewer_metadata[reviewer]["bow"][word]
+            if word not in self.reviewer_metadata[signature]["bow"]:
+                wAr = 0
+            else:
+                wAr = self.reviewer_metadata[signature]["bow"][word]
 
-            if word not in self.corpus_metadata["bow"]: w = 1
-            else: w = self.corpus_metadata["bow"][word]
+            if word not in self.corpus_metadata["bow"]:
+                w = 1
+            else:
+                w = self.corpus_metadata["bow"][word]
 
             score += self.__compute_dirichlet_smooth(Nar, mu, wAr, w, N)
 
-        score =  np.exp(score / float(P))
+        score = np.exp(score / float(P))
 
         return score
 
