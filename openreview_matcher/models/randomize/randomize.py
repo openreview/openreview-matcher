@@ -4,7 +4,6 @@ from collections import defaultdict
 
 import numpy as np
 from openreview_matcher import utils
-from openreview_matcher import metadata
 from openreview_matcher.models import base_model
 
 class Model(base_model.Model):
