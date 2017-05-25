@@ -82,12 +82,12 @@ class Model(base_model.Model):
         """
 
         forum = note_record['forum']
-        scores = [(signature, self.tfidf_distance(signature, forum)) for signature, _ in self.bow_by_signature.iteritems()]
+        scores = [(signature, self.score(signature, forum)) for signature, _ in self.bow_by_signature.iteritems()]
         rank_list = [signature for signature, score in sorted(scores, key=lambda x: x[1], reverse=True)]
 
         return rank_list
 
-    def tfidf_distance(self, signature, forum):
+    def score(self, signature, forum):
         """
         Returns a score from 0.0 to 1.0, representing the degree of fit between the paper and the reviewer
 
