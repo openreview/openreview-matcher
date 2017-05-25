@@ -1,13 +1,10 @@
 from __future__ import division
 from sklearn.feature_extraction.text import CountVectorizer
-import csv
-import json
 from collections import defaultdict
 from operator import itemgetter
 import numpy as np
-import random
-import string
 from openreview_matcher.models import base_model
+
 
 class Model(base_model.Model):
     """ Implementation of Bag of Words with Dirichlet Smooth """
@@ -87,6 +84,7 @@ class Model(base_model.Model):
 
         forum_content = note_record["content"]["archive"]
         bow_paper = CountVectorizer()
+        bow_paper.fit((forum_content,))
         vocab_paper = np.array(bow_paper.get_feature_names())
         P = len(forum_content.split())
         Nar = self.reviewer_metadata[signature]["total_words"]  # total number of words in reviewer's archive
