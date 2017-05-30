@@ -55,7 +55,7 @@ optional arguments:
 
 """
 
-def get_params(model_name):
+def get_model_params(model_name):
     params_path = 'models/%s/%s-params.json' % (model_name, model_name)
     try:
         f = open(params_path)
@@ -64,6 +64,17 @@ def get_params(model_name):
         return params
     except IOError:
         return None
+
+def get_eval_params(eval_name):
+    params_path = 'evals/%s/%s-params.json' % (model_name, model_name)
+    try:
+        f = open(params_path)
+        params = json.load(f)
+        f.close()
+        return params
+    except IOError:
+        return None
+
 
 def save_model(model, model_name):
     serialize_dir = './saved_models'
@@ -177,7 +188,7 @@ def TrainedModels(model_names, train_data_path, archive_data_path, save):
         model_source = imp.load_source(model_name, './openreview_matcher/models/%s/%s.py' % (model_name, model_name))
 
         if train_data_path and archive_data_path:
-            model = model_source.Model(params=get_params(model_name))
+            model = model_source.Model(params=get_model_params(model_name))
             model = train_model(model, model_name, train_data_path, archive_data_path)
             if save: save_model(model, model_name)
 
@@ -225,7 +236,7 @@ if __name__ == "__main__":
     if args.evals:
         for eval_number, eval_name in enumerate(eval_names):
             eval_source = imp.load_source(eval_name, './openreview_matcher/evals/%s/%s.py' % (eval_name, eval_name))
-            evaluator = eval_source.Evaluator()
+            evaluator = eval_source.Evaluator(params=get_eval_params(eval_name))
 
             if ranklists_by_model: print "evaluating %s (evaluation %s of %s):" % (eval_name, eval_number+1, len(eval_names))
             for model_number, model_name in enumerate(args.models):

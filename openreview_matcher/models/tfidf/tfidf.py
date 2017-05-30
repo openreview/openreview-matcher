@@ -22,7 +22,7 @@ class Model(base_model.Model):
 
         if params:
             self.my_param = params['my_param']
-            print "    parameter my_param loaded: ",self.my_param
+            print "    parameter my_param loaded: ", self.my_param
 
     def fit(self, train_data, archive_data):
         """
@@ -43,20 +43,14 @@ class Model(base_model.Model):
         """
 
         for record in train_data:
-
-
-            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
-                self.tfidf_dictionary.add_documents([tokens])
-
+            for tokens in self.preprocess_notes(record['content']['archive'], self.tfidf_dictionary):
                 if 'forum' in record:
                     self.bow_by_forum[record['forum']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
                 self.document_tokens += [tokens]
 
         for archive in archive_data:
 
-            for tokens in pos_regex.preprocess(record['content']['archive'], mode='chunks'):
-                self.tfidf_dictionary.add_documents([tokens])
-
+            for tokens in self.preprocess_notes(archive['content']['archive'], self.tfidf_dictionary):
                 if 'reviewer_id' in archive:
                     self.bow_by_signature[archive['reviewer_id']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
                 self.document_tokens += [tokens]
@@ -83,17 +77,17 @@ class Model(base_model.Model):
 
         """
 
-        forum = note_record['forum']
-        scores = [(signature, self.tfidf_distance(signature, forum)) for signature, _ in self.bow_by_signature.iteritems()]
+        scores = [(signature, self.score(signature, note_record)) for signature, _ in self.bow_by_signature.iteritems()]
         rank_list = [signature for signature, score in sorted(scores, key=lambda x: x[1], reverse=True)]
 
         return rank_list
 
-    def tfidf_distance(self, signature, forum):
+    def score(self, signature, note_record):
         """
         Returns a score from 0.0 to 1.0, representing the degree of fit between the paper and the reviewer
 
         """
+        forum = note_record['forum']
         forum_bow = [(id,count) for id,count in self.bow_by_forum[forum].iteritems()]
         reviewer_bow = [(id,count) for id,count in self.bow_by_signature[signature].iteritems()]
         forum_vector = defaultdict(lambda: 0, {idx: score for (idx, score) in self.tfidf_model[forum_bow]})
@@ -101,4 +95,19 @@ class Model(base_model.Model):
 
         return sum([forum_vector[k] * reviewer_vector[k] for k in forum_vector])
 
+    def preprocess_notes(self, content, dictionary, chunker=preprocess.extract_candidate_chunks):
+        """
+        Arguments
+            @notes: a list of dictionaries, representing paper records.
+            @dictionary: a gensim tfidf dictionary.
+
+        Returns
+            a generator object, which can be iterated over in a memory-friendly manner
+            to yield a list of tokens (one list of tokens per note in the "notes" argument)
+        """
+
+        tokens = chunker(content)
+
+        dictionary.add_documents([tokens])
+        yield tokens
 
