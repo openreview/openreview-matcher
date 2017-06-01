@@ -6,6 +6,7 @@ from collections import defaultdict
 from openreview_matcher.evals import base_evaluator
 from openreview_matcher import utils
 
+
 class Evaluator(base_evaluator.Evaluator):
     """
     An Evaluator instance that evaluates
@@ -43,9 +44,6 @@ class Evaluator(base_evaluator.Evaluator):
 
             scores = []
 
-            """
-            You can replace the code below with a new evaluation method
-            """
             for m in [5, 20, 35, 50]:
                 topM = rank_list[0: m]
                 positive_labels = ['I want to review','I can review']

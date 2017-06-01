@@ -6,8 +6,8 @@ class Evaluator(base_evaluator.Evaluator):
     """
     An Evaluator instance that evaluates
     mean_avg_precision =
-        (number of papers reviewers bid positively on in top M) /
-        (total number of papers retrieved)
+       average precision at very relevant rank 
+       MAP = (AveP(q) over all queries) / (Q) 
 
     This evaluation method requires us to look at the bids, so we import 
     them from somewhere in the __init__() method
@@ -63,7 +63,7 @@ class Evaluator(base_evaluator.Evaluator):
         """
 
         avg_precision = [self.precision_at_m(ranked_list, m+1) for m in range(len(ranked_list)) if ranked_list[m]]
-        if not avg_precision:
+        if not avg_precision: 
             return 0
-        else:
+        else: 
             return np.mean(avg_precision)

@@ -12,9 +12,9 @@ class Evaluator(object):
     TODO: Decide on a structured way to pass data into evaluators.
 
     """
-
+    
     __metaclass__ = abc.ABCMeta
-
+    
     def __init__(self, params=None):
         self.data = data
 
