@@ -56,7 +56,8 @@ optional arguments:
 """
 
 def get_model_params(model_name):
-    params_path = 'models/%s/%s-params.json' % (model_name, model_name)
+    print(model_name)
+    params_path = 'openreview_matcher/models/%s/%s-params.json' % (model_name, model_name)
     try:
         f = open(params_path)
         params = json.load(f)
@@ -66,7 +67,7 @@ def get_model_params(model_name):
         return None
 
 def get_eval_params(eval_name):
-    params_path = 'evals/%s/%s-params.json' % (model_name, model_name)
+    params_path = 'openreview_matcher/evals/%s/%s-params.json' % (eval_name, eval_name)
     try:
         f = open(params_path)
         params = json.load(f)
