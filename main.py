@@ -68,7 +68,7 @@ def get_model_params(model_name):
         return None
 
 def get_eval_params(eval_name):
-    params_path = 'openreview_matcher/evals/%s/%s-params.json' % (model_name, model_name)
+    params_path = 'openreview_matcher/evals/%s/%s-params.json' % (eval_name, eval_name)
     try:
         f = open(params_path)
         params = json.load(f)

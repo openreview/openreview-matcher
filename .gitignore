@@ -29,7 +29,6 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-/idea
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -94,3 +93,17 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Pycharm
+idea/
+
+# Tex Files
+tex/
+
+# Word2Vec Files
+openreview_matcher/models/top_n_words/w2v_expertise_model.w2v
+openreview_matcher/models/top_n_words/w2v_expertise_model.w2v.syn0.npy
+openreview_matcher/models/top_n_words/w2v_expertise_model.w2v.syn1neg.npy
+
+# Samples Folder
+openreview_matcher/evals/samples
