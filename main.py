@@ -73,10 +73,10 @@ def get_eval_params(eval_name):
         f = open(params_path)
         params = json.load(f)
         f.close()
-        print "    eval params loaded from %s" % params_path
+        print "eval params loaded from %s" % params_path
         return params
     except IOError:
-        print "    no eval params found at %s" % params_path
+        print "no eval params found at %s" % params_path
         return None
 
 
