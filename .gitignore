@@ -95,7 +95,7 @@ ENV/
 .ropeproject
 
 # Pycharm
-idea/
+.idea/
 
 # Tex Files
 tex/
@@ -107,3 +107,12 @@ openreview_matcher/models/top_n_words/w2v_expertise_model.w2v.syn1neg.npy
 
 # Samples Folder
 openreview_matcher/evals/samples
+
+# Data Analysis Folder
+data_analysis/
+
+# Internal Saved Models
+saved_internal_models/
+
+# Data Folder
+data/

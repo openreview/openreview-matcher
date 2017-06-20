@@ -1,4 +1,4 @@
 {
-  "num_topics": 200,
-  "learning_iterations": 30
+  "num_topics": 30,
+  "learning_iterations": 20
 }
