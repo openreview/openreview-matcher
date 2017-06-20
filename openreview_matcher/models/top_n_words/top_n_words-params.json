@@ -1,4 +1,4 @@
 {
-  "n_words": 10,
+  "n_words": 5,
   "w2v_model_location": "openreview_matcher/models/top_n_words/w2v_expertise_model.w2v"
 }

@@ -6,19 +6,23 @@ import numpy as np
 from gensim.models import LdaModel
 from gensim import corpora
 from openreview_matcher.models import base_model
-# from openreview_matcher.pre import *
+from openreview_matcher.preprocessors import preprocess_documents
+import re
 
 
 class Model(base_model.Model):
     """ 
     Implementation of LDA based expertise model 
-    We train an LDA model on both reviewer archives and submission papers.
+    Train an LDA model on both reviewer archives and submission papers.
     Both the author and the paper are represented by some topic vector 
     We can then compute an expertise score between a reviewer and a paper by 
     computing the cosine similarity between the two topic vectors
     """
 
-    def __init__(self, params=None):
+    def __init__(self, combinining_mechanism, scoring_mechanism, keyphrase_extractor, params=None):
+        self.combining_mechanism = combinining_mechanism 
+        self.scoring_mechanism = scoring_mechanism
+        self.keyphrase_extractor =keyphrase_extractor 
         self.num_topics = params["num_topics"]
         self.learning_iterations = params["learning_iterations"]
         self.reviewers = None
@@ -45,7 +49,8 @@ class Model(base_model.Model):
 
         for record in archive_data:
             if record["content"]["archive"]:
-                reviewer_to_papers[record["reviewer_id"]].append(record["content"]["archive"])
+                paper = " ".join(self.__tokenize_paper(record["content"]["archive"]))
+                reviewer_to_papers[record["reviewer_id"]].append(paper)
 
         # get all of the training data (reviewer archive + submission papers)
         # assume that train_data = submission papers
@@ -54,14 +59,17 @@ class Model(base_model.Model):
 
         for paper in train_data:
             if paper['content']['archive']:
-                corpus.append(paper['content']['archive'])
+                paper_doc = " ".join(self.__tokenize_paper(paper["content"]["archive"]))
+                corpus.append(paper_doc)
 
         for signature, papers in reviewer_to_papers.iteritems():
             corpus.extend(papers)
 
+        print("Number of docs in the corpus: ", len(corpus))
+
         self.reviewers = reviewer_to_papers.keys() # maintain a list of reviewer id's
 
-        corpus = [[word for word in document.lower().split()]
+        corpus = [[word for word in document.split()]
                 for document in corpus]
 
         self.dictionary = corpora.Dictionary(corpus)
@@ -69,10 +77,15 @@ class Model(base_model.Model):
 
         print("Training LDA Model...")
         self.lda_model = LdaModel(corpus=self.corpus_bow, id2word=self.dictionary, num_topics=self.num_topics,
-                                  update_every=1, chunksize=830, passes=self.learning_iteartions)
+                                  update_every=1, chunksize=830, passes=self.learning_iterations)
+
+        self.lda_model.save("./saved_internal_models/lda/ldamodel.model")
 
         print("Creating Reviewer Topic Vectors...")
-        self.reviewer_to_lda_vector = self.___build_reviewer_lda_vector(dict(reviewer_to_papers))
+        self.reviewer_to_lda_vector = {}
+        for reviewer in self.reviewers:
+            reviewer_lda_vectors = self.___build_reviewer_lda_vector(reviewer_to_papers[reviewer])
+            self.reviewer_to_lda_vector[reviewer] = reviewer_lda_vectors
 
         return self
 
@@ -90,7 +103,10 @@ class Model(base_model.Model):
             expertise_score = self.score(reviewer, test_record)
             paper_to_reviewer_scores.append((reviewer, expertise_score))
 
-        ranked_reviewer_list = [reviewer_scores[0] for reviewer_scores in sorted(paper_to_reviewer_scores, key=itemgetter(1))]
+        sorted_reviewer_scores = sorted(paper_to_reviewer_scores, key=itemgetter(1), reverse=True)
+        ranked_reviewer_list = ["{0};{1}".format(reviewer_scores[0].encode('utf-8'), reviewer_scores[1]) for
+                                reviewer_scores in sorted_reviewer_scores]
+
         return ranked_reviewer_list
 
     def score(self, signature, note_record):
@@ -108,12 +124,62 @@ class Model(base_model.Model):
             A float representing the score
         """
 
-        forum_content = note_record["content"]["archive"]
-        reviewer_lda_vec = self.reviewer_to_lda_vector[signature]
-        paper_lda_vec = self.__build_lda_topic_vector(forum_content)
+        if self.combining_mechanism == "max":
+            # compute the max score
+            return self.compute_max_score(signature, note_record)
 
-        return cosine_similarity(reviewer_lda_vec, paper_lda_vec)
+        elif self.combining_mechanism == "avg":
+            # compute the avg score
+            return self.compute_avg_score(signature, note_record)        
+    def compute_cosine_between_reviewer_paper(self, reviewer_vec, paper_vec):
+        """ 
+        Returns the cosine similarity between the reviewer vector representation 
+        and a paper vector representation 
+        """
 
+        return cosine_similarity(reviewer_vec.reshape(1, -1), paper_vec.reshape(1, -1))[0][0]
+    def compute_avg_score(self, signature, note_record):
+        forum_content = " ".join(self.__tokenize_paper(note_record["content"]["archive"]))
+        paper_topic_vec = self.__build_lda_topic_vector(forum_content)
+        reviewer_paper_scores = [] 
+
+        for reviewer_topic_vec in self.reviewer_to_lda_vector[signature]:
+            if scoring_mechanism == "cosine_similarity":
+                if reviewer_topic_vec.size > 1:
+                    reviewer_paper_score = self.compute_cosine_between_reviewer_paper(reviewer_topic_vec, paper_topic_vec)
+                    reviewer_paper_scores.append(reviewer_paper_score)
+            elif scoring_mechanism == "word_movers":
+                # compute the word movers distance between the two topic vectors
+                print("Computing the word mover's distance between topic vectors")
+
+        if len(reviewer_paper_scores) == 0:
+            return 0
+        else:
+            return np.mean(reviewer_paper_scores)
+
+    def compute_max_score(self, signature, note_record):
+        """ 
+        Compute the max score between the paper 
+        and all of the papers of the reviewer 
+        """ 
+
+        forum_content = " ".join(self.__tokenize_paper(note_record["content"]["archive"]))
+        paper_topic_vec = self.__build_lda_topic_vector(forum_content)
+        reviewer_paper_scores = [] 
+
+        for reviewer_topic_vec in self.reviewer_to_lda_vector[signature]:
+            if self.scoring_mechanism == "cosine_similarity":
+                if reviewer_topic_vec.size > 1:
+                    reviewer_paper_score = self.compute_cosine_between_reviewer_paper(reviewer_topic_vec, paper_topic_vec)
+                    reviewer_paper_scores.append(reviewer_paper_score)
+            elif self.scoring_mechanism == "word_movers":
+                # compute the word movers distance between the two topic vectors
+                print("Computing the word mover's distance between topic vectors")
+
+        if len(reviewer_paper_scores) == 0:
+            return 0
+        else:
+            return max(reviewer_paper_scores)
     def __build_lda_topic_vector(self, document):
         """ 
         Uses the trained LDA model to compute a topic vector a single document 
@@ -127,18 +193,17 @@ class Model(base_model.Model):
 
         num_topics = range(1, self.num_topics)
         topic_vec = []
-        lda_raw_topic_distribution = dict(self.lda[self.dictionary.doc2bow(document.split())])
+        lda_raw_topic_distribution = dict(self.lda_model[self.dictionary.doc2bow(document.split())])
         for topic_num in num_topics:
             if topic_num not in lda_raw_topic_distribution:
                 topic_vec.append(0.0)
             else:
                 topic_vec.append(lda_raw_topic_distribution[topic_num])
         return np.asarray(topic_vec)
-
-    def ___build_reviewer_lda_vector(self, reviewers):
+    def ___build_reviewer_lda_vector(self, reviewer_documents):
         """ 
         
-        For each reviewer this method computers a topic vector for that reviewer based on the topic 
+        For each reviewer this method computes a topic vector for that reviewer based on the topic 
         distributions represented in that reviewer's archive. 
         
         A reviewer's topic vector is computed by averaging individual topic vector for each paper in the reviewer's
@@ -152,8 +217,25 @@ class Model(base_model.Model):
             {reviewer_id => numpy vector}
         """
 
-        reviewer_to_lda_vector = {}
-        for reviewer, papers in reviewers.iteritems():
-            reviewer_matrix = np.vstack(map(lambda doc: self.__build_lda_topic_vector(doc), papers))
-            reviewer_to_lda_vector[reviewer] = np.mean(reviewer_matrix, axis=0)
+        reviewer_to_lda_vector = []
+        for reviewer_doc in reviewer_documents:
+            paper_topic_vector = self.__build_lda_topic_vector(reviewer_doc)
+            reviewer_to_lda_vector.append(paper_topic_vector)
         return reviewer_to_lda_vector
+    def __tokenize_paper(self, paper):
+        """ 
+        Tokenizes a document
+        
+        Arguments:
+              paper: a document represented by a string
+              
+        Returns:
+                a list of tokens 
+        """
+
+        space_regexp = re.compile('[^a-zA-Z]')
+        words = re.split(space_regexp, paper)
+        words = filter(lambda x: len(x) > 0, words)
+        words = [word.lower() for word in words]
+        words = preprocess_documents.stop_word_removal(words)
+        return words

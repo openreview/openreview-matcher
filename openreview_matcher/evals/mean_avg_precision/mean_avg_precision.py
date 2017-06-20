@@ -31,7 +31,6 @@ class Evaluator(base_evaluator.Evaluator):
 
         """
 
-        scores_by_forum = {}
         for forum, rank_list in ranklists:
             positive_labels = ["I want to review", "I can review"]
             positive_bids = [bid.signatures[0].encode('utf-8') for bid in self.bids_by_forum[forum] if bid.tag in positive_labels]
@@ -42,10 +41,13 @@ class Evaluator(base_evaluator.Evaluator):
     def precision_at_m(self, ranked_list, m):
         """ 
         Computes precision at M 
-        
+
         Arguments:
-            ranked_list: ranked list of reviewers for a forum
-            m: cuttoff value
+            ranked_list: ranked list of reviewers for a forum where each entry is either a 0 or 1
+                    1 -  reviewer that reviewer wanted to bid 
+                    0 - reviewer did not want to bid
+
+            m: cuttoff value 
         Returns:
             A float representing the precision
         """
