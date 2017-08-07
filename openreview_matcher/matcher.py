@@ -2,7 +2,7 @@
 import logging
 import time
 import uuid
-#import gurobipy
+import gurobipy
 import numpy as np
 import openreview
 from collections import defaultdict
