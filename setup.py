@@ -10,6 +10,8 @@ setup(name='openreview-matching',
       packages=['openreview_matcher'],
       install_requires=[
           'numpy',
-          'openreview-py'
+          'openreview-py',
+          'gensim',
+          'nltk'
       ],
       zip_safe=False)
