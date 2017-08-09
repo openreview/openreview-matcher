@@ -95,7 +95,7 @@ class Model(base_model.Model):
 
         return sum([forum_vector[k] * reviewer_vector[k] for k in forum_vector])
 
-    def preprocess_notes(self, content, dictionary, chunker=preprocess.extract_candidate_chunks):
+    def preprocess_notes(self, content, dictionary, chunker=pos_regex.extract_candidate_chunks):
         """
         Arguments
             @notes: a list of dictionaries, representing paper records.
