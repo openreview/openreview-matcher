@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='openreview-matching',
       version='0.1',
@@ -7,11 +7,12 @@ setup(name='openreview-matching',
       author='Michael Spector',
       author_email='spector@cs.umass.edu',
       license='MIT',
-      packages=['openreview_matcher'],
+      packages=find_packages(),
       install_requires=[
           'numpy',
           'openreview-py',
           'gensim',
-          'nltk'
+          'nltk',
+          'gurobipy'
       ],
       zip_safe=False)
