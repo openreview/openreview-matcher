@@ -14,46 +14,14 @@ def get_assignments(config_id, client=openreview.Client()):
 
 class Matcher(object):
 
-    def __init__(self, client=openreview.Client(), config_note=None):
+    def __init__(self, client):
         """
         Arguments:
-            @config_note - an openreview.Note object.
-                "minusers": the minimum number of users to be assigned per paper
-                "maxusers": the maximum number of users to be assigned per paper
-                "minpapers": the minimum number of papers to be assigned per user
-                "maxpapers": the maximum number of papers to be assigned per user
-                "weights": a dictionary of weights, keyed by feature name
 
         """
-        self.config_note = config_note
-        config = config_note.content['configuration']
 
-        self.paper_metadata = client.get_notes(invitation = config['metadata'])
-        self.usergroup_to_match = client.get_group(config['group'])
-        self.papers_to_match = client.get_notes(invitation = config['submission'])
-
-        minusers = config['minusers']
-        maxusers = config['maxusers']
-        betas = [(minusers, maxusers)] * len(self.paper_metadata)
-
-        minpapers = config['minpapers']
-        maxpapers = config['maxpapers']
-        alphas = [(minpapers, maxpapers)] * len(self.usergroup_to_match.members)
-
-        self.feature_weights = config['weights']
-
-        self.number_by_forum = {note.forum: note.number for note in self.papers_to_match}
-        self.forum_by_number = {note.number: note.forum for note in self.papers_to_match}
-
-        self.index_by_user = {user: i for i, user in enumerate(self.usergroup_to_match.members)}
-        self.user_by_index = {i: user for i, user in enumerate(self.usergroup_to_match.members)}
-
-        self.index_by_forum = {note.forum: i for i, note in enumerate(self.papers_to_match)}
-        self.forum_by_index = {i: note.forum for i, note in enumerate(self.papers_to_match)}
-
-        self.scores, self.hard_constraint_dict = self.get_scores()
-
-        self.solver = Solver(alphas, betas, self.scores, self.hard_constraint_dict)
+        self.client = client
+        self.data = {}
 
     def get_hard_constraint_value(self, score_array):
         """
@@ -68,19 +36,52 @@ class Matcher(object):
                 return 0
         return -1
 
-    def get_scores(self):
-        """
-        get_scores multiplies the feature values recorded in the metadata with their weights,
-        as given by self.config['weights']
-        """
+    def save_get_call(self, key, call):
+        if key in self.data:
+            print "retrieving stored value"
+            value = self.data[key]
+        else:
+            print "sending network call"
+            value = call()
+            self.data[key] = value
+        return value
+
+    def solve(self, config_note):
+
+        config = config_note.content['configuration']
+
+        paper_metadata = self.save_get_call(config['metadata'],
+            lambda: self.client.get_notes(invitation = config['metadata']))
+
+        usergroup_to_match = self.save_get_call(config['group'],
+            lambda: self.client.get_group(config['group']))
+
+        papers_to_match = self.save_get_call(config['submission'],
+            lambda: self.client.get_notes(invitation = config['submission']))
+
+        index_by_user = {user: i for i, user in enumerate(usergroup_to_match.members)}
+        user_by_index = {i: user for i, user in enumerate(usergroup_to_match.members)}
+
+        index_by_forum = {note.forum: i for i, note in enumerate(papers_to_match)}
+        forum_by_index = {i: note.forum for i, note in enumerate(papers_to_match)}
+
+        minpapers = config['minpapers']
+        maxpapers = config['maxpapers']
+        alphas = [(minpapers, maxpapers)] * len(usergroup_to_match.members)
+
+        minusers = config['minusers']
+        maxusers = config['maxusers']
+        betas = [(minusers, maxusers)] * len(paper_metadata)
+
+        feature_weights = config['weights']
 
         # Defining and Updating the weight matrix
-        scores = np.zeros((len(self.usergroup_to_match.members), len(self.papers_to_match)))
+        scores = np.zeros((len(index_by_user), len(index_by_forum)))
         hard_constraint_dict = {}
 
-        for metadata in self.paper_metadata:
+        for metadata in paper_metadata:
 
-            features_by_user = metadata.content['groups'][self.usergroup_to_match.id]
+            features_by_user = metadata.content['groups'][usergroup_to_match.id]
 
             for user in features_by_user:
                 user_features = defaultdict(lambda: 0, features_by_user[user])
@@ -88,16 +89,15 @@ class Matcher(object):
                 hard_constraint_value = self.get_hard_constraint_value(user_features.values())
 
                 if hard_constraint_value == -1:
-                    feature_scores = {feature: self.feature_weights[feature]*user_features[feature] for feature in self.feature_weights}
-                    scores[self.index_by_user[user], self.index_by_forum[metadata.forum]] = np.mean(feature_scores.values())
+                    feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
+                    scores[index_by_user[user], index_by_forum[metadata.forum]] = np.mean(feature_scores.values())
 
                 else:
-                    hard_constraint_dict[self.index_by_user[user], self.index_by_forum[metadata.forum]] = hard_constraint_value
+                    hard_constraint_dict[index_by_user[user], index_by_forum[metadata.forum]] = hard_constraint_value
 
-        return (scores, hard_constraint_dict)
+        #scores, hard_constraint_dict = self.get_scores(feature_weights, paper_metadata, index_by_user, index_by_forum)
 
-    def solve(self):
-        solution = self.solver.solve()
+        solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
 
         # Extracting the paper-reviewer assignment
         users_by_forum = defaultdict(list)
@@ -110,19 +110,19 @@ class Matcher(object):
             match = solution[var_name]
 
             if match==1:
-                users_by_forum[self.forum_by_index[paper_index]].append(self.user_by_index[user_index])
+                users_by_forum[forum_by_index[paper_index]].append(user_by_index[user_index])
 
         assignment_info_by_number = {}
-        for n in self.papers_to_match:
+        for n in papers_to_match:
             assignment_info_by_number['Paper{0}'.format(n.number)] = {
                 'title': n.content['title'],
                 'forum': n.forum,
                 'assigned': users_by_forum[n.forum]
             }
 
-        self.config_note.content['assignments'] = assignment_info_by_number
+        config_note.content['assignments'] = assignment_info_by_number
 
-        return self.config_note
+        return config_note
 
 class Solver(object):
     """
