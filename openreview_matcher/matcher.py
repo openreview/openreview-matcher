@@ -7,18 +7,17 @@ import numpy as np
 import openreview
 from collections import defaultdict
 
+
+def get_assignments(config_id, client=openreview.Client()):
+    # solving the matcher returns a configuration note object with the content.assignments field filled in.
+    return Matcher(config_note=client.get_note(config_id)).solve()
+
 class Matcher(object):
 
-    def __init__(self, group=None, papers=None, metadata=None, config=None):
+    def __init__(self, client=openreview.Client(), config_note=None):
         """
         Arguments:
-            @group - an openreview.Group object containing the users to be matched
-
-            @papers_to_match - a list of openreview.Note objects to be matched
-
-            @metadata - a list of openreview.Note objects representing metadata
-
-            @config - a dict containing the following attributes:
+            @config_note - an openreview.Note object.
                 "minusers": the minimum number of users to be assigned per paper
                 "maxusers": the maximum number of users to be assigned per paper
                 "minpapers": the minimum number of papers to be assigned per user
@@ -26,13 +25,12 @@ class Matcher(object):
                 "weights": a dictionary of weights, keyed by feature name
 
         """
+        self.config_note = config_note
+        config = config_note.content['configuration']
 
-        self.solution = None
-        self.assignments = None
-
-        self.paper_metadata = metadata
-        self.usergroup_to_match = group
-        self.papers_to_match = papers
+        self.paper_metadata = client.get_notes(invitation = config['metadata'])
+        self.usergroup_to_match = client.get_group(config['group'])
+        self.papers_to_match = client.get_notes(invitation = config['submission'])
 
         minusers = config['minusers']
         maxusers = config['maxusers']
@@ -45,6 +43,7 @@ class Matcher(object):
         self.feature_weights = config['weights']
 
         self.number_by_forum = {note.forum: note.number for note in self.papers_to_match}
+        self.forum_by_number = {note.number: note.forum for note in self.papers_to_match}
 
         self.index_by_user = {user: i for i, user in enumerate(self.usergroup_to_match.members)}
         self.user_by_index = {i: user for i, user in enumerate(self.usergroup_to_match.members)}
@@ -97,7 +96,7 @@ class Matcher(object):
 
         return (scores, hard_constraint_dict)
 
-    def solve(self, name=None):
+    def solve(self):
         solution = self.solver.solve()
 
         # Extracting the paper-reviewer assignment
@@ -113,13 +112,17 @@ class Matcher(object):
             if match==1:
                 users_by_forum[self.forum_by_index[paper_index]].append(self.user_by_index[user_index])
 
-        assignments = [(users_by_forum[forum][i],self.number_by_forum[forum]) for forum in self.number_by_forum.keys() for i in range(len(users_by_forum[forum]))]
-        assignments = sorted(assignments, key=lambda a: (a[1], a[0]))
+        assignment_info_by_number = {}
+        for n in self.papers_to_match:
+            assignment_info_by_number['Paper{0}'.format(n.number)] = {
+                'title': n.content['title'],
+                'forum': n.forum,
+                'assigned': users_by_forum[n.forum]
+            }
 
-        self.assignments = assignments
+        self.config_note.content['assignments'] = assignment_info_by_number
 
-        return self.assignments
-
+        return self.config_note
 
 class Solver(object):
     """
