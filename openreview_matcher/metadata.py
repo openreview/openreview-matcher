@@ -52,11 +52,6 @@ class BasicAffinity(OpenReviewFeature):
                     headers=self.client.headers)
                 self.scores_by_user_by_forum[n.forum].update({r['user']: r['score'] for r in response.json()['scores']})
 
-
-
-    def get_scores(self, group, forum):
-        return
-
     def score(self, signature, forum):
         return self.scores_by_user_by_forum[forum][signature]
 
