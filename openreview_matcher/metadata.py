@@ -34,8 +34,9 @@ class BasicAffinity(OpenReviewFeature):
 
     def __init__(self, name, client, groups, papers):
         """
-        client  - the openreview.Client object used to make the network calls
-        groupId - the ID of the group being matched
+        client - the openreview.Client object used to make the network calls
+        groups - an array of openreview.Group objects representing the groups to be matched
+        papers - an array of openreview.Note objects representing the papers to be matched
         """
 
         self.name = name
