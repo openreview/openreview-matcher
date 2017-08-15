@@ -8,10 +8,6 @@ import openreview
 from collections import defaultdict
 
 
-def get_assignments(config_id, client=openreview.Client()):
-    # solving the matcher returns a configuration note object with the content.assignments field filled in.
-    return Matcher(config_note=client.get_note(config_id)).solve()
-
 class Matcher(object):
 
     def __init__(self, client):
