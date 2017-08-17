@@ -3,21 +3,20 @@ from operator import itemgetter
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+from openreview_matcher.graphing import base_graphing
+from openreview_matcher import utils
+import numpy as np
 
 matplotlib.style.use('ggplot')
 
-from openreview_matcher.graphing import base_graphing
-from openreview_matcher import utils
-
-
 class Graphing(base_graphing.Graphing):
-    def __init__(self, params=None):
-        datapath = os.path.join(os.path.dirname(__file__), '../../evals/samples/uai_data')
-        self.data = utils.load_obj(datapath)
-        self.bids_by_forum = self.data["bids_by_forum"]
+    """ Graphing precision vs m """
+    def __init__(self, eval_data, params=None):
+        self.eval_data = eval_data
 
     def graph(self, ranklists, ax, model_name):
-        precision_values = self.evalutate_precision(ranklists)
+        # precision_values = self.evalutate_precision(ranklists)
+        precision_values = self.evaluate_using_individual_queries(ranklists)
 
         df_precision = pd.DataFrame({
             '@M': range(1, len(precision_values) + 1),
@@ -42,31 +41,46 @@ class Graphing(base_graphing.Graphing):
                 reviewer = reviewer_score.split(";")[0]
                 score = float(reviewer_score.split(";")[1])
                 # filter for reviewers that gave a bid value
-                has_bid = self.reviewer_has_bid(reviewer, forum)
+                has_bid = self.eval_data.reviewer_has_bid(reviewer, forum)
                 if has_bid:
                     new_rank_list.append((reviewer, score, forum))
         ranked_reviewers = sorted(
             new_rank_list, key=itemgetter(1), reverse=True)
         return ranked_reviewers
 
-    def reviewer_has_bid(self, reviewer, paper):
-        """ Returns True if the reviewer bid on that 'paper' """
-        paper_bids = self.bids_by_forum[paper]
-        has_bid = [True if bid.signatures[0] == reviewer.decode("utf-8") else False for bid in paper_bids][0]
-        return has_bid
+    def evaluate_using_individual_queries(self, ranklists):
+        """ Evaluate using individual query ranks """
 
-    def get_bid_for_reviewer_paper(self, reviewer, paper):
+        all_precision_values = []
+        for forum, rank_list in ranklists:
+            rank_list = [rank.split(";")[0] for rank in rank_list]
+            scores = []
+            for m, reviewer in enumerate(rank_list, start=1):
+                positive_labels = ["I want to review", "I can review"]
+                positive_bids = [bid["signature"] for bid in self.eval_data.get_pos_bids_for_forum(forum)]
+                relevant_reviewers = [1 if reviewer_id in positive_bids else 0 for reviewer_id in rank_list]
+                precision = self.precision_at_m(relevant_reviewers, m)
+                scores.append(precision)
+            all_precision_values.append(scores)
+
+        return np.mean(all_precision_values, axis=0)
+
+    def precision_at_m(self, ranked_list, m):
+        """ 
+        Computes precision at M 
+        
+        Arguments:
+            ranked_list: ranked list of reviewers for a forum where each entry is either a 0 or 1
+                        1 -  reviewer that reviewer wanted to bid 
+                        0 - reviewer did not want to bid
+
+            m: cuttoff value
+        Returns:
+            A float representing the precision
         """
-        Gets the bid for the reviewer and the paper
-        Returns 0 if the bid is not relevant and 1 if the bid is relevant
-        """
-        positive_labels = ['I want to review','I can review']
-        paper_bids = self.bids_by_forum[paper]
-        bid_value = [1 if bid.tag in positive_labels else 0 for bid in paper_bids if bid.signatures[0] == reviewer.decode('utf-8')]
-        if len(bid_value) > 0:
-            return bid_value[0]
-        else:
-            return 0
+
+        topM = np.asarray(ranked_list)[:m] != 0
+        return np.mean(topM)    
 
     def evalutate_precision(self, rank_list):
         """
@@ -79,13 +93,13 @@ class Graphing(base_graphing.Graphing):
 
         positive_bids = 0
         for reviewer, score, forum in ranked_reviewers:
-            bid = self.get_bid_for_reviewer_paper(reviewer, forum)
+            bid = self.eval_data.get_bid_for_reviewer_paper(reviewer, forum)
             if bid == 1:
                 positive_bids +=1
 
         for m in range(1, len(ranked_reviewers) + 1):
             topM = ranked_reviewers[0: m]
-            topM = map(lambda reviewer: (reviewer[0], self.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
+            topM = map(lambda reviewer: (reviewer[0], self.eval_data.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
             pos_bids_from_topM = [bid for bid in topM if bid[1] == 1]
             precision = float(len(pos_bids_from_topM)) / float(m)  # precision => relevant bids retrieved / # of retrieved
             scores.append(precision)

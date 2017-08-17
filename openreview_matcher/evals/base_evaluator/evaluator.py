@@ -15,8 +15,8 @@ class Evaluator(object):
     
     __metaclass__ = abc.ABCMeta
     
-    def __init__(self, params=None):
-        self.data = data
+    def __init__(self, eval_data, params=None):
+        self.eval_data = eval_data 
 
     @abc.abstractmethod
     def evaluate(self, ranklists):

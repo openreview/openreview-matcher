@@ -2,7 +2,7 @@
 
 import os
 from operator import itemgetter
-import pandas as pd
+import pandas as pd 
 import matplotlib.pyplot as plt
 import matplotlib
 
@@ -14,10 +14,8 @@ from openreview_matcher import utils
 
 class Graphing(base_graphing.Graphing):
 
-    def __init__(self, params=None):
-        datapath = os.path.join(os.path.dirname(__file__), '../../evals/samples/uai_data')
-        self.data = utils.load_obj(datapath)
-        self.bids_by_forum = self.data["bids_by_forum"]
+    def __init__(self, eval_data, params=None):
+        self.eval_data = eval_data 
 
     def graph(self, ranklists, ax, model_name):
         """ 
@@ -38,7 +36,7 @@ class Graphing(base_graphing.Graphing):
             'recall': recall_values
         })
 
-        ax = df_precision.plot.line(x="recall", y="precision", label=model_name, ax=ax)
+        ax = df_precision.plot.scatter(x="recall", y="precision", label=model_name, ax=ax)
         ax.set_title("Precision vs Recall", y=1.08)
         ax.set_ylabel("Precision")
         ax.set_xlabel("Recall")
@@ -57,7 +55,7 @@ class Graphing(base_graphing.Graphing):
                 reviewer = reviewer_score.split(";")[0]
                 score = float(reviewer_score.split(";")[1])
                 # filter for reviewers that gave a bid value
-                has_bid = self.reviewer_has_bid(reviewer, forum)
+                has_bid = self.eval_data.reviewer_has_bid(reviewer, forum)
                 if has_bid:
                     new_rank_list.append((reviewer, score, forum))
         ranked_reviewers = sorted(
@@ -92,13 +90,13 @@ class Graphing(base_graphing.Graphing):
 
         positive_bids = 0
         for reviewer, score, forum in ranked_reviewers:
-            bid = self.get_bid_for_reviewer_paper(reviewer, forum)
+            bid = self.eval_data.get_bid_for_reviewer_paper(reviewer, forum)
             if bid == 1:
                 positive_bids +=1
 
         for m in range(1, len(ranked_reviewers) + 1):
             topM = ranked_reviewers[0: m]
-            topM = map(lambda reviewer: (reviewer[0], self.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
+            topM = map(lambda reviewer: (reviewer[0], self.eval_data.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
             pos_bids_from_topM = [bid for bid in topM if bid[1] == 1]
 
             if float(positive_bids) > 0:
@@ -119,13 +117,13 @@ class Graphing(base_graphing.Graphing):
 
         positive_bids = 0
         for reviewer, score, forum in ranked_reviewers:
-            bid = self.get_bid_for_reviewer_paper(reviewer, forum)
+            bid = self.eval_data.get_bid_for_reviewer_paper(reviewer, forum)
             if bid == 1:
                 positive_bids +=1
 
         for m in range(1, len(ranked_reviewers) + 1):
             topM = ranked_reviewers[0: m]
-            topM = map(lambda reviewer: (reviewer[0], self.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
+            topM = map(lambda reviewer: (reviewer[0], self.eval_data.get_bid_for_reviewer_paper(reviewer[0], reviewer[2])), topM)
             pos_bids_from_topM = [bid for bid in topM if bid[1] == 1]
             precision = float(len(pos_bids_from_topM)) / float(m)  # precision => relevant bids retrieved / # of retrieved
             scores.append(precision)

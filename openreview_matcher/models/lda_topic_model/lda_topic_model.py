@@ -7,8 +7,9 @@ from gensim.models import LdaModel
 from gensim import corpora
 from openreview_matcher.models import base_model
 from openreview_matcher.preprocessors import preprocess_documents
+from openreview_matcher import eval_utils
 import re
-
+import pickle
 
 class Model(base_model.Model):
     """ 
@@ -28,8 +29,9 @@ class Model(base_model.Model):
         self.reviewers = None
         self.dictionary = None
         self.corpus_bow = None
-        self.lda_model = None
+        self.lda_model = None 
         self.reviewer_to_lda_vector = None
+
 
     def fit(self, train_data, archive_data):
         """
@@ -75,11 +77,21 @@ class Model(base_model.Model):
         self.dictionary = corpora.Dictionary(corpus)
         self.corpus_bow = [self.dictionary.doc2bow(doc) for doc in corpus]
 
-        print("Training LDA Model...")
-        self.lda_model = LdaModel(corpus=self.corpus_bow, id2word=self.dictionary, num_topics=self.num_topics,
-                                  update_every=1, chunksize=830, passes=self.learning_iterations)
+        if not self.lda_model:
 
-        self.lda_model.save("./saved_internal_models/lda/ldamodel.model")
+            print("Saving the dictionary...")
+            self.dictionary.save("./saved_internal_models/lda/lda_model_dictionary")
+
+            print("Saving the corpus bow...")
+            with open("./saved_internal_models/lda/corpus_bow.pkl", "w") as f:
+                pickle.dump(self.corpus_bow, f)
+
+            print("Training LDA Model...")
+            self.lda_model = LdaModel(corpus=self.corpus_bow, id2word=self.dictionary, num_topics=self.num_topics,
+                                      update_every=1, chunksize=830, passes=self.learning_iterations)
+            self.lda_model.save("./saved_internal_models/lda/ldamodel.model")
+
+        print("Loading in the LDA Model")
 
         print("Creating Reviewer Topic Vectors...")
         self.reviewer_to_lda_vector = {}
@@ -131,6 +143,7 @@ class Model(base_model.Model):
         elif self.combining_mechanism == "avg":
             # compute the avg score
             return self.compute_avg_score(signature, note_record)        
+
     def compute_cosine_between_reviewer_paper(self, reviewer_vec, paper_vec):
         """ 
         Returns the cosine similarity between the reviewer vector representation 
@@ -138,6 +151,15 @@ class Model(base_model.Model):
         """
 
         return cosine_similarity(reviewer_vec.reshape(1, -1), paper_vec.reshape(1, -1))[0][0]
+
+    def compute_prob_dist_between_vecs(self, reviewer_vec, paper_vec):
+        """ 
+        Computes the min distance to travel to match reviewer_vec and 
+        paper vec using Haw-Shaun's loss function 
+        """
+
+        pass
+
     def compute_avg_score(self, signature, note_record):
         forum_content = " ".join(self.__tokenize_paper(note_record["content"]["archive"]))
         paper_topic_vec = self.__build_lda_topic_vector(forum_content)
@@ -180,6 +202,7 @@ class Model(base_model.Model):
             return 0
         else:
             return max(reviewer_paper_scores)
+
     def __build_lda_topic_vector(self, document):
         """ 
         Uses the trained LDA model to compute a topic vector a single document 
@@ -200,6 +223,7 @@ class Model(base_model.Model):
             else:
                 topic_vec.append(lda_raw_topic_distribution[topic_num])
         return np.asarray(topic_vec)
+
     def ___build_reviewer_lda_vector(self, reviewer_documents):
         """ 
         
@@ -222,6 +246,7 @@ class Model(base_model.Model):
             paper_topic_vector = self.__build_lda_topic_vector(reviewer_doc)
             reviewer_to_lda_vector.append(paper_topic_vector)
         return reviewer_to_lda_vector
+
     def __tokenize_paper(self, paper):
         """ 
         Tokenizes a document

@@ -2,7 +2,7 @@ from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from openreview_matcher.keyphrase_extractor import base_extractor
 from operator import itemgetter
-
+import pickle
 
 class KeyphraseExtractor(base_extractor.KeyphraseExtractor):
 	""" 
@@ -11,37 +11,26 @@ class KeyphraseExtractor(base_extractor.KeyphraseExtractor):
 	"""
 
 	def __init__(self, params=None):
-		pass
+
+		with open("trained_models/tfidf/tfidfvectorizer.pkl", "r") as f:
+			self.tfidf = pickle.load(f)
 
 	def extract(self, document, top_n=5, corpus=None):
 		"""
 		Extract the 'best' keywords from a document using tf-idf
 		"""
 
-		top_n_words = self.__tf_idf(document, corpus)[:top_n]
-	   	return [word[0] for word in top_n_words]
+		keywords = self.get_top_words(document, top_n)
+		return keywords
 
-	def train_tf_idf_on_corpus(self, corpus):
-		""" Train and fit the TfidfVectorizor on the corpus """
+	def get_top_words(self, document, n):
+		""" Get the top n words based on tf-idf scores from the document """
 
-		self.tfidf = TfidfVectorizer()
-		self.tfidf.fit(corpus)
+		output = list(self.tfidf.transform([document]).toarray()[0])
+		features = self.tfidf.get_feature_names()
+		tfidf_words = [(word, score) for word, score in zip(features, output) if score > 0.0]
+		sorted_tfidf_words = sorted(tfidf_words, key=itemgetter(1), reverse=True)[:n]
+		return [word[0] for word in sorted_tfidf_words]
 
-	def __tf_idf(self, document, top_n=5):
-	    """
-	    Perform TF-IDF on the corpus and get back tfidf scores on the document
-
-	    Arguments:
-	        document: the document to apply tf-idf to. The document is a list of tokens
-	        corpus: the collection of all documents representing the corpus. The corpus is represented
-	        as a list of documents which are represented as a list of tokens
-
-	        corpus = [["the", "model", "is", "really", "good"], ["i", "like", "building", "expertise", "models"]]
-	    Returns:
-	        a dictionary of terms with the tf-idf weights {term => tf-idf weight}
-	    """
-	    output = list(self.tfidf.transform([" ".join(document)]).toarray()[0])
-	    features = self.tfidf.get_feature_names()
-	    tfidf_words = [(word, score) for word, score in zip(features, output) if score > 0.0]
-	    sorted_tfidf_words = sorted(tfidf_words, key=itemgetter(1), reverse=True) 
-	    return sorted_tfidf_words
+	def __repr__(self):
+		return "tfidf"

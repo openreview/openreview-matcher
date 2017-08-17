@@ -1,28 +1,23 @@
 import re
-
 from collections import defaultdict
 from collections import Counter
-
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim.models.tfidfmodel import TfidfModel
 from gensim import corpora
-from openreview_matcher.preprocessors import base_preprocessor
+from operator import itemgetter
+
 from openreview_matcher.models import base_model
-from openreview_matcher.preprocessors import pos_regex
+from openreview_matcher.preprocessors import preprocess_documents
 
 class Model(base_model.Model):
-    def __init__(self, params=None):
-        self.tfidf_dictionary = corpora.Dictionary()
-        self.document_tokens = []
 
-        # a dictionary keyed on reviewer signatures, containing a BOW representation of that reviewer's Archive (Ar)
-        self.bow_by_signature = defaultdict(Counter)
-
-        # a dictionary keyed on forum IDs, containing a BOW representation of the paper (P)
-        self.bow_by_forum = defaultdict(Counter)
-
-        if params:
-            self.my_param = params['my_param']
-            print "    parameter my_param loaded: ", self.my_param
+    def __init__(self, combinining_mechanism, scoring_mechanism, keyphrase_extractor, params=None):
+        self.combinining_mechanism = combinining_mechanism
+        self.scoring_mechanism = scoring_mechanism
+        self.keyphrase_extractor = keyphrase_extractor
+        self.reviewers = [] 
+        self.reviewer_to_vec = None        
 
     def fit(self, train_data, archive_data):
         """
@@ -42,26 +37,37 @@ class Model(base_model.Model):
 
         """
 
-        for record in train_data:
-            for tokens in self.preprocess_notes(record['content']['archive'], self.tfidf_dictionary):
-                if 'forum' in record:
-                    self.bow_by_forum[record['forum']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
-                self.document_tokens += [tokens]
 
-        for archive in archive_data:
+        tfidf_training_corpus = [] 
+        reviewer_to_papers = defaultdict(list)
 
-            for tokens in self.preprocess_notes(archive['content']['archive'], self.tfidf_dictionary):
-                if 'reviewer_id' in archive:
-                    self.bow_by_signature[archive['reviewer_id']].update({t[0]:t[1] for t in self.tfidf_dictionary.doc2bow(tokens)})
-                self.document_tokens += [tokens]
+        for record in archive_data:
+            if record["content"]["archive"]:
+                paper = record["content"]["archive"]
+                reviewer_to_papers[record["reviewer_id"]].append(paper)
+                tfidf_training_corpus.append(paper)
 
-        # get the BOW representation for every document and put it in corpus_bows
-        self.corpus_bows = [self.tfidf_dictionary.doc2bow(doc) for doc in self.document_tokens]
+        for paper in train_data:
+            if paper['content']['archive']:
+                paper = " ".join(preprocess_documents.trigram_transformer(self.__tokenize_paper(paper["content"]["archive"])))
+                tfidf_training_corpus.append(paper)        
 
-        # generate a TF-IDF model based on the entire corpus's BOW representations
-        self.tfidf_model = TfidfModel(self.corpus_bows)
+        self.reviewers = reviewer_to_papers.keys() # maintain a list of reviewer id's
 
-    def predict(self, note_record):
+        print "Building Tfidf model on training documents"
+        self.tfidf_model = TfidfVectorizer(max_df=.95)
+        self.tfidf_model.fit(tfidf_training_corpus)
+
+        self.reviewer_to_vec = defaultdict(list)
+
+        for reviewer_id, papers in reviewer_to_papers.iteritems():
+            for paper in papers: 
+                tfidf_vector_for_paper = self.get_tfidf_vector_for_document(paper)
+                print "Paper:", paper[:10], "Tfidf Vec: ", len(tfidf_vector_for_paper)
+                self.reviewer_to_vec[reviewer_id].append((paper, tfidf_vector_for_paper))
+        return self
+
+    def predict(self, test_record):
         """
         predict() should return a list of openreview user IDs, in descending order by
         expertise score in relation to the test record.
@@ -77,37 +83,84 @@ class Model(base_model.Model):
 
         """
 
-        scores = [(signature, self.score(signature, note_record)) for signature, _ in self.bow_by_signature.iteritems()]
-        rank_list = [signature for signature, score in sorted(scores, key=lambda x: x[1], reverse=True)]
+        paper_to_reviewer_scores = []
 
-        return rank_list
+        for reviewer in self.reviewers:
+            expertise_score = self.score(reviewer, test_record)
+            paper_to_reviewer_scores.append((reviewer, expertise_score))
+
+        sorted_reviewer_scores = sorted(paper_to_reviewer_scores, key=itemgetter(1), reverse=True)
+        ranked_reviewer_list = ["{0};{1}".format(reviewer_scores[0].encode('utf-8'),reviewer_scores[1]) for
+                                reviewer_scores in sorted_reviewer_scores]
+
+        return ranked_reviewer_list  
 
     def score(self, signature, note_record):
         """
-        Returns a score from 0.0 to 1.0, representing the degree of fit between the paper and the reviewer
+        Returns an expertise score between a reviewer and a paper 
+        Computes the averaged word vector for the reviewer and the
+        paper and then uses cosine similarity on both vectors to create
+        an expertise score between a reviewer and a paper
 
-        """
-        forum = note_record['forum']
-        forum_bow = [(id,count) for id,count in self.bow_by_forum[forum].iteritems()]
-        reviewer_bow = [(id,count) for id,count in self.bow_by_signature[signature].iteritems()]
-        forum_vector = defaultdict(lambda: 0, {idx: score for (idx, score) in self.tfidf_model[forum_bow]})
-        reviewer_vector = defaultdict(lambda: 0, {idx: score for (idx, score) in self.tfidf_model[reviewer_bow]})
-
-        return sum([forum_vector[k] * reviewer_vector[k] for k in forum_vector])
-
-    def preprocess_notes(self, content, dictionary, chunker=preprocess.extract_candidate_chunks):
-        """
-        Arguments
-            @notes: a list of dictionaries, representing paper records.
-            @dictionary: a gensim tfidf dictionary.
-
-        Returns
-            a generator object, which can be iterated over in a memory-friendly manner
-            to yield a list of tokens (one list of tokens per note in the "notes" argument)
+        Arguments:
+            signature: reviewer_id
+            note_record: a dict representing a note (paper)
+        Returns:
+            A float representing the score
         """
 
-        tokens = chunker(content)
+        if self.combinining_mechanism == "max":
+            # compute the max score
+            return self.compute_max_score(signature, note_record)
+            
+        elif self.combinining_mechanism == "avg":
+            # compute the avg score
+            return self.compute_avg_score(signature, note_record)
 
-        dictionary.add_documents([tokens])
-        yield tokens
+    def compute_max_score(self, signature, note_record):
+        """ Take the max score between the paper vector and the reviewer document vectors """
 
+        paper = " ".join(preprocess_documents.trigram_transformer(self.__tokenize_paper(note_record["content"]["abstract"])))
+        paper_tfidf_vector = self.get_tfidf_vector_for_document(paper)
+
+        print "Paper tfidf vector: ", len(paper_tfidf_vector)
+
+        reviewer_paper_scores = []
+
+        for reviewer_paper, reviewer_paper_vec in self.reviewer_to_vec[signature]:
+            if self.scoring_mechanism == "cosine_similarity":
+
+                if reviewer_paper_vec.size > 1: # because the reviewer paper vector is empty (nan), the words in the paper don't have word vectors
+
+                    reviewer_paper_score = self.compute_cosine_between_reviewer_paper(reviewer_paper_vec, paper_tfidf_vector)
+                    reviewer_paper_scores.append(reviewer_paper_score)
+
+        if len(reviewer_paper_scores) == 0:
+            return 0
+        else:
+            return max(reviewer_paper_scores)
+
+    def compute_cosine_between_reviewer_paper(self, reviewer_vec, paper_vec):
+        """ 
+        Returns the cosine similarity between the reviewer vector representation 
+        and a paper vector representation 
+        """
+
+        return cosine_similarity(reviewer_vec.reshape(1, -1), paper_vec.reshape(1, -1))[0][0]
+
+    def get_tfidf_vector_for_document(self, doc):
+        output = self.tfidf_model.transform([doc]).toarray()[0]
+        return output
+
+    def __tokenize_paper(self, paper):
+        """ 
+        Tokenizes a document
+        
+        Arguments:
+              paper: a document represented by a string
+              
+        Returns:
+                a list of tokens 
+        """
+        words = preprocess_documents.tokenize(paper)
+        return words 

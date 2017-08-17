@@ -8,19 +8,15 @@ from collections import Counter, defaultdict
 from operator import itemgetter
 import sys
 from openreview_matcher.preprocessors import preprocess_documents
+from openreview_matcher import eval_utils
 import re
 import pickle
 import time
+import random
 
-        
 class Model(base_model.Model):
     """
-    Implementation of Top-N-Words Model (underlying w2v model)
-    The model gathers the top n words from a reviewer's archive using tf-idf 
-    and averages those top n word vectors to form a single averaged vector 
-    representing the reviewer. The paper is represented is by averaging all word vectors in the document.
-    To generate a score between a reviewer and a paper, cosine similarity is applied 
-    to both the reviewer's vector and the paper's vector
+    Implementation of Word Embedding Model (underlying skipgram w2v model)
     """
 
     def __init__(self, combinining_mechanism, scoring_mechanism, keyphrase_extractor, params=None):
@@ -46,38 +42,46 @@ class Model(base_model.Model):
 
         reviewer_to_papers = defaultdict(list)
 
-        training_corpus = [] # need to use this corpus to get the best words on the training papers
-        self.testing_corpus = [] # need to use this corpus to get best words on the test papers
+        self.testing_corpus = [] 
 
+        # maintain a dictionary of reviewer to their papers
         for record in archive_data:
             if record["content"]["archive"]:
-                paper = self.__tokenize_paper(record["content"]["archive"])
+                paper = record["content"]["archive"]
                 if(len(paper) > 0):
                     reviewer_to_papers[record["reviewer_id"]].append(paper)
-                    training_corpus.append(paper)
-
-        for paper in train_data:
-            if paper['content']['archive']:
-                paper_doc = self.__tokenize_paper(paper["content"]["archive"])
-                self.testing_corpus.append(paper_doc) 
 
         self.reviewers = reviewer_to_papers.keys() # maintain a list of reviewer id's
 
-        training_corpus = [" ".join(doc) for doc in training_corpus]
-        self.testing_corpus = [" ".join(doc) for doc in self.testing_corpus]
-
-        self.keyphrase_extractor.train_tf_idf_on_corpus(training_corpus)
-
         print("Building reviewer_to_vec dict...")
+
         self.reviewer_to_vec = defaultdict(list)
         for reviewer_id, papers in reviewer_to_papers.iteritems():
             for paper in papers:
-                # reviewer_top_n_words_for_paper = paper  #use all of the words in the title to represent 'top words' for the document
-                reviewer_top_n_words_for_paper = self.keyphrase_extractor.extract(paper, 5, training_corpus)
-                reviewer_paper_vec = self.__build_averaged_word_vectors(reviewer_top_n_words_for_paper)
-                self.reviewer_to_vec[reviewer_id].append((reviewer_top_n_words_for_paper, reviewer_paper_vec))
-
+                reviewer_paper_words = self.run_kp_extraction(paper, self.top_n)
+                reviewer_paper_vec = self.__build_averaged_word_vectors(reviewer_paper_words) # average word embeddings for reviewer's paper
+                self.reviewer_to_vec[reviewer_id].append((reviewer_paper_words, reviewer_paper_vec))
         return self
+
+    def run_kp_extraction(self, document, n):
+        """ 
+        Run a kp extraction on the document. This method supports tfidf, oracle and rnn_attention 
+        as methods to extract keyphrases from a individual document 
+
+        Returns: a list tokens representing the keywords in the document
+        """         
+
+        if repr(self.keyphrase_extractor) == "tfidf":
+            return self.keyphrase_extractor.extract(document, n)
+
+        elif repr(self.keyphrase_extractor) == "oracle":
+            return "oracle keyphrase extraction"
+
+        elif repr(self.keyphrase_extractor) == "rnn_attention":
+            return "rnn_attention keyphrase extraction"
+
+        elif repr(self.keyphrase_extractor) == "no_keyword_extractor":
+            return self.keyphrase_extractor.extract(document, n)
 
     def predict(self, test_record):
         """
@@ -150,9 +154,11 @@ class Model(base_model.Model):
                 if reviewer_paper_vec.size > 1:
                     reviewer_paper_score = self.compute_cosine_between_reviewer_paper(reviewer_paper_vec, paper_vector)
                     reviewer_paper_scores.append(reviewer_paper_score)
-            elif self.scoring_mechanism == "word_movers":
+            elif self.scoring_mechanism == "wmd":
                 # compute the word movers distance between reviewer and paper vector
                 print("Computing the word_movers distance between the vectors")
+                wmd_score = self.compute_wmd_score(words, best_paper_tokens)
+                reviewer_paper_scores.append(wmd_score)
 
         if len(reviewer_paper_scores) == 0:
             return 0
@@ -162,28 +168,50 @@ class Model(base_model.Model):
     def compute_max_score(self, signature, note_record):
         """ Take the max score between the paper vector and the reviewer document vectors """
 
-        self.keyphrase_extractor.train_tf_idf_on_corpus(self.testing_corpus)
+        # self.keyphrase_extractor.train_tf_idf_on_corpus(self.testing_corpus)
 
-        paper_tokens = self.__tokenize_paper(note_record["content"]["archive"])
-        best_paper_tokens = self.keyphrase_extractor.extract(paper_tokens, 10)
-        paper_vector = self.__build_averaged_word_vectors(best_paper_tokens)
+        paper = " ".join(preprocess_documents.trigram_transformer(self.__tokenize_paper(note_record["content"]["abstract"])))
         
+        best_paper_tokens = paper.split() # use all of the words in the query paper
+
+        paper_vector = self.__build_averaged_word_vectors(best_paper_tokens)
+
         reviewer_paper_scores = []
 
         for words, reviewer_paper_vec in self.reviewer_to_vec[signature]:
             if self.scoring_mechanism == "cosine_similarity":
                 # compute the cosine similarity between reviewer vector and paper vector
+
+                # use this code for extracting keywords using oracle
+                # top_words_from_reviewer_paper = self.get_top_keywords_from_oracle(" ".join(words), paper, 10)
+                # reviewer_vec_from_top_words = self.__build_averaged_word_vectors(top_words_from_reviewer_paper)
+
                 if reviewer_paper_vec.size > 1: # because the reviewer paper vector is empty (nan), the words in the paper don't have word vectors
+
                     reviewer_paper_score = self.compute_cosine_between_reviewer_paper(reviewer_paper_vec, paper_vector)
                     reviewer_paper_scores.append(reviewer_paper_score)
 
-            elif self.scoring_mechanism == "word_movers":
+            elif self.scoring_mechanism == "wmd":
                 # compute the word movers distance between reviewer and paper vector
-                print("Computing the word_movers distnace between two vectors")
+                wmd_score = self.compute_wmd_score(words, best_paper_tokens)
+                reviewer_paper_scores.append(wmd_score)
+
         if len(reviewer_paper_scores) == 0:
             return 0
         else:
             return max(reviewer_paper_scores)
+
+    def compute_wmd_score(self, doc1, doc2):
+        """ 
+        Compute the word movers distance between two documents 
+    
+        Assumes that both doc1 and doc2 are a list of tokens
+
+        """
+
+        result = self.w2v_model.wmdistance(doc1, doc2)
+        result = 1./(1.+result)  # Similarity is the negative of the distance.
+        return result
 
     def __build_averaged_word_vectors(self, tokens):
         """
@@ -201,42 +229,27 @@ class Model(base_model.Model):
             try:
                 document_avg_vec.append(self.w2v_model[token])
             except:
-                continue  # skip all the words not in the vocabulary of the
+                continue  # skip all the words not in the vocabulary of the model
         return np.sum(np.array(document_avg_vec), axis=0) / float(len(document_avg_vec))
 
-    def __top_n_words(self, documents, corpus):
-        """
-        Returns a list of the top n words from a list of papers using TF-IDF weighting
+    def keyword_extractor_using_oracle(self, a, q, n):
+        """ Find the best keywords in the reviewer's paper using knowledge of the query """
+        avg_q_vec = self.__build_averaged_word_vectors(q.split())
+        word_scores = []
+        for word in list(set(a.split())):
+            if word in self.w2v_model:
+                vw_word = self.w2v_model[word]
+                score = cosine_similarity(vw_word.reshape(1, -1), avg_q_vec.reshape(1, -1))[0][0]
+                word_scores.append((word, score))
+        sorted_word_scores = sorted(word_scores, key=itemgetter(1), reverse=True)
+        return [word[0] for word in sorted_word_scores[:n]]
 
-        Arguments:
-            papers: a list of papers
-        Returns:
-            a list of top words
-        """
 
-        tf_idf_weights = self.__tf_idf(documents, corpus)
-        c = Counter(tf_idf_weights)
-        top_n_words = c.most_common(self.top_n)
-        return [word[0] for word in top_n_words]
-
-    def __tf_idf(self, document, corpus):
-        """
-        Perform TF-IDF on the corpus and get back tfidf scores on the document
-
-        Arguments:
-            documents: the collection of documents to score
-            corpus: the collection of all documents representing the corpus
-        Returns:
-            a dictionary of terms with the tf-idf weights {term => tf-idf weight}
-        """
-
-        dictionary = corpora.Dictionary(corpus)
-        corpus_bow = [dictionary.doc2bow(document) for document in corpus]
-        doc = dictionary.doc2bow(document)
-        tfidf = TfidfModel(corpus_bow)
-        corpus_tfidf = tfidf[doc]
-        d = {dictionary.get(term[0]): term[1] for term in corpus_tfidf}
-        return d
+    def keyword_extractor_using_tfidf(self, doc):
+        """ Use tfidf to extract keywords from the source document """
+        keywords = self.keyphrase_extractor.extract(doc, 10, None)
+        return keywords
+ 
 
     def __tokenize_paper(self, paper):
         """ 
@@ -248,10 +261,13 @@ class Model(base_model.Model):
         Returns:
                 a list of tokens 
         """
-
-        space_regexp = re.compile('[^a-zA-Z]')
-        words = re.split(space_regexp, paper)
-        words = filter(lambda x: len(x) > 0, words)
-        words = [word.lower() for word in words]
-        words = preprocess_documents.stop_word_removal(words)
+        words = preprocess_documents.tokenize(paper)
         return words
+
+    def get_random_words_from_doc(self, doc):
+        """ Choose 10 random words from a document """
+        random_words = set()
+        while len(random_words) != 10:
+            word = random.choice(doc.split())
+            random_words.add(word)
+        return list(random_words)

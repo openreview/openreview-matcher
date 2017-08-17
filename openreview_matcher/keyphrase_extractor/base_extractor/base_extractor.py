@@ -20,4 +20,8 @@ class KeyphraseExtractor(object):
             @top_n: the number of top words to get
             @corpus: a list of documents representing the corpus
         """
+        
         pass
+        
+    def __repr__(self):
+        return "base_extractor"

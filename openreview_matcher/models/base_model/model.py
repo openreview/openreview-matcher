@@ -14,6 +14,9 @@ class Model(object):
     """
     __metaclass__ = abc.ABCMeta
 
+    def __init__(self, combinining_mechanism, scoring_mechanism, keyphrase_extractor, params=None):
+        pass
+
     @abc.abstractmethod
     def fit(self, train_data, archive_data):
         """

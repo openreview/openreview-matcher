@@ -1,0 +1,4 @@
+{
+	"n_words": 10,
+  	"w2v_model_location": "trained_models/w2v_model/w2v_model.bin"
+}
