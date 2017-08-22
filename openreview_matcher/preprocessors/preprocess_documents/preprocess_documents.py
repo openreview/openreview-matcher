@@ -72,7 +72,7 @@ def sanitize(w):
     for char, replace_char in map.iteritems():
         w = re.sub(char, replace_char, w)
 
-    # w = unicode(w, encoding='utf-8')
+    w = unicode(w, encoding='utf-8')
 
     # This gets rite of accents
     w = ''.join((c for c in unicodedata.normalize(
