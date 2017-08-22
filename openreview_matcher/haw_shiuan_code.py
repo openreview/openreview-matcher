@@ -1,3 +1,5 @@
+""" Haw Shiuan code to calculate the loss against two vectors """
+
 import numpy as np
 import random
 import json
