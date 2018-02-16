@@ -7,151 +7,77 @@ import numpy as np
 import openreview
 from collections import defaultdict
 
+def match(config, papers, metadata, group):
+    '''
+    @papers - list of openreview.Note objects representing papers to be matched.
+    @metadata - list of openreview.Note objects representing the paper metadata.
+    @group - an openreview.Group object representing the users to match to papers
+    '''
 
-class Matcher(object):
+    index_by_user = {user: i for i, user in enumerate(group.members)}
+    user_by_index = {i: user for i, user in enumerate(group.members)}
 
-    def __init__(self, client):
-        """
-        Arguments:
+    index_by_forum = {note.forum: i for i, note in enumerate(papers)}
+    forum_by_index = {i: note.forum for i, note in enumerate(papers)}
 
-        """
+    minpapers = config['minpapers']
+    maxpapers = config['maxpapers']
+    alphas = [(minpapers, maxpapers)] * len(group.members)
 
-        self.client = client
-        self.data = {}
+    minusers = config['minusers']
+    maxusers = config['maxusers']
+    betas = [(minusers, maxusers)] * len(metadata)
 
-    def get_hard_constraint_value(self, score_array):
-        """
-        A function to check for the presence of Hard Constraints in the score array (+Inf or -Inf) ,
-        :param score_array:
-        :return:
-        """
-        for element in score_array:
-            if str(element).strip().lower() == '+inf':
-                return 1
-            if str(element).strip().lower() == '-inf':
-                return 0
-        return -1
+    feature_weights = config['weights']
 
-    def save_get_call(self, key, call):
-        if key in self.data:
-            print "retrieving stored value"
-            value = self.data[key]
-        else:
-            print "sending network call"
-            value = call()
-            self.data[key] = value
-        return value
+    # Defining and Updating the weight matrix
+    scores = np.zeros((len(index_by_user), len(index_by_forum)))
+    hard_constraint_dict = {}
 
-    def solve(self, config):
-        '''
-        Accepts a config dictionary (example given below)
-        Returns a list of assignment notes
+    for metadata_note in metadata:
+        features_by_user = metadata_note.content['groups'][group.id]
 
-        reviewer_configuration = {
-            'label': 'reviewers',
-            'group': 'auai.org/UAI/2018/Program_Committee',
-            'submission': 'auai.org/UAI/2018/-/Blind_Submission',
-            'exclude': [],
-            'metadata': 'auai.org/UAI/2018/-/Paper_Metadata',
-            'assignment': 'auai.org/UAI/2018/-/Paper_Assignment',
-            'minusers': 1,
-            'maxusers': 3,
-            'minpapers': 2,
-            'maxpapers': 5,
-            'weights': {
-                'bid_score': 1
-            }
-        }
-        '''
+        for user in features_by_user:
+            user_features = defaultdict(lambda: 0, features_by_user[user])
 
-        assignment_invitation = self.client.get_invitation(config['assignment'])
+            hard_constraint_value = get_hard_constraint_value(user_features.values())
 
-        def assignment(forum):
+            if hard_constraint_value == -1:
+                feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
+                scores[index_by_user[user], index_by_forum[metadata_note.forum]] = np.mean(feature_scores.values())
 
-            assignment_note = openreview.Note(**{
-                'forum': forum,
-                'invitation': assignment_invitation.id,
-                'readers': assignment_invitation.reply['readers']['values'],
-                'writers': assignment_invitation.reply['writers']['values'],
-                'signatures': assignment_invitation.reply['signatures']['values'],
-                'content': {
-                    'groups': {}
-                }
-            })
+            else:
+                hard_constraint_dict[index_by_user[user], index_by_forum[metadata_note.forum]] = hard_constraint_value
 
-            return assignment_note
+    solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
 
-        paper_metadata = self.client.get_notes(invitation = config['metadata'])
+    # Extracting the paper-reviewer assignment
+    users_by_forum = defaultdict(list)
+    for var_name in solution:
 
-        assignment_notes_by_forum = {n.forum: assignment(n.forum) for n in paper_metadata}
+        var_val = var_name.split('x_')[1].split(',')
 
-        usergroup_to_match = self.client.get_group(config['group'])
+        user_index, paper_index = (int(var_val[0]), int(var_val[1]))
 
-        papers_to_match = self.client.get_notes(invitation = config['submission'])
+        match = solution[var_name]
 
+        if match==1:
+            users_by_forum[forum_by_index[paper_index]].append(user_by_index[user_index])
 
-        index_by_user = {user: i for i, user in enumerate(usergroup_to_match.members)}
-        user_by_index = {i: user for i, user in enumerate(usergroup_to_match.members)}
+    return users_by_forum
 
-        index_by_forum = {note.forum: i for i, note in enumerate(papers_to_match)}
-        forum_by_index = {i: note.forum for i, note in enumerate(papers_to_match)}
-
-        minpapers = config['minpapers']
-        maxpapers = config['maxpapers']
-        alphas = [(minpapers, maxpapers)] * len(usergroup_to_match.members)
-
-        minusers = config['minusers']
-        maxusers = config['maxusers']
-        betas = [(minusers, maxusers)] * len(paper_metadata)
-
-        feature_weights = config['weights']
-
-        # Defining and Updating the weight matrix
-        scores = np.zeros((len(index_by_user), len(index_by_forum)))
-        hard_constraint_dict = {}
-
-        for metadata in paper_metadata:
-
-            features_by_user = metadata.content['groups'][usergroup_to_match.id]
-
-            for user in features_by_user:
-                user_features = defaultdict(lambda: 0, features_by_user[user])
-
-                hard_constraint_value = self.get_hard_constraint_value(user_features.values())
-
-                if hard_constraint_value == -1:
-                    feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
-                    scores[index_by_user[user], index_by_forum[metadata.forum]] = np.mean(feature_scores.values())
-
-                else:
-                    hard_constraint_dict[index_by_user[user], index_by_forum[metadata.forum]] = hard_constraint_value
-
-        #scores, hard_constraint_dict = self.get_scores(feature_weights, paper_metadata, index_by_user, index_by_forum)
-
-        solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
-
-        # Extracting the paper-reviewer assignment
-        users_by_forum = defaultdict(list)
-        for var_name in solution:
-
-            var_val = var_name.split('x_')[1].split(',')
-
-            user_index, paper_index = (int(var_val[0]), int(var_val[1]))
-
-            match = solution[var_name]
-
-            if match==1:
-                users_by_forum[forum_by_index[paper_index]].append(user_by_index[user_index])
-
-        #print users_by_forum
-
-        for n in papers_to_match:
-            print users_by_forum[n.forum]
-            assignment_note = assignment_notes_by_forum[n.forum]
-            assignment_note.content['assignment'] = users_by_forum[n.forum]
-            assignment_note.content['label'] = config['label']
-
-        return assignment_notes_by_forum.values()
+def get_hard_constraint_value(score_array):
+    """
+    A function to check for the presence of Hard Constraints in the score array (+Inf or -Inf) ,
+    :param score_array:
+    :return:
+    """
+    for element in score_array:
+        if str(element).strip().lower() == '+inf':
+            return 1
+        if str(element).strip().lower() == '-inf':
+            return 0
+    return -1
 
 class Solver(object):
     """
