@@ -42,18 +42,53 @@ class Matcher(object):
             self.data[key] = value
         return value
 
-    def solve(self, config_note):
+    def solve(self, config):
+        '''
+        Accepts a config dictionary (example given below)
+        Returns a list of assignment notes
 
-        config = config_note.content['configuration']
+        reviewer_configuration = {
+            'label': 'reviewers',
+            'group': 'auai.org/UAI/2018/Program_Committee',
+            'submission': 'auai.org/UAI/2018/-/Blind_Submission',
+            'exclude': [],
+            'metadata': 'auai.org/UAI/2018/-/Paper_Metadata',
+            'assignment': 'auai.org/UAI/2018/-/Paper_Assignment',
+            'minusers': 1,
+            'maxusers': 3,
+            'minpapers': 2,
+            'maxpapers': 5,
+            'weights': {
+                'bid_score': 1
+            }
+        }
+        '''
 
-        paper_metadata = self.save_get_call(config['metadata'],
-            lambda: self.client.get_notes(invitation = config['metadata']))
+        assignment_invitation = self.client.get_invitation(config['assignment'])
 
-        usergroup_to_match = self.save_get_call(config['group'],
-            lambda: self.client.get_group(config['group']))
+        def assignment(forum):
 
-        papers_to_match = self.save_get_call(config['submission'],
-            lambda: self.client.get_notes(invitation = config['submission']))
+            assignment_note = openreview.Note(**{
+                'forum': forum,
+                'invitation': assignment_invitation.id,
+                'readers': assignment_invitation.reply['readers']['values'],
+                'writers': assignment_invitation.reply['writers']['values'],
+                'signatures': assignment_invitation.reply['signatures']['values'],
+                'content': {
+                    'groups': {}
+                }
+            })
+
+            return assignment_note
+
+        paper_metadata = self.client.get_notes(invitation = config['metadata'])
+
+        assignment_notes_by_forum = {n.forum: assignment(n.forum) for n in paper_metadata}
+
+        usergroup_to_match = self.client.get_group(config['group'])
+
+        papers_to_match = self.client.get_notes(invitation = config['submission'])
+
 
         index_by_user = {user: i for i, user in enumerate(usergroup_to_match.members)}
         user_by_index = {i: user for i, user in enumerate(usergroup_to_match.members)}
@@ -108,17 +143,15 @@ class Matcher(object):
             if match==1:
                 users_by_forum[forum_by_index[paper_index]].append(user_by_index[user_index])
 
-        assignment_info_by_number = {}
+        #print users_by_forum
+
         for n in papers_to_match:
-            assignment_info_by_number['Paper{0}'.format(n.number)] = {
-                'title': n.content['title'],
-                'forum': n.forum,
-                'assigned': users_by_forum[n.forum]
-            }
+            print users_by_forum[n.forum]
+            assignment_note = assignment_notes_by_forum[n.forum]
+            assignment_note.content['assignment'] = users_by_forum[n.forum]
+            assignment_note.content['label'] = config['label']
 
-        config_note.content['assignments'] = assignment_info_by_number
-
-        return config_note
+        return assignment_notes_by_forum.values()
 
 class Solver(object):
     """
