@@ -7,7 +7,7 @@ import numpy as np
 import openreview
 from collections import defaultdict
 
-def match(config, papers, metadata, group):
+def match(config, papers, metadata, group, constraints):
     '''
     @papers - list of openreview.Note objects representing papers to be matched.
     @metadata - list of openreview.Note objects representing the paper metadata.
@@ -35,7 +35,11 @@ def match(config, papers, metadata, group):
     hard_constraint_dict = {}
 
     for metadata_note in metadata:
-        features_by_user = metadata_note.content['groups'][group.id]
+        features_by_user = {user_entry['userId']: user_entry['scores'] for user_entry in metadata_note.content['groups'][group.id]}
+
+        if metadata_note.forum in constraints:
+            constraint_by_user = { user: {'userConstraint': value} for user, value in constraints[metadata_note.forum].iteritems()}
+            features_by_user.update(constraint_by_user)
 
         for user in features_by_user:
             user_features = defaultdict(lambda: 0, features_by_user[user])
@@ -48,6 +52,7 @@ def match(config, papers, metadata, group):
 
             else:
                 hard_constraint_dict[index_by_user[user], index_by_forum[metadata_note.forum]] = hard_constraint_value
+
 
     solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
 
