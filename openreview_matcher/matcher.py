@@ -46,12 +46,13 @@ def match(config, papers, metadata, group, constraints):
 
             hard_constraint_value = get_hard_constraint_value(user_features.values())
 
-            if hard_constraint_value == -1:
-                feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
-                scores[index_by_user[user], index_by_forum[metadata_note.forum]] = np.mean(feature_scores.values())
-
-            else:
-                hard_constraint_dict[index_by_user[user], index_by_forum[metadata_note.forum]] = hard_constraint_value
+            index = index_by_user.get(user, -1)
+            if index >= 0:
+                if hard_constraint_value == -1:
+                    feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
+                    scores[index, index_by_forum[metadata_note.forum]] = np.mean(feature_scores.values())
+                else:
+                    hard_constraint_dict[index, index_by_forum[metadata_note.forum]] = hard_constraint_value
 
 
     solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
