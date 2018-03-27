@@ -1,76 +1,263 @@
 #!/usr/bin/python
-import logging
 import time
-import uuid
-import gurobipy
 import numpy as np
 import openreview
 from collections import defaultdict
+from openreview import tools
 
-def match(config, papers, metadata, group, constraints):
+def match(client, configuration_note, Solver):
     '''
-    @papers - list of openreview.Note objects representing papers to be matched.
-    @metadata - list of openreview.Note objects representing the paper metadata.
-    @group - an openreview.Group object representing the users to match to papers
+    Given a configuration note, and a "Solver" class definition,
+    returns a list of assignment openreview.Note objects.
+
     '''
 
-    index_by_user = {user: i for i, user in enumerate(group.members)}
-    user_by_index = {i: user for i, user in enumerate(group.members)}
+    # unpack variables
+    label = configuration_note.content['label']
+    solver_config = configuration_note.content['configuration']
+    weights = dict(solver_config['weights'], **{'userConstraint': 1})
 
-    index_by_forum = {note.forum: i for i, note in enumerate(papers)}
-    forum_by_index = {i: note.forum for i, note in enumerate(papers)}
+    paper_invitation_id = configuration_note.content['paper_invitation']
+    metadata_invitation_id = configuration_note.content['metadata_invitation']
+    match_group_id = configuration_note.content['match_group']
+    constraints = configuration_note.content['constraints']
+    assignment_invitation_id = configuration_note.content['assignment_invitation']
 
-    minpapers = config['minpapers']
-    maxpapers = config['maxpapers']
-    alphas = [(minpapers, maxpapers)] * len(group.members)
+    # make network calls
+    papers = tools.get_all_notes(client, paper_invitation_id)
+    papers_by_forum = {n.forum: n for n in papers}
+    metadata_notes = [n for n in tools.get_all_notes(client, metadata_invitation_id) if n.forum in papers_by_forum]
+    match_group = client.get_group(id = match_group_id)
+    assignment_invitation = client.get_invitation(assignment_invitation_id)
+    existing_assignment_notes = tools.get_all_notes(client, assignment_invitation_id)
 
-    minusers = config['minusers']
-    maxusers = config['maxusers']
-    betas = [(minusers, maxusers)] * len(metadata)
+    # organize data into indices
+    existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
+    entries_by_forum = get_weighted_scores(metadata_notes, weights, constraints, match_group)
 
-    feature_weights = config['weights']
+    # TODO: allow individual constraints
+    alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
+    betas = [(solver_config['minusers'], solver_config['maxusers'])] * len(metadata_notes) # why is this the length of the metadata notes?
 
-    # Defining and Updating the weight matrix
-    scores = np.zeros((len(index_by_user), len(index_by_forum)))
+    score_matrix, hard_constraint_dict, user_by_index, forum_by_index = encode_score_matrix(entries_by_forum)
+
+    solution = Solver(alphas, betas, score_matrix, hard_constraint_dict).solve()
+
+    assigned_userids = decode_score_matrix(solution, user_by_index, forum_by_index)
+
+    new_assignment_notes = save_assignments(
+        assigned_userids,
+        existing_assignments,
+        assignment_invitation,
+        configuration_note,
+        entries_by_forum
+    )
+
+    return new_assignment_notes
+
+def get_weighted_scores(metadata_notes, weights, constraints, match_group):
+    '''
+    Returns a list of dicts that contains info about feature scores per user, per forum.
+
+    e.g. {
+        'abcXYZ': [
+            {
+                'userId': '~Michael_Spector1',
+                'scores': {
+                    'affinityScore': 0.85
+                },
+                'finalScore': 0.85
+            },
+            {
+                'userId': '~Melisa_Bok1',
+                'scores': {
+                    'affinityScore': 0.93,
+                },
+                'finalScore': 0.93
+            }
+        }
+    }
+
+    '''
+
+    entries_by_forum = {}
+    for m in metadata_notes:
+        user_entries = [e for e in m.content['groups'][match_group.id] if e['userId'] in match_group.members]
+        forum_constraints = constraints.get(m.forum, {})
+        for entry in user_entries:
+            # apply user-defined constraints
+            user_constraint = forum_constraints.get(entry['userId'])
+            if user_constraint:
+                entry['scores'].update({'userConstraint': user_constraint})
+
+            entry['scores'] = weight_scores(entry.get('scores', {}), weights)
+            numeric_scores = [score for score in entry['scores'].values() if score != '+inf' and score != '-inf']
+            entry['finalScore'] = np.mean(numeric_scores)
+
+        entries_by_forum[m.forum] = user_entries
+
+    return entries_by_forum
+
+def weight_scores(scores, weights):
+    '''
+    multiplies feature values by weights, excepting hard constraints
+    '''
+    weighted_scores = {}
+    for feature in weights:
+        if feature in scores:
+            weighted_scores[feature] = scores[feature]
+
+            if scores[feature] != '-inf' and scores[feature] != '+inf':
+                weighted_scores[feature] *= weights[feature]
+
+    return weighted_scores
+
+def create_assignment(forum, label, assignment_invitation):
+    '''
+    Creates the JSON record for an empty assignment Note.
+
+    *important* return type is dict, not openreview.Note
+    '''
+
+    return {
+        'forum': forum,
+        'invitation': assignment_invitation.id,
+        'readers': assignment_invitation.reply['readers']['values'],
+        'writers': assignment_invitation.reply['writers']['values'],
+        'signatures': assignment_invitation.reply['signatures']['values'],
+        'content': {
+            'label': label
+        }
+    }
+
+def encode_score_matrix(entries_by_forum):
+    '''
+    Given a dict of dicts with scores for every user, for every forum,
+    encodes the score matrix to be used by the solver.
+
+    Also returns:
+    (1) a hard constraint dict (needed by the solver),
+    (2) indices needed by the decode_score_matrix() function
+
+    '''
+
+    forums = entries_by_forum.keys()
+    num_users = None
+    for forum in forums:
+        num_users_in_forum = len(entries_by_forum[forum])
+        if not num_users:
+            num_users = num_users_in_forum
+        else:
+            assert num_users_in_forum == num_users, "Error: uneven number of user scores by forum"
+    if num_users:
+        users = [entry['userId'] for entry in entries_by_forum[forums[0]]]
+
+    index_by_user = {user: i for i, user in enumerate(users)}
+    index_by_forum = {forum: i for i, forum in enumerate(forums)}
+
+    user_by_index = {i: user for i, user in enumerate(users)}
+    forum_by_index = {i: forum for i, forum in enumerate(forums)}
+
+    score_matrix = np.zeros((len(index_by_user), len(index_by_forum)))
     hard_constraint_dict = {}
 
-    for metadata_note in metadata:
-        features_by_user = {user_entry['userId']: user_entry['scores'] for user_entry in metadata_note.content['groups'][group.id]}
+    for forum, entries in entries_by_forum.iteritems():
+        paper_index = index_by_forum[forum]
 
-        if metadata_note.forum in constraints:
-            constraint_by_user = { user: {'userConstraint': value} for user, value in constraints[metadata_note.forum].iteritems()}
-            features_by_user.update(constraint_by_user)
+        #for user, user_scores in weighted_scores_by_user.iteritems():
+        for entry in entries:
+            user = entry['userId']
+            user_scores = entry['scores']
+            user_index = index_by_user.get(user, None)
+            hard_constraint_value = get_hard_constraint_value(user_scores.values())
 
-        for user in features_by_user:
-            user_features = defaultdict(lambda: 0, features_by_user[user])
-
-            hard_constraint_value = get_hard_constraint_value(user_features.values())
-
-            index = index_by_user.get(user, -1)
-            if index >= 0:
+            if user_index:
+                coordinates = (user_index, paper_index)
                 if hard_constraint_value == -1:
-                    feature_scores = {feature: feature_weights[feature]*user_features[feature] for feature in feature_weights}
-                    scores[index, index_by_forum[metadata_note.forum]] = np.mean(feature_scores.values())
+                    score_matrix[coordinates] = entry['finalScore']
                 else:
-                    hard_constraint_dict[index, index_by_forum[metadata_note.forum]] = hard_constraint_value
+                    hard_constraint_dict[coordinates] = hard_constraint_value
 
+    return score_matrix, hard_constraint_dict, user_by_index, forum_by_index
 
-    solution = Solver(alphas, betas, scores, hard_constraint_dict).solve()
+def decode_score_matrix(solution, user_by_index, forum_by_index):
+    '''
+    Decodes the 2D score matrix into a returned dict of user IDs keyed by forum ID.
 
-    # Extracting the paper-reviewer assignment
-    users_by_forum = defaultdict(list)
+    e.g. {
+        'abcXYZ': '~Melisa_Bok1',
+        '123-AZ': '~Michael_Spector1'
+    }
+    '''
+
+    assignments_by_forum = defaultdict(list)
     for var_name in solution:
-
         var_val = var_name.split('x_')[1].split(',')
 
         user_index, paper_index = (int(var_val[0]), int(var_val[1]))
-
+        user_id = user_by_index[user_index]
+        forum = forum_by_index[paper_index]
         match = solution[var_name]
 
-        if match==1:
-            users_by_forum[forum_by_index[paper_index]].append(user_by_index[user_index])
+        if match == 1:
+            assignments_by_forum[forum].append(user_id)
 
-    return users_by_forum
+    return assignments_by_forum
+
+def save_assignments(assignments, existing_assignments, assignment_invitation, configuration_note, entries_by_forum):
+    '''
+    Creates or updates (as applicable) the assignment notes with new assignments.
+
+    Returns a list of openreview.Note objects.
+    '''
+
+    alternates = configuration_note.content['configuration']['alternates']
+    label = configuration_note.content['label']
+    new_assignment_notes = []
+    for forum, userids in assignments.iteritems():
+        entries = entries_by_forum[forum]
+        assignment = existing_assignments.get(forum, create_assignment(forum, label, assignment_invitation))
+
+        new_content = {
+            'assignedGroups': get_assigned_groups(userids, entries),
+            'alternateGroups': get_alternate_groups(userids, entries, alternates)
+        }
+
+        assignment['content'].update(new_content)
+
+        new_assignment_notes.append(openreview.Note(**assignment))
+
+    return new_assignment_notes
+
+def get_assigned_groups(userids, entries):
+    '''
+    Returns a list of assignment group entries.
+
+    Entries are dicts with the following fields:
+        'finalScore'
+        'scores'
+        'userId'
+    '''
+
+    assignment_entries = [e for e in entries if e['userId'] in userids]
+    return assignment_entries
+
+def get_alternate_groups(assigned_userids, entries, alternates):
+    '''
+    Returns a list of alternate group entries.
+    The list will have length == @alternates.
+
+    Entries are dicts with the following fields:
+        'finalScore'
+        'scores'
+        'userId'
+
+    '''
+    alternate_entries = [e for e in entries if e['userId'] not in assigned_userids]
+    valid_alternates = [e for e in entries if get_hard_constraint_value(e['scores'].values()) != 0]
+    sorted_alternates = sorted(valid_alternates, key=lambda x: x['finalScore'], reverse=True)
+    top_n_alternates = sorted_alternates[:alternates]
+    return top_n_alternates
 
 def get_hard_constraint_value(score_array):
     """
@@ -84,149 +271,3 @@ def get_hard_constraint_value(score_array):
         if str(element).strip().lower() == '-inf':
             return 0
     return -1
-
-class Solver(object):
-    """
-    An iterative paper matching problem instance that tries to maximize
-    the sum total affinity of all reviewer paper matches
-    Attributes:
-      num_reviewers - the number of reviewers
-      num_papers - the number of papers
-      alphas - a list of tuples of (min, max) papers for each reviewer.
-      betas - a list of tuples of (min, max) reviewers for each paper.
-      weights - the compatibility between each reviewer and each paper.
-                This should be a numpy matrix of dimension [num_reviewers x num_papers].
-    """
-
-    def __init__(self, alphas, betas, weights, constraints):
-        self.num_reviewers = np.size(weights, axis=0)
-        self.num_papers = np.size(weights, axis=1)
-        self.alphas = alphas
-        self.betas = betas
-        self.weights = weights
-        self.constraints = []
-        self.id = uuid.uuid4()
-        self.model = gurobipy.Model(str(self.id) + ": iterative b-matching")
-        self.prev_sols = []
-        self.prev_reviewer_affinities = []
-        self.prev_paper_affinities = []
-        self.model.setParam('OutputFlag', 0)
-
-        # primal variables; set the objective
-        obj = gurobipy.LinExpr()
-        self.lp_vars = [[] for i in range(self.num_reviewers)]
-
-        for i in range(self.num_reviewers):
-            for j in range(self.num_papers):
-                self.lp_vars[i].append(self.model.addVar(vtype=gurobipy.GRB.BINARY, name=self.var_name(i, j)))
-                obj += self.weights[i][j] * self.lp_vars[i][j]
-
-        self.model.update()
-        self.model.setObjective(obj, gurobipy.GRB.MAXIMIZE)
-
-        # reviewer constraints
-        for r in range(self.num_reviewers):
-            self.model.addConstr(sum(self.lp_vars[r]) >= self.alphas[r][0], "r_l" + str(r))
-            self.model.addConstr(sum(self.lp_vars[r]) <= self.alphas[r][1], "r_u" + str(r))
-
-        # paper constraints
-        for p in range(self.num_papers):
-            self.model.addConstr(sum([self.lp_vars[i][p]
-                                  for i in range(self.num_reviewers)]) >= self.betas[p][0],
-                             "p_l" + str(p))
-            self.model.addConstr(sum([self.lp_vars[i][p]
-                                  for i in range(self.num_reviewers)]) <= self.betas[p][1],
-                             "p_u" + str(p))
-
-        for (reviewer_index, paper_index), value in constraints.iteritems():
-            self.constraints.append((reviewer_index, paper_index, value))
-        self.add_hard_consts(constrs=self.constraints)
-
-    def var_name(self, i, j):
-        return "x_" + str(i) + "," + str(j)
-
-    def sol_dict(self):
-        _sol = {}
-        for v in self.model.getVars():
-            _sol[v.varName] = v.x
-        return _sol
-
-    def add_hard_const(self, i, j, log_file=None):
-        """Add a single hard constraint to the model.
-        CAUTION: if you have a list of constraints to add, use add_hard_constrs
-        instead.  That function adds the constraints as a batch and will be
-        faster.
-        """
-        solution = self.sol_dict()
-        prevVal = solution[self.var_name(i, j)]
-        if log_file:
-            logging.info("\t(REVIEWER, PAPER) " + str((i, j)) + " CHANGED FROM: " + str(prevVal) + " -> " + str(
-                abs(prevVal - 1)))
-        self.model.addConstr(self.lp_vars[i][j] == abs(prevVal - 1), "h" + str(i) + ", " + str(j))
-
-    def add_hard_consts(self, constrs, log_file=None):
-        """Add a list of hard constraints to the model.
-        Add a list of hard constraints in batch to the model.
-        Args:
-        constrs - a list of triples of (rev_idx, pap_idx, value).
-        Returns:
-        None.
-        """
-        for (rev, pap, val) in constrs:
-            self.model.addConstr(self.lp_vars[rev][pap] == val,
-                             "h" + str(rev) + ", " + str(pap))
-        self.model.update()
-
-    def num_diffs(self, sol1, sol2):
-        count = 0
-        for (variable, val) in sol1.items():
-            if sol2[variable] != val:
-                count += 1
-        return count
-
-    def solve(self, log_file=None):
-        begin_opt = time.time()
-        self.model.optimize()
-        if self.model.status != gurobipy.GRB.OPTIMAL:
-            raise Exception('This instance of matching could not be solved '
-                            'optimally.  Please ensure that the input '
-                            'constraints produce a feasible matching '
-                            'instance.')
-
-        end_opt = time.time()
-        if log_file:
-            logging.info("[SOLVER TIME]: %s" % (str(end_opt - begin_opt)))
-
-        sol = {}
-        for v in self.model.getVars():
-            sol[v.varName] = v.x
-        self.prev_sols.append(sol)
-        self.save_reviewer_affinity()
-        self.save_paper_affinity()
-
-        return self.sol_dict()
-
-    def status(self):
-        return m.status
-
-    def turn_on_verbosity(self):
-        self.model.setParam('OutputFlag', 1)
-
-    def save_reviewer_affinity(self):
-        per_rev_aff = np.zeros((self.num_reviewers, 1))
-        sol = self.sol_dict()
-        for i in range(self.num_reviewers):
-            for j in range(self.num_papers):
-                per_rev_aff[i] += sol[self.var_name(i, j)] * self.weights[i][j]
-        self.prev_reviewer_affinities.append(per_rev_aff)
-
-    def save_paper_affinity(self):
-        per_pap_aff = np.zeros((self.num_papers, 1))
-        sol = self.sol_dict()
-        for i in range(self.num_papers):
-            for j in range(self.num_reviewers):
-                per_pap_aff[i] += sol[self.var_name(j, i)] * self.weights[j][i]
-        self.prev_paper_affinities.append(per_pap_aff)
-
-    def objective_val(self):
-        return self.model.ObjVal
