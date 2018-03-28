@@ -4,8 +4,9 @@ import numpy as np
 import openreview
 from collections import defaultdict
 from openreview import tools
+from solver import Solver
 
-def match(client, configuration_note, Solver):
+def match(client, configuration_note, Solver=Solver):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
