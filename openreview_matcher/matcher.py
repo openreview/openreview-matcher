@@ -255,7 +255,7 @@ def get_alternate_groups(assigned_userids, entries, alternates):
 
     '''
     alternate_entries = [e for e in entries if e['userId'] not in assigned_userids]
-    valid_alternates = [e for e in entries if get_hard_constraint_value(e['scores'].values()) != 0]
+    valid_alternates = [e for e in alternate_entries if get_hard_constraint_value(e['scores'].values()) != 0]
     sorted_alternates = sorted(valid_alternates, key=lambda x: x['finalScore'], reverse=True)
     top_n_alternates = sorted_alternates[:alternates]
     return top_n_alternates
