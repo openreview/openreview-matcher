@@ -6,23 +6,34 @@ from collections import defaultdict
 from openreview import tools
 from solver import Solver
 
-def match(client, configuration_note, Solver=Solver):
+def match(client, config_note):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
 
     '''
 
+
+    # TODO: Only manipulate the content of the note
+    label = config_note.content['label']
+    existing_config_notes = client.get_notes(invitation=config_note.invitation)
+    labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
+    constraints = {}
+    if labeled_config_notes:
+        assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
+        existing_config_note = labeled_config_notes[0]
+        existing_config_note.content.update(config_note.content)
+        config_note = existing_config_note
+
     # unpack variables
-    label = configuration_note.content['label']
-    solver_config = configuration_note.content['configuration']
+    solver_config = config_note.content['configuration']
     weights = dict(solver_config['weights'], **{'userConstraint': 1})
 
-    paper_invitation_id = configuration_note.content['paper_invitation']
-    metadata_invitation_id = configuration_note.content['metadata_invitation']
-    match_group_id = configuration_note.content['match_group']
-    constraints = configuration_note.content['constraints']
-    assignment_invitation_id = configuration_note.content['assignment_invitation']
+    paper_invitation_id = config_note.content['paper_invitation']
+    metadata_invitation_id = config_note.content['metadata_invitation']
+    match_group_id = config_note.content['match_group']
+    constraints = config_note.content.get('constraints', {})
+    assignment_invitation_id = config_note.content['assignment_invitation']
 
     # make network calls
     papers = tools.get_all_notes(client, paper_invitation_id)
@@ -50,11 +61,18 @@ def match(client, configuration_note, Solver=Solver):
         assigned_userids,
         existing_assignments,
         assignment_invitation,
-        configuration_note,
+        config_note,
         entries_by_forum
     )
 
-    return new_assignment_notes
+    posted_config_note = client.post_note(config_note)
+
+    posted_assignment_notes = []
+    for n in new_assignment_notes:
+        print("posting assignment for ", n.forum, label)
+        posted_assignment_notes.append(client.post_note(n))
+
+    return posted_config_note, posted_assignment_notes
 
 def get_weighted_scores(metadata_notes, weights, constraints, match_group):
     '''
@@ -67,6 +85,9 @@ def get_weighted_scores(metadata_notes, weights, constraints, match_group):
                 'scores': {
                     'affinityScore': 0.85
                 },
+                'constraints': {
+                    'brown.edu': '-inf'
+                }
                 'finalScore': 0.85
             },
             {
@@ -74,6 +95,11 @@ def get_weighted_scores(metadata_notes, weights, constraints, match_group):
                 'scores': {
                     'affinityScore': 0.93,
                 },
+                'constraints': {
+                    'umass.edu': '-inf',
+                    'cs.umass.edu': '-inf',
+                    'iesl.cs.umass.edu': '-inf'
+                }
                 'finalScore': 0.93
             }
         }
@@ -92,8 +118,8 @@ def get_weighted_scores(metadata_notes, weights, constraints, match_group):
                 entry['scores'].update({'userConstraint': user_constraint})
 
             entry['scores'] = weight_scores(entry.get('scores', {}), weights)
-            numeric_scores = [score for score in entry['scores'].values() if score != '+inf' and score != '-inf']
-            entry['finalScore'] = np.mean(numeric_scores)
+            numeric_scores = [entry['scores'].get(score_type, 0.0) for score_type in weights if entry['scores'].get(score_type, 0.0) != '+inf' and entry['scores'].get(score_type, 0.0) != '-inf']
+            entry['finalScore'] = np.mean(numeric_scores) if numeric_scores else 0.0
 
         entries_by_forum[m.forum] = user_entries
 
@@ -178,6 +204,12 @@ def encode_score_matrix(entries_by_forum):
                     score_matrix[coordinates] = entry['finalScore']
                 else:
                     hard_constraint_dict[coordinates] = hard_constraint_value
+                    score_matrix[coordinates] = hard_constraint_value
+
+                    # WARNING: assigning the score this way means that this function
+                    # is mutating the input without returning it. Is this kind of
+                    # behavior too unexpected?
+                    entry['finalScore'] = hard_constraint_value
 
     return score_matrix, hard_constraint_dict, user_by_index, forum_by_index
 
@@ -205,15 +237,15 @@ def decode_score_matrix(solution, user_by_index, forum_by_index):
 
     return assignments_by_forum
 
-def save_assignments(assignments, existing_assignments, assignment_invitation, configuration_note, entries_by_forum):
+def save_assignments(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
 
     Returns a list of openreview.Note objects.
     '''
 
-    alternates = configuration_note.content['configuration']['alternates']
-    label = configuration_note.content['label']
+    alternates = config_note.content['configuration']['alternates']
+    label = config_note.content['label']
     new_assignment_notes = []
     for forum, userids in assignments.iteritems():
         entries = entries_by_forum[forum]
