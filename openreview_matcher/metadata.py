@@ -57,42 +57,63 @@ class BasicAffinity(OpenReviewFeature):
         return self.scores_by_user_by_forum[forum][signature]
 
 
-def generate_metadata_note(groups, features, note_params):
+def generate_metadata_notes(client, papers, metadata_invitation, score_maps={}, constraint_maps={}):
     """
-    Generates a metadata note with features defined in the list @features, for each group in
-    the list @groups
-
-    Arguments:
-        @groups - a list of openreview.Group objects. Metadata notes will have a separate record for each group in the
-            list. Features will be computed against every paper in @papers and every member of each group in @groups.
-        @features - a list of OpenReviewFeature objects. Each OpenReviewFeature has a method, "score()", which computes
-            a value given a user signature and a forum ID.
-        @note_params - a dict giving parameters for the Note object (e.g. forum, invitation, readers, writers, signatures).
-            Default values are shown in the variable "params"
+    Generates a list of metadata notes
 
     Returns:
-        an openreview.Note object representing a metadata.
+        a list of openreview.Note objects, each representing a metadata.
+
+    '''
+    Score and constraint maps should be two-dimensional dicts,
+    where the first index is the forum ID, and the second index is the user ID.
+    '''
 
     """
 
-    params = {
-        'forum': None,
-        'invitation': None,
-        'readers': [],
-        'writers': [],
-        'signatures':[]
+    # unpack variables
+    paper_invitation_id = config_note.content['paper_invitation']
+    metadata_invitation_id = config_note.content['metadata_invitation']
+    match_group_id = config_note.content['match_group']
+
+    # make network calls
+    print "getting papers...",
+    papers = openreview.tools.get_all_notes(client, paper_invitation_id)
+    papers_by_forum = {n.forum: n for n in papers}
+    print "done"
+    print "getting metadata...",
+    metadata_notes = [n for n in openreview.tools.get_all_notes(client, metadata_invitation_id) if n.forum in papers_by_forum]
+    print "done"
+    match_group = client.get_group(id = match_group_id)
+    metadata_invitation = client.get_invitation(metadata_invitation_id)
+    existing_metadata_by_forum = {m.forum: m for m in metadata_notes}
+
+    default_params = {
+        'invitation': metadata_invitation.id,
+        'readers': metadata_invitation.reply['readers']['values'],
+        'writers': metadata_invitation.reply['writers']['values'],
+        'signatures': metadata_invitation.reply['signatures']['values'],
+        'content': {}
     }
 
-    params.update(note_params)
+    new_metadata = []
 
-    for f in features:
-        assert isinstance(f, OpenReviewFeature), 'all features must be of type features.OpenReviewFeature'
+    for p in papers:
+        if p.forum not in existing_metadata_by_forum:
+            metadata_params = dict(default_params, **{'forum': p.forum})
+        else:
+            metadata_params = existing_metadata_by_forum[p.forum].to_json()
 
-    metadata_content = {'groups': {group.id: {} for group in groups}}
-    for group in groups:
-        for signature in group.members:
-            featurevec = {f.name: f.score(signature, note_params['forum']) for f in features if f.score(signature, note_params['forum']) > 0}
-            if featurevec != {}:
-                metadata_content['groups'][group.id][signature] = featurevec
+        new_entries = metadata_params['content']['groups'][match_group.id] = []
 
-    return openreview.Note(content = metadata_content, **note_params)
+        for user_id in match_group.members:
+            new_entries.append({
+                'userId': user_id,
+                'scores': {name: score_map.get(p.forum, {}).get(user_id, 0) for name, score_map in score_maps.iteritems() if score_map.get(p.forum, {}).get(user_id, 0) > 0},
+                'constraints': {name: constraint_map.get(p.forum, {}).get(user_id) for name, constraint_map in constraint_maps.iteritems() if constraint_map.get(p.forum, {}).get(user_id)}
+            })
+
+        new_metadata.append(openreview.Note(**metadata_params))
+
+    return new_metadata
+

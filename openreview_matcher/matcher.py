@@ -13,21 +13,20 @@ def match(client, config_note):
 
     '''
 
-
-    # TODO: Only manipulate the content of the note
     label = config_note.content['label']
     existing_config_notes = client.get_notes(invitation=config_note.invitation)
     labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
-    constraints = {}
+
     if labeled_config_notes:
         assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
         existing_config_note = labeled_config_notes[0]
-        existing_config_note.content.update(config_note.content)
+        existing_config_note.content['constraints'].update(config_note.content['constraints'])
+        existing_config_note.content['configuration'].update(config_note.content['configuration'])
         config_note = existing_config_note
 
     # unpack variables
     solver_config = config_note.content['configuration']
-    weights = dict(solver_config['weights'], **{'userConstraint': 1})
+    weights = dict(solver_config['weights'])
 
     paper_invitation_id = config_note.content['paper_invitation']
     metadata_invitation_id = config_note.content['metadata_invitation']
@@ -114,11 +113,18 @@ def get_weighted_scores(metadata_notes, weights, constraints, match_group):
         for entry in user_entries:
             # apply user-defined constraints
             user_constraint = forum_constraints.get(entry['userId'])
+
+            # if the entry doesn't have a constraints field, add one
+            entry['constraints'] = entry.get('constraints', {})
+
             if user_constraint:
-                entry['scores'].update({'userConstraint': user_constraint})
+                entry['constraints'].update({'userConstraint': user_constraint})
 
             entry['scores'] = weight_scores(entry.get('scores', {}), weights)
-            numeric_scores = [entry['scores'].get(score_type, 0.0) for score_type in weights if entry['scores'].get(score_type, 0.0) != '+inf' and entry['scores'].get(score_type, 0.0) != '-inf']
+
+            # Calculate the final score. We iterate over weights, not scores present in the entry,
+            # because this lets us make sure that the final score gets divided by the right numerator
+            numeric_scores = [entry['scores'].get(score_type, 0.0) for score_type in weights]
             entry['finalScore'] = np.mean(numeric_scores) if numeric_scores else 0.0
 
         entries_by_forum[m.forum] = user_entries
@@ -132,10 +138,7 @@ def weight_scores(scores, weights):
     weighted_scores = {}
     for feature in weights:
         if feature in scores:
-            weighted_scores[feature] = scores[feature]
-
-            if scores[feature] != '-inf' and scores[feature] != '+inf':
-                weighted_scores[feature] *= weights[feature]
+            weighted_scores[feature] = scores[feature] * weights[feature]
 
     return weighted_scores
 
@@ -195,8 +198,9 @@ def encode_score_matrix(entries_by_forum):
         for entry in entries:
             user = entry['userId']
             user_scores = entry['scores']
+            user_constraints = entry['constraints']
             user_index = index_by_user.get(user, None)
-            hard_constraint_value = get_hard_constraint_value(user_scores.values())
+            hard_constraint_value = get_hard_constraint_value(user_constraints.values())
 
             if user_index:
                 coordinates = (user_index, paper_index)
@@ -204,12 +208,8 @@ def encode_score_matrix(entries_by_forum):
                     score_matrix[coordinates] = entry['finalScore']
                 else:
                     hard_constraint_dict[coordinates] = hard_constraint_value
-                    score_matrix[coordinates] = hard_constraint_value
-
-                    # WARNING: assigning the score this way means that this function
-                    # is mutating the input without returning it. Is this kind of
-                    # behavior too unexpected?
-                    entry['finalScore'] = hard_constraint_value
+                    # TODO: is the line below needed?
+                    #score_matrix[coordinates] = hard_constraint_value
 
     return score_matrix, hard_constraint_dict, user_by_index, forum_by_index
 
@@ -287,7 +287,7 @@ def get_alternate_groups(assigned_userids, entries, alternates):
 
     '''
     alternate_entries = [e for e in entries if e['userId'] not in assigned_userids]
-    valid_alternates = [e for e in alternate_entries if get_hard_constraint_value(e['scores'].values()) != 0]
+    valid_alternates = [e for e in alternate_entries if get_hard_constraint_value(e['constraints'].values()) != 0]
     sorted_alternates = sorted(valid_alternates, key=lambda x: x['finalScore'], reverse=True)
     top_n_alternates = sorted_alternates[:alternates]
     return top_n_alternates
