@@ -57,7 +57,7 @@ class BasicAffinity(OpenReviewFeature):
         return self.scores_by_user_by_forum[forum][signature]
 
 
-def generate_metadata_notes(client, papers, metadata_invitation, score_maps={}, constraint_maps={}):
+def generate_metadata_notes(client, papers, metadata_invitation, match_group, score_maps={}, constraint_maps={}):
     """
     Generates a list of metadata notes
 
@@ -72,20 +72,12 @@ def generate_metadata_notes(client, papers, metadata_invitation, score_maps={}, 
     """
 
     # unpack variables
-    paper_invitation_id = config_note.content['paper_invitation']
-    metadata_invitation_id = config_note.content['metadata_invitation']
-    match_group_id = config_note.content['match_group']
+    papers_by_forum = {n.forum: n for n in papers}
 
     # make network calls
-    print "getting papers...",
-    papers = openreview.tools.get_all_notes(client, paper_invitation_id)
-    papers_by_forum = {n.forum: n for n in papers}
-    print "done"
     print "getting metadata...",
-    metadata_notes = [n for n in openreview.tools.get_all_notes(client, metadata_invitation_id) if n.forum in papers_by_forum]
+    metadata_notes = [n for n in openreview.tools.get_all_notes(client, metadata_invitation.id) if n.forum in papers_by_forum]
     print "done"
-    match_group = client.get_group(id = match_group_id)
-    metadata_invitation = client.get_invitation(metadata_invitation_id)
     existing_metadata_by_forum = {m.forum: m for m in metadata_notes}
 
     default_params = {
@@ -93,7 +85,7 @@ def generate_metadata_notes(client, papers, metadata_invitation, score_maps={}, 
         'readers': metadata_invitation.reply['readers']['values'],
         'writers': metadata_invitation.reply['writers']['values'],
         'signatures': metadata_invitation.reply['signatures']['values'],
-        'content': {}
+        'content': {'groups':{}}
     }
 
     new_metadata = []
@@ -103,9 +95,11 @@ def generate_metadata_notes(client, papers, metadata_invitation, score_maps={}, 
             metadata_params = dict(default_params, **{'forum': p.forum})
         else:
             metadata_params = existing_metadata_by_forum[p.forum].to_json()
-
-        new_entries = metadata_params['content']['groups'][match_group.id] = []
-
+        try:
+            new_entries = metadata_params['content']['groups'][match_group.id] = []
+        except KeyError as e:
+            print metadata_params
+            raise e
         for user_id in match_group.members:
             new_entries.append({
                 'userId': user_id,
