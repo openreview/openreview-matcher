@@ -13,21 +13,20 @@ def match(client, config_note):
 
     '''
 
-
-    # TODO: Only manipulate the content of the note
     label = config_note.content['label']
     existing_config_notes = client.get_notes(invitation=config_note.invitation)
     labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
-    constraints = {}
+
     if labeled_config_notes:
         assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
         existing_config_note = labeled_config_notes[0]
-        existing_config_note.content.update(config_note.content)
+        existing_config_note.content['constraints'].update(config_note.content['constraints'])
+        existing_config_note.content['configuration'].update(config_note.content['configuration'])
         config_note = existing_config_note
 
     # unpack variables
     solver_config = config_note.content['configuration']
-    weights = dict(solver_config['weights'], **{'userConstraint': 1})
+    weights = dict(solver_config['weights'])
 
     paper_invitation_id = config_note.content['paper_invitation']
     metadata_invitation_id = config_note.content['metadata_invitation']
@@ -45,7 +44,7 @@ def match(client, config_note):
 
     # organize data into indices
     existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
-    entries_by_forum = get_weighted_scores(metadata_notes, weights, constraints, match_group)
+    entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, match_group)
 
     # TODO: allow individual constraints
     alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
@@ -74,7 +73,7 @@ def match(client, config_note):
 
     return posted_config_note, posted_assignment_notes
 
-def get_weighted_scores(metadata_notes, weights, constraints, match_group):
+def get_assignment_entries(metadata_notes, weights, constraints, match_group):
     '''
     Returns a list of dicts that contains info about feature scores per user, per forum.
 
@@ -107,23 +106,39 @@ def get_weighted_scores(metadata_notes, weights, constraints, match_group):
 
     '''
 
+
+    def metadata_to_assignment_entry(metadata_entry, forum_constraints):
+        '''
+        Helper function to convert a metadata entry to an assignment entry.
+        '''
+        metadata_constraints = metadata_entry.get('constraints', {})
+        user_constraints = forum_constraints.get(metadata_entry['userId'])
+        if user_constraints:
+            metadata_constraints.update({'userConstraint': user_constraints})
+
+        weighted_scores = weight_scores(metadata_entry.get('scores', {}), weights)
+        final_score = np.mean([weighted_scores.get(score_type, 0.0) for score_type in weights])
+
+        return {
+            'userId': metadata_entry['userId'],
+            'scores': weighted_scores,
+            'constraints': metadata_constraints,
+            'finalScore': final_score
+        }
+
+
     entries_by_forum = {}
     for m in metadata_notes:
-        user_entries = [e for e in m.content['groups'][match_group.id] if e['userId'] in match_group.members]
         forum_constraints = constraints.get(m.forum, {})
-        for entry in user_entries:
-            # apply user-defined constraints
-            user_constraint = forum_constraints.get(entry['userId'])
-            if user_constraint:
-                entry['scores'].update({'userConstraint': user_constraint})
+        assignment_entries = []
+        for metadata_entry in m.content['groups'][match_group.id]:
+            if metadata_entry['userId'] in match_group.members:
+                assignment_entries.append(metadata_to_assignment_entry(metadata_entry, forum_constraints))
 
-            entry['scores'] = weight_scores(entry.get('scores', {}), weights)
-            numeric_scores = [entry['scores'].get(score_type, 0.0) for score_type in weights if entry['scores'].get(score_type, 0.0) != '+inf' and entry['scores'].get(score_type, 0.0) != '-inf']
-            entry['finalScore'] = np.mean(numeric_scores) if numeric_scores else 0.0
-
-        entries_by_forum[m.forum] = user_entries
+        entries_by_forum[m.forum] = assignment_entries
 
     return entries_by_forum
+
 
 def weight_scores(scores, weights):
     '''
@@ -132,10 +147,7 @@ def weight_scores(scores, weights):
     weighted_scores = {}
     for feature in weights:
         if feature in scores:
-            weighted_scores[feature] = scores[feature]
-
-            if scores[feature] != '-inf' and scores[feature] != '+inf':
-                weighted_scores[feature] *= weights[feature]
+            weighted_scores[feature] = scores[feature] * weights[feature]
 
     return weighted_scores
 
@@ -195,21 +207,15 @@ def encode_score_matrix(entries_by_forum):
         for entry in entries:
             user = entry['userId']
             user_scores = entry['scores']
+            user_constraints = entry['constraints']
             user_index = index_by_user.get(user, None)
-            hard_constraint_value = get_hard_constraint_value(user_scores.values())
 
             if user_index:
                 coordinates = (user_index, paper_index)
-                if hard_constraint_value == -1:
-                    score_matrix[coordinates] = entry['finalScore']
-                else:
-                    hard_constraint_dict[coordinates] = hard_constraint_value
-                    score_matrix[coordinates] = hard_constraint_value
+                score_matrix[coordinates] = entry['finalScore']
 
-                    # WARNING: assigning the score this way means that this function
-                    # is mutating the input without returning it. Is this kind of
-                    # behavior too unexpected?
-                    entry['finalScore'] = hard_constraint_value
+                if user_constraints:
+                    hard_constraint_dict[coordinates] = get_hard_constraint_value(user_constraints.values())
 
     return score_matrix, hard_constraint_dict, user_by_index, forum_by_index
 
@@ -287,20 +293,24 @@ def get_alternate_groups(assigned_userids, entries, alternates):
 
     '''
     alternate_entries = [e for e in entries if e['userId'] not in assigned_userids]
-    valid_alternates = [e for e in alternate_entries if get_hard_constraint_value(e['scores'].values()) != 0]
+    valid_alternates = [e for e in alternate_entries if get_hard_constraint_value(e['constraints'].values()) != 0]
     sorted_alternates = sorted(valid_alternates, key=lambda x: x['finalScore'], reverse=True)
     top_n_alternates = sorted_alternates[:alternates]
     return top_n_alternates
 
 def get_hard_constraint_value(score_array):
     """
-    A function to check for the presence of Hard Constraints in the score array (+Inf or -Inf) ,
-    :param score_array:
-    :return:
+    A function to check for the presence of Hard Constraints in the score array (+inf or -inf)
+
     """
-    for element in score_array:
-        if str(element).strip().lower() == '+inf':
-            return 1
-        if str(element).strip().lower() == '-inf':
-            return 0
-    return -1
+
+    has_neg_constraint = any(['-inf' == c.lower() for c in score_array])
+    has_pos_constraint = any(['+inf' == c.lower() for c in score_array])
+
+    if has_neg_constraint:
+        return 0
+    elif has_pos_constraint:
+        return 1
+    else:
+        return -1
+
