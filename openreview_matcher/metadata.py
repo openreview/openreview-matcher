@@ -95,19 +95,19 @@ def generate_metadata_notes(client, papers, metadata_invitation, match_group, sc
             metadata_params = dict(default_params, **{'forum': p.forum})
         else:
             metadata_params = existing_metadata_by_forum[p.forum].to_json()
-        try:
-            new_entries = metadata_params['content']['groups'][match_group.id] = []
-        except KeyError as e:
-            print metadata_params
-            raise e
+
+        metadata_params['content'] = {'groups': {match_group.id: []}}
+        new_entries = []
+
         for user_id in match_group.members:
-            new_entries.append({
+            metadata_params['content']['groups'][match_group.id].append({
                 'userId': user_id,
                 'scores': {name: score_map.get(p.forum, {}).get(user_id, 0) for name, score_map in score_maps.iteritems() if score_map.get(p.forum, {}).get(user_id, 0) > 0},
                 'constraints': {name: constraint_map.get(p.forum, {}).get(user_id) for name, constraint_map in constraint_maps.iteritems() if constraint_map.get(p.forum, {}).get(user_id)}
             })
 
-        new_metadata.append(openreview.Note(**metadata_params))
+        updated_metadata_note = openreview.Note(**metadata_params)
+        new_metadata.append(updated_metadata_note)
 
     return new_metadata
 
