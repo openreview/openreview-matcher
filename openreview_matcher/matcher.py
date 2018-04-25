@@ -6,7 +6,7 @@ from collections import defaultdict
 from openreview import tools
 from solver import Solver
 
-def match(client, config_note):
+def match(client, config_note, post=True, append=None):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
@@ -45,6 +45,10 @@ def match(client, config_note):
     # organize data into indices
     existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
     entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, match_group)
+    if append:
+        append_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == append}
+    else:
+        append_assignments = {}
 
     # TODO: allow individual constraints
     alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
@@ -61,17 +65,21 @@ def match(client, config_note):
         existing_assignments,
         assignment_invitation,
         config_note,
-        entries_by_forum
+        entries_by_forum,
+        append_assignments=append_assignments
     )
 
-    posted_config_note = client.post_note(config_note)
+    if post:
+        posted_config_note = client.post_note(config_note)
 
-    posted_assignment_notes = []
-    for n in new_assignment_notes:
-        print("posting assignment for ", n.forum, label)
-        posted_assignment_notes.append(client.post_note(n))
+        posted_assignment_notes = []
+        for n in new_assignment_notes:
+            print("posting assignment for ", n.forum, label)
+            posted_assignment_notes.append(client.post_note(n))
 
-    return posted_config_note, posted_assignment_notes
+        return posted_config_note, posted_assignment_notes
+    else:
+        return config_note, new_assignment_notes
 
 def get_assignment_entries(metadata_notes, weights, constraints, match_group):
     '''
@@ -243,7 +251,7 @@ def decode_score_matrix(solution, user_by_index, forum_by_index):
 
     return assignments_by_forum
 
-def save_assignments(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum):
+def save_assignments(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum, append_assignments={}):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
 
@@ -261,6 +269,11 @@ def save_assignments(assignments, existing_assignments, assignment_invitation, c
             'assignedGroups': get_assigned_groups(userids, entries),
             'alternateGroups': get_alternate_groups(userids, entries, alternates)
         }
+
+        if append_assignments:
+            assignment_to_append = append_assignments.get(forum)
+            if assignment_to_append:
+                new_content['assignedGroups'] += assignment_to_append['content']['assignedGroups']
 
         assignment['content'].update(new_content)
 
