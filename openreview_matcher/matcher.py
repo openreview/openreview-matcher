@@ -60,7 +60,7 @@ def match(client, config_note, post=True, append=None):
 
     assigned_userids = decode_score_matrix(solution, user_by_index, forum_by_index)
 
-    new_assignment_notes = save_assignments(
+    new_assignment_notes = build_assignment_notes(
         assigned_userids,
         existing_assignments,
         assignment_invitation,
@@ -251,7 +251,7 @@ def decode_score_matrix(solution, user_by_index, forum_by_index):
 
     return assignments_by_forum
 
-def save_assignments(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum, append_assignments={}):
+def build_assignment_notes(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum, append_assignments={}):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
 
