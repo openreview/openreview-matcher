@@ -6,7 +6,7 @@ from collections import defaultdict
 from openreview import tools
 from solver import Solver
 
-def match(client, config_note, post=True, append=None):
+def match(client, config_note, post=True):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
@@ -45,10 +45,6 @@ def match(client, config_note, post=True, append=None):
     # organize data into indices
     existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
     entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, match_group)
-    if append:
-        append_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == append}
-    else:
-        append_assignments = {}
 
     # TODO: allow individual constraints
     alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
@@ -65,8 +61,7 @@ def match(client, config_note, post=True, append=None):
         existing_assignments,
         assignment_invitation,
         config_note,
-        entries_by_forum,
-        append_assignments=append_assignments
+        entries_by_forum
     )
 
     if post:
@@ -251,7 +246,7 @@ def decode_score_matrix(solution, user_by_index, forum_by_index):
 
     return assignments_by_forum
 
-def build_assignment_notes(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum, append_assignments={}):
+def build_assignment_notes(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
 
@@ -270,13 +265,7 @@ def build_assignment_notes(assignments, existing_assignments, assignment_invitat
             'alternateGroups': get_alternate_groups(userids, entries, alternates)
         }
 
-        if append_assignments:
-            assignment_to_append = append_assignments.get(forum)
-            if assignment_to_append:
-                new_content['assignedGroups'] += assignment_to_append['content']['assignedGroups']
-
         assignment['content'].update(new_content)
-
         new_assignment_notes.append(openreview.Note(**assignment))
 
     return new_assignment_notes
