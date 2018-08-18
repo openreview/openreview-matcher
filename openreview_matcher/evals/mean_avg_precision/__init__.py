@@ -1,1 +1,0 @@
-from mean_avg_precision import *

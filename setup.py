@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup(name='openreview-matching',
+setup(name='openreview-matcher',
       version='0.1',
       description='OpenReview matching library',
       url='https://github.com/iesl/openreview-matching',

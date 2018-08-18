@@ -5,8 +5,9 @@ import openreview
 from collections import defaultdict
 from openreview import tools
 from solver import Solver
+from solver_flow import MinCostFlowMatcher
 
-def match(client, config_note):
+def match(client, config_note, solver=Solver):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
