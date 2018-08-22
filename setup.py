@@ -7,12 +7,10 @@ setup(name='openreview-matcher',
       author='Michael Spector',
       author_email='spector@cs.umass.edu',
       license='MIT',
-      packages=find_packages(),
+      packages=['matcher'],
       install_requires=[
           'numpy',
           'openreview-py',
-          'gensim',
-          'nltk',
-          'gurobipy'
+          'ortools',
       ],
       zip_safe=False)

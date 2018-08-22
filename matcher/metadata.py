@@ -102,8 +102,8 @@ def generate_metadata_notes(client, papers, metadata_invitation, match_group, sc
         for user_id in match_group.members:
             metadata_params['content']['groups'][match_group.id].append({
                 'userId': user_id,
-                'scores': {name: score_map.get(p.forum, {}).get(user_id, 0) for name, score_map in score_maps.iteritems() if score_map.get(p.forum, {}).get(user_id, 0) > 0},
-                'constraints': {name: constraint_map.get(p.forum, {}).get(user_id) for name, constraint_map in constraint_maps.iteritems() if constraint_map.get(p.forum, {}).get(user_id)}
+                'scores': {name: score_map.get(p.forum, {}).get(user_id, 0) for name, score_map in score_maps.items() if score_map.get(p.forum, {}).get(user_id, 0) > 0},
+                'constraints': {name: constraint_map.get(p.forum, {}).get(user_id) for name, constraint_map in constraint_maps.items() if constraint_map.get(p.forum, {}).get(user_id)}
             })
 
         updated_metadata_note = openreview.Note(**metadata_params)

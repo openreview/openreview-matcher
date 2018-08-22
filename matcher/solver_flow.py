@@ -4,15 +4,15 @@ import numpy as np
 import uuid
 
 
-class MinCostFlowMatcher(object):
+class MinCostFlowSolver(object):
     """Solves standard paper matching using max flow."""
     def __init__(self, alphas, betas, weights, constraints):
         """Initialize the matcher.
 
         Args:
-            alphas - a list of integers specifying the maximum number of papers
+            alphas - a list of tuples specifying the min and max number of papers
                   for each reviewer.
-            coverages - a list of integers specifying the number of reviews per
+            coverages - a list of tuples specifying min and max number of reviews per
                  paper.
             weights - the affinity matrix (np.array) of papers to reviewers.
                    Rows correspond to reviewers and columns correspond to
@@ -24,8 +24,8 @@ class MinCostFlowMatcher(object):
         """
         self.n_rev = np.size(weights, axis=0) # N, the number of reviewers
         self.n_pap = np.size(weights, axis=1) # M, the number of papers
-        self.loads = alphas
-        self.coverages = betas
+        self.loads = [a[1] for a in alphas]
+        self.coverages = [b[1] for b in betas]
         self.weights = weights
         self.constraints = constraints
         self.id = uuid.uuid4()
@@ -94,6 +94,8 @@ class MinCostFlowMatcher(object):
             self.solved = True
         else:
             print('There was an issue with the min cost flow input.')
+
+        return self.sol_dict()
 
     def sol_as_mat(self):
         if self.solved:

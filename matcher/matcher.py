@@ -4,10 +4,9 @@ import numpy as np
 import openreview
 from collections import defaultdict
 from openreview import tools
-from solver import Solver
-from solver_flow import MinCostFlowMatcher
+from .solver_flow import MinCostFlowSolver
 
-def match(client, config_note, solver=Solver):
+def match(client, config_note):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
@@ -36,24 +35,27 @@ def match(client, config_note, solver=Solver):
     assignment_invitation_id = config_note.content['assignment_invitation']
 
     # make network calls
-    papers = tools.get_all_notes(client, paper_invitation_id)
+    papers = list(tools.iterget_notes(client, invitation=paper_invitation_id))
     papers_by_forum = {n.forum: n for n in papers}
-    metadata_notes = [n for n in tools.get_all_notes(client, metadata_invitation_id) if n.forum in papers_by_forum]
+    metadata_notes = [n for n in tools.iterget_notes(client, invitation=metadata_invitation_id) if n.forum in papers_by_forum]
     match_group = client.get_group(id = match_group_id)
     assignment_invitation = client.get_invitation(assignment_invitation_id)
-    existing_assignment_notes = tools.get_all_notes(client, assignment_invitation_id)
+    existing_assignment_notes = [n for n in tools.iterget_notes(client, invitation=assignment_invitation_id) if 'label' in n.content]
+    print('len(papers)', len(papers))
+    print('len(metadata_notes)', len(metadata_notes))
+    print('len(existing_assignment_notes)', len(existing_assignment_notes))
 
     # organize data into indices
     existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
     entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, match_group)
-
+    print('entries_by_forum', entries_by_forum)
     # TODO: allow individual constraints
     alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
     betas = [(solver_config['minusers'], solver_config['maxusers'])] * len(metadata_notes) # why is this the length of the metadata notes?
 
     score_matrix, hard_constraint_dict, user_by_index, forum_by_index = encode_score_matrix(entries_by_forum)
 
-    solution = Solver(alphas, betas, score_matrix, hard_constraint_dict).solve()
+    solution = MinCostFlowSolver(alphas, betas, score_matrix, hard_constraint_dict).solve()
 
     assigned_userids = decode_score_matrix(solution, user_by_index, forum_by_index)
 
@@ -181,7 +183,7 @@ def encode_score_matrix(entries_by_forum):
 
     '''
 
-    forums = entries_by_forum.keys()
+    forums = list(entries_by_forum.keys())
     num_users = None
     for forum in forums:
         num_users_in_forum = len(entries_by_forum[forum])
@@ -201,10 +203,10 @@ def encode_score_matrix(entries_by_forum):
     score_matrix = np.zeros((len(index_by_user), len(index_by_forum)))
     hard_constraint_dict = {}
 
-    for forum, entries in entries_by_forum.iteritems():
+    for forum, entries in entries_by_forum.items():
         paper_index = index_by_forum[forum]
 
-        #for user, user_scores in weighted_scores_by_user.iteritems():
+        #for user, user_scores in weighted_scores_by_user.items():
         for entry in entries:
             user = entry['userId']
             user_scores = entry['scores']
@@ -254,7 +256,7 @@ def save_assignments(assignments, existing_assignments, assignment_invitation, c
     alternates = config_note.content['configuration']['alternates']
     label = config_note.content['label']
     new_assignment_notes = []
-    for forum, userids in assignments.iteritems():
+    for forum, userids in assignments.items():
         entries = entries_by_forum[forum]
         assignment = existing_assignments.get(forum, create_assignment(forum, label, assignment_invitation))
 

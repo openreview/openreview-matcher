@@ -8,7 +8,7 @@ def get_conflicts(author_profiles, user_profile):
     author_emails = set()
     author_relations = set()
 
-    for author_email, profile in author_profiles.iteritems():
+    for author_email, profile in author_profiles.items():
 
         author_info = get_author_info(profile, author_email)
 

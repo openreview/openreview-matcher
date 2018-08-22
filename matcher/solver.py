@@ -57,7 +57,7 @@ class Solver(object):
                                   for i in range(self.num_reviewers)]) <= self.betas[p][1],
                              "p_u" + str(p))
 
-        for (reviewer_index, paper_index), value in constraints.iteritems():
+        for (reviewer_index, paper_index), value in constraints.items():
             self.constraints.append((reviewer_index, paper_index, value))
         self.add_hard_consts(constrs=self.constraints)
 
