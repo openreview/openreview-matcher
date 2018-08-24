@@ -6,7 +6,7 @@ from collections import defaultdict
 from openreview import tools
 from .solver_flow import MinCostFlowSolver
 
-def match(client, config_note):
+def match(config_note, papers, reviewers, metadata, assignment_invitation):
     '''
     Given a configuration note, and a "Solver" class definition,
     returns a list of assignment openreview.Note objects.
@@ -14,15 +14,18 @@ def match(client, config_note):
     '''
 
     label = config_note.content['label']
-    existing_config_notes = client.get_notes(invitation=config_note.invitation)
-    labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
 
-    if labeled_config_notes:
-        assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
-        existing_config_note = labeled_config_notes[0]
-        existing_config_note.content['constraints'].update(config_note.content['constraints'])
-        existing_config_note.content['configuration'].update(config_note.content['configuration'])
-        config_note = existing_config_note
+    # Move up one level
+    #
+    # existing_config_notes = client.get_notes(invitation=config_note.invitation)
+    # labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
+
+    # if labeled_config_notes:
+    #     assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
+    #     existing_config_note = labeled_config_notes[0]
+    #     existing_config_note.content['constraints'].update(config_note.content['constraints'])
+    #     existing_config_note.content['configuration'].update(config_note.content['configuration'])
+    #     config_note = existing_config_note
 
     # unpack variables
     solver_config = config_note.content['configuration']
@@ -30,53 +33,32 @@ def match(client, config_note):
 
     paper_invitation_id = config_note.content['paper_invitation']
     metadata_invitation_id = config_note.content['metadata_invitation']
-    match_group_id = config_note.content['match_group']
     constraints = config_note.content.get('constraints', {})
-    assignment_invitation_id = config_note.content['assignment_invitation']
 
     # make network calls
-    papers = list(tools.iterget_notes(client, invitation=paper_invitation_id))
     papers_by_forum = {n.forum: n for n in papers}
-    metadata_notes = [n for n in tools.iterget_notes(client, invitation=metadata_invitation_id) if n.forum in papers_by_forum]
-    match_group = client.get_group(id = match_group_id)
-    assignment_invitation = client.get_invitation(assignment_invitation_id)
-    existing_assignment_notes = [n for n in tools.iterget_notes(client, invitation=assignment_invitation_id) if 'label' in n.content]
-    print('len(papers)', len(papers))
-    print('len(metadata_notes)', len(metadata_notes))
-    print('len(existing_assignment_notes)', len(existing_assignment_notes))
+    metadata_notes = [n for n in metadata if n.forum in papers_by_forum]
 
     # organize data into indices
-    existing_assignments = {n.forum: n.to_json() for n in existing_assignment_notes if n.content['label'] == label}
-    entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, match_group)
-    print('entries_by_forum', entries_by_forum)
+    entries_by_forum = get_assignment_entries(metadata_notes, weights, constraints, reviewers)
+
     # TODO: allow individual constraints
-    alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(match_group.members)
+    alphas = [(solver_config['minpapers'], solver_config['maxpapers'])] * len(reviewers)
     betas = [(solver_config['minusers'], solver_config['maxusers'])] * len(metadata_notes) # why is this the length of the metadata notes?
 
     score_matrix, hard_constraint_dict, user_by_index, forum_by_index = encode_score_matrix(entries_by_forum)
-
+    print('hard_constraint_dict', hard_constraint_dict)
     solution = MinCostFlowSolver(alphas, betas, score_matrix, hard_constraint_dict).solve()
 
     assigned_userids = decode_score_matrix(solution, user_by_index, forum_by_index)
 
-    new_assignment_notes = save_assignments(
-        assigned_userids,
-        existing_assignments,
-        assignment_invitation,
-        config_note,
-        entries_by_forum
+    new_assignment_notes = build_assignment_notes(
+        label, assigned_userids, entries_by_forum, assignment_invitation, num_alternates=5
     )
 
-    posted_config_note = client.post_note(config_note)
+    return new_assignment_notes
 
-    posted_assignment_notes = []
-    for n in new_assignment_notes:
-        print("posting assignment for ", n.forum, label)
-        posted_assignment_notes.append(client.post_note(n))
-
-    return posted_config_note, posted_assignment_notes
-
-def get_assignment_entries(metadata_notes, weights, constraints, match_group):
+def get_assignment_entries(metadata_notes, weights, constraints, reviewers):
     '''
     Returns a list of dicts that contains info about feature scores per user, per forum.
 
@@ -114,7 +96,8 @@ def get_assignment_entries(metadata_notes, weights, constraints, match_group):
         '''
         Helper function to convert a metadata entry to an assignment entry.
         '''
-        metadata_constraints = metadata_entry.get('constraints', {})
+        metadata_constraints = {domain: '-inf' for domain in metadata_entry.get('conflicts', [])}
+
         user_constraints = forum_constraints.get(metadata_entry['userId'])
         if user_constraints:
             metadata_constraints.update({'userConstraint': user_constraints})
@@ -134,8 +117,8 @@ def get_assignment_entries(metadata_notes, weights, constraints, match_group):
     for m in metadata_notes:
         forum_constraints = constraints.get(m.forum, {})
         assignment_entries = []
-        for metadata_entry in m.content['groups'][match_group.id]:
-            if metadata_entry['userId'] in match_group.members:
+        for metadata_entry in m.content['entries']:
+            if metadata_entry['userId'] in reviewers:
                 assignment_entries.append(metadata_to_assignment_entry(metadata_entry, forum_constraints))
 
         entries_by_forum[m.forum] = assignment_entries
@@ -154,23 +137,6 @@ def weight_scores(scores, weights):
 
     return weighted_scores
 
-def create_assignment(forum, label, assignment_invitation):
-    '''
-    Creates the JSON record for an empty assignment Note.
-
-    *important* return type is dict, not openreview.Note
-    '''
-
-    return {
-        'forum': forum,
-        'invitation': assignment_invitation.id,
-        'readers': assignment_invitation.reply['readers']['values'],
-        'writers': assignment_invitation.reply['writers']['values'],
-        'signatures': assignment_invitation.reply['signatures']['values'],
-        'content': {
-            'label': label
-        }
-    }
 
 def encode_score_matrix(entries_by_forum):
     '''
@@ -182,7 +148,7 @@ def encode_score_matrix(entries_by_forum):
     (2) indices needed by the decode_score_matrix() function
 
     '''
-
+    print('test autoreload')
     forums = list(entries_by_forum.keys())
     num_users = None
     for forum in forums:
@@ -213,7 +179,7 @@ def encode_score_matrix(entries_by_forum):
             user_constraints = entry['constraints']
             user_index = index_by_user.get(user, None)
 
-            if user_index:
+            if user_index != None:
                 coordinates = (user_index, paper_index)
                 score_matrix[coordinates] = entry['finalScore']
 
@@ -246,28 +212,31 @@ def decode_score_matrix(solution, user_by_index, forum_by_index):
 
     return assignments_by_forum
 
-def save_assignments(assignments, existing_assignments, assignment_invitation, config_note, entries_by_forum):
+def build_assignment_notes(label, assignments, entries_by_forum, assignment_invitation, num_alternates=5):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
 
     Returns a list of openreview.Note objects.
     '''
 
-    alternates = config_note.content['configuration']['alternates']
-    label = config_note.content['label']
     new_assignment_notes = []
     for forum, userids in assignments.items():
         entries = entries_by_forum[forum]
-        assignment = existing_assignments.get(forum, create_assignment(forum, label, assignment_invitation))
 
-        new_content = {
-            'assignedGroups': get_assigned_groups(userids, entries),
-            'alternateGroups': get_alternate_groups(userids, entries, alternates)
-        }
+        assignment = openreview.Note.from_json({
+            'forum': forum,
+            'invitation': assignment_invitation.id,
+            'readers': assignment_invitation.reply['readers']['values'],
+            'writers': assignment_invitation.reply['writers']['values'],
+            'signatures': assignment_invitation.reply['signatures']['values'],
+            'content': {
+                'label': label,
+                'assignedGroups': get_assigned_groups(userids, entries),
+                'alternateGroups': get_alternate_groups(userids, entries, num_alternates)
+            }
+        })
 
-        assignment['content'].update(new_content)
-
-        new_assignment_notes.append(openreview.Note(**assignment))
+        new_assignment_notes.append(assignment)
 
     return new_assignment_notes
 
