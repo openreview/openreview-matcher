@@ -25,7 +25,7 @@ def weight_scores(scores, weights):
     return weighted_scores
 
 def cost(scores, weights, precision=0.01):
-  weighted_scores = utils.weight_scores(scores, weights)
+  weighted_scores = weight_scores(scores, weights)
   score_sum = sum(weighted_scores.values())
   return -1 * int(score_sum / precision)
 
