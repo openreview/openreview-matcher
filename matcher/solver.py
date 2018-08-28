@@ -1,151 +1,224 @@
-import uuid
-import gurobipy
-import logging
-import time
+from __future__ import print_function, division
+from ortools.graph import pywrapgraph
+from collections import namedtuple
 import numpy as np
 
+def decode_cost_matrix(solution, user_by_index, forum_by_index):
+    '''
+    Decodes the 2D score matrix into a returned dict of user IDs keyed by forum ID.
+
+    e.g. {
+        'abcXYZ': '~Melisa_Bok1',
+        '123-AZ': '~Michael_Spector1'
+    }
+    '''
+
+    assignments_by_forum = defaultdict(list)
+    for var_name in solution:
+        var_val = var_name.split('x_')[1].split(',')
+
+        user_index, paper_index = (int(var_val[0]), int(var_val[1]))
+        user_id = user_by_index[user_index]
+        forum = forum_by_index[paper_index]
+        match = solution[var_name]
+
+        if match == 1:
+            assignments_by_forum[forum].append(user_id)
+
+    return assignments_by_forum
+
 class Solver(object):
-    """
-    An iterative paper matching problem instance that tries to maximize
-    the sum total affinity of all reviewer paper matches
-    Attributes:
-      num_reviewers - the number of reviewers
-      num_papers - the number of papers
-      alphas - a list of tuples of (min, max) papers for each reviewer.
-      betas - a list of tuples of (min, max) reviewers for each paper.
-      weights - the compatibility between each reviewer and each paper.
-                This should be a numpy matrix of dimension [num_reviewers x num_papers].
-    """
 
-    def __init__(self, alphas, betas, weights, constraints):
-        self.num_reviewers = np.size(weights, axis=0)
-        self.num_papers = np.size(weights, axis=1)
-        self.alphas = alphas
-        self.betas = betas
-        self.weights = weights
-        self.constraints = []
-        self.id = uuid.uuid4()
-        self.model = gurobipy.Model(str(self.id) + ": iterative b-matching")
-        self.prev_sols = []
-        self.prev_reviewer_affinities = []
-        self.prev_paper_affinities = []
-        self.model.setParam('OutputFlag', 0)
+    '''
 
-        # primal variables; set the objective
-        obj = gurobipy.LinExpr()
-        self.lp_vars = [[] for i in range(self.num_reviewers)]
+    '''
 
-        for i in range(self.num_reviewers):
-            for j in range(self.num_papers):
-                self.lp_vars[i].append(self.model.addVar(vtype=gurobipy.GRB.BINARY, name=self.var_name(i, j)))
-                obj += self.weights[i][j] * self.lp_vars[i][j]
+    def __init__(self, supplies, demands, cost_matrix, constraint_matrix):
 
-        self.model.update()
-        self.model.setObjective(obj, gurobipy.GRB.MAXIMIZE)
+        assert type(cost_matrix) \
+            == type(constraint_matrix) \
+            == np.ndarray, \
+            'cost and constraint matrices must be of type numpy.ndarray'
 
-        # reviewer constraints
-        for r in range(self.num_reviewers):
-            self.model.addConstr(sum(self.lp_vars[r]) >= self.alphas[r][0], "r_l" + str(r))
-            self.model.addConstr(sum(self.lp_vars[r]) <= self.alphas[r][1], "r_u" + str(r))
+        assert np.shape(cost_matrix) \
+            == np.shape(constraint_matrix), \
+            'cost {} and constraint {} matrices must be the same shape'.format(
+                np.shape(cost_matrix), np.shape(constraint_matrix))
 
-        # paper constraints
-        for p in range(self.num_papers):
-            self.model.addConstr(sum([self.lp_vars[i][p]
-                                  for i in range(self.num_reviewers)]) >= self.betas[p][0],
-                             "p_l" + str(p))
-            self.model.addConstr(sum([self.lp_vars[i][p]
-                                  for i in range(self.num_reviewers)]) <= self.betas[p][1],
-                             "p_u" + str(p))
+        self.num_reviewers = np.size(cost_matrix, axis=0)
+        self.num_papers = np.size(cost_matrix, axis=1)
 
-        for (reviewer_index, paper_index), value in constraints.items():
-            self.constraints.append((reviewer_index, paper_index, value))
-        self.add_hard_consts(constrs=self.constraints)
+        self.cost_matrix = cost_matrix
+        self.constraint_matrix = constraint_matrix
+        self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
+        self.overflow = np.zeros((self.num_reviewers, 1))
+        # self.solution = np.zeros((self.num_reviewers, self.num_papers + 1))
 
-    def var_name(self, i, j):
-        return "x_" + str(i) + "," + str(j)
+        # finds the largest and smallest value in cost_matrix
+        # (i.e. the greatest and lowest cost of any arc)
+        self.max_cost = self.cost_matrix[
+            np.unravel_index(self.cost_matrix.argmax(), self.cost_matrix.shape)]
+        self.min_cost = self.cost_matrix[
+            np.unravel_index(self.cost_matrix.argmin(), self.cost_matrix.shape)]
 
-    def sol_dict(self):
-        _sol = {}
-        for v in self.model.getVars():
-            _sol[v.varName] = v.x
-        return _sol
+        # supplies array must be same length as number of reviewers
+        assert len(supplies) == self.num_reviewers, \
+            'The length of the supplies array ({}) \
+            must equal np.size(cost_matrix, axis=0) ({})'''.format(
+            len(supplies), self.num_reviewers
+        )
+        self.supplies = supplies
 
-    def add_hard_const(self, i, j, log_file=None):
-        """Add a single hard constraint to the model.
-        CAUTION: if you have a list of constraints to add, use add_hard_constrs
-        instead.  That function adds the constraints as a batch and will be
-        faster.
-        """
-        solution = self.sol_dict()
-        prevVal = solution[self.var_name(i, j)]
-        if log_file:
-            logging.info("\t(REVIEWER, PAPER) " + str((i, j)) + " CHANGED FROM: " + str(prevVal) + " -> " + str(
-                abs(prevVal - 1)))
-        self.model.addConstr(self.lp_vars[i][j] == abs(prevVal - 1), "h" + str(i) + ", " + str(j))
+        # demands array must be same length as number of papers
+        assert len(demands) == self.num_papers, \
+            'The length of the demands array ({}) \
+            must equal np.size(cost_matrix, axis=0) ({})'.format(
+            len(demands), self.num_papers)
 
-    def add_hard_consts(self, constrs, log_file=None):
-        """Add a list of hard constraints to the model.
-        Add a list of hard constraints in batch to the model.
-        Args:
-        constrs - a list of triples of (rev_idx, pap_idx, value).
-        Returns:
-        None.
-        """
-        for (rev, pap, val) in constrs:
-            self.model.addConstr(self.lp_vars[rev][pap] == val,
-                             "h" + str(rev) + ", " + str(pap))
-        self.model.update()
+        self.demands = [-1 * c for c in demands]
 
-    def num_diffs(self, sol1, sol2):
-        count = 0
-        for (variable, val) in sol1.items():
-            if sol2[variable] != val:
-                count += 1
-        return count
+        # the total supply of reviews must be greater than the total demand
+        net_supply = sum(self.supplies) + sum(self.demands)
+        assert net_supply >= 0, \
+            'demand exceeds supply (net supply: {})'.format(net_supply)
 
-    def solve(self, log_file=None):
-        begin_opt = time.time()
-        self.model.optimize()
-        if self.model.status != gurobipy.GRB.OPTIMAL:
-            raise Exception('This instance of matching could not be solved '
-                            'optimally.  Please ensure that the input '
-                            'constraints produce a feasible matching '
-                            'instance.')
+        Node = namedtuple('Node', ['number', 'index', 'supply'])
+        '''
+        "number" (0-indexed):
+            a unique number among all Nodes in the graph.
+            e.g. in a graph with 3 papers and 4 reviewers, number can take a
+            value from 0 to 11.
 
-        end_opt = time.time()
-        if log_file:
-            logging.info("[SOLVER TIME]: %s" % (str(end_opt - begin_opt)))
+        "index" (0-indexed):
+            a position in the cost/constraint matrix along the relevant axis
+            e.g. in a graph with 3 papers and 4 reviewers, paper nodes can have
+            "index" of value between 0 and 2, and reviewer nodes can have
+            "index" of value between 0 and 3
 
-        sol = {}
-        for v in self.model.getVars():
-            sol[v.varName] = v.x
-        self.prev_sols.append(sol)
-        self.save_reviewer_affinity()
-        self.save_paper_affinity()
+        "supply":
+            an integer representing the supply (+) or demand (-) of a node.
+        '''
 
-        return self.sol_dict()
+        self.reviewer_nodes = [Node(
+            number = i,
+            index = i,
+            supply = self.supplies[i]) for i in range(self.num_reviewers)]
 
-    def status(self):
-        return m.status
+        self.paper_nodes = [Node(
+            number = i + self.num_reviewers,
+            index = i,
+            supply = self.demands[i]) for i in range(self.num_papers)]
 
-    def turn_on_verbosity(self):
-        self.model.setParam('OutputFlag', 1)
+        # overflow node has no index because it is not represented in the cost
+        # or constraint matrices
+        self.overflow_node = Node(
+            number = self.num_reviewers + self.num_papers,
+            index = None,
+            supply = -1 * net_supply)
 
-    def save_reviewer_affinity(self):
-        per_rev_aff = np.zeros((self.num_reviewers, 1))
-        sol = self.sol_dict()
-        for i in range(self.num_reviewers):
-            for j in range(self.num_papers):
-                per_rev_aff[i] += sol[self.var_name(i, j)] * self.weights[i][j]
-        self.prev_reviewer_affinities.append(per_rev_aff)
+        self.node_by_number = { n.number: n for n in \
+            self.reviewer_nodes + self.paper_nodes + [self.overflow_node] }
 
-    def save_paper_affinity(self):
-        per_pap_aff = np.zeros((self.num_papers, 1))
-        sol = self.sol_dict()
-        for i in range(self.num_papers):
-            for j in range(self.num_reviewers):
-                per_pap_aff[i] += sol[self.var_name(j, i)] * self.weights[j][i]
-        self.prev_paper_affinities.append(per_pap_aff)
+        # set up the arcs
+        self.start_nodes = []
+        self.end_nodes = []
+        self.capacities = []
+        self.costs = []
 
-    def objective_val(self):
-        return self.model.ObjVal
+        for r_node in self.reviewer_nodes:
+            for p_node in self.paper_nodes:
+
+                arc_cost = self.cost_matrix[r_node.index,
+                    p_node.index]
+
+                arc_constraint = self.constraint_matrix[
+                    r_node.index, p_node.index]
+
+
+                if arc_constraint in [0, 1]:
+                    self.start_nodes.append(r_node)
+                    self.end_nodes.append(p_node)
+                    self.capacities.append(1)
+
+                    if arc_constraint == 0:
+                        self.costs.append(int(arc_cost))
+
+                    if arc_constraint == 1:
+                        self.costs.append(int(self.min_cost - 1))
+
+            self.start_nodes.append(r_node)
+            self.end_nodes.append(self.overflow_node)
+            self.capacities.append(sum(self.supplies))
+            self.costs.append(int(self.max_cost + 1))
+
+        assert len(self.start_nodes) \
+            == len(self.end_nodes) \
+            == len(self.capacities) \
+            == len(self.costs), \
+            '''start_nodes({}), end_nodes({}), capacities({}), and costs({})
+            must all equal each other'''.format(
+                len(self.start_nodes),
+                len(self.end_nodes),
+                len(self.capacities),
+                len(self.costs),
+                )
+
+        # construct the solver, adding nodes and arcs
+        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+
+        for arc_index in range(len(self.start_nodes)):
+            self.min_cost_flow.AddArcWithCapacityAndUnitCost(
+                self.start_nodes[arc_index].number,
+                self.end_nodes[arc_index].number,
+                self.capacities[arc_index],
+                self.costs[arc_index]
+            )
+
+        for node in self.node_by_number.values():
+            self.min_cost_flow.SetNodeSupply(node.number, node.supply)
+
+        self.solved = False
+
+    def solve(self):
+        if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
+            self.solved = True
+            for i in range(self.min_cost_flow.NumArcs()):
+                cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
+                r_node = self.node_by_number[self.min_cost_flow.Tail(i)]
+                p_node = self.node_by_number[self.min_cost_flow.Head(i)]
+                flow = self.min_cost_flow.Flow(i)
+
+                if p_node.index == None:
+                    # the overflow node has no index because it is not
+                    # represented in the cost/constraint matrices
+                    self.overflow[r_node.index] = flow
+                else:
+                    self.flow_matrix[r_node.index, p_node.index] = flow
+
+            return np.concatenate([self.flow_matrix, self.overflow], axis=1)
+        else:
+            print('There was an issue with the min cost flow input.')
+            return None
+
+if __name__ == '__main__':
+    cost_matrix = np.array([
+        [0, 1, 1],
+        [1, 0, 1],
+        [1, 1, 0],
+        [2, 2, 1]
+    ])
+
+    solver = Solver([1,1,1,1], [1,1,2], cost_matrix)
+    solver.solve()
+
+    print('Minimum cost:', solver.min_cost_flow.OptimalCost())
+    print('')
+    print('  Arc    Flow / Capacity  Cost')
+    for i in range(solver.min_cost_flow.NumArcs()):
+        cost = solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
+        print('%1s -> %1s   %3s  / %3s       %3s' % (
+          solver.min_cost_flow.Tail(i),
+          solver.min_cost_flow.Head(i),
+          solver.min_cost_flow.Flow(i),
+          solver.min_cost_flow.Capacity(i),
+          cost))

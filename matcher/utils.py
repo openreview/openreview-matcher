@@ -1,79 +1,93 @@
-from __future__ import print_function
-import sys,os
-import pickle
-import json
-import imp
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+import openreview
 
-# Print iterations progress
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '*'):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-    # Print New Line on Complete
-    if iteration == total:
-        print()
+def weight_scores(scores, weights):
+    '''
+    multiplies feature values by weights, excepting hard constraints
+    '''
+    weighted_scores = {}
+    for feature in weights:
+        if feature in scores:
+            weighted_scores[feature] = scores[feature] * weights[feature]
 
-def save_obj(obj, name):
-    sanitized_name = name.replace('.pkl','')
-    with open(sanitized_name + '.pkl', 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+    return weighted_scores
 
-def load_obj(name):
-    sanitized_name = name.replace('.pkl','')
-    with open(sanitized_name + '.pkl', 'rb') as f:
-        return pickle.load(f)
+def get_conflicts(author_profiles, user_profile):
 
-def load_model(model_name):
-    model_source = imp.load_source(model_name, os.path.join(os.path.dirname(__file__), '../models/%s/%s.py' % (model_name, model_name)))
-    model = load_obj(os.path.join(os.path.dirname(__file__), '../../saved_models/%s/%s.pkl' % (model_name, model_name)))
-    return model
+    author_domains = set()
+    author_emails = set()
+    author_relations = set()
 
-class SerializedData(object):
-    def __init__(self, filepath):
-        self.filepath = filepath
+    for author_email, profile in author_profiles.items():
 
-    def __iter__(self):
-        with open(self.filepath) as f:
-            for line in f:
-                # assume there's one json record per line
-                yield json.loads(line)
+        author_info = get_author_info(profile, author_email)
 
-def openreview_to_record(openreview_note, reviewer=None):
-    note = openreview_note.to_json()
+        author_domains.update(author_info['domains'])
+        author_emails.update(author_info['emails'])
+        author_relations.update(author_info['relations'])
 
-    if reviewer: note['reviewer_id'] = reviewer.encode('utf-8')
+    user_info = get_profile_info(user_profile)
 
-    for field in ['readers','replyto','nonreaders','tcdate','original','referent','cdate','writers','invitation','id','ddate','forumContent','signatures']:
-        note.pop(field)
+    conflicts = set()
+    conflicts.update(author_domains.intersection(user_info['domains']))
+    conflicts.update(author_relations.intersection(user_info['emails']))
+    conflicts.update(author_emails.intersection(user_info['relations']))
 
-    title = note['content']['title']
-    try:
-        abstract = note['content']['abstract']
-        abstract = " " + abstract
-    except KeyError:
-        abstract = ""
+    return list(conflicts)
 
-    try:
-        tldr = note['content']['TL;DR']
-        tldr = " " + tldr
-    except KeyError:
-        tldr = ""
-
-    content = title + tldr + abstract
-
-    note['content']['archive'] = content
+def get_author_info(profile, email):
+    if profile:
+        return get_profile_info(profile)
+    else:
+        return {
+            'domains': get_domains(email, subdomains = True),
+            'emails': [email],
+            'relations': []
+        }
 
 
-    return note
+def get_profile_info(profile):
+
+    domains = set()
+    emails = set()
+    relations = set()
+
+    ## Emails section
+    for e in profile.content['emails']:
+        domains.update(get_domains(e, subdomains = True))
+        emails.add(e)
+
+    ## Institution section
+    for h in profile.content.get('history', []):
+        domain = h.get('institution', {}).get('domain', '')
+        domains.update(get_domains(domain, subdomains = True))
+
+
+    ## Relations section
+    relations.update([r['email'] for r in profile.content.get('relations', [])])
+
+    ## Filter common domains
+    if 'gmail.com' in domains:
+        domains.remove('gmail.com')
+
+    return {
+        'domains': domains,
+        'emails': emails,
+        'relations': relations
+    }
+
+def get_domains(entity, subdomains = False):
+
+    if '@' in entity:
+        full_domain = entity.split('@')[1]
+    else:
+        full_domain = entity
+
+    if subdomains:
+        domain_components = full_domain.split('.')
+        domains = ['.'.join(domain_components[index:len(domain_components)]) for index, path in enumerate(domain_components)]
+        valid_domains = [d for d in domains if '.' in d]
+        return valid_domains
+    else:
+        return full_domain

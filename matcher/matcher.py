@@ -4,7 +4,7 @@ import numpy as np
 import openreview
 from collections import defaultdict
 from openreview import tools
-from .solver_flow import MinCostFlowSolver
+from .solver import Solver
 
 def match(config_note, papers, reviewers, metadata, assignment_invitation):
     '''
@@ -14,18 +14,6 @@ def match(config_note, papers, reviewers, metadata, assignment_invitation):
     '''
 
     label = config_note.content['label']
-
-    # Move up one level
-    #
-    # existing_config_notes = client.get_notes(invitation=config_note.invitation)
-    # labeled_config_notes = [c for c in existing_config_notes if c.content['label'] == label]
-
-    # if labeled_config_notes:
-    #     assert len(labeled_config_notes) == 1, 'More than one configuration exists with this label'
-    #     existing_config_note = labeled_config_notes[0]
-    #     existing_config_note.content['constraints'].update(config_note.content['constraints'])
-    #     existing_config_note.content['configuration'].update(config_note.content['configuration'])
-    #     config_note = existing_config_note
 
     # unpack variables
     solver_config = config_note.content['configuration']
@@ -48,7 +36,7 @@ def match(config_note, papers, reviewers, metadata, assignment_invitation):
 
     score_matrix, hard_constraint_dict, user_by_index, forum_by_index = encode_score_matrix(entries_by_forum)
     print('hard_constraint_dict', hard_constraint_dict)
-    solution = MinCostFlowSolver(alphas, betas, score_matrix, hard_constraint_dict).solve()
+    solution = Solver(alphas, betas, score_matrix, hard_constraint_dict).solve()
 
     assigned_userids = decode_score_matrix(solution, user_by_index, forum_by_index)
 
@@ -126,92 +114,6 @@ def get_assignment_entries(metadata_notes, weights, constraints, reviewers):
     return entries_by_forum
 
 
-def weight_scores(scores, weights):
-    '''
-    multiplies feature values by weights, excepting hard constraints
-    '''
-    weighted_scores = {}
-    for feature in weights:
-        if feature in scores:
-            weighted_scores[feature] = scores[feature] * weights[feature]
-
-    return weighted_scores
-
-
-def encode_score_matrix(entries_by_forum):
-    '''
-    Given a dict of dicts with scores for every user, for every forum,
-    encodes the score matrix to be used by the solver.
-
-    Also returns:
-    (1) a hard constraint dict (needed by the solver),
-    (2) indices needed by the decode_score_matrix() function
-
-    '''
-    print('test autoreload')
-    forums = list(entries_by_forum.keys())
-    num_users = None
-    for forum in forums:
-        num_users_in_forum = len(entries_by_forum[forum])
-        if not num_users:
-            num_users = num_users_in_forum
-        else:
-            assert num_users_in_forum == num_users, "Error: uneven number of user scores by forum"
-    if num_users:
-        users = [entry['userId'] for entry in entries_by_forum[forums[0]]]
-
-    index_by_user = {user: i for i, user in enumerate(users)}
-    index_by_forum = {forum: i for i, forum in enumerate(forums)}
-
-    user_by_index = {i: user for i, user in enumerate(users)}
-    forum_by_index = {i: forum for i, forum in enumerate(forums)}
-
-    score_matrix = np.zeros((len(index_by_user), len(index_by_forum)))
-    hard_constraint_dict = {}
-
-    for forum, entries in entries_by_forum.items():
-        paper_index = index_by_forum[forum]
-
-        #for user, user_scores in weighted_scores_by_user.items():
-        for entry in entries:
-            user = entry['userId']
-            user_scores = entry['scores']
-            user_constraints = entry['constraints']
-            user_index = index_by_user.get(user, None)
-
-            if user_index != None:
-                coordinates = (user_index, paper_index)
-                score_matrix[coordinates] = entry['finalScore']
-
-                if user_constraints:
-                    hard_constraint_dict[coordinates] = get_hard_constraint_value(user_constraints.values())
-
-    return score_matrix, hard_constraint_dict, user_by_index, forum_by_index
-
-def decode_score_matrix(solution, user_by_index, forum_by_index):
-    '''
-    Decodes the 2D score matrix into a returned dict of user IDs keyed by forum ID.
-
-    e.g. {
-        'abcXYZ': '~Melisa_Bok1',
-        '123-AZ': '~Michael_Spector1'
-    }
-    '''
-
-    assignments_by_forum = defaultdict(list)
-    for var_name in solution:
-        var_val = var_name.split('x_')[1].split(',')
-
-        user_index, paper_index = (int(var_val[0]), int(var_val[1]))
-        user_id = user_by_index[user_index]
-        forum = forum_by_index[paper_index]
-        match = solution[var_name]
-
-        if match == 1:
-            assignments_by_forum[forum].append(user_id)
-
-    return assignments_by_forum
-
 def build_assignment_notes(label, assignments, entries_by_forum, assignment_invitation, num_alternates=5):
     '''
     Creates or updates (as applicable) the assignment notes with new assignments.
@@ -269,20 +171,4 @@ def get_alternate_groups(assigned_userids, entries, alternates):
     sorted_alternates = sorted(valid_alternates, key=lambda x: x['finalScore'], reverse=True)
     top_n_alternates = sorted_alternates[:alternates]
     return top_n_alternates
-
-def get_hard_constraint_value(score_array):
-    """
-    A function to check for the presence of Hard Constraints in the score array (+inf or -inf)
-
-    """
-
-    has_neg_constraint = any(['-inf' == c.lower() for c in score_array])
-    has_pos_constraint = any(['+inf' == c.lower() for c in score_array])
-
-    if has_neg_constraint:
-        return 0
-    elif has_pos_constraint:
-        return 1
-    else:
-        return -1
 
