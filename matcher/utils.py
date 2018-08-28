@@ -57,7 +57,7 @@ def get_author_info(profile, email):
     return get_profile_info(profile)
   else:
     return {
-      'domains': openreview.tools.subdomains(email, subdomains = True),
+      'domains': openreview.tools.subdomains(email),
       'emails': [email],
       'relations': []
     }
@@ -69,14 +69,14 @@ def get_profile_info(profile):
   relations = set()
 
   ## Emails section
-  for e in profile.content['emails']:
-    domains.update(openreview.tools.subdomains(e, subdomains = True))
-    emails.add(e)
+  for email in profile.content['emails']:
+    domains.update(openreview.tools.subdomains(email))
+    emails.add(email)
 
   ## Institution section
   for h in profile.content.get('history', []):
     domain = h.get('institution', {}).get('domain', '')
-    domains.update(openreview.tools.subdomains(domain, subdomains = True))
+    domains.update(openreview.tools.subdomains(domain))
 
 
   ## Relations section
