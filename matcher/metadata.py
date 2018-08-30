@@ -103,6 +103,7 @@ class Encoder(object):
 
       for paper_index, flow in enumerate(reviewer_flows):
         forum = self.forum_by_index[paper_index]
+
         assignment = {
           'userId': user_id,
           'scores': None,
@@ -119,11 +120,14 @@ class Encoder(object):
 
         if flow:
           assignments_by_forum[forum].append(assignment)
-        else:
+        elif assignment['availableReviews'] > 0 and assignment['finalScore'] and not assignment['constraints']:
           alternates_by_forum[forum].append(assignment)
 
 
-    return assignments_by_forum, alternates_by_forum
+    for forum, alternates in alternates_by_forum.items():
+      alternates_by_forum[forum] = sorted(alternates, key=lambda a: a['finalScore'], reverse=True)[0:10]
+
+    return dict(assignments_by_forum), dict(alternates_by_forum)
 
 
 
