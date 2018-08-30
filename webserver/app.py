@@ -7,6 +7,7 @@ import time
 import openreview
 import matcher
 
+from crossdomain import crossdomain
 
 app = Flask(__name__)
 
@@ -55,6 +56,7 @@ def run_match(config_note, client):
     print('posting assignments...')
     posting_time = time.time()
     for forum, assignments in assignments_by_forum.items():
+        alternates = alternates_by_forum[forum]
         client.post_note(openreview.Note.from_json({
             'forum': forum,
             'invitation': assignment_inv.id,
@@ -65,7 +67,7 @@ def run_match(config_note, client):
             'content': {
                 'label': config['label'],
                 'assignedGroups': assignments,
-                'alternateGroups': []
+                'alternateGroups': alternates
             }
         }))
     print('took {0:.2f} seconds'.format(time.time() - posting_time))
@@ -75,6 +77,7 @@ def run_match(config_note, client):
     print('done. total time: {0:.2f} seconds'.format(time.time() - start_time))
 
 @app.route('/match', methods=['POST', 'OPTIONS'])
+@crossdomain(origin='*')
 def match():
     print('matching')
 
