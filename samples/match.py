@@ -75,7 +75,7 @@ if __name__ == '__main__':
             'content': {
                 'label': config['label'],
                 'assignedGroups': assignments,
-                'alternateGroups': []
+                'alternateGroups': alternates_by_forum[forum]
             }
         }))
     print("took {0:.2f} seconds".format(time.time() - post_time))
