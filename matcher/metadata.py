@@ -97,17 +97,18 @@ class Encoder(object):
 
     assignments_by_forum = defaultdict(list)
     alternates_by_forum = defaultdict(list)
+    overflow_by_reviewer = {}
     for reviewer_index, reviewer_flows in enumerate(flow_matrix):
       user_id = self.reviewer_by_index[reviewer_index]
       reviewer_overflow = overflow[reviewer_index]
-
+      overflow_by_reviewer[user_id] = reviewer_overflow
       for paper_index, flow in enumerate(reviewer_flows):
         forum = self.forum_by_index[paper_index]
 
         assignment = {
           'userId': user_id,
-          'scores': None,
-          'constraints': None,
+          'scores': {},
+          'conflicts': [],
           'finalScore': None,
           'availableReviews': reviewer_overflow
         }
@@ -115,19 +116,19 @@ class Encoder(object):
 
         if entry:
           assignment['scores'] = utils.weight_scores(entry.get('scores'), self.weights)
-          assignment['constraints'] = entry.get('constraints')
+          assignment['conflicts'] = entry.get('conflicts')
           assignment['finalScore'] = sum(utils.weight_scores(entry.get('scores'), self.weights).values())
 
         if flow:
           assignments_by_forum[forum].append(assignment)
-        elif assignment['availableReviews'] > 0 and assignment['finalScore'] and not assignment['constraints']:
+        elif assignment['availableReviews'] > 0 and assignment['finalScore'] and not assignment['conflicts']:
           alternates_by_forum[forum].append(assignment)
 
 
     for forum, alternates in alternates_by_forum.items():
       alternates_by_forum[forum] = sorted(alternates, key=lambda a: a['finalScore'], reverse=True)[0:10]
 
-    return dict(assignments_by_forum), dict(alternates_by_forum)
+    return dict(assignments_by_forum), dict(alternates_by_forum), overflow_by_reviewer
 
 
 
