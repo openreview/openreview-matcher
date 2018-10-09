@@ -32,10 +32,6 @@ if __name__ == '__main__':
     config_inv = client.get_invitation(config['config_invitation'])
     print("took {0:.2f} seconds".format(time.time() - collection_time))
 
-    # This could be set by hand if reviewers or papers have specific supplies/demands
-    supplies = [config['max_papers']] * len(reviewer_ids)
-    demands = [config['max_users']] * len(metadata)
-
     print('clearing existing assignments, and clearing config with label="{}" ...'.format(config['label']))
     clear_time = time.time()
     for config_note in openreview.tools.iterget_notes(client, invitation=config_inv.id):
@@ -52,6 +48,16 @@ if __name__ == '__main__':
     print('instantiating encoder and solver...')
     instantiate_time = time.time()
     encoder = matcher.metadata.Encoder(metadata, config, reviewer_ids)
+
+    # This could be set by hand if reviewers or papers have specific supplies/demands
+    supplies = [config['max_papers']] * len(reviewer_ids)
+    demands = [config['max_users']] * len(metadata)
+
+    for reviewer_id, custom_supply in config['custom_loads'].items():
+        if reviewer_id in encoder.index_by_reviewer:
+            reviewer_index = encoder.index_by_reviewer[reviewer_id]
+            supplies[reviewer_index] = custom_supply
+
     flow_solver = matcher.Solver(supplies, demands, encoder.cost_matrix, encoder.constraint_matrix)
     print("took {0:.2f} seconds".format(time.time() - instantiate_time))
 
