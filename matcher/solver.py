@@ -173,7 +173,7 @@ class Solver(object):
         self.costs = []
 
         '''
-        1) connect the source node to all "free" and "overflow" nodes.
+        1)  connect the source node to all "free" and "overflow" nodes.
         '''
 
         for free_node in self.free_review_nodes:
@@ -191,6 +191,10 @@ class Solver(object):
             # TODO: Is this the right way to set the cost of the overflow?
             self.costs.append(int(self.max_cost + 1))
 
+        '''
+        2)  connect all "free" and "overflow" nodes to their corresponding
+            reviewer nodes.
+        '''
         for r_node in self.reviewer_nodes:
             free_node = free_nodes_by_index[r_node.index]
             self.start_nodes.append(free_node)
@@ -205,6 +209,10 @@ class Solver(object):
                 self.maximums[r_node.index] - self.minimums[r_node.index])
             self.costs.append(0)
 
+        '''
+        3)  connect reviewer and paper nodes.
+            exclude arcs between conflicted nodes.
+        '''
         for r_node in self.reviewer_nodes:
             for p_node in self.paper_nodes:
 
@@ -230,6 +238,9 @@ class Solver(object):
                     if arc_constraint == 1:
                         self.costs.append(int(self.min_cost - 1))
 
+        '''
+        4)  connect paper nodes to the sink node.
+        '''
         for p_node in self.paper_nodes:
             self.start_nodes.append(p_node)
             self.end_nodes.append(self.sink_node)
