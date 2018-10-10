@@ -92,16 +92,14 @@ class Encoder(object):
     '''
     Decodes a solution into assignments
     '''
-    flow_matrix = solution[:, :len(self.metadata)]
-    overflow = solution[:, len(self.metadata)]
+    flow_matrix = solution
 
     assignments_by_forum = defaultdict(list)
     alternates_by_forum = defaultdict(list)
-    overflow_by_reviewer = {}
+
     for reviewer_index, reviewer_flows in enumerate(flow_matrix):
       user_id = self.reviewer_by_index[reviewer_index]
-      reviewer_overflow = overflow[reviewer_index]
-      overflow_by_reviewer[user_id] = reviewer_overflow
+
       for paper_index, flow in enumerate(reviewer_flows):
         forum = self.forum_by_index[paper_index]
 
@@ -109,8 +107,7 @@ class Encoder(object):
           'userId': user_id,
           'scores': {},
           'conflicts': [],
-          'finalScore': None,
-          'availableReviews': reviewer_overflow
+          'finalScore': None
         }
         entry = self.entries_by_forum[forum].get(user_id)
 
@@ -121,14 +118,14 @@ class Encoder(object):
 
         if flow:
           assignments_by_forum[forum].append(assignment)
-        elif assignment['availableReviews'] > 0 and assignment['finalScore'] and not assignment['conflicts']:
+        elif assignment['finalScore'] and not assignment['conflicts']:
           alternates_by_forum[forum].append(assignment)
 
 
     for forum, alternates in alternates_by_forum.items():
       alternates_by_forum[forum] = sorted(alternates, key=lambda a: a['finalScore'], reverse=True)[0:10]
 
-    return dict(assignments_by_forum), dict(alternates_by_forum), overflow_by_reviewer
+    return dict(assignments_by_forum), dict(alternates_by_forum)
 
 
 

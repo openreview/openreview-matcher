@@ -33,7 +33,7 @@ class Solver(object):
 
     '''
 
-    def __init__(self, supplies, demands, cost_matrix, constraint_matrix):
+    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix):
 
         assert type(cost_matrix) \
             == type(constraint_matrix) \
@@ -51,8 +51,8 @@ class Solver(object):
         self.cost_matrix = cost_matrix
         self.constraint_matrix = constraint_matrix
         self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
+
         self.overflow = np.zeros((self.num_reviewers, 1))
-        # self.solution = np.zeros((self.num_reviewers, self.num_papers + 1))
 
         # finds the largest and smallest value in cost_matrix
         # (i.e. the greatest and lowest cost of any arc)
@@ -61,13 +61,21 @@ class Solver(object):
         self.min_cost = self.cost_matrix[
             np.unravel_index(self.cost_matrix.argmin(), self.cost_matrix.shape)]
 
-        # supplies array must be same length as number of reviewers
-        assert len(supplies) == self.num_reviewers, \
-            'The length of the supplies array ({}) \
+        # maximums array must be same length as number of reviewers
+        assert len(maximums) == self.num_reviewers, \
+            'The length of the maximums array ({}) \
             must equal np.size(cost_matrix, axis=0) ({})'''.format(
-            len(supplies), self.num_reviewers
+            len(maximums), self.num_reviewers
         )
-        self.supplies = supplies
+        self.maximums = maximums
+
+        # minimums array must be same length as number of reviewers
+        assert len(minimums) == self.num_reviewers, \
+            'The length of the minimums array ({}) \
+            must equal np.size(cost_matrix, axis=0) ({})'''.format(
+            len(minimums), self.num_reviewers
+        )
+        self.minimums = minimums
 
         # demands array must be same length as number of papers
         assert len(demands) == self.num_papers, \
@@ -75,10 +83,10 @@ class Solver(object):
             must equal np.size(cost_matrix, axis=0) ({})'.format(
             len(demands), self.num_papers)
 
-        self.demands = [-1 * c for c in demands]
+        self.demands = demands
 
         # the total supply of reviews must be greater than the total demand
-        net_supply = sum(self.supplies) + sum(self.demands)
+        net_supply = sum(self.maximums) + sum(self.demands)
         assert net_supply >= 0, \
             'demand exceeds supply (net supply: {})'.format(net_supply)
 
@@ -99,31 +107,103 @@ class Solver(object):
             an integer representing the supply (+) or demand (-) of a node.
         '''
 
-        self.reviewer_nodes = [Node(
-            number = i,
+        current_offset = 0
+
+        # no index because the source isn't represented in the cost/constraint matrices.
+        self.source_node = Node(
+            number = current_offset,
+            index = None,
+            supply = sum(self.demands))
+
+        current_offset += 1
+
+        self.free_review_nodes = [Node(
+            number = i + current_offset,
             index = i,
-            supply = self.supplies[i]) for i in range(self.num_reviewers)]
+            supply = 0) for i in range(self.num_reviewers)]
+
+        current_offset += self.num_reviewers
+
+        self.overflow_review_nodes = [Node(
+            number = i + current_offset,
+            index = i,
+            supply = 0) for i in range(self.num_reviewers)]
+
+        current_offset += self.num_reviewers
+
+        self.reviewer_nodes = [Node(
+            number = i + current_offset,
+            index = i,
+            supply = 0) for i in range(self.num_reviewers)]
+
+        current_offset += self.num_reviewers
 
         self.paper_nodes = [Node(
-            number = i + self.num_reviewers,
+            number = i + current_offset,
             index = i,
-            supply = self.demands[i]) for i in range(self.num_papers)]
+            supply = 0) for i in range(self.num_papers)]
 
-        # overflow node has no index because it is not represented in the cost
-        # or constraint matrices
-        self.overflow_node = Node(
-            number = self.num_reviewers + self.num_papers,
+        current_offset += self.num_papers
+
+        # no index because the source isn't represented in the cost/constraint matrices.
+        self.sink_node = Node(
+            number = current_offset,
             index = None,
-            supply = -1 * net_supply)
+            supply = -1 * sum(self.demands))
 
         self.node_by_number = { n.number: n for n in \
-            self.reviewer_nodes + self.paper_nodes + [self.overflow_node] }
+            self.reviewer_nodes + \
+            self.paper_nodes + \
+            self.free_review_nodes + \
+            self.overflow_review_nodes + \
+            [self.source_node, self.sink_node] }
 
-        # set up the arcs
+        free_nodes_by_index = {n.index: n for n in self.free_review_nodes}
+        overflow_nodes_by_index = {n.index: n for n in self.overflow_review_nodes}
+
+        self.reviewer_node_by_number = {n.number:n for n in self.reviewer_nodes}
+        self.paper_node_by_number = {n.number:n for n in self.paper_nodes}
+
+        '''
+        Set up the flow graph.
+        '''
         self.start_nodes = []
         self.end_nodes = []
         self.capacities = []
         self.costs = []
+
+        '''
+        1) connect the source node to all "free" and "overflow" nodes.
+        '''
+
+        for free_node in self.free_review_nodes:
+            self.start_nodes.append(self.source_node)
+            self.end_nodes.append(free_node)
+            self.capacities.append(self.minimums[free_node.index])
+            self.costs.append(0)
+
+        for overflow_node in self.overflow_review_nodes:
+            self.start_nodes.append(self.source_node)
+            self.end_nodes.append(overflow_node)
+            self.capacities.append(
+                self.maximums[free_node.index] - self.minimums[free_node.index])
+
+            # TODO: Is this the right way to set the cost of the overflow?
+            self.costs.append(int(self.max_cost + 1))
+
+        for r_node in self.reviewer_nodes:
+            free_node = free_nodes_by_index[r_node.index]
+            self.start_nodes.append(free_node)
+            self.end_nodes.append(r_node)
+            self.capacities.append(self.minimums[r_node.index])
+            self.costs.append(0)
+
+            overflow_node = overflow_nodes_by_index[r_node.index]
+            self.start_nodes.append(overflow_node)
+            self.end_nodes.append(r_node)
+            self.capacities.append(
+                self.maximums[r_node.index] - self.minimums[r_node.index])
+            self.costs.append(0)
 
         for r_node in self.reviewer_nodes:
             for p_node in self.paper_nodes:
@@ -134,22 +214,27 @@ class Solver(object):
                 arc_constraint = self.constraint_matrix[
                     r_node.index, p_node.index]
 
-
                 if arc_constraint in [0, 1]:
                     self.start_nodes.append(r_node)
                     self.end_nodes.append(p_node)
                     self.capacities.append(1)
 
+                    # arc_constraint of 0 means there's no constraint;
+                    # apply the cost as normal.
                     if arc_constraint == 0:
                         self.costs.append(int(arc_cost))
 
+                    # arc_constraint of 1 means that this user was explicitly
+                    # assigned to this paper;
+                    # set the cost as 1 less than the minimum cost.
                     if arc_constraint == 1:
                         self.costs.append(int(self.min_cost - 1))
 
-            self.start_nodes.append(r_node)
-            self.end_nodes.append(self.overflow_node)
-            self.capacities.append(sum(self.supplies))
-            self.costs.append(int(self.max_cost + 1))
+        for p_node in self.paper_nodes:
+            self.start_nodes.append(p_node)
+            self.end_nodes.append(self.sink_node)
+            self.capacities.append(self.demands[p_node.index])
+            self.costs.append(0)
 
         assert len(self.start_nodes) \
             == len(self.end_nodes) \
@@ -184,18 +269,14 @@ class Solver(object):
             self.solved = True
             for i in range(self.min_cost_flow.NumArcs()):
                 cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
-                r_node = self.node_by_number[self.min_cost_flow.Tail(i)]
-                p_node = self.node_by_number[self.min_cost_flow.Head(i)]
+                r_node = self.reviewer_node_by_number.get(self.min_cost_flow.Tail(i))
+                p_node = self.paper_node_by_number.get(self.min_cost_flow.Head(i))
                 flow = self.min_cost_flow.Flow(i)
 
-                if p_node.index == None:
-                    # the overflow node has no index because it is not
-                    # represented in the cost/constraint matrices
-                    self.overflow[r_node.index] = flow
-                else:
+                if r_node and p_node:
                     self.flow_matrix[r_node.index, p_node.index] = flow
 
-            return np.concatenate([self.flow_matrix, self.overflow], axis=1)
+            return self.flow_matrix
         else:
             print('There was an issue with the min cost flow input.')
             return None
