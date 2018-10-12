@@ -57,6 +57,8 @@ if __name__ == '__main__':
         if reviewer_id in encoder.index_by_reviewer:
             reviewer_index = encoder.index_by_reviewer[reviewer_id]
             maximums[reviewer_index] = custom_load
+            if custom_load < minimums[reviewer_index]:
+                minimums[reviewer_index] = custom_load
 
     flow_solver = matcher.Solver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
     print("took {0:.2f} seconds".format(time.time() - instantiate_time))

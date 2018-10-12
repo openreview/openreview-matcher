@@ -186,10 +186,10 @@ class Solver(object):
             self.start_nodes.append(self.source_node)
             self.end_nodes.append(overflow_node)
             self.capacities.append(
-                self.maximums[free_node.index] - self.minimums[free_node.index])
+                self.maximums[overflow_node.index] - self.minimums[overflow_node.index])
 
             # TODO: Is this the right way to set the cost of the overflow?
-            self.costs.append(int(self.max_cost + 1))
+            self.costs.append(int(self.max_cost + self.max_cost))
 
         '''
         2)  connect all "free" and "overflow" nodes to their corresponding
