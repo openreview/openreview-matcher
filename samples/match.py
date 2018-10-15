@@ -4,20 +4,13 @@ import argparse
 import json
 import time
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('config')
-    parser.add_argument('--baseurl', help="openreview base URL")
-    parser.add_argument('--username')
-    parser.add_argument('--password')
-
-    args = parser.parse_args()
-
-    with open(args.config) as f:
+def read_config_file (file_path):
+    with open(file_path) as f:
         config = json.load(f)
+    return config
 
+def do_match (client, config):
     ## Initialize the client library with username and password
-    client = openreview.Client(baseurl=args.baseurl, username=args.username, password=args.password)
     print("connecting to", client.baseurl)
 
     # network calls
@@ -99,3 +92,16 @@ if __name__ == '__main__':
             }
         }))
     print("took {0:.2f} seconds".format(time.time() - post_time))
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config')
+    parser.add_argument('--baseurl', help="openreview base URL")
+    parser.add_argument('--username')
+    parser.add_argument('--password')
+
+    args = parser.parse_args()
+    client = openreview.Client(baseurl=args.baseurl, username=args.username, password=args.password)
+    config = read_config_file(args.config)
+    do_match(client, config)
+

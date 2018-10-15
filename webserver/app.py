@@ -76,14 +76,20 @@ def run_match(config_note, client):
     client.post_note(config_note)
     print('done. total time: {0:.2f} seconds'.format(time.time() - start_time))
 
+@app.route('/')
+def test():
+    print("In test")
+    return "Flask is running"
+
+#  Test with configNoteId vpFXETtWPR
 @app.route('/match', methods=['POST', 'OPTIONS'])
 @crossdomain(origin='*')
 def match():
     print('matching')
 
     client = openreview.Client()
-
-    config_note = client.get_note(request.form['configNoteId'])
+    configNoteId = request.form['configNoteId']
+    config_note = client.get_note(configNoteId)
     config_note.content['status'] = 'queued'
     config_note = client.post_note(config_note)
 
@@ -91,6 +97,7 @@ def match():
 
     match_thread = Thread(
         target=run_match,
+        # target=matcher.doMatch,
         args=args
     )
     match_thread.start()
