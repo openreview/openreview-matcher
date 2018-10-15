@@ -4,12 +4,12 @@ import argparse
 import json
 import time
 
-def readConfigFile (filePath):
-    with open(filePath) as f:
+def read_config_file (file_path):
+    with open(file_path) as f:
         config = json.load(f)
     return config
 
-def doMatch (client, config):
+def do_match (client, config):
     ## Initialize the client library with username and password
     print("connecting to", client.baseurl)
 
@@ -102,6 +102,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     client = openreview.Client(baseurl=args.baseurl, username=args.username, password=args.password)
-    config = readConfigFile(args.config)
-    doMatch(client, config)
+    config = read_config_file(args.config)
+    do_match(client, config)
 
