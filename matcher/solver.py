@@ -30,7 +30,17 @@ def decode_cost_matrix(solution, user_by_index, forum_by_index):
 class Solver(object):
 
     '''
+    supplies: a list of length #reviewers.  Each item in the list is the max number of tasks a reviewer can do.
+    demands: a list of length #papers.  Each item in the list is the min number of reviews the paper should get.
+    cost_matrix: an #reviewers by #papers matrix holding the score each reviewer-paper combination
+    constraint_matrix: an #reviewers by #papers matrix holding -1,0, or 1
 
+    The constructor builds a min-cost network flow graph (see: https://developers.google.com/optimization/flow/mincostflow)
+    Begin by checking that the total number of supplies (reviews-can-give) > total number demands (reviews-needed)
+    A set of reviewer nodes are built each with a supply taken from the supply list
+    A set of paper nodes are built each with the (negative) demand take from the demand list
+    net-supply = total-supply - total-demand
+    A single overflow node (a sink) is given the demand -1 * net-supply
     '''
 
     def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix):
@@ -299,8 +309,8 @@ if __name__ == '__main__':
         [1, 1, 0],
         [2, 2, 1]
     ])
-
-    solver = Solver([1,1,1,1], [1,1,2], cost_matrix)
+    constraint_matrix = np.zeros(np.shape(cost_matrix))
+    solver = Solver([1,1,1,1], [2,2,2,2], [1,1,2], cost_matrix, constraint_matrix)
     solver.solve()
 
     print('Minimum cost:', solver.min_cost_flow.OptimalCost())
