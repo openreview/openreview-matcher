@@ -3,7 +3,8 @@ from threading import Thread
 import queue
 import json
 import time
-
+import logging
+from logging.handlers import RotatingFileHandler
 import openreview
 import matcher
 
@@ -25,35 +26,48 @@ def run_match(config_note, client):
     supplies = [config['max_papers']] * len(reviewer_ids)
     demands = [config['max_users']] * len(metadata)
 
+    minimums = [config['min_papers']] * len(reviewer_ids)
+    maximums = [config['max_papers']] * len(reviewer_ids)
+
+
+
     # enter 'processing' phase
     config_note.content['status'] = 'processing'
     config_note = client.post_note(config_note)
 
-    print('clearing existing assignments...')
+    app.logger.info('clearing existing assignments...')
     clear_time = time.time()
     for assignment_note in openreview.tools.iterget_notes(client, invitation=assignment_inv.id):
         client.delete_note(assignment_note)
-    print('took {0:.2f} seconds'.format(time.time() - clear_time))
+    app.logger.info('took {0:.2f} seconds'.format(time.time() - clear_time))
 
     # instantiate the metadata encoder, and use it to instantiate a flow solver
-    print('instantiating encoder and solver...')
+    app.logger.info('instantiating encoder and solver...')
     instantiate_time = time.time()
     encoder = matcher.metadata.Encoder(metadata, config, reviewer_ids)
-    flow_solver = matcher.Solver(supplies, demands, encoder.cost_matrix, encoder.constraint_matrix)
-    print('took {0:.2f} seconds'.format(time.time() - instantiate_time))
+    # The config contains custom_loads which is a dictionary where keys are user names
+    # and values are max values to override the max_papers coming from the general config.
+    for reviewer_id, custom_load in config.get('custom_loads',{}).items():
+        if reviewer_id in encoder.index_by_reviewer:
+            reviewer_index = encoder.index_by_reviewer[reviewer_id]
+            maximums[reviewer_index] = custom_load
+            if custom_load < minimums[reviewer_index]:
+                minimums[reviewer_index] = custom_load
+    flow_solver = matcher.Solver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
+    app.logger.info('took {0:.2f} seconds'.format(time.time() - instantiate_time))
 
-    print('finding solution...')
+    app.logger.info('finding solution...')
     solution_time = time.time()
     solution = flow_solver.solve()
-    print('took {0:.2f} seconds'.format(time.time() - solution_time))
+    app.logger.info('took {0:.2f} seconds'.format(time.time() - solution_time))
 
     # decode the solution matrix
-    print('decoding solution...')
+    app.logger.info('decoding solution...')
     decoding_time = time.time()
     assignments_by_forum, alternates_by_forum = encoder.decode(solution)
-    print('took {0:.2f} seconds'.format(time.time() - decoding_time))
+    app.logger.info('took {0:.2f} seconds'.format(time.time() - decoding_time))
 
-    print('posting assignments...')
+    app.logger.info('posting assignments...')
     posting_time = time.time()
     for forum, assignments in assignments_by_forum.items():
         alternates = alternates_by_forum[forum]
@@ -70,23 +84,20 @@ def run_match(config_note, client):
                 'alternateGroups': alternates
             }
         }))
-    print('took {0:.2f} seconds'.format(time.time() - posting_time))
+    app.logger.info('took {0:.2f} seconds'.format(time.time() - posting_time))
 
     config_note.content['status'] = 'complete'
     client.post_note(config_note)
-    print('done. total time: {0:.2f} seconds'.format(time.time() - start_time))
+    app.logger.info('done. total time: {0:.2f} seconds'.format(time.time() - start_time))
 
 @app.route('/')
 def test():
-    print("In test")
+    app.logger.info("In test")
     return "Flask is running"
 
-#  Test with configNoteId vpFXETtWPR
 @app.route('/match', methods=['POST', 'OPTIONS'])
 @crossdomain(origin='*')
 def match():
-    print('matching')
-
     client = openreview.Client()
     configNoteId = request.form['configNoteId']
     config_note = client.get_note(configNoteId)
@@ -104,5 +115,10 @@ def match():
 
     return 'matching done'
 
+
 if __name__ == '__main__':
+    handler = RotatingFileHandler('matcher.log', maxBytes=10000, backupCount=1)
+    handler.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
     app.run()
+
