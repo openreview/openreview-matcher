@@ -30,17 +30,25 @@ def decode_cost_matrix(solution, user_by_index, forum_by_index):
 class Solver(object):
 
     '''
-    supplies: a list of length #reviewers.  Each item in the list is the max number of tasks a reviewer can do.
-    demands: a list of length #papers.  Each item in the list is the min number of reviews the paper should get.
-    cost_matrix: an #reviewers by #papers matrix holding the score each reviewer-paper combination
-    constraint_matrix: an #reviewers by #papers matrix holding -1,0, or 1
+    Implements a min-cost network flow graph for the worker-task assignment problem
+        (see: https://developers.google.com/optimization/flow/mincostflow)
 
-    The constructor builds a min-cost network flow graph (see: https://developers.google.com/optimization/flow/mincostflow)
-    Begin by checking that the total number of supplies (reviews-can-give) > total number demands (reviews-needed)
-    A set of reviewer nodes are built each with a supply taken from the supply list
-    A set of paper nodes are built each with the (negative) demand take from the demand list
-    net-supply = total-supply - total-demand
-    A single overflow node (a sink) is given the demand -1 * net-supply
+    minimums/maximums: lists of length #reviewers. Each item in the lists is an
+        integer representing the minimum/maximum number of reviews a reviewer
+        should be assigned.
+
+    demands: a list of integers of length #papers representing the number of
+        reviews the paper should be assigned.
+
+    cost_matrix: an #reviewers by #papers numpy array representing the cost of
+        each reviewer-paper combination.
+
+    constraint_matrix: an #reviewers by #papers numpy array representing
+        constraints on the match. Each cell can take a value of -1, 0, or 1:
+
+        0: no constraint
+        1: strongly favor this pair
+       -1: strongly avoid this pair
     '''
 
     def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix):
@@ -61,8 +69,6 @@ class Solver(object):
         self.cost_matrix = cost_matrix
         self.constraint_matrix = constraint_matrix
         self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
-
-        self.overflow = np.zeros((self.num_reviewers, 1))
 
         # finds the largest and smallest value in cost_matrix
         # (i.e. the greatest and lowest cost of any arc)
