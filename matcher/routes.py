@@ -3,10 +3,15 @@ from threading import Thread
 from matcher import app
 from matcher.decorators import crossdomain
 from matcher.assign import run_match
-from matcher.client_wrapper import Client
+import tests.mock_or_client
 import openreview
-import traceback
 from exc.exceptions import NoTokenException, BadTokenException
+
+def get_client (baseurl=None,username=None,password=None,token=None):
+    if app.config['TESTING']:
+        return tests.mock_or_client.MockORClient(baseurl=baseurl,username=username,password=password,token=token)
+    else:
+        return openreview.Client(baseurl=baseurl,username=username,password=password,token=token)
 
 
 @app.route('/match/test')
@@ -25,7 +30,7 @@ def match():
         if not token:
             raise NoTokenException('No Authorization token in headers')
         # N.B. If the token is invalid, it succeeds using a guest
-        client = Client(token=token)
+        client = get_client(token=token)
         params = request.json
         configNoteId = params['configNoteId']
         app.logger.debug("Request to assign reviewers for configId: " + configNoteId)

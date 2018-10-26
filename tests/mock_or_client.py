@@ -4,7 +4,7 @@ from exc.exceptions import BadTokenException
 
 # This is used by the matcher web app to mock the OR-py Client class.  It is set up to throw it's full variety of exceptions
 # when given certain test inputs.
-class MockORClient:
+class MockORClient (openreview.Client):
     def __init__ (self, baseurl = None, username = None, password = None, token= None, testing=False):
         if token.startswith('Bearer'):
             # just make sure there's two things that result from splitting the Authorization header.
