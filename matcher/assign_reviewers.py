@@ -17,10 +17,6 @@ def app_init():
     app.config.from_pyfile('../config.cfg')
     # now override using settings for this environment
     app.config.from_pyfile('../instance/config.cfg')
-    # adds to the app config the OpenReview-py Client class.
-    module = __import__("openreview")
-    class_ = getattr(module, "Client")
-    app.config['or_client'] = class_
     fh = logging.handlers.RotatingFileHandler(filename=app.config['LOG_FILE'], mode='a', maxBytes=1*1000*1000, backupCount=20)
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()

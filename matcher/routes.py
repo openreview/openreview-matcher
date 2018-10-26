@@ -1,4 +1,4 @@
-from flask import request, jsonify, abort
+from flask import request, jsonify
 from threading import Thread
 from matcher import app
 from matcher.decorators import crossdomain
@@ -40,16 +40,12 @@ def match():
         config_note = client.post_note(config_note)
 
         args = (config_note, client)
-        # We are doing a very simple threaded solution where the task is started in a another thread.
-        #  For scaling we should use some kind of job queue like celery or RQ to handle running the match task
-        #  See:  https://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-xxii-background-jobs
+        # TODO may want to replace threading with a task queue such as provided by RQ.
         match_thread = Thread(
             target=run_match,
-            # target=matcher.doMatch,
             args=args
         )
         match_thread.start()
-        # res['status'] = 200
 
     except openreview.OpenReviewException as e:
         app.logger.error('OpenReview-py error:', exc_info=True)

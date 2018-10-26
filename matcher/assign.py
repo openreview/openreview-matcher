@@ -1,6 +1,5 @@
 import openreview
 import time
-import traceback
 from matcher import app
 from matcher.solver import Solver
 from matcher.encoder import Encoder

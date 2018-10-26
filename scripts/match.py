@@ -81,11 +81,11 @@ def do_match (client, config):
         client.post_note(openreview.Note.from_json({
             'forum': forum,
             'invitation': assignment_inv.id,
+            'replyto': forum,
+            'readers': assignment_inv.reply['readers']['values'],
+            'writers': assignment_inv.reply['writers']['values'],
+            'signatures': assignment_inv.reply['signatures']['values'],
             'content': {
-                'replyto': forum,
-                'readers': assignment_inv.reply['readers']['values'],
-                'writers': assignment_inv.reply['writers']['values'],
-                'signatures': assignment_inv.reply['signatures']['values'],
                 'label': config['label'],
                 'assignedGroups': assignments,
                 'alternateGroups': alternates_by_forum.get(forum, [])
