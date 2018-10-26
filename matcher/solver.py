@@ -1,33 +1,7 @@
 from __future__ import print_function, division
 from ortools.graph import pywrapgraph
 from collections import namedtuple
-from collections import defaultdict
 import numpy as np
-
-# Unused.
-# def decode_cost_matrix(solution, user_by_index, forum_by_index):
-#     '''
-#     Decodes the 2D score matrix into a returned dict of user IDs keyed by forum ID.
-#
-#     e.g. {
-#         'abcXYZ': '~Melisa_Bok1',
-#         '123-AZ': '~Michael_Spector1'
-#     }
-#     '''
-#
-#     assignments_by_forum = defaultdict(list)
-#     for var_name in solution:
-#         var_val = var_name.split('x_')[1].split(',')
-#
-#         user_index, paper_index = (int(var_val[0]), int(var_val[1]))
-#         user_id = user_by_index[user_index]
-#         forum = forum_by_index[paper_index]
-#         match = solution[var_name]
-#
-#         if match == 1:
-#             assignments_by_forum[forum].append(user_id)
-#
-#     return assignments_by_forum
 
 class Solver(object):
 
@@ -73,7 +47,6 @@ class Solver(object):
         self.cost_matrix = cost_matrix
         self.constraint_matrix = constraint_matrix
         self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
-        s = self.cost_matrix.shape
         # finds the largest and smallest value in cost_matrix
         # (i.e. the greatest and lowest cost of any arc)
         if self.cost_matrix.shape > (0,0):

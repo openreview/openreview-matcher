@@ -23,12 +23,6 @@ def json_of_response(response):
 class TestFlaskApi(unittest.TestCase):
 
     def setUp (self):
-        # Use env vars because Flask app needs to get them from there so it can call its OR Client.
-        # Use of user/pw should not be necessary because I send a token to flask which then passes it to the OR Client.
-        # But the Client class doesn't initialize properly with only a token if user/pw are not set.
-        os.environ['OPENREVIEW_BASEURL'] = 'http://localhost:3000'
-        os.environ['OPENREVIEW_USERNAME'] = 'OpenReview.net'
-        os.environ['OPENREVIEW_PASSWORD'] = 'd0ntf33dth3tr0lls'
         self.app = matcher.app.test_client()
         matcher.app.testing = True
         self.or_client = openreview.Client()

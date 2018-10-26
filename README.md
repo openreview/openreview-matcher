@@ -14,7 +14,7 @@ This is implemented as a Flask RESTful service.   Structure of the project:
  
 '/matcher/assign.py' contains the task function run_match which runs the match solver in a thread
 
-'/matcher/solver.py' Defines the Solver class which wraps the min_net_flow solver
+'/matcher/solver.py' Defines the Solver class which wraps the min cost flow_solver
 
 **Configuration of the app**
 
