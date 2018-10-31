@@ -51,7 +51,7 @@ class MockORClient (openreview.Client):
         return {}
 
 # A fake config note with only the necessary fields and useless values for getting through the match process.
-class ConfigNote:
+class ConfigNote (openreview.Note):
     def __init__ (self):
         self.id = 'testId'
         self.content = {'metadata_invitation': 1, 'match_group': 1, 'paper_invitation': 1, 'assignment_invitation': 1, 'max_papers': 1,
