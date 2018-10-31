@@ -1,8 +1,6 @@
 import unittest
 import json
 import matcher
-import os
-import openreview
 
 
 def post_json(client, url, json_dict, headers=None):
@@ -25,7 +23,6 @@ class TestFlaskApi(unittest.TestCase):
     def setUp (self):
         self.app = matcher.app.test_client()
         matcher.app.testing = True
-        self.or_client = openreview.Client()
 
     def tearDown (self):
         pass

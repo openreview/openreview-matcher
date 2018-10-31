@@ -8,11 +8,11 @@ This is implemented as a Flask RESTful service.   Structure of the project:
 
 '/matcher' contains the python code that implements app including:
 
-'/matcher/assign_reviewers.py' the main function that is run when Flask starts.  Initializes the app.
+'/matcher/matching_app.py' the main app that is run when Flask starts.  Initializes the app.
 
 '/matcher/routes.py' functions that  serve as the endpoints of the service e.g
  
-'/matcher/assign.py' contains the task function run_match which runs the match solver in a thread
+'/matcher/match.py' contains the task function compute_match which runs the match solver in a thread
 
 '/matcher/solver.py' Defines the Solver class which wraps the min cost flow_solver
 
@@ -43,8 +43,9 @@ were set in the first file.
 
 From Intellij IDEA:
 
-There is a pre-built run/debug configurations:  _assign_reviewers_ should be used to 
-run the app during development and debugging. 
+There is a pre-built run/debug configurations:  _matching_app_ should be used to 
+run the app during development and debugging.  N.B.  The _matching_app_ configuration sets Flask running
+on port 8050.
 
 From the command line:
 

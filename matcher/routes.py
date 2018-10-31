@@ -2,7 +2,7 @@ from flask import request, jsonify
 from threading import Thread
 from matcher import app
 from matcher.decorators import crossdomain
-from matcher.assign import run_match
+from matcher.match import match_task
 import tests.mock_or_client
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException
@@ -42,7 +42,7 @@ def match():
         args = (config_note, client)
         # TODO may want to replace threading with a task queue such as provided by RQ.
         match_thread = Thread(
-            target=run_match,
+            target=match_task,
             args=args
         )
         match_thread.start()
