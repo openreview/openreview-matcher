@@ -6,10 +6,6 @@ logger = logging.getLogger(__name__)
 
 from matcher import app
 
-print("IN ASSIGN_REVIEWERS with __name__ == " + __name__ )
-
-
-
 def app_init():
 
     # first get config settings for all matcher apps regardless of environment
