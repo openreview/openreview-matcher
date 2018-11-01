@@ -10,7 +10,6 @@ class MockORClient (openreview.Client):
             # just make sure there's two things that result from splitting the Authorization header.
             # It doesn't matter what comes after Bearer.  We'll assume its a working token
             token = token.split()[1]
-            print("MockORClient token is " + token)
             if token.upper() != 'VALID':
                 raise BadTokenException("The token is invalid")
         else:
@@ -33,7 +32,23 @@ class MockORClient (openreview.Client):
             list[2]
             # will generate an internal error
         else:
-            return ConfigNote()
+            note = openreview.Note(id='testId',
+                                   invitation=None,
+                                   readers=[],
+                                   writers=[],
+                                   signatures=[],
+                                   content= {
+                                       'metadata_invitation': 1,
+                                       'match_group': 1,
+                                       'paper_invitation': 1,
+                                       'assignment_invitation': 1,
+                                       'max_papers': 1,
+                                       'max_users': 1,
+                                       'min_papers': 1,
+                                       'weights': 1,
+                                       'constraints': 1
+                                   })
+            return note
 
 
     def get_notes (self, id = None, paperhash = None, forum = None, invitation = None, replyto = None, tauthor = None, signature = None, writer = None, trash = None, number = None, limit = None, offset = None, mintcdate = None, details = None):
@@ -49,10 +64,3 @@ class MockORClient (openreview.Client):
 
     def delete_note (self, id):
         return {}
-
-# A fake config note with only the necessary fields and useless values for getting through the match process.
-class ConfigNote (openreview.Note):
-    def __init__ (self):
-        self.id = 'testId'
-        self.content = {'metadata_invitation': 1, 'match_group': 1, 'paper_invitation': 1, 'assignment_invitation': 1, 'max_papers': 1,
-                        'max_users': 1, 'min_papers': 1, 'weights': 1, 'constraints': 1}

@@ -20,9 +20,24 @@ def json_of_response(response):
 # These stack dumps do not represent test cases that are failing!
 class TestFlaskApi(unittest.TestCase):
 
+    # called once at beginning of suite
+    @classmethod
+    def setUpClass(cls):
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
+
+    # called at the beginning of each test
     def setUp (self):
         self.app = matcher.app.test_client()
+        self.app.testing = True
+        # Sets the webapp up so that it will switch to using the mock OR client
         matcher.app.testing = True
+        # Turn off logging in the web app so that tests run with a clean console
+        matcher.app.logger.disabled = True
+        matcher.app.logger.parent.disabled = True
 
     def tearDown (self):
         pass
@@ -79,6 +94,10 @@ class TestFlaskApi(unittest.TestCase):
 
     # A valid token and valid config note Id.  The match task will run and succeed.
     def test_valid_inputs (self):
+        # Turn on logging in the web app because these are valid inputs and nothing should
+        # go wrong in the app.  If it does, we want to see the errors in the console
+        matcher.app.logger.disabled = False
+        matcher.app.logger.parent.disabled = False
         response = post_json(self.app, '/match', {'configNoteId': 'ok'},
                              headers={'Authorization': 'Bearer Valid'})
         assert response.status_code == 200
