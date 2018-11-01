@@ -1,8 +1,6 @@
 from flask import Flask
 
-
-# app = Flask(__name__)
-# per Flask doc, we hardcode the application package here.
+# per Flask doc, we hardcode the application package rather than use __name__
 app = Flask('matcher')
 
 from matcher import routes

@@ -50,5 +50,5 @@ on port 8050.
 From the command line:
 
 source venv/bin/activate
-export FLASK_APP=matcher/assign_reviewers.py
+export FLASK_APP=matcher/matching_app.py
 flask run
