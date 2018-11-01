@@ -11,7 +11,6 @@ def app_init():
     # first get config settings for all matcher apps regardless of environment
     app.config.from_pyfile('../config.cfg')
     # now override using settings for this environment
-    app.config.from_pyfile('../instance/config.cfg')
     fh = logging.handlers.RotatingFileHandler(filename=app.config['LOG_FILE'], mode='a', maxBytes=1*1000*1000, backupCount=20)
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
@@ -21,7 +20,7 @@ def app_init():
     if app.config['ENV'] == 'development':
         app.logger.addHandler(ch)
     app.logger.addHandler(fh)
-    app.logger.debug("\n\n" + str(datetime.datetime.now()) + " Starting ASSIGN_REVIEWERS app")
+    app.logger.debug("\n\n" + str(datetime.datetime.now()) + " Starting app")
     app.logger.debug("---------------------------------------------------------")
 
     # app.run()
