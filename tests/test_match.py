@@ -1,6 +1,7 @@
 import unittest
 import json
 import matcher
+import os
 
 
 def post_json(client, url, json_dict, headers=None):
@@ -30,6 +31,10 @@ class TestFlaskApi(unittest.TestCase):
         pass
 
     # called at the beginning of each test
+    # This uses the test_client() which builds the Flask app and runs it for testing.  It does not
+    # start it in such a way that the app initializes correctly (i.e. by calling matcher/app.py) so
+    # we have to set a couple things correctly for the testing context: logging disabled and tell it where
+    # the openreview base url is.
     def setUp (self):
         self.app = matcher.app.test_client()
         self.app.testing = True
@@ -38,6 +43,9 @@ class TestFlaskApi(unittest.TestCase):
         # Turn off logging in the web app so that tests run with a clean console
         matcher.app.logger.disabled = True
         matcher.app.logger.parent.disabled = True
+        or_baseurl = os.getenv('OPENREVIEW_BASEURL')
+        assert or_baseurl != None and or_baseurl != ''
+        matcher.app.config['OPENREVIEW_BASEURL'] = or_baseurl
 
     def tearDown (self):
         pass

@@ -7,11 +7,14 @@ import tests.mock_or_client
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException
 
-def get_client (baseurl=None,username=None,password=None,token=None):
+def get_client (token=None):
+    baseurl = app.config['OPENREVIEW_BASEURL']
+    # expecting "Bearer XXYYZZ" and we toss Bearer
+    x, token = token.split()
     if app.config['TESTING']:
-        return tests.mock_or_client.MockORClient(baseurl=baseurl,username=username,password=password,token=token)
+        return tests.mock_or_client.MockORClient(baseurl=baseurl,token=token)
     else:
-        return openreview.Client(baseurl=baseurl,username=username,password=password,token=token)
+        return openreview.Client(baseurl=baseurl,token=token)
 
 
 @app.route('/match/test')

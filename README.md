@@ -8,7 +8,7 @@ This is implemented as a Flask RESTful service.   Structure of the project:
 
 '/matcher' contains the python code that implements app including:
 
-'/matcher/matching_app.py' the main app that is run when Flask starts.  Initializes the app.
+'/matcher/app.py' the main app that is run when Flask starts.  Initializes the app.
 
 '/matcher/routes.py' functions that  serve as the endpoints of the service e.g
  
@@ -21,7 +21,8 @@ This is implemented as a Flask RESTful service.   Structure of the project:
 Two config.cfg files are read in.  The first is in the top level directory.  It can contain
 settings that are use for the app.   A second file is read in from instance/ directory which should
 contain settings particular to a users environment.  Those settings will override ones that
-were set in the first file.  
+were set in the first file.  Settings that are necessary:
+OPENREVIEW_BASEURL, LOG_FILE
 
 
 **Testing:**
@@ -41,14 +42,22 @@ were set in the first file.
 
 **To run it:**
 
+From the command line:
+
+cd to project dir
+source venv/bin/activate
+cd matcher //where the app.py file lives
+flask run
+
+This will set the app running on localhost:5000
+
+Test that its running in browser:
+http://localhost:5000/match/test
+
+
 From Intellij IDEA:
 
-There is a pre-built run/debug configurations:  _matching_app_ should be used to 
+There are pre-built run/debug configurations:  _matching_app_ should be used to 
 run the app during development and debugging.  N.B.  The _matching_app_ configuration sets Flask running
 on port 8050.
 
-From the command line:
-
-source venv/bin/activate
-export FLASK_APP=matcher/matching_app.py
-flask run
