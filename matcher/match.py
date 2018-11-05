@@ -67,6 +67,7 @@ def compute_match(config_note, client):
     except Exception as e:
         config_note.content['status'] = 'Failure: Internal Error while running solver'
         client.post_note(config_note)
+        raise e
     finally:
         return config_note
 
