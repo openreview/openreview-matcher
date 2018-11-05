@@ -9,8 +9,6 @@ from exc.exceptions import NoTokenException, BadTokenException
 
 def get_client (token=None):
     baseurl = app.config['OPENREVIEW_BASEURL']
-    # expecting "Bearer XXYYZZ" and we toss Bearer
-    x, token = token.split()
     if app.config['TESTING']:
         return tests.mock_or_client.MockORClient(baseurl=baseurl,token=token)
     else:
