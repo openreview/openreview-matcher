@@ -1,7 +1,6 @@
 from flask import request, jsonify
 from threading import Thread
 from matcher import app
-from matcher.decorators import crossdomain
 from matcher.match import match_task
 import tests.mock_or_client
 import openreview
@@ -22,7 +21,6 @@ def test():
 
 
 @app.route('/match', methods=['POST','OPTIONS'])
-@crossdomain(origin='*', headers=['Authorization'])
 def match():
     app.logger.debug("POST /match")
     res = {}

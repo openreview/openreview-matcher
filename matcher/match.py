@@ -69,7 +69,7 @@ def compute_match(config_note, client):
         client.post_note(config_note)
         raise e
     finally:
-        return config_note
+         return config_note
 
 
 # delete assignment notes created by previous runs of matcher
