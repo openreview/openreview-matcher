@@ -2,26 +2,32 @@ import openreview
 from matcher import app
 from matcher.solver import Solver
 from matcher.encoder import Encoder
+import logging
 
 # A task that runs as a separate thread with errors logged to the app.
 def match_task (config_note, client):
     try:
         app.logger.debug("Starting task to assign reviewers for configId: " + config_note.id)
-        config_note = compute_match(config_note, client)
-        app.logger.debug("Finished task for configId: " + config_note.id)
+        config_note = compute_match(config_note, client, app.logger)
     except Exception as e:
-        app.logger.debug("Failed to complete matching for configId: " + config_note.id)
+        app.logger.error("Failed to complete matching for configId: " + config_note.id)
         app.logger.error('Internal error:', exc_info=True)
     finally:
+        app.logger.debug("Finished task for configId: " + config_note.id)
         return config_note
+
+
 
 
 # A function that can be called from a script to compute a match.
 # Given a config_note and an openreview.client object, this will compute a match of
 # reviewers to papers and post it to the db.  It will return the config note with a status field
 # set to 'complete' if it succeeds.  Otherwise a failure message will be placed in the status field.
-def compute_match(config_note, client):
+# Pass in a logger if you want logging;  otherwise a default logger will be used.
+def compute_match(config_note, client, logger=logging.getLogger(__name__)):
     try:
+        config_note.content['status'] = 'processing'
+        config_note = client.post_note(config_note)
         config = config_note.content
         metadata = list(openreview.tools.iterget_notes(client, invitation=config['metadata_invitation']))
         reviewer_group = client.get_group(config['match_group'])
@@ -34,10 +40,10 @@ def compute_match(config_note, client):
         minimums = [config['min_papers']] * len(reviewer_ids)
         maximums = [config['max_papers']] * len(reviewer_ids)
         # enter 'processing' phase
-        config_note.content['status'] = 'processing'
-        config_note = client.post_note(config_note)
+        logger.debug("Clearing Existing Assignment notes")
         # clear the existing assignments from previous runs of this.
         clear_existing_match(assignment_inv, client)
+        logger.debug("Encoding meta-data")
         # instantiate the metadata encoder, and use it to instantiate a flow solver
         encoder = Encoder(metadata, config, reviewer_ids)
         # The config contains custom_loads which is a dictionary where keys are user names
@@ -48,18 +54,22 @@ def compute_match(config_note, client):
                 maximums[reviewer_index] = custom_load
                 if custom_load < minimums[reviewer_index]:
                     minimums[reviewer_index] = custom_load
+        logger.debug("Preparing Solver")
         flow_solver = Solver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
-
+        logger.debug("Running Solver")
         # find a solution
         solution = flow_solver.solve()
         if flow_solver.is_solved():
             # decode the solution matrix
+            logger.debug("Decoding Solution")
             assignments_by_forum, alternates_by_forum = encoder.decode(solution)
             # put the proposed assignment in the db
+            logger.debug("Saving Assignment notes")
             save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum, client, config)
             config_note.content['status'] = 'complete'
             client.post_note(config_note)
         else:
+            logger.debug('Failure: Solver could not find a solution.')
             config_note.content['status'] = 'Failure: Solver could not find a solution.  Adjust your parameters'
             client.post_note(config_note)
     # If any exception occurs while processing we need to set the status of the config note to indicate
