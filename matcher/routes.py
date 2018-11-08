@@ -1,10 +1,9 @@
 from flask import request, jsonify
-from threading import Thread
 from matcher import app
-from matcher.match import match_task
+from matcher.match import Match
 import tests.mock_or_client
 import openreview
-from exc.exceptions import NoTokenException, BadTokenException
+from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException
 
 def get_client (token=None):
     baseurl = app.config['OPENREVIEW_BASEURL']
@@ -35,17 +34,13 @@ def match():
         app.logger.debug("Request to assign reviewers for configId: " + configNoteId)
         # If the client was constructed with a bad token, the failure happens here
         config_note = client.get_note(configNoteId)
-        config_note.content['status'] = 'queued'
-        config_note = client.post_note(config_note)
-
-        args = (config_note, client)
-        # TODO may want to replace threading with a task queue such as provided by RQ.
-        match_thread = Thread(
-            target=match_task,
-            args=args
-        )
-        match_thread.start()
-
+        # If the configuration is already running a matching task, do not allow another until the
+        # running task is complete
+        if config_note.content['status'] == Match.STATUS_RUNNING:
+            raise AlreadyRunningException('There is already a running matching task for config ' + configNoteId)
+        matcher = Match(client,config_note,app.logger)
+        # runs the match task in a separate thread
+        matcher.run()
     except openreview.OpenReviewException as e:
         app.logger.error('OpenReview-py error:', exc_info=True)
         # this exception type has args which is a tuple containing a list containing a dict where the type key indicates what went wrong
@@ -59,7 +54,7 @@ def match():
             err_type = str(e)
         res['error'] = err_type
         return jsonify(res) , status
-    except (NoTokenException, BadTokenException) as e:
+    except (NoTokenException, BadTokenException, AlreadyRunningException) as e:
         app.logger.error('OpenReview-matcher error:', exc_info=True)
         res['error'] = str(e)
         return jsonify(res), 400
@@ -68,7 +63,6 @@ def match():
         app.logger.error('OpenReview-matcher error:', exc_info=True)
         res['error'] = str(e)
         return jsonify(res), 500
-
     else:
         app.logger.debug("POST returns " + str(res))
         return jsonify(res)

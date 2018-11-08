@@ -3,3 +3,6 @@ class BadTokenException (Exception):
 
 class NoTokenException (Exception):
     pass
+
+class AlreadyRunningException (Exception):
+    pass
