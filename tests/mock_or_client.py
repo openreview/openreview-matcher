@@ -1,6 +1,7 @@
 import openreview
 from openreview import OpenReviewException
 from exc.exceptions import BadTokenException
+from matcher.match import Match
 
 # This is used by the matcher web app to mock the OR-py Client class.  It is set up to throw it's full variety of exceptions
 # when given certain test inputs.
@@ -30,7 +31,25 @@ class MockORClient (openreview.Client):
         elif configNoteId == 'internal error':
             list = []
             list[2]
-            # will generate an internal error
+        elif configNoteId == 'already_running':
+            note = openreview.Note(id='testId',
+                                   invitation=None,
+                                   readers=[],
+                                   writers=[],
+                                   signatures=[],
+                                   content= {
+                                       'metadata_invitation': 1,
+                                       'match_group': 1,
+                                       'paper_invitation': 1,
+                                       'assignment_invitation': 1,
+                                       'max_papers': 1,
+                                       'max_users': 1,
+                                       'min_papers': 1,
+                                       'weights': 1,
+                                       'constraints': 1,
+                                       'status': Match.STATUS_RUNNING
+                                   })
+            return note
         else:
             note = openreview.Note(id='testId',
                                    invitation=None,
@@ -46,7 +65,8 @@ class MockORClient (openreview.Client):
                                        'max_users': 1,
                                        'min_papers': 1,
                                        'weights': 1,
-                                       'constraints': 1
+                                       'constraints': 1,
+                                       'status': Match.STATUS_INITIALIZED
                                    })
             return note
 

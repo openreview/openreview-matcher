@@ -6,10 +6,11 @@ import os
 
 def post_json(client, url, json_dict, headers=None):
     """Send dictionary json_dict as a json to the specified url """
+    config_note = json.dumps(json_dict)
     if headers:
-        return client.post(url, data=json.dumps(json_dict), content_type='application/json', headers=headers)
+        return client.post(url, data=config_note, content_type='application/json', headers=headers)
     else:
-        return client.post(url, data=json.dumps(json_dict), content_type='application/json')
+        return client.post(url, data=config_note, content_type='application/json')
 
 def json_of_response(response):
     """Decode json from response"""
@@ -66,6 +67,7 @@ class TestFlaskApi(unittest.TestCase):
         # the stuff from OpenReviewException
     '''
 
+
     # The Authorization header is missing and passed along with a working configNoteId.   Should get back a 400
     def test_missing_auth_header (self):
         response = post_json(self.app, '/match', {'configNoteId': 'ok'},
@@ -98,6 +100,12 @@ class TestFlaskApi(unittest.TestCase):
         response = post_json(self.app, '/match', {'configNoteId': 'nonExist'},
                              headers={'Authorization': 'Bearer Valid'})
         assert response.status_code == 404
+
+    # Valid inputs except that the task is already running which should result in a 400 error
+    def test_running_task (self):
+        response = post_json(self.app, '/match', {'configNoteId': 'already_running'},
+                             headers={'Authorization': 'Bearer Valid'})
+        assert response.status_code == 400
 
 
     # A valid token and valid config note Id.  The match task will run and succeed.
