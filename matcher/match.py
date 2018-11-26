@@ -43,8 +43,6 @@ class Match:
             return self.config_note
 
 
-
-
     # A function that can be called from a script to compute a match.
     # Given a config_note and an openreview.client object, this will compute a match of
     # reviewers to papers and post it to the db.  It will return the config note with a status field
@@ -56,13 +54,19 @@ class Match:
             metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
             reviewer_group = self.client.get_group(self.config['match_group'])
             paper_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.config['paper_invitation']))
+            assert len(paper_notes) == len(metadata), "There is a difference between meta-data size and number of papers"
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             reviewer_ids = reviewer_group.members
+            md_reviewers = metadata[0].content['entries']
+            md_revs_size = len(md_reviewers)
+            group_size = len(reviewer_ids)
+            assert md_revs_size == group_size, "The number of reviewers in a meta-data note is different from the number of reviewers in the conference reviewers group"
             # This could be set by hand if reviewers or papers have specific supplies/demands
             supplies = [self.config['max_papers']] * len(reviewer_ids)
             demands = [self.config['max_users']] * len(metadata)
             minimums = [self.config['min_papers']] * len(reviewer_ids)
             maximums = [self.config['max_papers']] * len(reviewer_ids)
+
             # enter 'processing' phase
             self.logger.debug("Clearing Existing Assignment notes")
             # clear the existing assignments from previous runs of this.
@@ -100,7 +104,7 @@ class Match:
             msg = "Internal Error while running solver: " + str(e)
             self.set_status(Match.STATUS_ERROR,msg)
             raise e
-        finally:
+        else:
              return self.config_note
 
 
