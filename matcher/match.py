@@ -10,15 +10,14 @@ class Match:
     STATUS_FAILURE = "Failure"
     STATUS_COMPLETE = "Complete"
     STATUS_RUNNING = "Running"
-    STATUS_PENDING = "Pending"
-    STATUS_READY = "Ready"
+    STATUS_INITIALIZED = "Initialized"
 
     def __init__ (self, client, config_note, logger=logging.getLogger(__name__)):
         self.client = client
         self.config_note = config_note
         self.config = self.config_note.content
         self.logger = logger
-        self.set_status(Match.STATUS_READY)
+        self.set_status(Match.STATUS_INITIALIZED)
 
     def set_status (self, status, message=None):
         statmsg = status + (': ' + message if message else '')
@@ -57,7 +56,7 @@ class Match:
             assert len(paper_notes) == len(metadata), "There is a difference between meta-data size and number of papers"
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             reviewer_ids = reviewer_group.members
-            md_reviewers = metadata[0].content['entries']
+            md_reviewers = metadata[0].content['entries'] if len(metadata) > 0 else []
             md_revs_size = len(md_reviewers)
             group_size = len(reviewer_ids)
             assert md_revs_size == group_size, "The number of reviewers in a meta-data note is different from the number of reviewers in the conference reviewers group"
