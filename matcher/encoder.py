@@ -2,8 +2,13 @@ from collections import defaultdict
 import numpy as np
 
 from . import utils
+from fields import Configuration
+from fields import PaperReviewerScore
+from fields import Assignment
 
 class Encoder(object):
+
+
     def __init__(self, metadata=None, config=None, reviewer_ids=None, cost_func=utils.cost):
 
         self.metadata = []
@@ -18,12 +23,19 @@ class Encoder(object):
         self.index_by_reviewer = {}
         self.forum_by_index = {}
         self.reviewer_by_index = {}
-
-        self.weights = config['weights']
-        self.constraints = config['constraints']
+        self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
+        # self.weights is a dictionary with keys score_names and values the weight
+        self.weights = self.get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
+        self.constraints = config[Configuration.CONSTRAINTS]
 
         if metadata and config and reviewer_ids:
             self.encode(metadata, config, reviewer_ids, cost_func)
+
+    def get_weight_dict (self, names, weights):
+        d = {}
+        for n,w in zip(names,weights):
+            d[n] = float(w)
+        return d
 
     def encode(self, metadata, config, reviewer_ids, cost_func):
         '''
@@ -43,8 +55,8 @@ class Encoder(object):
         self.cost_matrix = np.zeros((len(self.reviewer_ids), len(self.metadata)))
         self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
 
-        self.entries_by_forum = {m.forum: {entry['userId']: entry
-                                           for entry in m.content['entries']}
+        self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
+                                           for entry in m.content[PaperReviewerScore.ENTRIES]}
                                  for m in self.metadata}
 
         self.index_by_forum = {m.forum: index
@@ -59,8 +71,8 @@ class Encoder(object):
         self.reviewer_by_index = {index: id
                                   for id, index in self.index_by_reviewer.items()}
 
-        self.weights = config['weights']
-        self.constraints = config['constraints']
+        # self.weights = config[Configuration.SCORES_WEIGHTS]
+        self.constraints = config[Configuration.CONSTRAINTS]
 
         for forum, entry_by_id in self.entries_by_forum.items():
             paper_index = self.index_by_forum[forum]
@@ -70,8 +82,8 @@ class Encoder(object):
                 coordinates = reviewer_index, paper_index
                 entry = entry_by_id.get(id)
                 if entry:
-                    self.cost_matrix[coordinates] = self.cost_func(entry['scores'], self.weights)
-                    if entry.get('conflicts'):
+                    self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
+                    if entry.get(PaperReviewerScore.CONFLICTS):
                         self.constraint_matrix[coordinates] = -1
                     else:
                         self.constraint_matrix[coordinates] = 0
@@ -100,25 +112,26 @@ class Encoder(object):
                 forum = self.forum_by_index[paper_index]
 
                 assignment = {
-                    'userId': user_id,
-                    'scores': {},
-                    'conflicts': [],
-                    'finalScore': None
+                    Assignment.USERID: user_id,
+                    Assignment.SCORES: {},
+                    Assignment.CONFLICTS: [],
+                    Assignment.FINAL_SCORE: None
                 }
                 entry = self.entries_by_forum[forum].get(user_id)
 
                 if entry:
-                    assignment['scores'] = utils.weight_scores(entry.get('scores'), self.weights)
-                    assignment['conflicts'] = entry.get('conflicts')
-                    assignment['finalScore'] = utils.safe_sum(
-                        utils.weight_scores(entry.get('scores'), self.weights).values())
+                    assignment[Assignment.SCORES] = utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights)
+                    assignment[Assignment.CONFLICTS] = entry.get(PaperReviewerScore.CONFLICTS)
+                    assignment[Assignment.FINAL_SCORE] = utils.safe_sum(
+                        utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights).values())
 
                 if flow:
                     assignments_by_forum[forum].append(assignment)
-                elif assignment['finalScore'] and not assignment['conflicts']:
+                elif assignment[Assignment.FINAL_SCORE] and not assignment[Assignment.CONFLICTS]:
                     alternates_by_forum[forum].append(assignment)
 
+        num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
-            alternates_by_forum[forum] = sorted(alternates, key=lambda a: a['finalScore'], reverse=True)[0:10]
+            alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
 
         return dict(assignments_by_forum), dict(alternates_by_forum)

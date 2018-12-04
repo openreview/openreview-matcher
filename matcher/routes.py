@@ -4,6 +4,7 @@ from matcher.match import Match
 import tests.mock_or_client
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException
+from fields import Configuration
 
 def get_client (token=None):
     baseurl = app.config['OPENREVIEW_BASEURL']
@@ -23,6 +24,7 @@ def test():
 def match():
     app.logger.debug("POST /match")
     res = {}
+    matcher = None
     try:
         token = request.headers.get('Authorization')
         if not token:
@@ -36,7 +38,7 @@ def match():
         config_note = client.get_note(configNoteId)
         # If the configuration is already running a matching task, do not allow another until the
         # running task is complete
-        if config_note.content['status'] == Match.STATUS_RUNNING:
+        if config_note.content[Configuration.STATUS] == Configuration.STATUS_RUNNING:
             raise AlreadyRunningException('There is already a running matching task for config ' + configNoteId)
         matcher = Match(client,config_note,app.logger)
         # runs the match task in a separate thread
@@ -53,15 +55,21 @@ def match():
         else:
             err_type = str(e)
         res['error'] = err_type
+        if matcher:
+            matcher.set_status(Configuration.STATUS_ERROR,"Error: " + str(e))
         return jsonify(res) , status
     except (NoTokenException, BadTokenException, AlreadyRunningException) as e:
         app.logger.error('OpenReview-matcher error:', exc_info=True)
         res['error'] = str(e)
+        if matcher:
+            matcher.set_status(Configuration.STATUS_ERROR,"Error: " + str(e))
         return jsonify(res), 400
 
     except Exception as e:
         app.logger.error('OpenReview-matcher error:', exc_info=True)
         res['error'] = str(e)
+        if matcher:
+            matcher.set_status(Configuration.STATUS_ERROR,"Error: " + str(e))
         return jsonify(res), 500
     else:
         app.logger.debug("POST returns " + str(res))

@@ -78,9 +78,10 @@ class Solver(object):
             len(demands), self.num_papers)
 
         self.demands = demands
-
+        supply = sum(self.maximums)
+        demand = sum(self.demands)
         # the total supply of reviews must be greater than the total demand
-        net_supply = sum(self.maximums) + sum(self.demands)
+        net_supply = supply + demand
         assert net_supply >= 0, \
             'demand exceeds supply (net supply: {})'.format(net_supply)
 
