@@ -24,18 +24,14 @@ class Encoder(object):
         self.forum_by_index = {}
         self.reviewer_by_index = {}
         self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
-        # self.weights is a dictionary with keys score_names and values the weight
         self.weights = self.get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
-        self.constraints = config[Configuration.CONSTRAINTS]
+        self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
         if metadata and config and reviewer_ids:
             self.encode(metadata, config, reviewer_ids, cost_func)
 
     def get_weight_dict (self, names, weights):
-        d = {}
-        for n,w in zip(names,weights):
-            d[n] = float(w)
-        return d
+        return dict(zip(names,weights))
 
     def encode(self, metadata, config, reviewer_ids, cost_func):
         '''
@@ -71,8 +67,7 @@ class Encoder(object):
         self.reviewer_by_index = {index: id
                                   for id, index in self.index_by_reviewer.items()}
 
-        # self.weights = config[Configuration.SCORES_WEIGHTS]
-        self.constraints = config[Configuration.CONSTRAINTS]
+        self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
         for forum, entry_by_id in self.entries_by_forum.items():
             paper_index = self.index_by_forum[forum]

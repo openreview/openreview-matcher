@@ -52,21 +52,8 @@ class Match:
             # and its invitation.
             metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
             reviewer_group = self.client.get_group(self.config['match_group'])
-            paper_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.config['paper_invitation']))
-            # assert len(paper_notes) == len(metadata), "There is a difference between meta-data size and number of papers"
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             reviewer_ids = reviewer_group.members
-            md_reviewers = metadata[0].content[PaperReviewerScore.ENTRIES] if len(metadata) > 0 else []
-            md_revs_size = len(md_reviewers)
-            group_size = len(reviewer_ids)
-            # assert md_revs_size == group_size, "The number of reviewers in a meta-data note is different from the number of reviewers in the conference reviewers group"
-            # This could be set by hand if reviewers or papers have specific supplies/demands
-            # Invitation only allows strings for reply fields, thus the config note has strings in these
-            # fields.  At some point MB will allow numbers stored there so this handles both possibilities.
-            # if type(self.config['max_papers']) == str:
-            #     supplies = [int(self.config['max_papers'])] * len(reviewer_ids)
-            # else:
-            #     supplies = [self.config['max_papers']] * len(reviewer_ids)
             if type(self.config[Configuration.MAX_USERS]) == str:
                 demands = [int(self.config[Configuration.MAX_USERS])] * len(metadata)
             else: demands = [self.config[Configuration.MAX_USERS]] * len(metadata)
@@ -107,7 +94,7 @@ class Match:
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
-                self.set_status(Configuration.FAILURE, 'Solver could not find a solution.  Adjust your parameters' )
+                self.set_status(Configuration.STATUS_FAILURE, 'Solver could not find a solution.  Adjust your parameters' )
         # If any exception occurs while processing we need to set the status of the config note to indicate
         # failure.
         except Exception as e:
