@@ -4,7 +4,7 @@ from matcher.match import Match
 import tests.mock_or_client
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException
-from fields import Configuration
+from matcher.fields  import Configuration
 
 def get_client (token=None):
     baseurl = app.config['OPENREVIEW_BASEURL']
