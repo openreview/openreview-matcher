@@ -24,7 +24,7 @@ class Encoder(object):
         self.index_by_reviewer = {}
         self.forum_by_index = {}
         self.reviewer_by_index = {}
-        self.score_names = config[fields.Configuration.SCORES_NAMES] # a list of score names
+        self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
         self.weights = self.get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
