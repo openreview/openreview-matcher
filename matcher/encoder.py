@@ -2,9 +2,10 @@ from collections import defaultdict
 import numpy as np
 
 from . import utils
-from fields import Configuration
-from fields import PaperReviewerScore
-from fields import Assignment
+from matcher.fields import Configuration
+from matcher.fields import PaperReviewerScore
+from matcher.fields import Assignment
+
 
 class Encoder(object):
 
@@ -23,7 +24,7 @@ class Encoder(object):
         self.index_by_reviewer = {}
         self.forum_by_index = {}
         self.reviewer_by_index = {}
-        self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
+        self.score_names = config[fields.Configuration.SCORES_NAMES] # a list of score names
         self.weights = self.get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
