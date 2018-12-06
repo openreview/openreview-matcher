@@ -2,9 +2,10 @@ from collections import defaultdict
 import numpy as np
 
 from . import utils
-from fields import Configuration
-from fields import PaperReviewerScore
-from fields import Assignment
+from matcher.fields import Configuration
+from matcher.fields import PaperReviewerScore
+from matcher.fields import Assignment
+
 
 class Encoder(object):
 
