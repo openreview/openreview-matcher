@@ -28,7 +28,7 @@ def weight_scores(scores, weights):
     weighted_scores = {}
     for feature in weights:
         if feature in scores:
-            weighted_scores[feature] = int(scores[feature]) * weights[feature]
+            weighted_scores[feature] = scores[feature] * weights[feature]
 
     return weighted_scores
 
