@@ -2,9 +2,9 @@ import openreview
 import threading
 from matcher.solver import Solver
 from matcher.encoder import Encoder
-from fields import Configuration
-from fields import PaperReviewerScore
-from fields import Assignment
+from matcher.fields import Configuration
+from matcher.fields import PaperReviewerScore
+from matcher.fields import Assignment
 import logging
 
 class Match:
