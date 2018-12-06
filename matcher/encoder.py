@@ -32,7 +32,7 @@ class Encoder(object):
             self.encode(metadata, config, reviewer_ids, cost_func)
 
     def get_weight_dict (self, names, weights):
-        return dict(zip(names,weights))
+        return dict(zip(names, [ float(w) for w in weights]))
 
     def encode(self, metadata, config, reviewer_ids, cost_func):
         '''
