@@ -40,7 +40,7 @@ class Encoder(object):
 
         metadata    = a list of metadata Notes
         weights     = a dict of weights keyed on score type
-          e.g. { 'tpms': 0.5, 'bid': 1.0, 'ac_rec': 2.0 }
+          e.g. { 'tpms': 0.5, 'bid': 1.0, 'recommendation': 2.0 }
         reviewers   = a list of reviewer IDs (to lookup in metadata entries)
 
         '''
