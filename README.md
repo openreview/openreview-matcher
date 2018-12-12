@@ -42,11 +42,11 @@ OPENREVIEW_BASEURL, LOG_FILE
 
 **To run it:**
 
-From the command line:
+From the command line (must run from toplevel project dir because logging paths are relative to working dir)
 
-cd to project dir
+cd to project dir (e.g. openreview-matcher)
 source venv/bin/activate
-cd matcher //where the app.py file lives
+export FLASK_APP=matcher/app.py
 flask run
 
 This will set the app running on localhost:5000

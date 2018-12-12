@@ -65,9 +65,6 @@ class Match:
             else: maximums = [self.config[Configuration.MAX_PAPERS]] * len(reviewer_ids)
 
             # enter 'processing' phase
-            self.logger.debug("Clearing Existing Assignment notes")
-            # clear the existing assignments from previous runs of this.
-            self.clear_existing_match(assignment_inv)
             self.logger.debug("Encoding meta-data")
             # instantiate the metadata encoder, and use it to instantiate a flow solver
             encoder = Encoder(metadata, self.config, reviewer_ids)
@@ -89,7 +86,6 @@ class Match:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
                 # put the proposed assignment in the db
-                self.logger.debug("Saving Assignment notes")
                 self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
@@ -107,13 +103,21 @@ class Match:
 
     # delete assignment notes created by previous runs of matcher
     def clear_existing_match(self, assignment_inv):
-        for assignment_note in openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id):
-            if assignment_note.content['label'] == self.config[Configuration.LABEL]:
-                self.client.delete_note(assignment_note)
+        notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
+                                                         content = { 'label': self.config[Configuration.LABEL]}))
+        for assignment_note in notes_list:
+            self.client.delete_note(assignment_note)
+        assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
+                                                       content = { 'label': self.config[Configuration.LABEL]}))) == 0, \
+            "All assignment notes with the label " +self.config[Configuration.LABEL]+ " were not deleted!"
 
 
     # save the assignment as a set of notes.
     def save_suggested_assignment (self, alternates_by_forum, assignment_inv, assignments_by_forum):
+        self.logger.debug("Clearing Existing Assignment notes")
+        # clear the existing assignments from previous runs of this.
+        self.clear_existing_match(assignment_inv)
+        self.logger.debug("Saving New Assignment notes")
         # post assignments
         for forum, assignments in assignments_by_forum.items():
             alternates = alternates_by_forum.get(forum, [])
