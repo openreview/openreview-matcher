@@ -103,16 +103,13 @@ class Match:
 
     # delete assignment notes created by previous runs of matcher
     def clear_existing_match(self, assignment_inv):
-        notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id))
+        notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
+                                                         content = { 'label': self.config[Configuration.LABEL]}))
         for assignment_note in notes_list:
-            if assignment_note.content['label'] == self.config[Configuration.LABEL]:
-                self.client.delete_note(assignment_note)
-        # This isn't quite right because we want a filter that only includes notes with the given label
-        # TODO: When upgrade to the iterget_notes allows inclusion of content filter( e.g. content.label=self.config[Configuration.LABEL])
-        # this assert can be added back with that kind of a modification
-        #
-        # assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id))) == 0, \
-        #     "All assignment notes not deleted!"
+            self.client.delete_note(assignment_note)
+        assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
+                                                       content = { 'label': self.config[Configuration.LABEL]}))) == 0, \
+            "All assignment notes with the label " +self.config[Configuration.LABEL]+ " were not deleted!"
 
 
     # save the assignment as a set of notes.
