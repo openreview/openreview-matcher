@@ -90,7 +90,7 @@ class Match:
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
-                self.set_status(Configuration.STATUS_FAILURE, 'Solver could not find a solution.  Adjust your parameters' )
+                self.set_status(Configuration.STATUS_NO_SOLUTION, 'Solver could not find a solution.  Adjust your parameters' )
         # If any exception occurs while processing we need to set the status of the config note to indicate
         # failure.
         except Exception as e:
