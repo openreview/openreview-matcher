@@ -6,6 +6,7 @@ from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
 import logging
+import time
 
 class Match:
 
@@ -106,7 +107,8 @@ class Match:
         notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
                                                          content = { 'label': self.config[Configuration.LABEL]}))
         for assignment_note in notes_list:
-            self.client.delete_note(assignment_note)
+            assignment_note.ddate = round(time.time()) * 1000
+            self.client.post_note(assignment_note)
         assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
                                                        content = { 'label': self.config[Configuration.LABEL]}))) == 0, \
             "All assignment notes with the label " +self.config[Configuration.LABEL]+ " were not deleted!"
