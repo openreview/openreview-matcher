@@ -1,6 +1,6 @@
 import openreview
 import threading
-from matcher.solver import Solver
+from .solvers.simple_solver import Solver
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
