@@ -6,3 +6,6 @@ class NoTokenException (Exception):
 
 class AlreadyRunningException (Exception):
     pass
+
+class AlreadyCompleteException (Exception):
+    pass

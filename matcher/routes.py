@@ -3,7 +3,7 @@ from matcher import app
 from matcher.match import Match
 import tests.mock_or_client
 import openreview
-from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException
+from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException, AlreadyCompleteException
 from matcher.fields  import Configuration
 
 def get_client (token=None):
@@ -40,6 +40,9 @@ def match():
         # running task is complete
         if config_note.content[Configuration.STATUS] == Configuration.STATUS_RUNNING:
             raise AlreadyRunningException('There is already a running matching task for config ' + configNoteId)
+        elif config_note.content[Configuration.STATUS] == Configuration.STATUS_COMPLETE:
+            raise AlreadyCompleteException('Cannot run matcher on a completed configuration ' + configNoteId)
+
         matcher = Match(client,config_note,app.logger)
         # runs the match task in a separate thread
         matcher.run()
