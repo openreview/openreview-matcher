@@ -52,6 +52,7 @@ class Match:
             # TODO I want to stop using the term metadata which means changing the name of this field in the config note
             # and its invitation.
             metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
+            self._add_title(metadata)
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             reviewer_ids = reviewer_group.members
@@ -120,6 +121,7 @@ class Match:
         # clear the existing assignments from previous runs of this.
         self.clear_existing_match(assignment_inv)
         self.logger.debug("Saving New Assignment notes")
+        title = self.config[Configuration.LABEL] + " Assignment Suggestion"
         # post assignments
         for forum, assignments in assignments_by_forum.items():
             alternates = alternates_by_forum.get(forum, [])
@@ -131,8 +133,17 @@ class Match:
                 'writers': assignment_inv.reply['writers']['values'],
                 'signatures': assignment_inv.reply['signatures']['values'],
                 'content': {
-                    Assignment.LABEL: self.config[Configuration.LABEL],
+                    Assignment.TITLE: title,
                     Assignment.ASSIGNED_GROUPS: assignments,
                     Assignment.ALTERNATE_GROUPS: alternates
                 }
             }))
+
+    # paper-reviewer-score notes should have title (per MB request) but that might have been ommited in
+    # scripts that create them, so we check them and add one if nothing present.
+    def _add_title (self, paper_rev_score_notes):
+        title = "Reviewer Scores for " + self.config_note.content[Configuration.LABEL]
+        for note in paper_rev_score_notes:
+            if note.content.get(PaperReviewerScore.TITLE) == None:
+                note.content[PaperReviewerScore.TITLE] = title
+                self.client.post_note(note)

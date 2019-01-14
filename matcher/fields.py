@@ -20,12 +20,14 @@ class Configuration:
 
 class PaperReviewerScore:
     USERID = 'userid'
+    TITLE = 'title'
     ENTRIES = 'entries'
     SCORES = 'scores'
     CONFLICTS = 'conflicts'
 
 class Assignment:
     LABEL = 'label'
+    TITLE = 'title'
     SCORES = 'scores'
     CONFLICTS = 'conflicts'
     FINAL_SCORE = 'finalScore'
