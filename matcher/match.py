@@ -1,6 +1,6 @@
 import openreview
 import threading
-from .solvers.simple_solver import Solver
+from .solvers import SimpleSolver
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
@@ -77,7 +77,7 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
             self.logger.debug("Preparing Solver")
-            flow_solver = Solver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
+            flow_solver = SimpleSolver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
             self.logger.debug("Running Solver")
             # find a solution
             solution = flow_solver.solve()
