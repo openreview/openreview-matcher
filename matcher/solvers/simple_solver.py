@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 
-from .assignment_graph import AssignmentGraph
+from assignment_graph import AssignmentGraph
 
 class SimpleSolver(AssignmentGraph):
 
@@ -59,14 +59,4 @@ if __name__ == '__main__':
     solver = SimpleSolver([1,1,1,1], [2,2,2,2], [1,1,2], cost_matrix, constraint_matrix)
     solver.solve()
 
-    print('Minimum cost:', solver.min_cost_flow.OptimalCost())
-    print('')
-    print('  Arc    Flow / Capacity  Cost')
-    for i in range(solver.min_cost_flow.NumArcs()):
-        cost = solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
-        print('%1s -> %1s   %3s  / %3s       %3s' % (
-          solver.min_cost_flow.Tail(i),
-          solver.min_cost_flow.Head(i),
-          solver.min_cost_flow.Flow(i),
-          solver.min_cost_flow.Capacity(i),
-          cost))
+    print(solver)

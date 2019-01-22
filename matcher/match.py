@@ -77,11 +77,11 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
             self.logger.debug("Preparing Solver")
-            flow_solver = SimpleSolver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
+            solver = SimpleSolver(minimums, maximums, demands, encoder.cost_matrix, encoder.constraint_matrix)
             self.logger.debug("Running Solver")
             # find a solution
-            solution = flow_solver.solve()
-            if flow_solver.is_solved():
+            solution = solver.solve()
+            if solver.solved:
                 # decode the solution matrix
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
@@ -89,8 +89,8 @@ class Match:
                 self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
-                self.logger.debug('Failure: Solver could not find a solution.')
-                self.set_status(Configuration.STATUS_FAILURE, 'Solver could not find a solution.  Adjust your parameters' )
+                self.logger.debug('Failure: Solver could not find an optimal solution.')
+                self.set_status(Configuration.STATUS_FAILURE, 'Solver could not find an optimal solution.  Adjust your parameters' )
         # If any exception occurs while processing we need to set the status of the config note to indicate
         # failure.
         except Exception as e:

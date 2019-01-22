@@ -3,6 +3,23 @@ from ortools.graph import pywrapgraph
 from collections import namedtuple
 import numpy as np
 
+Node = namedtuple('Node', ['number', 'index', 'supply'])
+'''
+"number" (0-indexed):
+    a unique number among all Nodes in the graph.
+    e.g. in a graph with 3 papers and 4 reviewers, number can take a
+    value from 0 to 11.
+
+"index" (0-indexed):
+    a position in the cost/constraint matrix along the relevant axis
+    e.g. in a graph with 3 papers and 4 reviewers, paper nodes can have
+    "index" of value between 0 and 2, and reviewer nodes can have
+    "index" of value between 0 and 3
+
+"supply":
+    an integer representing the supply (+) or demand (-) of a node.
+'''
+
 class AssignmentGraphError(Exception):
     pass
 
@@ -92,22 +109,7 @@ class AssignmentGraph:
         assert net_supply >= 0, \
             'demand exceeds supply (net supply: {})'.format(net_supply)
 
-        Node = namedtuple('Node', ['number', 'index', 'supply'])
-        '''
-        "number" (0-indexed):
-            a unique number among all Nodes in the graph.
-            e.g. in a graph with 3 papers and 4 reviewers, number can take a
-            value from 0 to 11.
 
-        "index" (0-indexed):
-            a position in the cost/constraint matrix along the relevant axis
-            e.g. in a graph with 3 papers and 4 reviewers, paper nodes can have
-            "index" of value between 0 and 2, and reviewer nodes can have
-            "index" of value between 0 and 3
-
-        "supply":
-            an integer representing the supply (+) or demand (-) of a node.
-        '''
 
         current_offset = 0
 
@@ -163,8 +165,8 @@ class AssignmentGraph:
         free_nodes_by_index = {n.index: n for n in self.free_review_nodes}
         overflow_nodes_by_index = {n.index: n for n in self.overflow_review_nodes}
 
-        self.reviewer_node_by_number = {n.number:n for n in self.reviewer_nodes}
-        self.paper_node_by_number = {n.number:n for n in self.paper_nodes}
+        self.reviewer_node_by_index = {n.index:n for n in self.reviewer_nodes}
+        self.paper_node_by_index = {n.index:n for n in self.paper_nodes}
 
         '''
         Set up the flow graph.
@@ -248,25 +250,36 @@ class AssignmentGraph:
 
     def solve(self):
         assert hasattr(self, 'min_cost_flow'), 'Solver not constructed. Run self.construct_solver() first.'
+
         if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
             self.solved = True
             for i in range(self.min_cost_flow.NumArcs()):
                 cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
-                r_node = self.reviewer_node_by_number.get(self.min_cost_flow.Tail(i))
-                p_node = self.paper_node_by_number.get(self.min_cost_flow.Head(i))
+                t_node = self.node_by_number[self.min_cost_flow.Tail(i)]
+                h_node = self.node_by_number[self.min_cost_flow.Head(i)]
                 flow = self.min_cost_flow.Flow(i)
 
-                if r_node and p_node:
-                    self.flow_matrix[r_node.index, p_node.index] = flow
-
-            return self.flow_matrix
+                if t_node.index in self.reviewer_node_by_index and h_node.index in self.paper_node_by_index:
+                    self.flow_matrix[t_node.index, h_node.index] = flow
         else:
             self.solved = False
-            print('There was an issue with the min cost flow input.')
-            return None
 
-    def is_solved(self):
-        return self.solved
+        return self.flow_matrix
 
     def build_arcs(self):
         raise AssignmentGraphError('Classes that inherit from the AssignmentGraph should implement their own `build_arcs` function.')
+
+    def __str__(self):
+        return_lines = []
+        return_lines.append('Minimum cost: {}'.format(self.min_cost_flow.OptimalCost()))
+        return_lines.append('')
+        return_lines.append('   Arc    Flow / Capacity  Cost')
+        for i in range(self.min_cost_flow.NumArcs()):
+            cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
+            return_lines.append('%2s -> %2s   %3s  / %3s       %3s' % (
+              self.min_cost_flow.Tail(i),
+              self.min_cost_flow.Head(i),
+              self.min_cost_flow.Flow(i),
+              self.min_cost_flow.Capacity(i),
+              cost))
+        return '\n'.join(return_lines)

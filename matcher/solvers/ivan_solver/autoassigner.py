@@ -1,8 +1,15 @@
 #!/usr/bin/env python2
-
+from ortools.graph import pywrapgraph
 from gurobipy import Model, GRB
 from itertools import product
 import numpy as np
+
+from collections import namedtuple
+from copy import deepcopy
+
+import sys
+sys.path.insert(0, '..')
+from assignment_graph import AssignmentGraph, Node
 
 
 class auto_assigner:
@@ -57,6 +64,126 @@ class auto_assigner:
         sorted_pairs = sorted(pairs, key=lambda x: simmatrix[x[0], x[1]], reverse=True)
         return sorted_pairs
 
+    def _subroutine_ortools(self, simmatrix, kappa, abilities, not_assigned, lower_bound, *args):
+        '''
+        an implementation of the _subroutine function that uses Google OR-Tools instead of Gurobi
+
+        From the original implementation:
+
+            simmatrix - similarity matrix, updated for previously assigned papers
+            kappa - requested number of reviewers per paper
+            abilities - current constraints on reviewers' loads
+            not_assigned - a set of papers to be assigned
+            lower_bound - internal variable to start the binary search from
+
+        '''
+
+        minimums = [int(a) for a in abilities]
+        maximums = [int(a) for a in abilities]
+        demands = [kappa] * self.numrev
+        empty_cost_matrix = np.zeros((self.numrev, self.numpapers))
+        empty_constraint_matrix = np.zeros(np.shape(empty_cost_matrix))
+
+        empty_assignment_graph = AssignmentGraph(
+            minimums,
+            maximums,
+            demands,
+            empty_cost_matrix,
+            empty_constraint_matrix
+        )
+
+        # each sorted pair has the following form: [reviewer_index, paper_index]
+        sorted_pairs = self._ranking_of_pairs(simmatrix)
+
+        def _compute_maxflow(num_pairs):
+            assignment_graph = deepcopy(empty_assignment_graph)
+            current_pairs = sorted_pairs[:num_pairs]
+
+            for reviewer_index, paper_index in current_pairs:
+                r_node = assignment_graph.reviewer_node_by_index[reviewer_index]
+                p_node = assignment_graph.paper_node_by_index[paper_index]
+
+                # cost is equal to similarity
+                arc_cost = simmatrix[r_node.index, p_node.index]
+
+                arc_constraint = assignment_graph.constraint_matrix[r_node.index, p_node.index]
+
+                if arc_constraint in [0, 1]:
+                    assignment_graph.start_nodes.append(r_node)
+                    assignment_graph.end_nodes.append(p_node)
+                    assignment_graph.capacities.append(1)
+
+                    # arc_constraint of 0 means there's no constraint;
+                    # apply the cost as normal.
+                    if arc_constraint == 0:
+                        assignment_graph.costs.append(int(arc_cost))
+
+                    # arc_constraint of 1 means that this user was explicitly
+                    # assigned to this paper;
+                    # set the cost as 1 less than the minimum cost.
+                    if arc_constraint == 1:
+                        assignment_graph.costs.append(int(assignment_graph.min_cost - 1))
+
+            assignment_graph.construct_solver()
+            assignment_graph.solve()
+
+            total_flow = np.sum(assignment_graph.flow_matrix)
+
+            return total_flow, assignment_graph
+
+        # do a binary search for the minimum number of pairs needed to achieve a satisfactory match.
+
+        # upper_bound - internal variable to start the binary search from
+        upper_bound = len(sorted_pairs)
+        lower_bound = 0
+        current_solution = 0
+        prev_solution = None
+
+        # binary search to find the minimum number of edges
+        # with largest similarity that should be added to the network
+        # to achieve the requested max flow
+        while lower_bound < upper_bound:
+            prev_solution = current_solution
+            current_solution = lower_bound + (upper_bound - lower_bound) // 2 # use integer division
+
+            # the next condition is to control the case when upper_bound - lower_bound = 1
+            # then it must be the case that max flow is less than required
+            if current_solution == prev_solution:
+                if maxflow < len(not_assigned) * kappa and current_solution == lower_bound:
+                    current_solution += 1
+                    lower_bound += 1
+                else:
+                    raise ValueError('An error occured1')
+
+            # check maxflow in the current estimate
+            maxflow, assignment = _compute_maxflow(current_solution)
+
+            # if maxflow equals to the required flow, decrease the upper bound on the solution
+            if maxflow == len(not_assigned) * kappa:
+                upper_bound = current_solution
+            # otherwise increase the lower bound
+            elif maxflow < len(not_assigned) * kappa:
+                lower_bound = current_solution
+            else:
+                raise ValueError('An error occured2')
+
+        # check if binary search succesfully converged
+        if maxflow != len(not_assigned) * kappa or lower_bound != current_solution:
+            # shouldn't enter here
+            raise ValueError('An error occured3')
+
+        # return assignment
+        assignment_payload = {}
+        for paper in not_assigned:
+            assignment_payload[paper] = []
+        for reviewer in range(self.numrev):
+            for paper in not_assigned:
+                if assignment.flow_matrix[paper, reviewer] == 1:
+                    assignment_payload[paper] += [reviewer]
+
+        return assignment_payload, current_solution
+
+
     # subroutine
     # simmatrix - similarity matrix, updated for previously assigned papers
     # kappa - requested number of reviewers per paper
@@ -95,18 +222,21 @@ class auto_assigner:
         # to achieve the requested max flow
 
         while lower_bound < upper_bound or not one_iteration_done:
+
+        #   _update_bin_search_params()
             one_iteration_done = True
             prev_solution = current_solution
             current_solution = lower_bound + (upper_bound - lower_bound) // 2 # use integer division
 
             # the next condition is to control the case when upper_bound - lower_bound = 1
-            # then it must be the case that max flow is less then required
+            # then it must be the case that max flow is less than required
             if current_solution == prev_solution:
                 if maxflow < len(not_assigned) * kappa and current_solution == lower_bound:
                     current_solution += 1
                     lower_bound += 1
                 else:
-                    raise ValueError('An error occured1')
+                    raise ValueError('An error occured')
+        # end _update_bin_search_params()
 
             # if binary choice increased the current estimate, add corresponding edges to the network
             if current_solution > prev_solution:
@@ -133,8 +263,7 @@ class auto_assigner:
         # check if binary search succesfully converged
         if maxflow != len(not_assigned) * kappa or lower_bound != current_solution:
             # shouldn't enter here
-            print
-            maxflow, len(not_assigned), lower_bound, current_solution
+            print(maxflow, len(not_assigned), lower_bound, current_solution)
             raise ValueError('An error occured3')
 
         # prepare for max-cost max-flow -- we enforce each paper to be reviewed by kappa reviewers
@@ -182,6 +311,44 @@ class auto_assigner:
                     qual = np.sum([self.function(self.simmatrix[reviewer, paper]) for reviewer in assignment[paper]])
         return qual
 
+    def _fair_assignment_ortools(self):
+        lower_bound = 0
+        current_best = None
+        current_best_score = 0
+        abilities = self.ability * np.ones(self.numrev)
+
+        # Step 2 of the algorithm
+        for kappa in range(1, self.demand + 1):
+
+            # Step 2(a)
+            tmp_abilities = abilities.copy()
+            tmp_simmatrix = self.simmatrix.copy()
+
+            # Step 2(b)
+            assignment1, lower_bound = self._subroutine_ortools(tmp_simmatrix, kappa, tmp_abilities,
+                                            range(self.numpapers), lower_bound)
+
+            # Step 2(c)
+            for paper in assignment1:
+                for reviewer in assignment1[paper]:
+                    tmp_simmatrix[reviewer, paper] = -1
+                    tmp_abilities[reviewer] -= 1
+
+            # Step 2(d)
+            assignment2 = self._subroutine_ortools(tmp_simmatrix, self.demand - kappa, tmp_abilities,
+                                           range(self.numpapers), lower_bound)[0]
+
+            # Step 2(e)
+            assignment = self._join_assignment(assignment1, assignment2)
+
+            # Keep current best candidate (for Step 3)
+            if self.quality(assignment) > current_best_score or current_best_score == 0:
+                current_best = assignment
+                current_best_score = self.quality(assignment)
+
+        # Return candidate assignment selected in Step 3 of the algorithm
+        self.fa = current_best
+        self.best_quality = current_best_score
     # One iteration of steps 2 to 7 (returns the assignment selected in Step 3 of the algorithm)
     def _fair_assignment_single(self):
         lower_bound = 0
@@ -198,7 +365,7 @@ class auto_assigner:
 
             # Step 2(b)
             assignment1, lower_bound = self._subroutine(tmp_simmatrix, kappa, tmp_abilities,
-                                                        range(self.numpapers), lower_bound)
+                                            range(self.numpapers), lower_bound)
 
             # Step 2(c)
             for paper in assignment1:
@@ -299,5 +466,7 @@ class auto_assigner:
         # Full algorithm
         elif mode == 'full':
             self._fair_assignment_all()
+        elif mode == 'ortools':
+            self._fair_assignment_ortools()
         else:
             raise ValueError('This mode is not supported')
