@@ -4,9 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 
-from assignment_graph import AssignmentGraph
-
-import ipdb
+from matcher.solvers.assignment_graph import AssignmentGraph
 
 class MaxiMinSolver(AssignmentGraph):
 

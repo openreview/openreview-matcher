@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 
-from assignment_graph import AssignmentGraph
+from matcher.solvers.assignment_graph import AssignmentGraph
 
 class SimpleSolver(AssignmentGraph):
 
