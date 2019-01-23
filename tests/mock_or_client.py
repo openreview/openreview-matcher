@@ -2,6 +2,7 @@ import openreview
 from openreview import OpenReviewException
 from exc.exceptions import BadTokenException
 from matcher.match import Match
+from matcher.fields import Configuration
 
 # This is used by the matcher web app to mock the OR-py Client class.  It is set up to throw it's full variety of exceptions
 # when given certain test inputs.
@@ -38,6 +39,7 @@ class MockORClient (openreview.Client):
                                    writers=[],
                                    signatures=[],
                                    content= {
+                                       'title': 'foo',
                                        'metadata_invitation': 1,
                                        'match_group': 1,
                                        'paper_invitation': 1,
@@ -47,7 +49,10 @@ class MockORClient (openreview.Client):
                                        'min_papers': 1,
                                        'weights': 1,
                                        'constraints': 1,
-                                       'status': Match.STATUS_RUNNING
+                                       'scores_names': [],
+                                       'scores_weights': [],
+                                       'alternates': 3,
+                                       'status': Configuration.STATUS_RUNNING
                                    })
             return note
         else:
@@ -57,6 +62,7 @@ class MockORClient (openreview.Client):
                                    writers=[],
                                    signatures=[],
                                    content= {
+                                       'title': 'foo',
                                        'metadata_invitation': 1,
                                        'match_group': 1,
                                        'paper_invitation': 1,
@@ -66,7 +72,10 @@ class MockORClient (openreview.Client):
                                        'min_papers': 1,
                                        'weights': 1,
                                        'constraints': 1,
-                                       'status': Match.STATUS_INITIALIZED
+                                       'scores_names': [],
+                                       'scores_weights': [],
+                                       'alternates': 3,
+                                       'status': Configuration.STATUS_INITIALIZED
                                    })
             return note
 
