@@ -48,8 +48,6 @@ class AssignmentGraph:
         0: no constraint
         1: strongly favor this pair
        -1: strongly avoid this pair
-
-    **Inherited classes should implement the build_arcs function.**
     '''
 
     def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix, build_arcs=build_arcs_simple):
