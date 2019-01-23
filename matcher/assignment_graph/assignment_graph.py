@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from ortools.graph import pywrapgraph
 from collections import namedtuple
+from matcher.assignment_graph.build_arcs_simple import build_arcs_simple
 import numpy as np
 
 Node = namedtuple('Node', ['number', 'index', 'supply'])
@@ -51,7 +52,7 @@ class AssignmentGraph:
     **Inherited classes should implement the build_arcs function.**
     '''
 
-    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix):
+    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix, build_arcs=build_arcs_simple):
 
         self.solved = False
 
@@ -222,6 +223,9 @@ class AssignmentGraph:
             self.capacities.append(self.demands[p_node.index])
             self.costs.append(0)
 
+        build_arcs(self)
+        self.construct_solver()
+
         assert len(self.start_nodes) \
             == len(self.end_nodes) \
             == len(self.capacities) \
@@ -266,9 +270,6 @@ class AssignmentGraph:
 
         return self.flow_matrix
 
-    def build_arcs(self):
-        raise AssignmentGraphError('Classes that inherit from the AssignmentGraph should implement their own `build_arcs` function.')
-
     def __str__(self):
         return_lines = []
         return_lines.append('Minimum cost: {}'.format(self.min_cost_flow.OptimalCost()))
@@ -283,3 +284,16 @@ class AssignmentGraph:
               self.min_cost_flow.Capacity(i),
               cost))
         return '\n'.join(return_lines)
+
+if __name__ == '__main__':
+    cost_matrix = np.array([
+        [0, 1, 1],
+        [1, 0, 1],
+        [1, 1, 0],
+        [2, 2, 1]
+    ])
+    constraint_matrix = np.zeros(np.shape(cost_matrix))
+    assignment_graph = AssignmentGraph([1,1,1,1], [2,2,2,2], [1,1,2], cost_matrix, constraint_matrix)
+    assignment_graph.solve()
+
+    print(assignment_graph)

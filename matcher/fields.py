@@ -10,13 +10,14 @@ class Configuration:
     MAX_PAPERS = 'max_papers'
     MIN_PAPERS = 'min_papers'
     META_DATA_INVITATION = 'metadata_invitation'
-    STATUS = "status"
-    ERROR_MESSAGE = "error_message"
-    STATUS_ERROR = "Error"
-    STATUS_NO_SOLUTION = "No Solution"
-    STATUS_COMPLETE = "Complete"
-    STATUS_RUNNING = "Running"
-    STATUS_INITIALIZED = "Initialized"
+    STATUS = 'status'
+    ERROR_MESSAGE = 'error_message'
+    STATUS_ERROR = 'Error'
+    STATUS_NO_SOLUTION = 'No Solution'
+    STATUS_COMPLETE = 'Complete'
+    STATUS_RUNNING = 'Running'
+    STATUS_INITIALIZED = 'Initialized'
+    OBJECTIVE_TYPE = 'objective_type'
 
 class PaperReviewerScore:
     USERID = 'userid'
