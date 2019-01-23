@@ -13,7 +13,7 @@ class Configuration:
     STATUS = "status"
     ERROR_MESSAGE = "error_message"
     STATUS_ERROR = "Error"
-    STATUS_FAILURE = "Failure"
+    STATUS_NO_SOLUTION = "No Solution"
     STATUS_COMPLETE = "Complete"
     STATUS_RUNNING = "Running"
     STATUS_INITIALIZED = "Initialized"

@@ -25,14 +25,19 @@ class Encoder(object):
         self.forum_by_index = {}
         self.reviewer_by_index = {}
         self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
-        self.weights = self.get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
+        self.weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
         if metadata and config and reviewer_ids:
             self.encode(metadata, config, reviewer_ids, cost_func)
 
-    def get_weight_dict (self, names, weights):
+    def _get_weight_dict (self, names, weights):
         return dict(zip(names, [ float(w) for w in weights]))
+
+    def _error_check_scores (self, entry, prs_note_id, valid_score_names):
+        for k in entry['scores']:
+            assert k in valid_score_names, \
+            "The entry in the note id={} has a score name ({}) that isn't in the config".format(prs_note_id, k)
 
     def encode(self, metadata, config, reviewer_ids, cost_func):
         '''
@@ -78,6 +83,8 @@ class Encoder(object):
                 coordinates = reviewer_index, paper_index
                 entry = entry_by_id.get(id)
                 if entry:
+                    # Check that the scores in the entry have same names as those in the config note
+                    self._error_check_scores(entry, self.metadata[paper_index], self.score_names)
                     self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
                     if entry.get(PaperReviewerScore.CONFLICTS):
                         self.constraint_matrix[coordinates] = -1
