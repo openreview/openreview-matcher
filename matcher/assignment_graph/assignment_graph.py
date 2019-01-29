@@ -1,8 +1,8 @@
 from __future__ import print_function, division
 from ortools.graph import pywrapgraph
 from collections import namedtuple
+from matcher.assignment_graph.build_arcs_simple import build_arcs_simple
 import numpy as np
-import importlib
 
 Node = namedtuple('Node', ['number', 'index', 'supply'])
 '''
@@ -48,14 +48,9 @@ class AssignmentGraph:
         0: no constraint
         1: strongly favor this pair
        -1: strongly avoid this pair
-       
-    objective_type:  The name of a class in this package that builds the connections in the graph
-        between reviewers and papers
     '''
 
-
-
-    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix, objective_type):
+    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix, build_arcs=build_arcs_simple):
 
         self.solved = False
 
@@ -225,7 +220,8 @@ class AssignmentGraph:
             self.end_nodes.append(self.sink_node)
             self.capacities.append(self.demands[p_node.index])
             self.costs.append(0)
-        self._build_objective_obj(objective_type)
+
+        build_arcs(self)
         self.construct_solver()
 
         assert len(self.start_nodes) \
@@ -239,14 +235,6 @@ class AssignmentGraph:
                 len(self.capacities),
                 len(self.costs),
                 )
-
-
-    def _build_objective_obj (self, objective_type):
-        ''' Builds an instance of the class from its name.'''
-        module = importlib.import_module('matcher.assignment_graph.' + objective_type.lower())
-        class_ = getattr(module, objective_type)
-        self.objective_instance = class_()
-        self.objective_instance.build(self)
 
     def construct_solver(self):
         self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()

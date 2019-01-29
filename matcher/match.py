@@ -1,6 +1,6 @@
 import openreview
 import threading
-from matcher.assignment_graph import AssignmentGraph
+from matcher.assignment_graph import AssignmentGraph, build_arcs_simple, build_arcs_maximin
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
@@ -83,6 +83,11 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
 
+            if self.config[Configuration.OBJECTIVE_TYPE] == 'Maximin':
+                build_arcs = build_arcs_maximin
+            elif self.config[Configuration.OBJECTIVE_TYPE] == 'Simple':
+                build_arcs = build_arcs_simple
+
             self.logger.debug("Preparing Graph")
             graph = AssignmentGraph(
                 minimums,
@@ -90,7 +95,7 @@ class Match:
                 demands,
                 encoder.cost_matrix,
                 encoder.constraint_matrix,
-                self.config.get(Configuration.OBJECTIVE_TYPE) or 'Simple'
+                build_arcs = build_arcs
             )
 
             self.logger.debug("Solving Graph")
