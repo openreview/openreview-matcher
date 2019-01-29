@@ -14,17 +14,7 @@ This is implemented as a Flask RESTful service.   Structure of the project:
  
 '/matcher/match.py' contains the task function compute_match which runs the match solver in a thread
 
-'/matcher/assignment_graph/assignment_graph.py' Defines the class which wraps the min cost flow_solver
-
-'/matcher/assignment_graph/objective_type.py' Defines an abstract class that plugs into the AssignmentGraph. 
- It defines the interface that subclasses must implement   
- 
- '/matcher/assignment_graph/simple.py' Implements the ObjectiveType interface by building arcs that
- have capacity=1 and a cost which is based on the total score of the reviewer-paper pair.   The result of using 
- this graph will be that it maximizes the overall score of the assignment. 
- 
- '/matcher/assignment_graph/maximin.py' Implements the ObjectiveType interface by building arcs that
-  will result in an assignment that maximizes the worst reviewer-paper pair.
+'/matcher/solver.py' Defines the Solver class which wraps the min cost flow_solver
 
 **Configuration of the app**
 
