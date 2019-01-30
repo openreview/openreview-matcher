@@ -1,15 +1,21 @@
 import openreview
 import threading
-from matcher.assignment_graph import AssignmentGraph, build_arcs_simple, build_arcs_maximin
+from matcher.assignment_graph import AssignmentGraph
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
 import logging
 import time
+import importlib
+
+def get_builder(class_name):
+    builder_module = importlib.import_module('matcher.assignment_graph', class_name)
+    builder_class = getattr(builder_module, class_name)
+    builder_instance = builder_class()
+    return builder_instance
 
 class Match:
-
     def __init__ (self, client, config_note, logger=logging.getLogger(__name__)):
         self.client = client
         self.config_note = config_note
@@ -83,10 +89,8 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
 
-            if self.config[Configuration.OBJECTIVE_TYPE] == 'Maximin':
-                build_arcs = build_arcs_maximin
-            elif self.config[Configuration.OBJECTIVE_TYPE] == 'Simple':
-                build_arcs = build_arcs_simple
+            assignment_builder = get_builder(
+                self.config.get(Configuration.OBJECTIVE_TYPE, 'MaximinAssignmentBuilder'))
 
             self.logger.debug("Preparing Graph")
             graph = AssignmentGraph(
@@ -95,7 +99,7 @@ class Match:
                 demands,
                 encoder.cost_matrix,
                 encoder.constraint_matrix,
-                build_arcs = build_arcs
+                assignment_builder = assignment_builder
             )
 
             self.logger.debug("Solving Graph")

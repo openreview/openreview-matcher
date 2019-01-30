@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from ortools.graph import pywrapgraph
 from collections import namedtuple
-from matcher.assignment_graph.build_arcs_simple import build_arcs_simple
 import numpy as np
 
 Node = namedtuple('Node', ['number', 'index', 'supply'])
@@ -24,10 +23,25 @@ Node = namedtuple('Node', ['number', 'index', 'supply'])
 class AssignmentGraphError(Exception):
     pass
 
+class GraphBuilder:
+    '''
+    Base class
+    '''
+
+    def __init__(self):
+        pass
+
+    def build(self, graph):
+        '''
+        Given an AssignmentGraph object `assignment_graph`,
+        adds edges (and/or nodes?) to it.
+        '''
+
+        raise AssignmentGraphError(
+            'GraphBuilder must implement `build()` function')
+
+
 class AssignmentGraph:
-
-    OPTIMAL = pywrapgraph.SimpleMinCostFlow.OPTIMAL
-
     '''
     Implements a min-cost network flow graph for the worker-task assignment problem
         (see: https://developers.google.com/optimization/flow/mincostflow)
@@ -50,65 +64,73 @@ class AssignmentGraph:
        -1: strongly avoid this pair
     '''
 
-    def __init__(self, minimums, maximums, demands, cost_matrix, constraint_matrix, build_arcs=build_arcs_simple):
+    def __init__(
+        self,
+        minimums,
+        maximums,
+        demands,
+        cost_matrix,
+        constraint_matrix,
+        assignment_builder):
+
+        num_reviewers = np.size(cost_matrix, axis=0)
+        num_papers = np.size(cost_matrix, axis=1)
+
+        if not (type(cost_matrix) == type(constraint_matrix) == np.ndarray):
+            raise AssignmentGraphError(
+                'cost and constraint matrices must be of type numpy.ndarray')
+
+        if not (np.shape(cost_matrix) == np.shape(constraint_matrix)):
+            raise AssignmentGraphError(
+                'cost {} and constraint {} matrices must be the same shape'.format(
+                    np.shape(cost_matrix), np.shape(constraint_matrix)))
+
+        if not (len(maximums) == num_reviewers):
+            raise AssignmentGraphError(
+                'maximums array must be same length ({}) as number of reviewers ({}) '.format(
+                    len(maximums), num_reviewers))
+
+        if not (len(minimums) == num_reviewers):
+            raise AssignmentGraphError(
+                'minimums array must be same length ({}) as number of reviewers ({})'.format(
+                    len(minimums), num_reviewers))
+
+        if not(len(demands) == num_papers):
+            raise AssignmentGraphError(
+                'demands array must be same length ({}) as number of papers ({})'.format(
+                    len(demands), num_papers))
 
         self.solved = False
-
-        assert type(cost_matrix) \
-            == type(constraint_matrix) \
-            == np.ndarray, \
-            'cost and constraint matrices must be of type numpy.ndarray'
-
-        assert np.shape(cost_matrix) \
-            == np.shape(constraint_matrix), \
-            'cost {} and constraint {} matrices must be the same shape'.format(
-                np.shape(cost_matrix), np.shape(constraint_matrix))
-
-        self.num_reviewers = np.size(cost_matrix, axis=0)
-        self.num_papers = np.size(cost_matrix, axis=1)
-
         self.cost_matrix = cost_matrix
         self.constraint_matrix = constraint_matrix
         self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
+        self.maximums = maximums
+        self.minimums = minimums
+        self.demands = demands
+        self.num_papers = num_papers
+        self.num_reviewers = num_reviewers
+        self.assignment_builder = assignment_builder
+
         # finds the largest and smallest value in cost_matrix
         # (i.e. the greatest and lowest cost of any arc)
         if self.cost_matrix.shape > (0,0):
+
             self.max_cost = self.cost_matrix[
                 np.unravel_index(self.cost_matrix.argmax(), self.cost_matrix.shape)]
+
             self.min_cost = self.cost_matrix[
                 np.unravel_index(self.cost_matrix.argmin(), self.cost_matrix.shape)]
 
-        # maximums array must be same length as number of reviewers
-        assert len(maximums) == self.num_reviewers, \
-            'The length of the maximums array ({}) \
-            must equal np.size(cost_matrix, axis=0) ({})'''.format(
-            len(maximums), self.num_reviewers
-        )
-        self.maximums = maximums
-
-        # minimums array must be same length as number of reviewers
-        assert len(minimums) == self.num_reviewers, \
-            'The length of the minimums array ({}) \
-            must equal np.size(cost_matrix, axis=0) ({})'''.format(
-            len(minimums), self.num_reviewers
-        )
-        self.minimums = minimums
-
-        # demands array must be same length as number of papers
-        assert len(demands) == self.num_papers, \
-            'The length of the demands array ({}) \
-            must equal np.size(cost_matrix, axis=0) ({})'.format(
-            len(demands), self.num_papers)
-
-        self.demands = demands
         supply = sum(self.maximums)
         demand = sum(self.demands)
-        # the total supply of reviews must be greater than the total demand
-        net_supply = supply + demand
-        assert net_supply >= 0, \
-            'demand exceeds supply (net supply: {})'.format(net_supply)
+        if supply < demand:
+            raise AssignmentGraphError(
+                'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
+                    supply, demand))
 
-
+        '''
+        Add Nodes
+        '''
 
         current_offset = 0
 
@@ -119,6 +141,10 @@ class AssignmentGraph:
             supply = sum(self.demands))
 
         current_offset += 1
+
+        '''
+        "free" and "overflow" nodes are part of the min/max functionality.
+        '''
 
         self.free_review_nodes = [Node(
             number = i + current_offset,
@@ -134,6 +160,11 @@ class AssignmentGraph:
 
         current_offset += self.num_reviewers
 
+
+        '''
+        Paper and Reviewer nodes
+        '''
+
         self.reviewer_nodes = [Node(
             number = i + current_offset,
             index = i,
@@ -148,11 +179,16 @@ class AssignmentGraph:
 
         current_offset += self.num_papers
 
-        # no index because the source isn't represented in the cost/constraint matrices.
+        # no index because the sink isn't represented in the cost/constraint matrices.
         self.sink_node = Node(
             number = current_offset,
             index = None,
             supply = -1 * sum(self.demands))
+
+        '''
+        Make various indexes for Nodes
+
+        '''
 
         self.node_by_number = { n.number: n for n in \
             self.reviewer_nodes + \
@@ -213,6 +249,11 @@ class AssignmentGraph:
             self.costs.append(0)
 
         '''
+        3) Leave the edges between papers and reviewers empty.
+        '''
+
+
+        '''
         4)  connect paper nodes to the sink node.
         '''
         for p_node in self.paper_nodes:
@@ -221,7 +262,7 @@ class AssignmentGraph:
             self.capacities.append(self.demands[p_node.index])
             self.costs.append(0)
 
-        build_arcs(self)
+        self.assignment_builder.build(self)
         self.construct_solver()
 
         assert len(self.start_nodes) \
