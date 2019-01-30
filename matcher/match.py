@@ -90,7 +90,7 @@ class Match:
                         minimums[reviewer_index] = custom_load
 
             assignment_builder = get_builder(
-                self.config.get(Configuration.OBJECTIVE_TYPE, 'MaximinAssignmentBuilder'))
+                self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleAssignmentBuilder'))
 
             self.logger.debug("Preparing Graph")
             graph = AssignmentGraph(
