@@ -10,7 +10,7 @@ def app_init():
     app.config.from_pyfile('../config.cfg')
     # now override using settings for this environment
     app.config.from_pyfile('../instance/config.cfg')
-
+    app.running_configs = {} # map to keep track of running configs (integration testing in real_test.py needs this)
     app.logger.removeHandler(default_handler)
     formatter = logging.Formatter(datefmt='%Y-%m-%d %H:%M:%S,uuu')
     fh = logging.handlers.RotatingFileHandler(filename=app.config['LOG_FILE'], mode='a', maxBytes=1*1000*1000, backupCount=20)
