@@ -271,23 +271,26 @@ class Solver(object):
         self.solved = False
 
     def solve(self):
+        self.cost = 0
         if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
             self.solved = True
             for i in range(self.min_cost_flow.NumArcs()):
-                cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
+                self.cost += self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
                 r_node = self.reviewer_node_by_number.get(self.min_cost_flow.Tail(i))
                 p_node = self.paper_node_by_number.get(self.min_cost_flow.Head(i))
                 flow = self.min_cost_flow.Flow(i)
 
                 if r_node and p_node:
                     self.flow_matrix[r_node.index, p_node.index] = flow
-
+            print('Solution found.  Cost= ', self.cost)
             return self.flow_matrix
         else:
             self.solved = False
-            print('There was an issue with the min cost flow input.')
+            print('Solution not found.  There may be an issue with the min cost flow input.')
             return None
 
+    def get_cost (self):
+        return self.cost
 
     def is_solved (self):
         return self.solved

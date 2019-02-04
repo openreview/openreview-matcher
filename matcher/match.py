@@ -3,8 +3,8 @@ import threading
 from matcher.solver import Solver
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
-from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
+from matcher import app
 import logging
 import time
 
@@ -22,6 +22,7 @@ class Match:
         if message:
             self.config_note.content[Configuration.ERROR_MESSAGE] = message
         self.client.post_note(self.config_note)
+        app.running_configs[self.config_note.id] = status # integration testing needs this to know when to report results
         return self.config_note
 
     def run (self):
@@ -41,16 +42,11 @@ class Match:
             return self.config_note
 
 
-    # A function that can be called from a script to compute a match.
-    # Given a config_note and an openreview.client object, this will compute a match of
-    # reviewers to papers and post it to the db.  It will return the config note with a status field
-    # set to 'complete' if it succeeds.  Otherwise a failure message will be placed in the status field.
-    # Pass in a logger if you want logging;  otherwise a default logger will be used.
+    # Compute a match of reviewers to papers and post it to the as assignment notes.
+    # The config note's status field will be set to reflect completion or the variety of failures.
     def compute_match(self):
         try:
             self.set_status(Configuration.STATUS_RUNNING)
-            # TODO I want to stop using the term metadata which means changing the name of this field in the config note
-            # and its invitation.
             metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
