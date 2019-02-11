@@ -20,9 +20,7 @@ def json_of_response(response):
     return json.loads(response.data.decode('utf8'))
 
 
-# N.B.  The app we are testing uses a logger that generates error messages when given bad inputs.  This test fixture does just that.
-# It verifies that bad inputs result in correct error status returns.  However you will see stack dumps which are also produced by the logger
-# These stack dumps do not represent test cases that are failing!
+
 class TestRealDataset(unittest.TestCase):
 
     # called once at beginning of suite

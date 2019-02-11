@@ -12,5 +12,6 @@ setup(name='openreview-matcher',
           'numpy',
           'openreview-py',
           'ortools',
+          'pymongo'
       ],
       zip_safe=False)
