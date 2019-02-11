@@ -289,9 +289,6 @@ class Solver(object):
             print('Solution not found.  There may be an issue with the min cost flow input.')
             return None
 
-    def get_cost (self):
-        return self.cost
-
     def is_solved (self):
         return self.solved
 
