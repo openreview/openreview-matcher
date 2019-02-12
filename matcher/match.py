@@ -101,13 +101,13 @@ class Match:
     # delete assignment notes created by previous runs of matcher
     def clear_existing_match(self, assignment_inv):
         notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                         content = { 'label': self.config[Configuration.LABEL]}))
+                                                         content = {Configuration.TITLE: self.config[Configuration.TITLE]}))
         for assignment_note in notes_list:
             assignment_note.ddate = round(time.time()) * 1000
             self.client.post_note(assignment_note)
         assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                       content = { 'label': self.config[Configuration.LABEL]}))) == 0, \
-            "All assignment notes with the label " +self.config[Configuration.LABEL]+ " were not deleted!"
+                                                       content = {Configuration.TITLE: self.config[Configuration.TITLE]}))) == 0, \
+            "All assignment notes with the label " + self.config[Configuration.TITLE] + " were not deleted!"
 
 
     # save the assignment as a set of notes.
@@ -127,7 +127,7 @@ class Match:
                 'writers': assignment_inv.reply['writers']['values'],
                 'signatures': assignment_inv.reply['signatures']['values'],
                 'content': {
-                    Assignment.LABEL: self.config[Configuration.LABEL],
+                    Assignment.TITLE: self.config[Configuration.TITLE],
                     Assignment.ASSIGNED_GROUPS: assignments,
                     Assignment.ALTERNATE_GROUPS: alternates
                 }

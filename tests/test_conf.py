@@ -16,7 +16,7 @@ PAPER_REVIEWER_SCORE_ID = CONF_ID + "/-/Paper_Reviewer_Scores"
 CONFIG_ID = CONF_ID + "/-/Assignment_Configuration"
 ASSIGNMENT_ID = CONF_ID + "/-/Paper_Assignment"
 
-
+# To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
 
 class TestConf:
 
@@ -231,7 +231,7 @@ class TestConf:
 
                 # conflicts for a paper go into the user record as a non-None value to disable this user from reviewer this paper
                 if random.random() < self.conflict_percentage:
-                    entry['conflicts'] = 1
+                    entry['conflicts'] = ['conflict']
                 entries.append(entry)
 
             note = openreview.Note(forum=paper_note.id,
@@ -282,7 +282,7 @@ class TestConf:
                 'writers': { 'values': [CONF_ID]
                              },
                 'content': {
-                    "label": {
+                    "title": {
                         "value-regex": ".{1,250}",
                         "required": True,
                         "description": "Title of the configuration.",
@@ -325,19 +325,33 @@ class TestConf:
                         "order": 3
                     },
                     "scores_names": {
-                        "values-dropdown": ['tpms', 'recommendation'],
+                        # "values-dropdown": ['bid', 'recommendation', 'tpms'],
+                        "values": ['bid', 'recommendation', 'tpms'],
                         "required": True,
                         "description": "List of scores names",
                         "order": 3
                     },
                     "scores_weights": {
-                        "values-regex": "\\d*\\.?\\d*",
+                        # "values-regex": "\\d*\\.?\\d*",
+                        "values": ['1','2','3'],
                         "required": True,
-                        "description": "Comma separated values of scores weigths, should follow the same order than scores_names",
+                        "description": "Comma separated values of scores weights, should follow the same order than scores_names",
                         "order": 3
                     },
                     "status": {
                         "value-dropdown": ['Initialized', 'Running', 'Error', 'No Solution', 'Complete', 'Deployed']
+                    },
+                    "custom_loads" : {
+                        "value-dict": {},
+                        "required": False,
+                        "description": "Manually entered custom user maximun loads",
+                        "order": 8
+                    },
+                    "constraints": {
+                        "value-dict": {},
+                        "required": False,
+                        "description": "Manually entered user/papers constraints",
+                        "order": 9
                     },
                     'paper_invitation': {"value": SUBMISSION_ID,
                                          "required": True,
@@ -372,9 +386,9 @@ class TestConf:
             'writers': [CONF_ID],
             'signatures': [CONF_ID],
             'content': {
-                'label': 'reviewers',
-                'scores_names': ['tpms', 'recommendation'],
-                'scores_weights': ['1', '2'],
+                'title': 'reviewers',
+                'scores_names': ['bid','recommendation', 'tpms'],
+                'scores_weights': ['1', '2', '3'],
                 'max_users': str(self.paper_min_reviewers), # max number of reviewers a paper can have
                 'min_users': str(self.paper_min_reviewers), # min number of reviewers a paper can have
                 'max_papers': str(self.reviewer_max_papers), # max number of papers a reviewer can review
