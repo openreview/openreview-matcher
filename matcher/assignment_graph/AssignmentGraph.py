@@ -206,22 +206,22 @@ class AssignmentGraph:
                 len(self.costs),
                 )
 
-    def _cost_bounds(self, comparator):
-        # finds a boundary cost in the cost_matrix according to the function `comparator`
+    def _boundary_cost(self, boundary_function):
+        # finds a boundary cost in the cost_matrix according to the function `boundary_function`
         if self.cost_matrix.shape > (0,0):
             cost_boundary = self.cost_matrix[
-                np.unravel_index(comparator(), self.cost_matrix.shape)]
+                np.unravel_index(boundary_function(), self.cost_matrix.shape)]
             return cost_boundary
         else:
             return None
 
     def _greatest_cost(self):
         # finds the greatest value in cost_matrix
-        return self._cost_bounds(self.cost_matrix.argmax)
+        return self._boundary_cost(self.cost_matrix.argmax)
 
     def _least_cost(self):
         # finds the lowest value in cost_matrix
-        return self._cost_bounds(self.cost_matrix.argmin)
+        return self._boundary_cost(self.cost_matrix.argmin)
 
     def add_node(self, index, supply=0):
         new_node = Node(
