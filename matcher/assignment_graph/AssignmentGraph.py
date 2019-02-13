@@ -193,7 +193,7 @@ class AssignmentGraph:
                 'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
                     supply, demand))
 
-    def _check_solution(self):
+    def _check_graph_integrity(self):
         assert len(self.start_nodes) \
             == len(self.end_nodes) \
             == len(self.capacities) \
@@ -244,7 +244,7 @@ class AssignmentGraph:
         self.costs.append(cost)
 
     def construct_solver(self):
-        self._check_solution()
+        self._check_graph_integrity()
         self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
         for arc_index in range(len(self.start_nodes)):
             self.min_cost_flow.AddArcWithCapacityAndUnitCost(
