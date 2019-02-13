@@ -80,6 +80,85 @@ class AssignmentGraph:
         constraint_matrix,
         graph_builder):
 
+        self._check_inputs(minimums, maximums, demands, cost_matrix, constraint_matrix, graph_builder)
+
+        self.solved = False
+        self.cost_matrix = cost_matrix
+        self.constraint_matrix = constraint_matrix
+        self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
+        self.maximums = maximums
+        self.minimums = minimums
+        self.demands = demands
+        self.num_papers = np.size(cost_matrix, axis=1)
+        self.num_reviewers = np.size(cost_matrix, axis=0)
+        self.graph_builder = graph_builder
+        self.current_offset = 0
+
+        self.start_nodes = []
+        self.end_nodes = []
+        self.capacities = []
+        self.costs = []
+        self.node_by_number = {}
+
+        self.max_cost = self._greatest_cost()
+        self.min_cost = self._least_cost()
+
+        '''
+        Add Nodes
+        '''
+
+        # no index because the source isn't represented in the cost/constraint matrices.
+        self.source_node = self.add_node(index=None, supply=sum(self.demands))
+
+        # "free" and "overflow" nodes are part of the min/max functionality.
+        self.free_review_nodes = [self.add_node(i) for i in range(self.num_reviewers)]
+        self.overflow_review_nodes = [self.add_node(i) for i in range(self.num_reviewers)]
+
+        self.reviewer_nodes = [self.add_node(i) for i in range(self.num_reviewers)]
+        self.paper_nodes = [self.add_node(i) for i in range(self.num_papers)]
+
+        # no index because the sink isn't represented in the cost/constraint matrices.
+        self.sink_node = self.add_node(index=None, supply=(-1 * sum(self.demands)))
+
+        # make various indexes for Nodes
+        self.reviewer_node_by_index = {n.index:n for n in self.reviewer_nodes}
+        self.paper_node_by_index = {n.index:n for n in self.paper_nodes}
+
+        '''
+        Add Edges
+        '''
+
+        # connect the source node to all "free" and "overflow" nodes.
+        for free_node in self.free_review_nodes:
+            capacity = self.minimums[free_node.index]
+            self.add_edge(self.source_node, free_node, capacity, cost=0)
+
+        for overflow_node in self.overflow_review_nodes:
+            capacity = self.maximums[overflow_node.index] - self.minimums[overflow_node.index]
+            overflow_cost = int(self.max_cost + self.max_cost)
+            self.add_edge(self.source_node, overflow_node, capacity, overflow_cost)
+
+        # connect all "free" and "overflow" nodes to their corresponding reviewer nodes.
+        free_nodes_by_index = {n.index: n for n in self.free_review_nodes}
+        overflow_nodes_by_index = {n.index: n for n in self.overflow_review_nodes}
+        for r_node in self.reviewer_nodes:
+            free_node = free_nodes_by_index[r_node.index]
+            free_capacity = self.minimums[r_node.index]
+            self.add_edge(free_node, r_node, free_capacity, cost=0)
+
+            overflow_node = overflow_nodes_by_index[r_node.index]
+            overflow_capacity = self.maximums[r_node.index] - self.minimums[r_node.index]
+            self.add_edge(overflow_node, r_node, overflow_capacity, cost=0)
+
+        # connect paper nodes to the sink node.
+        for p_node in self.paper_nodes:
+            capacity = self.demands[p_node.index]
+            self.add_edge(p_node, self.sink_node, capacity, cost=0)
+
+        self.graph_builder.build(self)
+        self.construct_solver()
+
+    def _check_inputs(self, minimums, maximums, demands, cost_matrix, constraint_matrix, graph_builder):
         num_reviewers = np.size(cost_matrix, axis=0)
         num_papers = np.size(cost_matrix, axis=1)
 
@@ -107,171 +186,14 @@ class AssignmentGraph:
                 'demands array must be same length ({}) as number of papers ({})'.format(
                     len(demands), num_papers))
 
-        self.solved = False
-        self.cost_matrix = cost_matrix
-        self.constraint_matrix = constraint_matrix
-        self.flow_matrix = np.zeros(np.shape(self.cost_matrix))
-        self.maximums = maximums
-        self.minimums = minimums
-        self.demands = demands
-        self.num_papers = num_papers
-        self.num_reviewers = num_reviewers
-        self.graph_builder = graph_builder
-
-        # finds the largest and smallest value in cost_matrix
-        # (i.e. the greatest and lowest cost of any arc)
-        if self.cost_matrix.shape > (0,0):
-
-            self.max_cost = self.cost_matrix[
-                np.unravel_index(self.cost_matrix.argmax(), self.cost_matrix.shape)]
-
-            self.min_cost = self.cost_matrix[
-                np.unravel_index(self.cost_matrix.argmin(), self.cost_matrix.shape)]
-
-        supply = sum(self.maximums)
-        demand = sum(self.demands)
+        supply = sum(maximums)
+        demand = sum(demands)
         if supply < demand:
             raise AssignmentGraphError(
                 'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
                     supply, demand))
 
-        '''
-        Add Nodes
-        '''
-
-        current_offset = 0
-
-        # no index because the source isn't represented in the cost/constraint matrices.
-        self.source_node = Node(
-            number = current_offset,
-            index = None,
-            supply = sum(self.demands))
-
-        current_offset += 1
-
-        '''
-        "free" and "overflow" nodes are part of the min/max functionality.
-        '''
-
-        self.free_review_nodes = [Node(
-            number = i + current_offset,
-            index = i,
-            supply = 0) for i in range(self.num_reviewers)]
-
-        current_offset += self.num_reviewers
-
-        self.overflow_review_nodes = [Node(
-            number = i + current_offset,
-            index = i,
-            supply = 0) for i in range(self.num_reviewers)]
-
-        current_offset += self.num_reviewers
-
-
-        '''
-        Paper and Reviewer nodes
-        '''
-
-        self.reviewer_nodes = [Node(
-            number = i + current_offset,
-            index = i,
-            supply = 0) for i in range(self.num_reviewers)]
-
-        current_offset += self.num_reviewers
-
-        self.paper_nodes = [Node(
-            number = i + current_offset,
-            index = i,
-            supply = 0) for i in range(self.num_papers)]
-
-        current_offset += self.num_papers
-
-        # no index because the sink isn't represented in the cost/constraint matrices.
-        self.sink_node = Node(
-            number = current_offset,
-            index = None,
-            supply = -1 * sum(self.demands))
-
-        '''
-        Make various indexes for Nodes
-
-        '''
-
-        self.node_by_number = { n.number: n for n in \
-            self.reviewer_nodes + \
-            self.paper_nodes + \
-            self.free_review_nodes + \
-            self.overflow_review_nodes + \
-            [self.source_node, self.sink_node] }
-
-        free_nodes_by_index = {n.index: n for n in self.free_review_nodes}
-        overflow_nodes_by_index = {n.index: n for n in self.overflow_review_nodes}
-
-        self.reviewer_node_by_index = {n.index:n for n in self.reviewer_nodes}
-        self.paper_node_by_index = {n.index:n for n in self.paper_nodes}
-
-        '''
-        Set up the flow graph.
-        '''
-        self.start_nodes = []
-        self.end_nodes = []
-        self.capacities = []
-        self.costs = []
-
-        '''
-        1)  connect the source node to all "free" and "overflow" nodes.
-        '''
-
-        for free_node in self.free_review_nodes:
-            self.start_nodes.append(self.source_node)
-            self.end_nodes.append(free_node)
-            self.capacities.append(self.minimums[free_node.index])
-            self.costs.append(0)
-
-        for overflow_node in self.overflow_review_nodes:
-            self.start_nodes.append(self.source_node)
-            self.end_nodes.append(overflow_node)
-            self.capacities.append(
-                self.maximums[overflow_node.index] - self.minimums[overflow_node.index])
-
-            # TODO: Is this the right way to set the cost of the overflow?
-            self.costs.append(int(self.max_cost + self.max_cost))
-
-        '''
-        2)  connect all "free" and "overflow" nodes to their corresponding
-            reviewer nodes.
-        '''
-        for r_node in self.reviewer_nodes:
-            free_node = free_nodes_by_index[r_node.index]
-            self.start_nodes.append(free_node)
-            self.end_nodes.append(r_node)
-            self.capacities.append(self.minimums[r_node.index])
-            self.costs.append(0)
-
-            overflow_node = overflow_nodes_by_index[r_node.index]
-            self.start_nodes.append(overflow_node)
-            self.end_nodes.append(r_node)
-            self.capacities.append(
-                self.maximums[r_node.index] - self.minimums[r_node.index])
-            self.costs.append(0)
-
-        '''
-        3) Leave the edges between papers and reviewers empty.
-        '''
-
-
-        '''
-        4)  connect paper nodes to the sink node.
-        '''
-        for p_node in self.paper_nodes:
-            self.start_nodes.append(p_node)
-            self.end_nodes.append(self.sink_node)
-            self.capacities.append(self.demands[p_node.index])
-            self.costs.append(0)
-
-        self.graph_builder.build(self)
-        self.construct_solver()
-
+    def _check_graph_integrity(self):
         assert len(self.start_nodes) \
             == len(self.end_nodes) \
             == len(self.capacities) \
@@ -284,9 +206,46 @@ class AssignmentGraph:
                 len(self.costs),
                 )
 
-    def construct_solver(self):
-        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+    def _boundary_cost(self, boundary_function):
+        # finds a boundary cost in the cost_matrix according to the function `boundary_function`
+        if self.cost_matrix.shape > (0,0):
+            cost_boundary = self.cost_matrix[
+                np.unravel_index(boundary_function(), self.cost_matrix.shape)]
+            return cost_boundary
+        else:
+            return None
 
+    def _greatest_cost(self):
+        # finds the greatest value in cost_matrix
+        return self._boundary_cost(self.cost_matrix.argmax)
+
+    def _least_cost(self):
+        # finds the lowest value in cost_matrix
+        return self._boundary_cost(self.cost_matrix.argmin)
+
+    def add_node(self, index, supply=0):
+        new_node = Node(
+            number = self.current_offset,
+            index = index,
+            supply = supply
+        )
+
+        if new_node.number in self.node_by_number:
+            raise AssignmentGraphError('Node {} already exists in assignment graph.'.format(new_node.number))
+        else:
+            self.node_by_number[new_node.number] = new_node
+            self.current_offset += 1
+            return new_node
+
+    def add_edge(self, start_node, end_node, capacity, cost):
+        self.start_nodes.append(start_node)
+        self.end_nodes.append(end_node)
+        self.capacities.append(capacity)
+        self.costs.append(cost)
+
+    def construct_solver(self):
+        self._check_graph_integrity()
+        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
         for arc_index in range(len(self.start_nodes)):
             self.min_cost_flow.AddArcWithCapacityAndUnitCost(
                 self.start_nodes[arc_index].number,
