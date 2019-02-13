@@ -78,7 +78,7 @@ class AssignmentGraph:
         demands,
         cost_matrix,
         constraint_matrix,
-        assignment_builder):
+        graph_builder):
 
         num_reviewers = np.size(cost_matrix, axis=0)
         num_papers = np.size(cost_matrix, axis=1)
@@ -116,7 +116,7 @@ class AssignmentGraph:
         self.demands = demands
         self.num_papers = num_papers
         self.num_reviewers = num_reviewers
-        self.assignment_builder = assignment_builder
+        self.graph_builder = graph_builder
 
         # finds the largest and smallest value in cost_matrix
         # (i.e. the greatest and lowest cost of any arc)
@@ -269,7 +269,7 @@ class AssignmentGraph:
             self.capacities.append(self.demands[p_node.index])
             self.costs.append(0)
 
-        self.assignment_builder.build(self)
+        self.graph_builder.build(self)
         self.construct_solver()
 
         assert len(self.start_nodes) \

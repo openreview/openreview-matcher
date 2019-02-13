@@ -82,7 +82,7 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
 
-            assignment_builder = GraphBuilder.get_builder(
+            graph_builder = GraphBuilder.get_builder(
                 self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
 
             self.logger.debug("Preparing Graph")
@@ -92,7 +92,7 @@ class Match:
                 demands,
                 encoder.cost_matrix,
                 encoder.constraint_matrix,
-                assignment_builder = assignment_builder
+                graph_builder = graph_builder
             )
 
             self.logger.debug("Solving Graph")
