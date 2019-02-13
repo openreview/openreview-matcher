@@ -1,6 +1,6 @@
 class Configuration:
     ALTERNATES = 'alternates'
-    LABEL = 'label'
+    TITLE = 'title'
     SCORES_WEIGHTS = 'scores_weights'
     SCORES_NAMES = 'scores_names'
     CONSTRAINTS = 'constraints'
@@ -26,6 +26,7 @@ class PaperReviewerScore:
 
 class Assignment:
     LABEL = 'label'
+    TITLE = 'title'
     SCORES = 'scores'
     CONFLICTS = 'conflicts'
     FINAL_SCORE = 'finalScore'
