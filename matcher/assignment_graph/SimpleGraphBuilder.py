@@ -37,17 +37,3 @@ class SimpleGraphBuilder(GraphBuilder):
                     # set the cost as 1 less than the minimum cost.
                     if arc_constraint == 1:
                         graph.costs.append(int(graph.min_cost - 1))
-
-# if __name__ == '__main__':
-#     from matcher.assignment_graph import AssignmentGraph
-#     cost_matrix = np.array([
-#         [0, 1, 1],
-#         [1, 0, 1],
-#         [1, 1, 0],
-#         [2, 2, 1]
-#     ])
-#     constraint_matrix = np.zeros(np.shape(cost_matrix))
-#     graph = AssignmentGraph([1,1,1,1], [2,2,2,2], [1,1,2], cost_matrix, constraint_matrix, build_arcs=build_arcs_simple)
-#     graph.solve()
-
-#     print(graph)
