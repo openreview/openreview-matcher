@@ -108,6 +108,7 @@ class TestFlaskApi(unittest.TestCase):
         assert response.status_code == 400
 
 
+
     # A valid token and valid config note Id.  The match task will run and succeed.
     def test_valid_inputs (self):
         # Turn on logging in the web app because these are valid inputs and nothing should

@@ -13,7 +13,7 @@ class Encoder(object):
     def __init__(self, metadata=None, config=None, reviewer_ids=None, cost_func=utils.cost):
 
         self.metadata = []
-        self.config = {}
+        self.config = config
         self.reviewer_ids = []
         self.cost = cost_func
 
