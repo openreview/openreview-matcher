@@ -71,91 +71,6 @@ class AssignmentGraph:
        -1: strongly avoid this pair
     '''
 
-    def add_node(self, index, supply=0):
-        new_node = Node(
-            number = self.current_offset,
-            index = index,
-            supply = supply
-        )
-
-        if new_node.number in self.node_by_number:
-            raise AssignmentGraphError('Node {} already exists in assignment graph.'.format(new_node.number))
-        else:
-            self.node_by_number[new_node.number] = new_node
-            self.current_offset += 1
-            return new_node
-
-    def add_edge(self, start_node, end_node, capacity, cost):
-        self.start_nodes.append(start_node)
-        self.end_nodes.append(end_node)
-        self.capacities.append(capacity)
-        self.costs.append(cost)
-
-    def _check_inputs(self, minimums, maximums, demands, cost_matrix, constraint_matrix, graph_builder):
-        num_reviewers = np.size(cost_matrix, axis=0)
-        num_papers = np.size(cost_matrix, axis=1)
-
-        if not (type(cost_matrix) == type(constraint_matrix) == np.ndarray):
-            raise AssignmentGraphError(
-                'cost and constraint matrices must be of type numpy.ndarray')
-
-        if not np.shape(cost_matrix) == np.shape(constraint_matrix):
-            raise AssignmentGraphError(
-                'cost {} and constraint {} matrices must be the same shape'.format(
-                    np.shape(cost_matrix), np.shape(constraint_matrix)))
-
-        if not len(maximums) == num_reviewers:
-            raise AssignmentGraphError(
-                'maximums array must be same length ({}) as number of reviewers ({}) '.format(
-                    len(maximums), num_reviewers))
-
-        if not len(minimums) == num_reviewers:
-            raise AssignmentGraphError(
-                'minimums array must be same length ({}) as number of reviewers ({})'.format(
-                    len(minimums), num_reviewers))
-
-        if not len(demands) == num_papers:
-            raise AssignmentGraphError(
-                'demands array must be same length ({}) as number of papers ({})'.format(
-                    len(demands), num_papers))
-
-        supply = sum(maximums)
-        demand = sum(demands)
-        if supply < demand:
-            raise AssignmentGraphError(
-                'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
-                    supply, demand))
-
-    def _check_solution(self):
-        assert len(self.start_nodes) \
-            == len(self.end_nodes) \
-            == len(self.capacities) \
-            == len(self.costs), \
-            '''start_nodes({}), end_nodes({}), capacities({}), and costs({})
-            must all equal each other'''.format(
-                len(self.start_nodes),
-                len(self.end_nodes),
-                len(self.capacities),
-                len(self.costs),
-                )
-
-    def _cost_bounds(self, comparator):
-        # finds a boundary cost in the cost_matrix according to the function `comparator`
-        if self.cost_matrix.shape > (0,0):
-            cost_boundary = self.cost_matrix[
-                np.unravel_index(comparator(), self.cost_matrix.shape)]
-            return cost_boundary
-        else:
-            return None
-
-    def _greatest_cost(self):
-        # finds the greatest value in cost_matrix
-        return self._cost_bounds(self.cost_matrix.argmax)
-
-    def _least_cost(self):
-        # finds the lowest value in cost_matrix
-        return self._cost_bounds(self.cost_matrix.argmin)
-
     def __init__(
         self,
         minimums,
@@ -242,6 +157,91 @@ class AssignmentGraph:
 
         self.graph_builder.build(self)
         self.construct_solver()
+
+    def _check_inputs(self, minimums, maximums, demands, cost_matrix, constraint_matrix, graph_builder):
+        num_reviewers = np.size(cost_matrix, axis=0)
+        num_papers = np.size(cost_matrix, axis=1)
+
+        if not (type(cost_matrix) == type(constraint_matrix) == np.ndarray):
+            raise AssignmentGraphError(
+                'cost and constraint matrices must be of type numpy.ndarray')
+
+        if not np.shape(cost_matrix) == np.shape(constraint_matrix):
+            raise AssignmentGraphError(
+                'cost {} and constraint {} matrices must be the same shape'.format(
+                    np.shape(cost_matrix), np.shape(constraint_matrix)))
+
+        if not len(maximums) == num_reviewers:
+            raise AssignmentGraphError(
+                'maximums array must be same length ({}) as number of reviewers ({}) '.format(
+                    len(maximums), num_reviewers))
+
+        if not len(minimums) == num_reviewers:
+            raise AssignmentGraphError(
+                'minimums array must be same length ({}) as number of reviewers ({})'.format(
+                    len(minimums), num_reviewers))
+
+        if not len(demands) == num_papers:
+            raise AssignmentGraphError(
+                'demands array must be same length ({}) as number of papers ({})'.format(
+                    len(demands), num_papers))
+
+        supply = sum(maximums)
+        demand = sum(demands)
+        if supply < demand:
+            raise AssignmentGraphError(
+                'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
+                    supply, demand))
+
+    def _check_solution(self):
+        assert len(self.start_nodes) \
+            == len(self.end_nodes) \
+            == len(self.capacities) \
+            == len(self.costs), \
+            '''start_nodes({}), end_nodes({}), capacities({}), and costs({})
+            must all equal each other'''.format(
+                len(self.start_nodes),
+                len(self.end_nodes),
+                len(self.capacities),
+                len(self.costs),
+                )
+
+    def _cost_bounds(self, comparator):
+        # finds a boundary cost in the cost_matrix according to the function `comparator`
+        if self.cost_matrix.shape > (0,0):
+            cost_boundary = self.cost_matrix[
+                np.unravel_index(comparator(), self.cost_matrix.shape)]
+            return cost_boundary
+        else:
+            return None
+
+    def _greatest_cost(self):
+        # finds the greatest value in cost_matrix
+        return self._cost_bounds(self.cost_matrix.argmax)
+
+    def _least_cost(self):
+        # finds the lowest value in cost_matrix
+        return self._cost_bounds(self.cost_matrix.argmin)
+
+    def add_node(self, index, supply=0):
+        new_node = Node(
+            number = self.current_offset,
+            index = index,
+            supply = supply
+        )
+
+        if new_node.number in self.node_by_number:
+            raise AssignmentGraphError('Node {} already exists in assignment graph.'.format(new_node.number))
+        else:
+            self.node_by_number[new_node.number] = new_node
+            self.current_offset += 1
+            return new_node
+
+    def add_edge(self, start_node, end_node, capacity, cost):
+        self.start_nodes.append(start_node)
+        self.end_nodes.append(end_node)
+        self.capacities.append(capacity)
+        self.costs.append(cost)
 
     def construct_solver(self):
         self._check_solution()
