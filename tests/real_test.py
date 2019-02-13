@@ -74,10 +74,13 @@ class TestRealDataset(unittest.TestCase):
                              positive_constraint_percentage = positive_constraint_percentage,
                              negative_constraint_percentage = negative_constraint_percentage)
         print("Testing Config " + self.conf.get_config_note_id())
-        # Turn on logging in the web app because these are valid inputs and nothing should
-        # go wrong in the app.  If it does, we want to see the errors in the console
-        matcher.app.logger.disabled = False
-        matcher.app.logger.parent.disabled = False
+
+        supply = self.conf.get_total_review_supply()
+        print("Review supply",supply)
+        # Disable logging in the web app the test cases do the necessary result-checking when they expect
+        # errors to happen inside the matcher.
+        matcher.app.logger.disabled = True
+        matcher.app.logger.parent.disabled = True
         matcher.app.running_configs[self.conf.get_config_note_id()] = Configuration.STATUS_INITIALIZED
         response = post_json(self.app, '/match', {'configNoteId': self.conf.get_config_note_id() },
                              headers={'Authorization': 'Bearer Valid'})
@@ -93,7 +96,7 @@ class TestRealDataset(unittest.TestCase):
         return type(self).active_test_flags.get(n, True) and type(self).active_test_flags[n]
 
     # Swap the two lines below and set flags to run individual tests.
-    # active_test_flags = { 1: True, 2: False, 3: False, 4: False, 5: False, 6: False, 7: False, 8: False, 9: False, 10: False }
+    # active_test_flags = { 1: False, 2: True, 3: False, 4: False, 5: False, 6: False, 7: False, 8: False, 9: False, 10: False }
     active_test_flags = { 1: True, 2: True, 3: True, 4: True, 5: True, 6: True, 7: True, 8: True, 9: True, 10: True }
 
     # Each test below creates the conference objects necessary for a matcher run and then it runs the matcher.  Prior to each
@@ -107,7 +110,9 @@ class TestRealDataset(unittest.TestCase):
         if not self._should_run(1):
             return
         print("Testing with 10 papers, 7 reviewers")
-        self._test_matcher(10, 7, conflict_percentage = 0, paper_min_reviewers = 2, reviewer_max_papers = 3)
+        num_papers = 10
+        reviews_needed_per_paper = 2
+        self._test_matcher(num_papers, 7, conflict_percentage = 0, paper_min_reviewers = 2, reviewer_max_papers = 3)
         config_stat = self.conf.get_config_note_status()
         assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {}".format(config_stat)
         num_assign_notes = self.conf.get_num_assignment_notes()
@@ -117,9 +122,15 @@ class TestRealDataset(unittest.TestCase):
         if not self._should_run(2):
             return
         print("Testing with 10 papers, 7 reviewers, 100% custom loads")
-        self._test_matcher(10, 7, conflict_percentage = 0, paper_min_reviewers = 2, reviewer_max_papers = 3, custom_load_percentage = 1)
+        num_papers = 10
+        reviews_needed_per_paper = 2
+        self._test_matcher(num_papers, 7, conflict_percentage = 0, paper_min_reviewers = reviews_needed_per_paper, reviewer_max_papers = 3, custom_load_percentage = 1)
         config_stat = self.conf.get_config_note_status()
-        assert config_stat == Configuration.STATUS_NO_SOLUTION, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_NO_SOLUTION)
+        review_supply = self.conf.get_total_review_supply()
+        if review_supply < num_papers * reviews_needed_per_paper:
+            assert config_stat == Configuration.STATUS_ERROR, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_ERROR)
+        else:
+            assert config_stat == Configuration.STATUS_NO_SOLUTION, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_NO_SOLUTION)
 
     def test3_10papers_7reviewers_25cust_loads (self):
         if not self._should_run(3):

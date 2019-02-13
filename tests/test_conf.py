@@ -406,9 +406,15 @@ class TestConf:
         }))
         # custom_loads go into config.content as custom_loads: {"user-name": load ...}
         custom_loads = {}
+
+        self.total_review_supply = 0
         for rev in self.reviewers_group.members:
             if random.random() < self.custom_load_percentage:
-                custom_loads[rev] = random.randint(1,self.reviewer_max_papers)
+                reviewer_max_load = random.randint(1,self.reviewer_max_papers)
+                self.total_review_supply += reviewer_max_load
+                custom_loads[rev] = reviewer_max_load
+            else:
+                self.total_review_supply += self.reviewer_max_papers
         self.config_note.content['custom_loads'] = custom_loads
 
         # constraints go into config.content as constraints: {'forum-id': {"user1" : '-inf' | '+inf', "user2" : ...}   'forum-id2' .... }
@@ -425,6 +431,9 @@ class TestConf:
             constraints[paper_id] = user_map
         self.config_note.content['constraints'] = constraints
         client.post_note(self.config_note)
+
+    def get_total_review_supply (self):
+        return self.total_review_supply
 
 
 
