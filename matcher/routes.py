@@ -8,7 +8,11 @@ from matcher.fields  import Configuration
 
 def get_client (token=None):
     baseurl = app.config['OPENREVIEW_BASEURL']
-    if app.config['TESTING']:
+    if app.config['TESTING'] and app.config.get('USE_API'):
+        email = app.config.get('OPENREVIEW_USERNAME')
+        pw = app.config.get('OPENREVIEW_PASSWORD')
+        return openreview.Client(baseurl=baseurl,username=email, password=pw)
+    elif app.config['TESTING']:
         return tests.mock_or_client.MockORClient(baseurl=baseurl,token=token)
     else:
         return openreview.Client(baseurl=baseurl,token=token)
@@ -32,16 +36,18 @@ def match():
         # N.B. If the token is invalid, it succeeds using a guest
         client = get_client(token=token)
         params = request.json
-        configNoteId = params['configNoteId']
-        app.logger.debug("Request to assign reviewers for configId: " + configNoteId)
+        config_note_id = params['configNoteId']
+        # TODO move status setting out of Match and into this ConfigStatus class
+        # config_status = ConfigStatus(client,config_note_id)
+        app.logger.debug("Request to assign reviewers for configId: " + config_note_id)
         # If the client was constructed with a bad token, the failure happens here
-        config_note = client.get_note(configNoteId)
+        config_note = client.get_note(config_note_id)
         # If the configuration is already running a matching task, do not allow another until the
         # running task is complete
         if config_note.content[Configuration.STATUS] == Configuration.STATUS_RUNNING:
-            raise AlreadyRunningException('There is already a running matching task for config ' + configNoteId)
+            raise AlreadyRunningException('There is already a running matching task for config ' + config_note_id)
         elif config_note.content[Configuration.STATUS] == Configuration.STATUS_COMPLETE:
-            raise AlreadyCompleteException('Cannot run matcher on a completed configuration ' + configNoteId)
+            raise AlreadyCompleteException('Cannot run matcher on a completed configuration ' + config_note_id)
 
         matcher = Match(client,config_note,app.logger)
         # runs the match task in a separate thread
@@ -71,6 +77,7 @@ def match():
     except Exception as e:
         app.logger.error('OpenReview-matcher error:', exc_info=True)
         res['error'] = str(e)
+        # TODO Shouldn't need to rely on existence of a matcher in order to set config status- Use ConfigStatus object instead.
         if matcher:
             matcher.set_status(Configuration.STATUS_ERROR,"Error: " + str(e))
         return jsonify(res), 500

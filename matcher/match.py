@@ -8,6 +8,9 @@ from matcher import app
 import logging
 import time
 
+def time_ms ():
+    return int(round(time.time() * 1000))
+
 class Match:
 
     def __init__ (self, client, config_note, logger=logging.getLogger(__name__)):
@@ -21,8 +24,8 @@ class Match:
         self.config_note.content[Configuration.STATUS] = status
         if message:
             self.config_note.content[Configuration.ERROR_MESSAGE] = message
-        self.client.post_note(self.config_note)
-        app.running_configs[self.config_note.id] = status # integration testing needs this to know when to report results
+        self.config_note = self.client.post_note(self.config_note)
+        print(time_ms(),"Status on config",self.config_note.id,"set to",status)
         return self.config_note
 
     def run (self):
@@ -39,6 +42,7 @@ class Match:
             self.logger.error('Internal error:', exc_info=True)
         finally:
             self.logger.debug("Finished task for configId: " + self.config_note.id)
+            print(time_ms(),"Finished task for configId:", self.config_note.id, "status:", self.config_note.content['status'])
             return self.config_note
 
 
@@ -104,12 +108,12 @@ class Match:
                 self.logger.debug('Failure: Solver could not find a solution.')
                 self.set_status(Configuration.STATUS_NO_SOLUTION, 'Solver could not find a solution.  Adjust your parameters' )
 
+            return self.config_note
         except Exception as e:
             msg = "Internal Error while running solver: " + str(e)
             self.set_status(Configuration.STATUS_ERROR,msg)
             raise e
-        else:
-             return self.config_note
+
 
 
     def clear_existing_match(self, assignment_inv):
