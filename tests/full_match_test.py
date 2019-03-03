@@ -3,22 +3,10 @@ import json
 import matcher
 import os
 import openreview
-import time
-import functools
-from conference_config import ConferenceConfig, Params
-from matcher.fields import Configuration
-from MatchResultChecker import MatchResultChecker
+from conference_config import Params
+from TestUtil import TestUtil
 
-def time_ms ():
-    return int(round(time.time() * 1000))
 
-def post_json(client, url, json_dict, headers=None):
-    """Send dictionary json_dict as a json to the specified url """
-    config_note = json.dumps(json_dict)
-    if headers:
-        return client.post(url, data=config_note, content_type='application/json', headers=headers)
-    else:
-        return client.post(url, data=config_note, content_type='application/json')
 
 def json_of_response(response):
     """Decode json from response"""
@@ -31,44 +19,13 @@ class FullMatchTest(unittest.TestCase):
 
 
 
-
-    @classmethod
-    def get_client(cls, base_url):
-        client = openreview.Client(baseurl = base_url)
-        assert client is not None, "Client is none"
-        username = 'openreview.net'
-        password = '1234'
-        res = client.register_user(email = username, first = 'Super', last = 'User', password = password)
-        assert res, "Res i none"
-        res = client.activate_user('openreview.net', {
-            'names': [
-                {
-                    'first': 'Super',
-                    'last': 'User',
-                    'username': '~Super_User1'
-                }
-            ],
-            'emails': ['openreview.net'],
-            'preferredEmail': 'info@openreview.net'
-        })
-        assert res, "Res i none"
-        group = client.get_group(id = 'openreview.net')
-        assert group
-        assert group.members == ['~Super_User1']
-
-        # The matcher app config needs to know to use real openreview-py API and it needs the superuser
-        # credentials created above
-        matcher.app.config['TESTING'] = True
-        matcher.app.config['USE_API'] = True
-        matcher.app.config['OPENREVIEW_USERNAME'] = username
-        matcher.app.config['OPENREVIEW_PASSWORD'] = password
-        return client
-
     # called once at beginning of suite
     @classmethod
     def setUpClass(cls):
-        or_baseurl = os.getenv('OPENREVIEW_BASEURL')
-        FullMatchTest.client = FullMatchTest.get_client(or_baseurl)
+        pass
+        # or_baseurl = os.getenv('OPENREVIEW_BASEURL')
+
+        # FullMatchTest.client = FullMatchTest.get_client(or_baseurl)
 
 
     @classmethod
@@ -90,79 +47,14 @@ class FullMatchTest(unittest.TestCase):
         or_baseurl = os.getenv('OPENREVIEW_BASEURL')
         assert or_baseurl != None and or_baseurl != ''
         matcher.app.config['OPENREVIEW_BASEURL'] = or_baseurl
+        # only need one TestUtil object for all tests
+        or_baseurl = os.getenv('OPENREVIEW_BASEURL')
+        self.tu = TestUtil.get_instance(or_baseurl)
 
 
 
     def tearDown (self):
         pass
-
-    # method name needs _ so that unittest won't run this as a test
-    def _test_matcher(self, suffix_num, params):
-        print("Running test", suffix_num)
-
-        self.conf = ConferenceConfig(FullMatchTest.client, suffix_num, params)
-        config_id = self.conf.config_note_id
-        print("Testing Config " + config_id)
-
-        # Disable logging in the web app the test cases do the necessary result-checking when they expect
-        # errors to happen inside the matcher.
-        matcher.app.logger.disabled = True
-        matcher.app.logger.parent.disabled = True
-        response = post_json(self.app, '/match', {'configNoteId': self.conf.config_note_id },
-                             headers={'Authorization': 'Bearer Valid'})
-        print(time_ms(),"Waiting for matcher to finish solving...")
-        self.wait_until_complete(config_id)
-        # self.sleep_for_seconds(config_id, 5)
-        assert response.status_code == 200
-
-    def wait_until_complete(self, config_id):
-        # stat = self.conf.get_config_note_status()
-        stat = self.get_config_status(config_id)
-        print("before waiting loop", stat)
-        while stat in [Configuration.STATUS_INITIALIZED, Configuration.STATUS_RUNNING]:
-            time.sleep(0.5)
-            stat = self.get_config_status(config_id)
-            print("loop: config note", self.conf.config_note_id, "status is", stat)
-        print("After waiting:", stat, "Done!\n")
-
-    def sleep_for_seconds(self, config_id, seconds):
-        stat = self.get_config_status(config_id)
-        print(time_ms(),"Before sleep", stat, "Config id:", config_id)
-        time.sleep(seconds)
-        print(time_ms(),"After sleep Config id:", config_id, "Status is now", stat)
-
-    def get_config_status (self, config_id):
-        config_note = FullMatchTest.client.get_note(config_id)
-        return config_note.content['status']
-
-
-    def set_and_print_test_params (self, params):
-        supply_deduction_from_custom_loads = 0
-        if params.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION):
-            supply_deduction_from_custom_loads = params[Params.CUSTOM_LOAD_CONFIG][Params.CUSTOM_LOAD_SUPPLY_DEDUCTION]
-
-        params[Params.DEMAND] = params[Params.NUM_PAPERS] * params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
-        params[Params.THEORETICAL_SUPPLY] = params[Params.NUM_REVIEWERS] * params[Params.REVIEWER_MAX_PAPERS]
-        params[Params.ACTUAL_SUPPLY] = params[Params.THEORETICAL_SUPPLY] - supply_deduction_from_custom_loads
-
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nReviewer reviews max of {} paper(s). \nSupply: {} Demand: {}.\nActual Supply:{}\n\tcustom_load deduction {}".
-              format(params[Params.NUM_PAPERS], params[Params.NUM_REVIEWERS], params[Params.NUM_REVIEWS_NEEDED_PER_PAPER],
-                     params[Params.REVIEWER_MAX_PAPERS], params[Params.THEORETICAL_SUPPLY], params[Params.DEMAND], params[Params.ACTUAL_SUPPLY], supply_deduction_from_custom_loads))
-
-    def check_completed_match (self, params):
-        config_stat = self.get_config_status(self.conf.config_note_id)
-        assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_COMPLETE)
-        assignment_notes = self.conf.get_assignment_notes()
-        assert len(assignment_notes) == params[Params.NUM_PAPERS], "Number of assignments {} is not same as number of papers {}".format(len(assignment_notes), self.num_papers)
-        MatchResultChecker().check_results(self.conf.get_custom_loads(), assignment_notes)
-
-    def check_failed_match(self, params):
-        config_stat = self.get_config_status(self.conf.config_note_id)
-        custom_loads = self.conf.get_custom_loads()
-        actual_supply = self.get_review_supply(custom_loads)
-        assert config_stat == Configuration.STATUS_ERROR, "Failure: Config status is {} expected {}".format(config_stat,
-                                                                                                            Configuration.STATUS_ERROR)
-        print("Got the expected error because actual supply {} < demand {}".format(actual_supply, params[Params.DEMAND]))
 
 
     def show_test_exception (self, exc):
@@ -183,17 +75,16 @@ class FullMatchTest(unittest.TestCase):
           Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
           Params.REVIEWER_MAX_PAPERS: 2,
           }
-        self.set_and_print_test_params(params)
+        self.tu.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, params)
-            self.check_completed_match(params)
+            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
         finally:
             pass
 
-    def get_review_supply (self, custom_loads):
-        return functools.reduce(lambda x, value:x + value, custom_loads.values(), 0)
+
 
 
     # @unittest.skip
@@ -205,10 +96,10 @@ class FullMatchTest(unittest.TestCase):
                   Params.REVIEWER_MAX_PAPERS: 3,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
                   }
-        self.set_and_print_test_params(params)
+        self.tu.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, params)
-            self.check_failed_match(params)
+            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.check_failed_match()
         except Exception as exc:
                 self.show_test_exception(exc)
         finally:
@@ -224,10 +115,10 @@ class FullMatchTest(unittest.TestCase):
                   Params.REVIEWER_MAX_PAPERS: 3,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 0}
                   }
-        self.set_and_print_test_params(params)
+        self.tu.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, params)
-            self.check_completed_match(params)
+            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
         finally:
@@ -244,10 +135,10 @@ class FullMatchTest(unittest.TestCase):
                   Params.REVIEWER_MAX_PAPERS: 4,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
                   }
-        self.set_and_print_test_params(params)
+        self.tu.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, params)
-            self.check_completed_match(params)
+            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.check_completed_match()
 
         except Exception as exc:
             self.show_test_exception(exc)
