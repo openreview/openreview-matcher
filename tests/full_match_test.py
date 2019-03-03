@@ -5,8 +5,9 @@ import os
 import openreview
 import time
 import functools
-from conference_config import TestConf
+from conference_config import ConferenceConfig, Params
 from matcher.fields import Configuration
+from MatchResultChecker import MatchResultChecker
 
 def time_ms ():
     return int(round(time.time() * 1000))
@@ -25,7 +26,10 @@ def json_of_response(response):
 
 
 
-class TestRealDataset(unittest.TestCase):
+
+class FullMatchTest(unittest.TestCase):
+
+
 
 
     @classmethod
@@ -64,7 +68,7 @@ class TestRealDataset(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         or_baseurl = os.getenv('OPENREVIEW_BASEURL')
-        TestRealDataset.client = TestRealDataset.get_client(or_baseurl)
+        FullMatchTest.client = FullMatchTest.get_client(or_baseurl)
 
 
     @classmethod
@@ -92,25 +96,11 @@ class TestRealDataset(unittest.TestCase):
     def tearDown (self):
         pass
 
-    def _test_matcher(self, suffix_num, num_papers, num_reviewers, conflict_percentage=0, paper_min_reviewers=2,
-                      reviewer_max_papers=3, custom_load_percentage=0, positive_constraint_percentage=0,
-                      negative_constraint_percentage=0, custom_load_config={}):
+    # method name needs _ so that unittest won't run this as a test
+    def _test_matcher(self, suffix_num, params):
         print("Running test", suffix_num)
-        self.num_papers = num_papers
-        self.num_reviewers = num_reviewers
 
-        self.conf = TestConf(TestRealDataset.client,
-                             suffix_num = suffix_num,
-                             num_papers = num_papers,
-                             num_reviewers = num_reviewers,
-                             conflict_percentage = conflict_percentage,
-                             paper_min_reviewers = paper_min_reviewers,
-                             reviewer_max_papers = reviewer_max_papers,
-                             custom_load_percentage = custom_load_percentage,
-                             custom_load_config = custom_load_config,
-                             positive_constraint_percentage = positive_constraint_percentage,
-                             negative_constraint_percentage = negative_constraint_percentage
-                             )
+        self.conf = ConferenceConfig(FullMatchTest.client, suffix_num, params)
         config_id = self.conf.config_note_id
         print("Testing Config " + config_id)
 
@@ -121,8 +111,8 @@ class TestRealDataset(unittest.TestCase):
         response = post_json(self.app, '/match', {'configNoteId': self.conf.config_note_id },
                              headers={'Authorization': 'Bearer Valid'})
         print(time_ms(),"Waiting for matcher to finish solving...")
-        # self.wait_until_complete(config_id)
-        self.sleep_for_seconds(config_id, 5)
+        self.wait_until_complete(config_id)
+        # self.sleep_for_seconds(config_id, 5)
         assert response.status_code == 200
 
     def wait_until_complete(self, config_id):
@@ -130,6 +120,7 @@ class TestRealDataset(unittest.TestCase):
         stat = self.get_config_status(config_id)
         print("before waiting loop", stat)
         while stat in [Configuration.STATUS_INITIALIZED, Configuration.STATUS_RUNNING]:
+            time.sleep(0.5)
             stat = self.get_config_status(config_id)
             print("loop: config note", self.conf.config_note_id, "status is", stat)
         print("After waiting:", stat, "Done!\n")
@@ -141,128 +132,125 @@ class TestRealDataset(unittest.TestCase):
         print(time_ms(),"After sleep Config id:", config_id, "Status is now", stat)
 
     def get_config_status (self, config_id):
-        config_note = TestRealDataset.client.get_note(config_id)
+        config_note = FullMatchTest.client.get_note(config_id)
         return config_note.content['status']
 
-    def _should_run(self, n):
-        return type(self).active_test_flags.get(n, True) and type(self).active_test_flags[n]
 
-    # Swap the two lines below and set flags to run individual tests.
-    active_test_flags = { 1: False, 2: False, 3: False, 4: True, 5: False, 6: False, 7: False, 8: False, 9: False, 10: False }
-    # active_test_flags = { 1: True, 2: True, 3: True, 4: True, 5: True, 6: True, 7: True, 8: True, 9: True, 10: True }
+    def set_and_print_test_params (self, params):
+        supply_deduction_from_custom_loads = 0
+        if params.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION):
+            supply_deduction_from_custom_loads = params[Params.CUSTOM_LOAD_CONFIG][Params.CUSTOM_LOAD_SUPPLY_DEDUCTION]
+
+        params[Params.DEMAND] = params[Params.NUM_PAPERS] * params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
+        params[Params.THEORETICAL_SUPPLY] = params[Params.NUM_REVIEWERS] * params[Params.REVIEWER_MAX_PAPERS]
+        params[Params.ACTUAL_SUPPLY] = params[Params.THEORETICAL_SUPPLY] - supply_deduction_from_custom_loads
+
+        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nReviewer reviews max of {} paper(s). \nSupply: {} Demand: {}.\nActual Supply:{}\n\tcustom_load deduction {}".
+              format(params[Params.NUM_PAPERS], params[Params.NUM_REVIEWERS], params[Params.NUM_REVIEWS_NEEDED_PER_PAPER],
+                     params[Params.REVIEWER_MAX_PAPERS], params[Params.THEORETICAL_SUPPLY], params[Params.DEMAND], params[Params.ACTUAL_SUPPLY], supply_deduction_from_custom_loads))
+
+    def check_completed_match (self, params):
+        config_stat = self.get_config_status(self.conf.config_note_id)
+        assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_COMPLETE)
+        assignment_notes = self.conf.get_assignment_notes()
+        assert len(assignment_notes) == params[Params.NUM_PAPERS], "Number of assignments {} is not same as number of papers {}".format(len(assignment_notes), self.num_papers)
+        MatchResultChecker().check_results(self.conf.get_custom_loads(), assignment_notes)
+
+    def check_failed_match(self, params):
+        config_stat = self.get_config_status(self.conf.config_note_id)
+        custom_loads = self.conf.get_custom_loads()
+        actual_supply = self.get_review_supply(custom_loads)
+        assert config_stat == Configuration.STATUS_ERROR, "Failure: Config status is {} expected {}".format(config_stat,
+                                                                                                            Configuration.STATUS_ERROR)
+        print("Got the expected error because actual supply {} < demand {}".format(actual_supply, params[Params.DEMAND]))
+
+
+    def show_test_exception (self, exc):
+            print("Something went wrong while running this test")
+            print(exc)
+            print('-------------------')
+            raise exc
 
     # To look at the results of test1:
     # http://openreview.localhost/assignments?venue=FakeConferenceForTesting1.cc/2019/Conference
     # To login to OR when running test suite:  OpenReview.net / 1234 (as defined in get_client above)
 
+    # @unittest.skip
     def test1_10papers_7reviewers (self):
         test_num = 1
-        if not self._should_run(test_num):
-            return
-
-        num_papers = 10
-        num_reviewers = 7
-        reviews_needed_per_paper = 1
-        reviewer_max_papers = 2
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s). \nEach reviewer must review {} paper(s)".
-              format(num_papers, num_reviewers,reviews_needed_per_paper,reviewer_max_papers))
+        params = {Params.NUM_PAPERS: 10,
+          Params.NUM_REVIEWERS: 7,
+          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
+          Params.REVIEWER_MAX_PAPERS: 2,
+          }
+        self.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, num_papers, num_reviewers, paper_min_reviewers=reviews_needed_per_paper, reviewer_max_papers=reviewer_max_papers)
-            config_stat = self.get_config_status(self.conf.config_note_id)
-            assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {}".format(config_stat)
-            assignment_notes = self.conf.get_assignment_notes()
-            assert len(assignment_notes) == self.num_papers, "Number of assignments {} is not same as number of papers {}".format(len(assignment_notes), self.num_papers)
+            self._test_matcher(test_num, params)
+            self.check_completed_match(params)
         except Exception as exc:
-            print("Something went wrong while running this test")
-            print(exc)
-            print('-------------------')
-            raise exc
+            self.show_test_exception(exc)
         finally:
             pass
 
     def get_review_supply (self, custom_loads):
         return functools.reduce(lambda x, value:x + value, custom_loads.values(), 0)
 
+
+    # @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
         test_num = 2
-        if not self._should_run(test_num):
-            return
-        num_papers = 10
-        num_reviewers = 7
-        reviews_needed_per_paper = 2
-        reviewer_max_papers = 3
-        custom_load_config = {'load_reduction': 5}
-        demand = num_papers*reviews_needed_per_paper
-        supply = num_reviewers*reviewer_max_papers - custom_load_config['load_reduction']
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nTotal Demand: {}, Supply based on custom_loads: {}".format(num_papers, num_reviewers, reviews_needed_per_paper, demand, supply))
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 3,
+                  Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
+                  }
+        self.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, num_papers, num_reviewers, paper_min_reviewers=reviews_needed_per_paper, reviewer_max_papers=reviewer_max_papers,
-                               custom_load_config=custom_load_config)
-            config_stat = self.get_config_status(self.conf.config_note_id)
-            custom_loads = self.conf.get_custom_loads()
-            review_supply = self.get_review_supply(custom_loads)
-            assert config_stat == Configuration.STATUS_ERROR, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_ERROR)
-            print("Got the expected error because supply<demand")
-
+            self._test_matcher(test_num, params)
+            self.check_failed_match(params)
         except Exception as exc:
-                print("Something went wrong while running this test")
-                print(exc)
-                print('-------------------')
-                raise exc
+                self.show_test_exception(exc)
         finally:
             pass
 
 
+    # @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
         test_num = 3
-        if not self._should_run(test_num):
-            return
-        num_papers = 10
-        num_reviewers = 7
-        reviews_needed_per_paper = 2
-        reviewer_max_papers = 3
-        custom_load_config = {'load_reduction': 0} # need 10*2=20 reviews, no custom_loads will result in a 7*3=21 total
-        demand = num_papers*reviews_needed_per_paper
-        supply = num_reviewers*reviewer_max_papers - custom_load_config['load_reduction']
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nEach reviewers max paper(s) {}. \nSupply: {} Demand: {}".
-              format(num_papers, num_reviewers,reviews_needed_per_paper,reviewer_max_papers, supply, demand))
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 3,
+                  Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 0}
+                  }
+        self.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, num_papers, num_reviewers, paper_min_reviewers=reviews_needed_per_paper, reviewer_max_papers=reviewer_max_papers,
-                               custom_load_config=custom_load_config)
-            config_stat = self.get_config_status(self.conf.config_note_id)
-            assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_COMPLETE)
+            self._test_matcher(test_num, params)
+            self.check_completed_match(params)
         except Exception as exc:
-            print("Something went wrong while running this test")
-            print(exc)
-            print('-------------------')
-            raise exc
+            self.show_test_exception(exc)
         finally:
             pass
+        
 
 
+    # @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
         test_num = 4
-        if not self._should_run(test_num):
-            return
-        num_papers = 10
-        num_reviewers = 7
-        reviews_needed_per_paper = 2
-        reviewer_max_papers = 4
-        custom_load_config = {'load_reduction': 5}
-        demand = num_papers*reviews_needed_per_paper
-        supply = num_reviewers*reviewer_max_papers - custom_load_config['load_reduction']
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nEach reviewers max paper(s) {}. \nSupply: {} Demand: {}".
-              format(num_papers, num_reviewers,reviews_needed_per_paper,reviewer_max_papers, supply, demand))
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
+                  }
+        self.set_and_print_test_params(params)
         try:
-            self._test_matcher(test_num, num_papers, num_reviewers, paper_min_reviewers=reviews_needed_per_paper, reviewer_max_papers=reviewer_max_papers,
-                               custom_load_config=custom_load_config)
-            config_stat = self.get_config_status(self.conf.config_note_id)
-            assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_COMPLETE)
+            self._test_matcher(test_num, params)
+            self.check_completed_match(params)
+
         except Exception as exc:
-            print("Something went wrong while running this test")
-            print(exc)
-            print('-------------------')
-            raise exc
+            self.show_test_exception(exc)
         finally:
             pass
 

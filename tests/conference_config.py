@@ -1,11 +1,20 @@
 import openreview.tools
-import pymongo
-import pprint
 import random
 import datetime
+from fields import Configuration
+
 # Symbols
 
-
+class Params:
+    NUM_PAPERS = 'num_papers'
+    NUM_REVIEWERS = 'num_reviewers'
+    NUM_REVIEWS_NEEDED_PER_PAPER = 'reviews_needed_per_paper'
+    REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
+    CUSTOM_LOAD_CONFIG = 'custom_load_config'
+    CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
+    THEORETICAL_SUPPLY = 'theoretical_supply'
+    ACTUAL_SUPPLY = 'actual_supply'
+    DEMAND = 'demand'
 
 
 
@@ -28,24 +37,28 @@ class ConfIds:
 
 # To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
 
-class TestConf:
+class ConferenceConfig:
 
-    def __init__ (self, client, suffix_num=0, num_papers=10, num_reviewers=7, conflict_percentage=0.0,
+
+    def __init__ (self, client, suffix_num, params):
+
+        '''
+        num=0, num_papers=10, num_reviewers=7, conflict_percentage=0.0,
                   paper_min_reviewers=1, reviewer_max_papers=3, custom_load_percentage=0.0,
                   positive_constraint_percentage=0.0, negative_constraint_percentage=0.0, custom_load_config={}):
+        '''
 
         self.client = client
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
         print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
-        self.num_papers = num_papers
-        self.num_reviewers = num_reviewers
-        self.conflict_percentage = conflict_percentage
-        self.custom_load_config = custom_load_config
-        # self.custom_load_percentage = custom_load_percentage
-        self.positive_constraint_percentage = positive_constraint_percentage
-        self.negative_constraint_percentage = negative_constraint_percentage
-        self.paper_min_reviewers = paper_min_reviewers
-        self.reviewer_max_papers = reviewer_max_papers
+        self.num_papers = params[Params.NUM_PAPERS]
+        self.num_reviewers = params[Params.NUM_REVIEWERS]
+        self.conflict_percentage = 0.0
+        self.custom_load_config = params.get(Params.CUSTOM_LOAD_CONFIG)
+        self.positive_constraint_percentage = 0.0
+        self.negative_constraint_percentage = 0.0
+        self.paper_min_reviewers = params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
+        self.reviewer_max_papers = params[Params.REVIEWER_MAX_PAPERS]
         self.submission_inv = None
         self.paper_assignment_inv = None
         self.config_inv = None
@@ -87,7 +100,6 @@ class TestConf:
         self.conference.set_area_chairs(emails=[])
         self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.num_reviewers)]
         self.conference.set_reviewers(emails=self.reviewers)
-        print("Conference successfully built")
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         # TODO:  The config invitation only includes bid as a possible score and I need to
@@ -368,8 +380,10 @@ class TestConf:
         self.config_note.content['constraints'] = constraints
 
     def add_config_custom_loads(self):
-        self.set_reviewers_custom_load_to_default()
-        self.reduce_reviewers_custom_load_by_shortfall(self.custom_load_config['load_reduction'])
+        if self.custom_load_config and self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION):
+            self.set_reviewers_custom_load_to_default()
+            self.reduce_reviewers_custom_load_by_shortfall(self.custom_load_config[Params.CUSTOM_LOAD_SUPPLY_DEDUCTION])
+            self.remove_default_custom_loads()
 
 
     def set_reviewers_custom_load_to_default (self):
@@ -377,21 +391,29 @@ class TestConf:
         default_load = self.reviewer_max_papers
         for rev in self.reviewers:
             custom_loads[rev] = default_load
-        self.config_note.content['custom_loads'] = custom_loads
+        self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
 
-    # cycle through the reviewers reducing their load until load_reduction has been reached
-    def reduce_reviewers_custom_load_by_shortfall (self, load_reduction):
-        custom_loads = self.config_note.content['custom_loads']
-        while load_reduction > 0:
+    # cycle through the reviewers reducing their load until supply deduction has been reached
+    def reduce_reviewers_custom_load_by_shortfall (self, supply_deduction):
+        custom_loads = self.config_note.content[Configuration.CUSTOM_LOADS]
+        while supply_deduction > 0:
             for rev in custom_loads:
-                if load_reduction > 0:
+                if supply_deduction > 0:
                     custom_loads[rev] -= 1
-                    load_reduction -= 1
+                    supply_deduction -= 1
                 else:
                     return
 
+    # any custom_loads that are just default load should be removed so that we only test ones that actually reduce the supply.
+    def remove_default_custom_loads (self):
+        default_load = self.reviewer_max_papers
+        custom_loads = self.config_note.content[Configuration.CUSTOM_LOADS]
+        for reviewer in list(custom_loads.keys()):
+            if custom_loads[reviewer] == default_load:
+                del custom_loads[reviewer]
+
     def get_custom_loads (self):
-        return self.config_note.content['custom_loads']
+        return self.config_note.content[Configuration.CUSTOM_LOADS]
 
     def get_total_review_supply (self):
         return self.total_review_supply
@@ -422,4 +444,4 @@ class TestConf:
 
 
 if __name__ == '__main__':
-    tc = TestConf(None,4,4)
+    tc = ConferenceConfig(None, 4, 4)
