@@ -14,11 +14,11 @@ def time_ms ():
 class TestUtil:
     instance = None
 
-    @staticmethod
-    def get_instance (base_url):
-        if not TestUtil.instance:
-            TestUtil.instance = TestUtil(base_url)
-        return TestUtil.instance
+    @classmethod
+    def get_instance (cls, base_url):
+        if not cls.instance:
+            cls.instance = TestUtil(base_url)
+        return cls.instance
 
     def __init__(self, base_url):
         self.get_client(base_url)
