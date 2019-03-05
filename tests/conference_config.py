@@ -1,8 +1,7 @@
 import openreview.tools
 import random
 import datetime
-from collections import defaultdict
-from fields import Configuration
+from matcher.fields import Configuration
 
 # Symbols
 
@@ -47,12 +46,7 @@ class ConferenceConfig:
 
     def __init__ (self, client, suffix_num, params):
 
-        '''
-        num=0, num_papers=10, num_reviewers=7, conflict_percentage=0.0,
-                  paper_min_reviewers=1, reviewer_max_papers=3, custom_load_percentage=0.0,
-                  positive_constraint_percentage=0.0, negative_constraint_percentage=0.0, custom_load_config={}):
-        '''
-
+        random.seed(10) # want a reproducible sequence of random numbers
         self.client = client
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
         print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
@@ -184,7 +178,6 @@ class ConferenceConfig:
 
     #TODO integrate entries created here into the metadata notes built by builder
     def create_metadata_notes (self):
-        random.seed(10) # want a reproducible sequence
         self.paper_reviewer_score_notes = []
 
         for paper_note in self.paper_notes:

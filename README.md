@@ -27,6 +27,17 @@ OPENREVIEW_BASEURL, LOG_FILE
 
 **Testing:**
 
+full_match_test.py is an end-to-end test suite.  
+**Instructions for running this test case with pytest**
+
+Go into the virtual environment for running the matcher
+cd openreview-matcher
+source venv/bin/activate
+cd tests
+export PYTHONPATH='.:..'    // tells pytest to search for python files in this dir and the one above
+pytest -s full_match_test.py  // runs pytest without capturing output into temp.py
+
+
  test_match is a set of integration tests.  They use a flask test_client which invokes
  the Flask server with TESTING=True.   The server switches to using tests.MockORClient if TESTING=True.
  Otherwise, it uses the openreview.Client to communicate with OpenReview.

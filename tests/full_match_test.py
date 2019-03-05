@@ -2,9 +2,16 @@ import unittest
 import json
 import matcher
 import os
-import openreview
 from conference_config import Params
 from TestUtil import TestUtil
+
+# Instructions for running this test case with pytest
+# go into the virtual environment for running the matcher
+# cd openreview-matcher
+# source venv/bin/activate
+# cd tests
+# export PYTHONPATH='.:..'    // tells pytest to search for python files in this dir and the one above
+# pytest -s full_match_test.py  // runs pytest without capturing output into temp.py
 
 
 
@@ -66,7 +73,7 @@ class FullMatchTest(unittest.TestCase):
     # http://openreview.localhost/assignments?venue=FakeConferenceForTesting1.cc/2019/Conference
     # To login to OR when running test suite:  OpenReview.net / 1234 (as defined in get_client above)
 
-    # @unittest.skip
+    @unittest.skip
     def test1_10papers_7reviewers (self):
         params = {Params.NUM_PAPERS: 10,
           Params.NUM_REVIEWERS: 7,
@@ -85,7 +92,7 @@ class FullMatchTest(unittest.TestCase):
 
 
 
-    # @unittest.skip
+    @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
@@ -103,7 +110,7 @@ class FullMatchTest(unittest.TestCase):
             pass
 
 
-    # @unittest.skip
+    @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
@@ -122,7 +129,7 @@ class FullMatchTest(unittest.TestCase):
         
 
 
-    # @unittest.skip
+    @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
@@ -140,7 +147,7 @@ class FullMatchTest(unittest.TestCase):
         finally:
             pass
 
-    # @unittest.skip
+    @unittest.skip
     def test5_10papers_7reviewers_4locks (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
@@ -182,7 +189,7 @@ class FullMatchTest(unittest.TestCase):
         finally:
             pass
 
-    @unittest.skip
+    # @unittest.skip
     def test7_10papers_7reviewers_3vetos (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
@@ -203,7 +210,7 @@ class FullMatchTest(unittest.TestCase):
         finally:
             pass
 
-    # @unittest.skip
+    @unittest.skip
     def test8_10papers_7reviewers_3locks (self):
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,

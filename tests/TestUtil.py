@@ -2,7 +2,7 @@ import functools
 import time
 import json
 import pprint
-from fields import Configuration
+from matcher.fields import Configuration
 from conference_config import Params, ConferenceConfig
 from AssignmentChecker import AssignmentChecker
 import openreview

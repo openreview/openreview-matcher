@@ -94,10 +94,11 @@ class Encoder(object):
                 # overwrite constraints with user-added constraints found in config
                 user_constraint = self.constraints.get(forum, {}).get(id)
                 if user_constraint:
-                    if '-inf' in user_constraint:
+                    if Configuration.VETO in user_constraint:
                         self.constraint_matrix[coordinates] = -1
-                    if '+inf' in user_constraint:
+                    if Configuration.LOCK in user_constraint:
                         self.constraint_matrix[coordinates] = 1
+
 
     def decode(self, solution):
         '''
