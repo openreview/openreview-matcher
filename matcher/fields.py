@@ -18,6 +18,8 @@ class Configuration:
     STATUS_RUNNING = "Running"
     STATUS_INITIALIZED = "Initialized"
     OBJECTIVE_TYPE = "objective_type"
+    LOCK = '+inf'
+    VETO = '-inf'
 
 class PaperReviewerScore:
     USERID = 'userid'

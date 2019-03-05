@@ -1,9 +1,10 @@
 import functools
 import time
 import json
+import pprint
 from fields import Configuration
 from conference_config import Params, ConferenceConfig
-from MatchResultChecker import MatchResultChecker
+from AssignmentChecker import AssignmentChecker
 import openreview
 import matcher
 
@@ -21,6 +22,7 @@ class TestUtil:
         return cls.instance
 
     def __init__(self, base_url):
+        self.test_count = 0
         self.get_client(base_url)
 
     def get_client(self, base_url):
@@ -57,12 +59,15 @@ class TestUtil:
     def get_review_supply (self, custom_loads):
         return functools.reduce(lambda x, value:x + value, custom_loads.values(), 0)
 
-    def check_completed_match(self):
+    def check_completed_match(self, check_loads=True, check_constraints=True):
         config_stat = TestUtil.get_config_status(self.client, self.conf)
         assert config_stat == Configuration.STATUS_COMPLETE, "Failure: Config status is {} expected {}".format(config_stat, Configuration.STATUS_COMPLETE)
         assignment_notes = self.conf.get_assignment_notes()
         assert len(assignment_notes) == self.params[Params.NUM_PAPERS], "Number of assignments {} is not same as number of papers {}".format(len(assignment_notes), self.params[Params.NUM_PAPERS])
-        MatchResultChecker().check_results(self.conf.get_custom_loads(), assignment_notes)
+        self.show_custom_loads()
+        print()
+        self.show_constraints()
+        AssignmentChecker(self.conf, check_loads, check_constraints, assignment_notes).check_results()
 
     def check_failed_match(self):
         config_stat = TestUtil.get_config_status(self.client, self.conf)
@@ -82,16 +87,27 @@ class TestUtil:
         self.params[Params.THEORETICAL_SUPPLY] = self.params[Params.NUM_REVIEWERS] * self.params[Params.REVIEWER_MAX_PAPERS]
         self.params[Params.ACTUAL_SUPPLY] = self.params[Params.THEORETICAL_SUPPLY] - supply_deduction_from_custom_loads
 
-        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nReviewer reviews max of {} paper(s). \nSupply: {} Demand: {}.\nActual Supply:{}\n\tcustom_load deduction {}".
+        print("\n\nTesting with {} papers, {} reviewers. \nEach paper needs at least {} review(s).  \nReviewer reviews max of {} paper(s). \nSupply: {} Demand: {}.\nActual Supply:{}\n\tcustom_load deduction {}\nLock Constraints: {}\nVeto Constraints: {}".
               format(self.params[Params.NUM_PAPERS], self.params[Params.NUM_REVIEWERS], self.params[Params.NUM_REVIEWS_NEEDED_PER_PAPER],
                      self.params[Params.REVIEWER_MAX_PAPERS], self.params[Params.THEORETICAL_SUPPLY], self.params[Params.DEMAND],
-                     self.params[Params.ACTUAL_SUPPLY], supply_deduction_from_custom_loads))
+                     self.params[Params.ACTUAL_SUPPLY], supply_deduction_from_custom_loads,
+                     self.params.get(Params.CONSTRAINTS_CONFIG,{}).get(Params.CONSTRAINTS_LOCKS),
+                     self.params.get(Params.CONSTRAINTS_CONFIG,{}).get(Params.CONSTRAINTS_VETOS)
+                     ))
+
+    def show_custom_loads (self):
+        print("Custom_loads in config {} are:".format(self.conf.config_note_id))
+        pprint.pprint(self.conf.get_custom_loads())
+
+    def show_constraints (self):
+        print("Constraints in config {} are:".format(self.conf.config_note_id))
+        pprint.pprint(self.conf.get_constraints())
 
     # method name needs _ so that unittest won't run this as a test
-    def test_matcher(self, flask_app, suffix_num, params):
-        print("Running test", suffix_num)
-
-        self.conf = ConferenceConfig(self.client, suffix_num, params)
+    def test_matcher(self, flask_app, params):
+        self.test_count += 1
+        print("Running test", self.test_count)
+        self.conf = ConferenceConfig(self.client, self.test_count, params)
         config_id = self.conf.config_note_id
         print("Testing Config " + config_id)
 
@@ -107,20 +123,11 @@ class TestUtil:
         assert response.status_code == 200
 
     def wait_until_complete(self, config_id):
-        # stat = self.conf.get_config_note_status()
         stat = TestUtil.get_config_status(self.client,self.conf)
-        print("before waiting loop", stat)
         while stat in [Configuration.STATUS_INITIALIZED, Configuration.STATUS_RUNNING]:
             time.sleep(0.5)
             stat = TestUtil.get_config_status(self.client,self.conf)
-            print("loop: config note", self.conf.config_note_id, "status is", stat)
-        print("After waiting:", stat, "Done!\n")
-
-    def sleep_for_seconds(self, config_id, seconds):
-        stat = stat = TestUtil.get_config_status(self.client,self.conf)
-        print(time_ms(),"Before sleep", stat, "Config id:", config_id)
-        time.sleep(seconds)
-        print(time_ms(),"After sleep Config id:", config_id, "Status is now", stat)
+        print("After waiting configuration status is:", stat, "Done!\n")
 
     def post_json(self, flask_app, url, json_dict, headers=None):
         """Send dictionary json_dict as a json to the specified url """

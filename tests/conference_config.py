@@ -1,6 +1,7 @@
 import openreview.tools
 import random
 import datetime
+from collections import defaultdict
 from fields import Configuration
 
 # Symbols
@@ -12,6 +13,10 @@ class Params:
     REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
     CUSTOM_LOAD_CONFIG = 'custom_load_config'
     CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
+    CONSTRAINTS_CONFIG = 'constraints_config'
+    CONSTRAINTS_VETOS = 'constraints_vetos'
+    CONSTRAINTS_LOCKS = 'constraints_locks'
+    CONFLICTS_CONFIG = 'conflicts_config'
     THEORETICAL_SUPPLY = 'theoretical_supply'
     ACTUAL_SUPPLY = 'actual_supply'
     DEMAND = 'demand'
@@ -55,6 +60,7 @@ class ConferenceConfig:
         self.num_reviewers = params[Params.NUM_REVIEWERS]
         self.conflict_percentage = 0.0
         self.custom_load_config = params.get(Params.CUSTOM_LOAD_CONFIG)
+        self.constraints_config = params.get(Params.CONSTRAINTS_CONFIG)
         self.positive_constraint_percentage = 0.0
         self.negative_constraint_percentage = 0.0
         self.paper_min_reviewers = params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
@@ -365,19 +371,29 @@ class ConferenceConfig:
         self.config_note = self.client.post_note(self.config_note)
         self._config_note_id = self.config_note.id
 
+    # out_constraints is added to as: {'forum-id': {"user1" : '-inf' | '+inf', "user2" : ...}   'forum-id2' .... }
+    def insert_constraints (self, paper_constraints, out_constraints, val):
+        for paper_ix in paper_constraints:
+            paper = self.paper_notes[paper_ix]
+            if not out_constraints.get(paper.id):
+                out_constraints[paper.id] = {}
+            for reviewer_ix in paper_constraints[paper_ix]:
+                reviewer = self.reviewers[reviewer_ix]
+                out_constraints[paper.id][reviewer] = val
+
+
+    # constraints_config is {'locks' : {0 : [0,2,3], 1 : [4]} Paper 0 locks in users 0,2,3 ; Paper 1 locks in user 4
+    #                       {'vetos' : {0 : [1,4], 1 : [5]} Paper 0 vetos users 1,4; Paper 1 vetos user 5
     def add_config_constraints(self):
-        # constraints go into config.content as constraints: {'forum-id': {"user1" : '-inf' | '+inf', "user2" : ...}   'forum-id2' .... }
-        constraints = {}
-        for n in self.paper_notes:
-            paper_id = n.id
-            user_map = {}
-            for r in self.reviewers:
-                if random.random() < self.positive_constraint_percentage:
-                    user_map[r] = '+inf'
-                elif random.random() < self.negative_constraint_percentage:
-                    user_map[r] = '-inf'
-            constraints[paper_id] = user_map
-        self.config_note.content['constraints'] = constraints
+        constraint_entries = {}
+        if not self.constraints_config:
+            return
+        vetos = self.constraints_config.get(Params.CONSTRAINTS_VETOS,{})
+        locks = self.constraints_config.get(Params.CONSTRAINTS_LOCKS,{})
+        self.insert_constraints(vetos, constraint_entries,Configuration.VETO)
+        self.insert_constraints(locks, constraint_entries,Configuration.LOCK)
+        self.config_note.content[Configuration.CONSTRAINTS] = constraint_entries
+
 
     def add_config_custom_loads(self):
         if self.custom_load_config and self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION):
@@ -411,6 +427,9 @@ class ConferenceConfig:
         for reviewer in list(custom_loads.keys()):
             if custom_loads[reviewer] == default_load:
                 del custom_loads[reviewer]
+
+    def get_constraints (self):
+        return self.config_note.content[Configuration.CONSTRAINTS]
 
     def get_custom_loads (self):
         return self.config_note.content[Configuration.CUSTOM_LOADS]

@@ -50,7 +50,7 @@ class FullMatchTest(unittest.TestCase):
         # only need one TestUtil object for all tests
         or_baseurl = os.getenv('OPENREVIEW_BASEURL')
         self.tu = TestUtil.get_instance(or_baseurl)
-
+        print('-'*60)
 
 
     def tearDown (self):
@@ -60,7 +60,6 @@ class FullMatchTest(unittest.TestCase):
     def show_test_exception (self, exc):
             print("Something went wrong while running this test")
             print(exc)
-            print('-------------------')
             raise exc
 
     # To look at the results of test1:
@@ -69,7 +68,6 @@ class FullMatchTest(unittest.TestCase):
 
     # @unittest.skip
     def test1_10papers_7reviewers (self):
-        test_num = 1
         params = {Params.NUM_PAPERS: 10,
           Params.NUM_REVIEWERS: 7,
           Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
@@ -77,7 +75,7 @@ class FullMatchTest(unittest.TestCase):
           }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.test_matcher(self.app, params)
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
@@ -89,7 +87,6 @@ class FullMatchTest(unittest.TestCase):
 
     # @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
-        test_num = 2
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -98,7 +95,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.test_matcher(self.app, params)
             self.tu.check_failed_match()
         except Exception as exc:
                 self.show_test_exception(exc)
@@ -108,7 +105,6 @@ class FullMatchTest(unittest.TestCase):
 
     # @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
-        test_num = 3
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -117,7 +113,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.test_matcher(self.app, params)
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
@@ -128,7 +124,6 @@ class FullMatchTest(unittest.TestCase):
 
     # @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
-        test_num = 4
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -137,8 +132,135 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, test_num, params)
+            self.tu.test_matcher(self.app, params)
             self.tu.check_completed_match()
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+    # @unittest.skip
+    def test5_10papers_7reviewers_4locks (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  # paper indices mapped to reviewer indices to indicate lock of the pair
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_LOCKS: {0: [4], 2: [4], 4: [1], 5: [1]}
+                  }
+        }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=True)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+    @unittest.skip
+    def test6_10papers_7reviewers_8vetos (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  # paper indices mapped to reviewer indices to indicate veto of the pair
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_VETOS : {0: [1,2], 1: [1,2], 2: [1,2,3], 3: [5]}
+                  }
+        }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=True)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+    @unittest.skip
+    def test7_10papers_7reviewers_3vetos (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  # paper indices mapped to reviewer indices to indicate veto of the pair
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_VETOS : {0: [0], 1: [1], 2: [2]}
+                  }
+        }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=True)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+    # @unittest.skip
+    def test8_10papers_7reviewers_3locks (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  # paper indices mapped to reviewer indices to indicate lock of the pair
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_LOCKS : {0: [0], 1: [1,2]}
+                  }
+                  }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=True)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+
+    @unittest.skip
+    def test9_10papers_7reviewers_10locks (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  # paper indices mapped to reviewer indices to indicate lock of the pair
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_LOCKS : {0:[0], 1:[1], 2:[2], 3:[3], 4:[4], 5:[5], 6:[6], 7:[0], 8:[1], 9:[2]}
+                  }
+                  }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=True)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+        finally:
+            pass
+
+    @unittest.skip
+    def test10_10papers_7reviewers_4vetos_8locks (self):
+        params = {Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 4,
+                  Params.CONSTRAINTS_CONFIG: {
+                      Params.CONSTRAINTS_VETOS : {0: [1,2], 1: [1,2], 2: [1,2,3], 3: [5]},
+                      Params.CONSTRAINTS_LOCKS: {0: [4], 2: [4], 4: [1], 5: [1]}
+                  }
+        }
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher(self.app, params)
+            self.tu.check_completed_match(check_constraints=False)
 
         except Exception as exc:
             self.show_test_exception(exc)

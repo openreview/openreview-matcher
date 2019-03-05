@@ -25,7 +25,6 @@ class Match:
         if message:
             self.config_note.content[Configuration.ERROR_MESSAGE] = message
         self.config_note = self.client.post_note(self.config_note)
-        print(time_ms(),"Status on config",self.config_note.id,"set to",status)
         return self.config_note
 
     def run (self):
