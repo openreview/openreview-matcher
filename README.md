@@ -30,12 +30,23 @@ OPENREVIEW_BASEURL, LOG_FILE
 full_match_test.py is an end-to-end test suite.  
 **Instructions for running this test case with pytest**
 
+This requires running a clean (empty mongo db).  This can be done by running
+a local OpenReview service using its scripts/clean_start_app.js with the environment var:
+NODE_ENV=circleci
+
+Note Well: The clean_start_app must be run before the matcher test and restarted every time you want to
+rerun the matcher test.
+
+To run the end-to-end test suite:
+
 Go into the virtual environment for running the matcher
 cd openreview-matcher
 source venv/bin/activate
 cd tests
 export PYTHONPATH='.:..'    // tells pytest to search for python files in this dir and the one above
+export OPENREVIEW_BASEURL=http://localhost:3000
 pytest -s full_match_test.py  // runs pytest without capturing output into temp.py
+
 
 
  test_match is a set of integration tests.  They use a flask test_client which invokes
