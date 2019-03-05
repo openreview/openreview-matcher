@@ -104,10 +104,10 @@ class TestUtil:
         pprint.pprint(self.conf.get_constraints())
 
     # method name needs _ so that unittest won't run this as a test
-    def test_matcher(self, flask_app, params):
+    def test_matcher(self, flask_app):
         self.test_count += 1
         print("Running test", self.test_count)
-        self.conf = ConferenceConfig(self.client, self.test_count, params)
+        self.conf = ConferenceConfig(self.client, self.test_count, self.params)
         config_id = self.conf.config_note_id
         print("Testing Config " + config_id)
 

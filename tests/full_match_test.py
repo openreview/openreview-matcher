@@ -75,6 +75,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test1_10papers_7reviewers (self):
+        '''
+        Tests 10 papers each requiring 1 review.  7 users each capable of giving 2 reviews.
+        Expects:  produce an assignment
+        '''
         params = {Params.NUM_PAPERS: 10,
           Params.NUM_REVIEWERS: 7,
           Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
@@ -82,7 +86,7 @@ class FullMatchTest(unittest.TestCase):
           }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
@@ -94,6 +98,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 5
+        Expects:  Failure because supply (16) < demand (20)
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -102,7 +110,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_failed_match()
         except Exception as exc:
                 self.show_test_exception(exc)
@@ -112,6 +120,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 0
+        Expects:  Successful production of assignment
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -120,7 +132,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
@@ -131,6 +143,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Custom_loads will reduce supply by 5
+        Expects:  Successful production of assignment
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -139,7 +155,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match()
 
         except Exception as exc:
@@ -149,6 +165,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test5_10papers_7reviewers_4locks (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock in users to 4 papers
+        Expects:  Successful production of assignment where locked user are assigned to the papers they are locked to.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -160,7 +180,7 @@ class FullMatchTest(unittest.TestCase):
         }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
@@ -170,6 +190,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test6_10papers_7reviewers_8vetos (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers
+        Expects:  Successful production of assignment where vetoed users do are not assigned to papers they were vetoed from.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -181,7 +205,7 @@ class FullMatchTest(unittest.TestCase):
         }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
@@ -191,6 +215,10 @@ class FullMatchTest(unittest.TestCase):
 
     # @unittest.skip
     def test7_10papers_7reviewers_3vetos (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 3 papers
+        Expects:  Successful production of assignment where vetoed users do are not assigned to papers they were vetoed from.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -202,7 +230,7 @@ class FullMatchTest(unittest.TestCase):
         }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
@@ -212,6 +240,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test8_10papers_7reviewers_3locks (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in 2 papers
+        Expects:  Successful production of assignment where locked users are assigned to papers they were locked to.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -223,7 +255,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
@@ -234,6 +266,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test9_10papers_7reviewers_10locks (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in all 10 papers
+        Expects:  Successful production of assignment where locked users are assigned to papers they were locked to.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -245,7 +281,7 @@ class FullMatchTest(unittest.TestCase):
                   }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
@@ -255,6 +291,10 @@ class FullMatchTest(unittest.TestCase):
 
     @unittest.skip
     def test10_10papers_7reviewers_4vetos_8locks (self):
+        '''
+        Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers and lock users in 4 papers
+        Expects:  Successful production of assignment where locked users are assigned to papers they were locked to and vetoed users are not assigned to papers they were vetoed from.
+        '''
         params = {Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -266,7 +306,7 @@ class FullMatchTest(unittest.TestCase):
         }
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app, params)
+            self.tu.test_matcher(self.app)
             self.tu.check_completed_match(check_constraints=False)
 
         except Exception as exc:
