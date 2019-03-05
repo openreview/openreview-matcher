@@ -2,7 +2,7 @@ import unittest
 import json
 import matcher
 import os
-from conference_config import Params
+from params import Params
 from TestUtil import TestUtil
 
 # Instructions for running this test case with pytest
@@ -24,15 +24,11 @@ def json_of_response(response):
 
 class FullMatchTest(unittest.TestCase):
 
-
-
     # called once at beginning of suite
     @classmethod
     def setUpClass(cls):
-        pass
-        # or_baseurl = os.getenv('OPENREVIEW_BASEURL')
-
-        # FullMatchTest.client = FullMatchTest.get_client(or_baseurl)
+        cls.flask_app_test_client = matcher.app.test_client()
+        cls.flask_app_test_client.testing = True
 
 
     @classmethod
@@ -44,8 +40,10 @@ class FullMatchTest(unittest.TestCase):
     # start it in such a way that the app initializes correctly (i.e. by calling matcher/app.py) so
     # we have to set a couple things correctly
     def setUp (self):
-        self.app = matcher.app.test_client()
-        self.app.testing = True
+        # self.app = matcher.app.test_client()
+        # self.app.testing = True
+        # self.app = FullMatchTest.flask_app_test_client
+
         # Sets the webapp up so that it will switch to using the mock OR client
         # matcher.app.testing = True
         # Turn off logging in the web app so that tests run with a clean console
@@ -56,7 +54,7 @@ class FullMatchTest(unittest.TestCase):
         matcher.app.config['OPENREVIEW_BASEURL'] = or_baseurl
         # only need one TestUtil object for all tests
         or_baseurl = os.getenv('OPENREVIEW_BASEURL')
-        self.tu = TestUtil.get_instance(or_baseurl)
+        self.tu = TestUtil.get_instance(or_baseurl, FullMatchTest.flask_app_test_client)
         print('-'*60)
 
 
@@ -64,112 +62,95 @@ class FullMatchTest(unittest.TestCase):
         pass
 
 
-    def show_test_exception (self, exc):
-            print("Something went wrong while running this test")
-            print(exc)
-            raise exc
+
 
     # To look at the results of test1:
     # http://openreview.localhost/assignments?venue=FakeConferenceForTesting1.cc/2019/Conference
     # To login to OR when running test suite:  OpenReview.net / 1234 (as defined in get_client above)
 
-    @unittest.skip
+    # @unittest.skip
     def test1_10papers_7reviewers (self):
         '''
         Tests 10 papers each requiring 1 review.  7 users each capable of giving 2 reviews.
         Expects:  produce an assignment
         '''
-        params = {Params.NUM_PAPERS: 10,
-          Params.NUM_REVIEWERS: 7,
-          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
-          Params.REVIEWER_MAX_PAPERS: 2,
-          }
+        params = Params({Params.NUM_PAPERS: 10,
+                  Params.NUM_REVIEWERS: 7,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
+                  Params.REVIEWER_MAX_PAPERS: 2,
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
-
-
-
-    @unittest.skip
+    # @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 5
         Expects:  Failure because supply (16) < demand (20)
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 3,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
-                  }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
-            self.tu.check_failed_match()
+            self.tu.test_matcher()
+            self.tu.check_match_error("Because actual supply {} < demand {}".format(params.actual_supply, params.demand))
         except Exception as exc:
                 self.show_test_exception(exc)
-        finally:
-            pass
 
-
-    @unittest.skip
+    # @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 0
         Expects:  Successful production of assignment
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 3,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 0}
-                  }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match()
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
-        
 
-
-    @unittest.skip
+    # @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Custom_loads will reduce supply by 5
         Expects:  Successful production of assignment
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
                   Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_SUPPLY_DEDUCTION: 5}
-                  }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match()
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
-    @unittest.skip
+    # @unittest.skip
     def test5_10papers_7reviewers_4locks (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock in users to 4 papers
         Expects:  Successful production of assignment where locked user are assigned to the papers they are locked to.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -177,16 +158,14 @@ class FullMatchTest(unittest.TestCase):
                   Params.CONSTRAINTS_CONFIG: {
                       Params.CONSTRAINTS_LOCKS: {0: [4], 2: [4], 4: [1], 5: [1]}
                   }
-        }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
     @unittest.skip
     def test6_10papers_7reviewers_8vetos (self):
@@ -194,7 +173,7 @@ class FullMatchTest(unittest.TestCase):
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers
         Expects:  Successful production of assignment where vetoed users do are not assigned to papers they were vetoed from.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -202,24 +181,22 @@ class FullMatchTest(unittest.TestCase):
                   Params.CONSTRAINTS_CONFIG: {
                       Params.CONSTRAINTS_VETOS : {0: [1,2], 1: [1,2], 2: [1,2,3], 3: [5]}
                   }
-        }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
-    # @unittest.skip
+    @unittest.skip
     def test7_10papers_7reviewers_3vetos (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 3 papers
         Expects:  Successful production of assignment where vetoed users do are not assigned to papers they were vetoed from.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -227,24 +204,22 @@ class FullMatchTest(unittest.TestCase):
                   Params.CONSTRAINTS_CONFIG: {
                       Params.CONSTRAINTS_VETOS : {0: [0], 1: [1], 2: [2]}
                   }
-        }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
-    @unittest.skip
+    # @unittest.skip
     def test8_10papers_7reviewers_3locks (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in 2 papers
         Expects:  Successful production of assignment where locked users are assigned to papers they were locked to.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -252,16 +227,14 @@ class FullMatchTest(unittest.TestCase):
                   Params.CONSTRAINTS_CONFIG: {
                       Params.CONSTRAINTS_LOCKS : {0: [0], 1: [1,2]}
                   }
-                  }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
 
 
     @unittest.skip
@@ -270,7 +243,7 @@ class FullMatchTest(unittest.TestCase):
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in all 10 papers
         Expects:  Successful production of assignment where locked users are assigned to papers they were locked to.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -278,16 +251,15 @@ class FullMatchTest(unittest.TestCase):
                   Params.CONSTRAINTS_CONFIG: {
                       Params.CONSTRAINTS_LOCKS : {0:[0], 1:[1], 2:[2], 3:[3], 4:[4], 5:[5], 6:[6], 7:[0], 8:[1], 9:[2]}
                   }
-                  }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=True)
 
         except Exception as exc:
             self.show_test_exception(exc)
-        finally:
-            pass
+
 
     @unittest.skip
     def test10_10papers_7reviewers_4vetos_8locks (self):
@@ -295,7 +267,7 @@ class FullMatchTest(unittest.TestCase):
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers and lock users in 4 papers
         Expects:  Successful production of assignment where locked users are assigned to papers they were locked to and vetoed users are not assigned to papers they were vetoed from.
         '''
-        params = {Params.NUM_PAPERS: 10,
+        params = Params({Params.NUM_PAPERS: 10,
                   Params.NUM_REVIEWERS: 7,
                   Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
                   Params.REVIEWER_MAX_PAPERS: 4,
@@ -303,16 +275,43 @@ class FullMatchTest(unittest.TestCase):
                       Params.CONSTRAINTS_VETOS : {0: [1,2], 1: [1,2], 2: [1,2,3], 3: [5]},
                       Params.CONSTRAINTS_LOCKS: {0: [4], 2: [4], 4: [1], 5: [1]}
                   }
-        }
+            })
         self.tu.set_and_print_test_params(params)
         try:
-            self.tu.test_matcher(self.app)
+            self.tu.test_matcher()
             self.tu.check_completed_match(check_constraints=False)
 
         except Exception as exc:
             self.show_test_exception(exc)
         finally:
             pass
+
+    # @unittest.skip
+    def test11_5papers_4reviewers_conflicts (self):
+        '''
+        Tests 5 papers each requiring 2 reviews.  4 users each capable of giving 3 reviews.  6 conflicts are created between papers/reviewers.
+        Expects: Not sure if this should fail because of the number of conflicts limiting the supply significantly.
+        '''
+        params = Params({Params.NUM_PAPERS: 5,
+                  Params.NUM_REVIEWERS: 4,
+                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
+                  Params.REVIEWER_MAX_PAPERS: 3,
+                  Params.CONFLICTS_CONFIG : {0: [1,2], 1: [1,2], 3: [3], 4: [3]}
+            })
+        self.tu.set_and_print_test_params(params)
+        try:
+            self.tu.test_matcher()
+            self.tu.check_completed_match(check_constraints=False)
+
+        except Exception as exc:
+            self.show_test_exception(exc)
+
+
+
+    def show_test_exception (self, exc):
+        print("Something went wrong while running this test")
+        print(exc)
+        raise exc
 
 '''
     def test4_10papers_7reviewers_5cust_loads (self):

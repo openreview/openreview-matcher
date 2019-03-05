@@ -5,13 +5,28 @@ import pprint
 class AssignmentChecker:
 
 
-    def __init__ (self, conf, check_loads, check_constraints, assignment_notes):
+    def __init__ (self, conf, check_loads, check_constraints, check_conflicts, assignment_notes):
         self.conf = conf
         self.custom_loads = self.conf.get_custom_loads()
         self.constraints =  self.conf.get_constraints()
         self.check_loads = check_loads
         self.check_constraints = check_constraints
+        self.check_conflicts = check_conflicts
         self.assignment_notes = assignment_notes
+
+    def check_results(self):
+        try:
+            self.check_assignment()
+            self.count_user_reviews()
+            if self.check_loads:
+                self.check_custom_loads(self.custom_loads)
+            if self.check_constraints:
+                self.check_constraint_vetos()
+                self.check_constraint_locks()
+            if self.check_conflicts:
+                self.check_paper_conflicts()
+        finally:
+            self.show_assignment()
 
     def count_user_reviews(self):
         self.reviewer_stats = defaultdict(int)
@@ -60,11 +75,18 @@ class AssignmentChecker:
         return False
 
 
-    def has_reviewer (self, reviewer, paper_assignment):
+    def has_reviewer(self, reviewer, paper_assignment):
         for user_info in paper_assignment:
             if user_info[Assignment.USERID] == reviewer:
                 return True
         return False
+
+    def check_paper_conflicts(self):
+        # TODO We need to make sure that no paper is assigned to a user that has a conflict with it.
+        for assignment_note in self.assignment_notes:
+            for user_info in self.get_assignment_note_assigned_reviewers(assignment_note):
+                pass
+
 
     def show_assignment(self):
         print("\nAssignment is:")
@@ -80,17 +102,16 @@ class AssignmentChecker:
             total_score += paper_score
         print("\t{0:25}: {1:8.2f}".format("Total score",total_score))
 
+    def check_status(self, expected_status):
+        config_stat = self.conf.get_config_note_status()
+        assert config_stat == expected_status, "Failure: Config status is {} expected {}".format(config_stat, expected_status)
 
-    def check_results(self):
-        try:
-            self.count_user_reviews()
-            if self.check_loads:
-                self.check_custom_loads(self.custom_loads)
-            if self.check_constraints:
-                self.check_constraint_vetos()
-                self.check_constraint_locks()
-        finally:
-            self.show_assignment()
+    def check_assignment(self):
+        assert len(self.conf.get_assignment_notes()) == len(self.conf.get_paper_notes()), "Number of assignments {} is not same as number of papers {}".\
+            format(len(self.conf.get_assignment_notes()), len(self.conf.get_paper_notes()))
+
+    def check_status_complete(self):
+        self.check_status(Configuration.STATUS_COMPLETE)
 
     def get_notation_for_paper_review(self, forum_id, reviewer):
         paper_constraints = self.constraints.get(forum_id)
@@ -112,4 +133,6 @@ class AssignmentChecker:
 
     def get_assignment_note_assigned_reviewers (self, assignment_note):
         return assignment_note.content[Assignment.ASSIGNED_GROUPS]
+
+
 

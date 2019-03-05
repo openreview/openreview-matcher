@@ -1,28 +1,8 @@
 import openreview.tools
 import random
 import datetime
-from matcher.fields import Configuration
+from matcher.fields import Configuration, PaperReviewerScore
 
-# Symbols
-
-class Params:
-    NUM_PAPERS = 'num_papers'
-    NUM_REVIEWERS = 'num_reviewers'
-    NUM_REVIEWS_NEEDED_PER_PAPER = 'reviews_needed_per_paper'
-    REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
-    CUSTOM_LOAD_CONFIG = 'custom_load_config'
-    CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
-    CONSTRAINTS_CONFIG = 'constraints_config'
-    CONSTRAINTS_VETOS = 'constraints_vetos'
-    CONSTRAINTS_LOCKS = 'constraints_locks'
-    CONFLICTS_CONFIG = 'conflicts_config'
-    THEORETICAL_SUPPLY = 'theoretical_supply'
-    ACTUAL_SUPPLY = 'actual_supply'
-    DEMAND = 'demand'
-
-
-
-# This one used to be called REVIEWER_METADATA_ID but I don't like the term "meta-data" for this stuff
 
 class ConfIds:
 
@@ -50,40 +30,15 @@ class ConferenceConfig:
         self.client = client
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
         print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
-        self.num_papers = params[Params.NUM_PAPERS]
-        self.num_reviewers = params[Params.NUM_REVIEWERS]
-        self.conflict_percentage = 0.0
-        self.custom_load_config = params.get(Params.CUSTOM_LOAD_CONFIG)
-        self.constraints_config = params.get(Params.CONSTRAINTS_CONFIG)
-        self.positive_constraint_percentage = 0.0
-        self.negative_constraint_percentage = 0.0
-        self.paper_min_reviewers = params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
-        self.reviewer_max_papers = params[Params.REVIEWER_MAX_PAPERS]
-        self.submission_inv = None
-        self.paper_assignment_inv = None
+        self.params = params
         self.config_inv = None
-        self.paper_reviewer_inv = None
-
         self.conference = None
-
-        self.reviewers_group = []
         self.paper_notes = []
-        self.paper_reviewer_score_notes = []
         self.config_note = None
-        self.config_note_id = None
 
         self.build_conference()
 
-    ## Below are proposed API routines that should go into the matching portion of the conference builder
 
-    def get_paper_assignment_id (self):
-        return self.conference.id + '/-/' + 'Paper_Assignment'
-
-    def get_assignment_configuration_id (self):
-        return self.conference.id + '/-/' + 'Assignment_Configuration'
-
-    def get_metadata_id (self):
-        return self.conference.id + '/-/' + 'Paper_Metadata'
 
 
 
@@ -98,7 +53,7 @@ class ConferenceConfig:
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.set_program_chairs(emails=[])
         self.conference.set_area_chairs(emails=[])
-        self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.num_reviewers)]
+        self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.params.num_reviewers)]
         self.conference.set_reviewers(emails=self.reviewers)
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
@@ -111,10 +66,6 @@ class ConferenceConfig:
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
 
-        # TODO metadata notes created above need to have entries for each user for scores and conflicts
-        # TODO: Question: I see warnings from builder saying that metadata not being built for members without
-        # profiles.   Shouldn't I be allowed to create metadata for simple email users? (e.g. like CVPR)
-        self.add_scores_and_conflicts_to_metadata()
         self.create_config_note()
 
     def customize_invitations (self):
@@ -133,27 +84,53 @@ class ConferenceConfig:
             self.client.post_invitation(config_inv)
 
     # conference builder does not add entries into each metadata note; one for each reviewer
-    # TODO this is where conflicts also go.
     def add_reviewer_entries_to_metadata (self):
-        metadata_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
+        metadata_notes = self.get_metadata_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
         reviewers = reviewers_group.members
         for md_note in metadata_notes:
             entries = []
             for reviewer in reviewers:
-                entry = {'userid': reviewer,
-                         'scores': {'tpms': random.random(), 'recommendation': random.random() }}
+                entry = {PaperReviewerScore.USERID: reviewer,
+                         PaperReviewerScore.SCORES: {'tpms': random.random(), 'recommendation': random.random() }}
                 entries.append(entry)
-            md_note.content['entries'] = entries
+            md_note.content[PaperReviewerScore.ENTRIES] = entries
+            self.client.post_note(md_note)
+        self.add_conflicts_to_metadata()
+
+    def add_conflicts_to_metadata (self):
+        for paper_index, user_index_list in self.params.conflicts_config.items():
+            paper_note = self.paper_notes[paper_index]
+            forum_id = paper_note.id
+            md_note = self.get_metadata_note(forum_id)
+            for user_ix in user_index_list:
+                reviewer = self.reviewers[user_ix]
+                self.add_conflict(md_note, reviewer)
             self.client.post_note(md_note)
 
+    def add_conflict (self, metadata_note, reviewer):
+        entry = self.get_user_entry(metadata_note.content[PaperReviewerScore.ENTRIES], reviewer)
+        entry[PaperReviewerScore.CONFLICTS] = ['conflict-exists']
+
+    def get_user_entry (self, entry_list, reviewer):
+        for entry in entry_list:
+            if entry[PaperReviewerScore.USERID] == reviewer:
+                return entry
+        return None
 
 
+    def get_metadata_note(self, forum_id):
+        for note in self.get_metadata_notes():
+            if note.forum == forum_id:
+                return note
+        return None
 
+    def get_metadata_notes (self):
+        return list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
 
     def create_papers (self):
         paper_note_ids = []
-        for i in range(self.num_papers):
+        for i in range(self.params.num_papers):
             # TODO jimbob might need to become a legit user and not just an email
             content = {
                 'title':  "Paper-" + str(i),
@@ -170,41 +147,6 @@ class ConferenceConfig:
 
         self.paper_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.conference.get_submission_id()))
         print("There are ", len(self.paper_notes), " papers")
-
-
-
-    def add_scores_and_conflicts_to_metadata (self):
-        pass
-
-    #TODO integrate entries created here into the metadata notes built by builder
-    def create_metadata_notes (self):
-        self.paper_reviewer_score_notes = []
-
-        for paper_note in self.paper_notes:
-            entries = self.create_all_reviewer_entries()
-            note = openreview.Note(forum=paper_note.id,
-                                   replyto=paper_note.id,
-                                   invitation=self.conf_ids.PAPER_REVIEWER_SCORE_ID,
-                                   readers=[self.conf_ids.CONF_ID],
-                                   writers=[self.conf_ids.CONF_ID],
-                                   signatures=[self.conf_ids.CONF_ID],
-                                   content={'entries': entries})
-            self.client.post_note(note)
-            self.paper_reviewer_score_notes.append(note)
-
-    def create_all_reviewer_entries(self):
-        entries = []
-        # Create a list of entries for each user.  Each entry has scores.
-        for reviewer in self.reviewers:
-            entry = {'userid': reviewer,
-                     'scores': {'tpms': random.random(), 'recommendation': random.random()}}
-
-            # conflicts for a paper go into the user record as a non-None value to disable this user from reviewer this paper
-            if random.random() < self.conflict_percentage:
-                entry['conflicts'] = ['conflict']
-            entries.append(entry)
-        return entries
-
 
 
     def create_config_inv (self):
@@ -337,9 +279,9 @@ class ConferenceConfig:
                 # TODO Question:  Can only set these because I customized the invitation
                 'scores_names': ['bid','recommendation', 'tpms'],
                 'scores_weights': ['1', '2', '3'],
-                'max_users': str(self.paper_min_reviewers), # max number of reviewers a paper can have
-                'min_users': str(self.paper_min_reviewers), # min number of reviewers a paper can have
-                'max_papers': str(self.reviewer_max_papers), # max number of papers a reviewer can review
+                'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
+                'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
+                'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review
                 'min_papers': '1', # min number of papers a reviewer can review
                 'alternates': '2',
                 'constraints': {},
@@ -379,25 +321,23 @@ class ConferenceConfig:
     #                       {'vetos' : {0 : [1,4], 1 : [5]} Paper 0 vetos users 1,4; Paper 1 vetos user 5
     def add_config_constraints(self):
         constraint_entries = {}
-        if not self.constraints_config:
+        if not self.params.constraints_config:
             return
-        vetos = self.constraints_config.get(Params.CONSTRAINTS_VETOS,{})
-        locks = self.constraints_config.get(Params.CONSTRAINTS_LOCKS,{})
-        self.insert_constraints(vetos, constraint_entries,Configuration.VETO)
-        self.insert_constraints(locks, constraint_entries,Configuration.LOCK)
+        self.insert_constraints(self.params.constraints_vetos, constraint_entries,Configuration.VETO)
+        self.insert_constraints(self.params.constraints_locks, constraint_entries,Configuration.LOCK)
         self.config_note.content[Configuration.CONSTRAINTS] = constraint_entries
 
 
     def add_config_custom_loads(self):
-        if self.custom_load_config and self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION):
+        if self.params.custom_load_supply_deduction:
             self.set_reviewers_custom_load_to_default()
-            self.reduce_reviewers_custom_load_by_shortfall(self.custom_load_config[Params.CUSTOM_LOAD_SUPPLY_DEDUCTION])
+            self.reduce_reviewers_custom_load_by_shortfall(self.params.custom_load_supply_deduction)
             self.remove_default_custom_loads()
 
 
     def set_reviewers_custom_load_to_default (self):
         custom_loads = {}
-        default_load = self.reviewer_max_papers
+        default_load = self.params.reviewer_max_papers
         for rev in self.reviewers:
             custom_loads[rev] = default_load
         self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
@@ -415,25 +355,13 @@ class ConferenceConfig:
 
     # any custom_loads that are just default load should be removed so that we only test ones that actually reduce the supply.
     def remove_default_custom_loads (self):
-        default_load = self.reviewer_max_papers
+        default_load = self.params.reviewer_max_papers
         custom_loads = self.config_note.content[Configuration.CUSTOM_LOADS]
         for reviewer in list(custom_loads.keys()):
             if custom_loads[reviewer] == default_load:
                 del custom_loads[reviewer]
 
-    def get_constraints (self):
-        return self.config_note.content[Configuration.CONSTRAINTS]
 
-    def get_custom_loads (self):
-        return self.config_note.content[Configuration.CUSTOM_LOADS]
-
-    def get_total_review_supply (self):
-        return self.total_review_supply
-
-
-    def get_config_note (self):
-        config_note = self.client.get_note(id=self.config_note_id)
-        return config_note
 
     @property
     def config_note_id (self):
@@ -443,16 +371,40 @@ class ConferenceConfig:
     def config_note_id (self, config_note_id):
         self._config_note_id = config_note_id
 
+
+    ## Below are proposed API routines that should go into the matching portion of the conference builder
+
+    def get_constraints (self):
+        return self.config_note.content[Configuration.CONSTRAINTS]
+
+    def get_custom_loads (self):
+        return self.config_note.content[Configuration.CUSTOM_LOADS]
+
+
+    def get_config_note (self):
+        config_note = self.client.get_note(id=self.config_note_id)
+        return config_note
+
+    def get_paper_assignment_id (self):
+        return self.conference.id + '/-/' + 'Paper_Assignment'
+
+    def get_assignment_configuration_id (self):
+        return self.conference.id + '/-/' + 'Assignment_Configuration'
+
+    def get_metadata_id (self):
+        return self.conference.id + '/-/' + 'Paper_Metadata'
+
+    def get_paper_notes (self):
+        return self.paper_notes
+
     def get_config_note_status (self):
         config_note = self.get_config_note()
-        return config_note.content['status']
+        return config_note.content[Configuration.STATUS]
 
     def get_assignment_notes (self):
         # return self.conference.get_assignment_notes()   # cannot call this until released
         return self.client.get_notes(invitation=self.get_paper_assignment_id())
 
-    def get_num_assignment_notes (self):
-        return len(self.client.get_notes(invitation=self.get_paper_assignment_id()))
 
 
 if __name__ == '__main__':
