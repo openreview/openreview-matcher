@@ -119,14 +119,7 @@ class ConferenceConfig:
         return None
 
 
-    def get_metadata_note(self, forum_id):
-        for note in self.get_metadata_notes():
-            if note.forum == forum_id:
-                return note
-        return None
 
-    def get_metadata_notes (self):
-        return list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
 
     def create_papers (self):
         paper_note_ids = []
@@ -373,6 +366,28 @@ class ConferenceConfig:
 
 
     ## Below are proposed API routines that should go into the matching portion of the conference builder
+
+    def get_paper (self, forum_id):
+        for p in self.paper_notes:
+            if p.id == forum_id:
+                return p
+        return None
+
+    def get_metadata_note_entries (self, forum_id):
+        md_note = self.get_metadata_note(forum_id)
+        if md_note:
+            return md_note.content[PaperReviewerScore.ENTRIES]
+        else:
+            return []
+
+    def get_metadata_note(self, forum_id):
+        for note in self.get_metadata_notes():
+            if note.forum == forum_id:
+                return note
+        return None
+
+    def get_metadata_notes (self):
+        return list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
 
     def get_constraints (self):
         return self.config_note.content[Configuration.CONSTRAINTS]

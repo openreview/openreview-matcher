@@ -68,7 +68,7 @@ class FullMatchTest(unittest.TestCase):
     # http://openreview.localhost/assignments?venue=FakeConferenceForTesting1.cc/2019/Conference
     # To login to OR when running test suite:  OpenReview.net / 1234 (as defined in get_client above)
 
-    # @unittest.skip
+    @unittest.skip
     def test1_10papers_7reviewers (self):
         '''
         Tests 10 papers each requiring 1 review.  7 users each capable of giving 2 reviews.
@@ -86,7 +86,7 @@ class FullMatchTest(unittest.TestCase):
         except Exception as exc:
             self.show_test_exception(exc)
 
-    # @unittest.skip
+    @unittest.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 5
@@ -105,7 +105,7 @@ class FullMatchTest(unittest.TestCase):
         except Exception as exc:
                 self.show_test_exception(exc)
 
-    # @unittest.skip
+    @unittest.skip
     def test3_10papers_7reviewers_0cust_load (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 0
@@ -124,7 +124,7 @@ class FullMatchTest(unittest.TestCase):
         except Exception as exc:
             self.show_test_exception(exc)
 
-    # @unittest.skip
+    @unittest.skip
     def test4_10papers_7reviewers_5cust_load_excess (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Custom_loads will reduce supply by 5
@@ -144,7 +144,7 @@ class FullMatchTest(unittest.TestCase):
         except Exception as exc:
             self.show_test_exception(exc)
 
-    # @unittest.skip
+    @unittest.skip
     def test5_10papers_7reviewers_4locks (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock in users to 4 papers
@@ -213,7 +213,7 @@ class FullMatchTest(unittest.TestCase):
         except Exception as exc:
             self.show_test_exception(exc)
 
-    # @unittest.skip
+    @unittest.skip
     def test8_10papers_7reviewers_3locks (self):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in 2 papers

@@ -1,10 +1,8 @@
-import functools
 import time
 import json
 import pprint
 from matcher.fields import Configuration
 from conference_config import ConferenceConfig
-from params import Params
 from AssignmentChecker import AssignmentChecker
 import openreview
 import matcher

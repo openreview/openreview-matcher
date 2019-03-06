@@ -1,4 +1,4 @@
-from matcher.fields import Assignment, Configuration
+from matcher.fields import Assignment, Configuration, PaperReviewerScore
 from collections import defaultdict
 import pprint
 
@@ -82,17 +82,27 @@ class AssignmentChecker:
         return False
 
     def check_paper_conflicts(self):
-        # TODO We need to make sure that no paper is assigned to a user that has a conflict with it.
         for assignment_note in self.assignment_notes:
+            forum_id = assignment_note.forum
             for user_info in self.get_assignment_note_assigned_reviewers(assignment_note):
-                pass
+                user = user_info[Assignment.USERID]
+                assert not self.conflict_exists(forum_id, user), "Paper {} assigned to {} despite a declared conflict".format(forum_id, user)
+
+    def conflict_exists(self, forum_id, user):
+        # get the metadata note for this forum_id and see if the user is in its entries with a conflict
+        entries = self.conf.get_metadata_note_entries(forum_id)
+        for entry in entries:
+            if entry[PaperReviewerScore.USERID] == user and entry.get(PaperReviewerScore.CONFLICTS):
+                return True
+        return False
 
 
     def show_assignment(self):
         print("\nAssignment is:")
         total_score = 0
         for assign_note in self.assignment_notes:
-            print("Paper", assign_note.forum)
+            paper = self.conf.get_paper(assign_note.forum)
+            print("Paper", paper.content['title'], assign_note.forum)
             paper_score = 0
             for user_info in self.get_assignment_note_assigned_reviewers(assign_note):
                 notation = self.get_notation_for_paper_review(assign_note.forum, user_info[Assignment.USERID])
