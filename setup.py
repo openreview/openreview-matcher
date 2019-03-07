@@ -11,7 +11,6 @@ setup(name='openreview-matcher',
       install_requires=[
           'numpy',
           'openreview-py',
-          'ortools',
-          'pymongo'
+          'ortools'
       ],
       zip_safe=False)

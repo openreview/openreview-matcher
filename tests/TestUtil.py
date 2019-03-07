@@ -8,24 +8,22 @@ import openreview
 import matcher
 
 
-def time_ms ():
-    return int(round(time.time() * 1000))
-
 class TestUtil:
     instance = None
 
     @classmethod
-    def get_instance (cls, base_url, flask_test_client):
+    def get_instance (cls, base_url, flask_test_client, silent=True):
         if not cls.instance:
-            cls.instance = TestUtil(base_url, flask_test_client)
+            cls.instance = TestUtil(base_url, flask_test_client, silent)
         return cls.instance
 
-    def __init__(self, base_url, flask_test_client):
+    def __init__(self, base_url, flask_test_client, silent):
         self.test_count = 0
         self.OR_CLIENT_USER = 'openreview.net'
         self.OR_CLIENT_PASSWORD = '1234'
         self.get_client(base_url)
         self.flask_test_client = flask_test_client
+        self.silent = silent
         self.initialize_matcher_app()
 
     def initialize_matcher_app (self):
@@ -61,12 +59,13 @@ class TestUtil:
         assert group.members == ['~Super_User1']
 
     def check_completed_match(self, check_loads=True, check_constraints=True, check_conflicts=True):
-        self.show_custom_loads()
-        print()
-        self.show_constraints()
-        print()
-        self.show_conflicts()
-        AssignmentChecker(self.conf, check_loads, check_constraints, check_conflicts, self.conf.get_assignment_notes()).check_results()
+        if not self.silent:
+            self.show_custom_loads()
+            print()
+            self.show_constraints()
+            print()
+            self.show_conflicts()
+        AssignmentChecker(self.conf, check_loads, check_constraints, check_conflicts, self.silent, self.conf.get_assignment_notes()).check_results()
 
     def check_match_error(self, reason):
         config_stat = self.conf.get_config_note_status()
@@ -75,7 +74,8 @@ class TestUtil:
 
     def set_and_print_test_params (self, params):
         self.params = params
-        self.params.print_params()
+        if not self.silent:
+            self.params.print_params()
 
     def show_custom_loads (self):
         print("Custom_loads in config {} are:".format(self.conf.config_note_id))
@@ -86,8 +86,8 @@ class TestUtil:
         pprint.pprint(self.conf.get_constraints())
 
     def show_conflicts (self):
-        print("Conflicts in metadata objects are: TODO ")
-        #TODO Create a dict with keys that are forum_ids and values that are lists of users that conflict with the paper
+        print("Conflicts in metadata objects are:")
+        pprint.pprint(self.conf.get_conflicts())
         pass
 
 
@@ -113,10 +113,8 @@ class TestUtil:
         while stat in [Configuration.STATUS_INITIALIZED, Configuration.STATUS_RUNNING]:
             time.sleep(0.5)
             stat = self.conf.get_config_note_status()
-        print("After waiting configuration status is:", stat, "Done!\n")
 
     def post_json(self, url, json_dict, headers=None):
-        """Send dictionary json_dict as a json to the specified url """
         config_note = json.dumps(json_dict)
         if headers:
             return self.flask_test_client.post(url, data=config_note, content_type='application/json', headers=headers)

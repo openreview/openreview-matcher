@@ -41,7 +41,6 @@ class Match:
             self.logger.error('Internal error:', exc_info=True)
         finally:
             self.logger.debug("Finished task for configId: " + self.config_note.id)
-            print(time_ms(),"Finished task for configId:", self.config_note.id, "status:", self.config_note.content['status'])
             return self.config_note
 
 

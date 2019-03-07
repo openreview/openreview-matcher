@@ -39,9 +39,6 @@ class ConferenceConfig:
         self.build_conference()
 
 
-
-
-
     def build_conference (self):
         builder = openreview.conference.ConferenceBuilder(self.client)
         builder.set_conference_id(self.conf_ids.CONF_ID)
@@ -57,15 +54,9 @@ class ConferenceConfig:
         self.conference.set_reviewers(emails=self.reviewers)
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
-        # TODO:  The config invitation only includes bid as a possible score and I need to
-        # have it include recommendation and tpms.   No way to tell builder what I want, so seems I need to modify
-        # resulting invitation to have what I need
-        # TODO:  Question:  Should I be deleting the scores_names from the content of the invitation and
-        # replacing with what I want (like I do in customize_invitations)?
         self.conference.setup_matching()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
-
         self.create_config_note()
 
     def customize_invitations (self):
@@ -83,7 +74,7 @@ class ConferenceConfig:
                 }
             self.client.post_invitation(config_inv)
 
-    # conference builder does not add entries into each metadata note; one for each reviewer
+    # adds randomly generated scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
         metadata_notes = self.get_metadata_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
@@ -98,6 +89,7 @@ class ConferenceConfig:
             self.client.post_note(md_note)
         self.add_conflicts_to_metadata()
 
+    # params.conflicts_config is dict that maps paper indices to list of user indices that conflict with the paper
     def add_conflicts_to_metadata (self):
         for paper_index, user_index_list in self.params.conflicts_config.items():
             paper_note = self.paper_notes[paper_index]
@@ -119,12 +111,9 @@ class ConferenceConfig:
         return None
 
 
-
-
     def create_papers (self):
         paper_note_ids = []
         for i in range(self.params.num_papers):
-            # TODO jimbob might need to become a legit user and not just an email
             content = {
                 'title':  "Paper-" + str(i),
                 'authorids': ['jimbob@acme.com']
@@ -141,120 +130,6 @@ class ConferenceConfig:
         self.paper_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.conference.get_submission_id()))
         print("There are ", len(self.paper_notes), " papers")
 
-
-    def create_config_inv (self):
-        self.config_inv = openreview.Invitation(
-            id = self.conf_ids.CONFIG_ID,
-            readers = ['everyone'],
-            signatures = [self.conf_ids.CONF_ID],
-            writers = [self.conf_ids.CONF_ID],
-            invitees = [],
-            reply = {
-                'forum': None,
-                'replyto': None,
-                'readers': { 'values': [self.conf_ids.CONF_ID ]
-                             },
-                'signatures': { 'values': [self.conf_ids.CONF_ID]
-                                },
-                'writers': { 'values': [self.conf_ids.CONF_ID]
-                             },
-                'content': {
-                    "title": {
-                        "value-regex": ".{1,250}",
-                        "required": True,
-                        "description": "Title of the configuration.",
-                        "order": 1
-                    },
-                    "max_users": {
-                        "value-regex": "[0-9]+",
-                        "required": True,
-                        "description": "Max number of reviewers that can review a paper",
-                        "order": 2
-                    },
-                    "min_users": {
-                        "value-regex": "[0-9]+",
-                        "required": True,
-                        "description": "Min number of reviewers required to review a paper",
-                        "order": 3
-                    },
-                    "max_papers": {
-                        "value-regex": "[0-9]+",
-                        "required": True,
-                        "description": "Max number of reviews a person has to do",
-                        "order": 4
-                    },
-                    "min_papers": {
-                        "value-regex": "[0-9]+",
-                        "required": True,
-                        "description": "Min number of reviews a person should do",
-                        "order": 5
-                    },
-                    "alternates": {
-                        "value-regex": "[0-9]+",
-                        "required": True,
-                        "description": "Number of alternate reviewers for a paper",
-                        "order": 6
-                    },
-                    "config_invitation": {
-                        "value": self.conf_ids.CONFIG_ID,
-                        "required": True,
-                        "description": "Invitation to get the configuration note",
-                        "order": 3
-                    },
-                    "scores_names": {
-                        # "values-dropdown": ['bid', 'recommendation', 'tpms'],
-                        "values": ['bid', 'recommendation', 'tpms'],
-                        "required": True,
-                        "description": "List of scores names",
-                        "order": 3
-                    },
-                    "scores_weights": {
-                        # "values-regex": "\\d*\\.?\\d*",
-                        "values": ['1','2','3'],
-                        "required": True,
-                        "description": "Comma separated values of scores weights, should follow the same order than scores_names",
-                        "order": 3
-                    },
-                    "status": {
-                        "value-dropdown": ['Initialized', 'Running', 'Error', 'No Solution', 'Complete', 'Deployed']
-                    },
-                    "custom_loads" : {
-                        "value-dict": {},
-                        "required": False,
-                        "description": "Manually entered custom user maximun loads",
-                        "order": 8
-                    },
-                    "constraints": {
-                        "value-dict": {},
-                        "required": False,
-                        "description": "Manually entered user/papers constraints",
-                        "order": 9
-                    },
-                    'paper_invitation': {"value": self.conf_ids.SUBMISSION_ID,
-                                         "required": True,
-                                         "description": "Invitation to get the configuration note",
-                                         "order": 8
-                                         },
-                    'metadata_invitation': {"value": self.conf_ids.PAPER_REVIEWER_SCORE_ID,
-                                            "required": True,
-                                            "description": "Invitation to get the configuration note",
-                                            "order": 9
-                                            },
-                    'assignment_invitation': {"value": self.conf_ids.ASSIGNMENT_ID,
-                                              "required": True,
-                                              "description": "Invitation to get the configuration note",
-                                              "order": 10
-                                              },
-                    'match_group': {"value": self.conf_ids.REVIEWERS_ID,
-                                    "required": True,
-                                    "description": "Invitation to get the configuration note",
-                                    "order": 11
-                                    }
-
-                }
-            }
-        )
-        self.client.post_invitation(self.config_inv)
 
     def create_config_note (self):
         self.config_note = self.client.post_note(openreview.Note(**{
@@ -284,9 +159,9 @@ class ConferenceConfig:
                 # 'config_invitation': self.conf_ids.CONFIG_ID,
                 'config_invitation': self.conf_ids.CONF_ID,
                 # 'paper_invitation': self.conf_ids.SUBMISSION_ID,
-                # TODO Question:  When I built conference, it builds the paper invitation with a regular submission Id
-                # Not sure when to use Blind vs regular.  Can builder return to caller the correct submission id to use
-                # 1.  What should be set on the invitation of a paper?  2. What should be set here?
+                # TODO Question:  The name of the method get_blind_submission_id is misleading
+                # because this conference is not using blind papers.   It would be more straightforward if the method
+                # was called get_submission_id which would return a blind id if the papers happen to be blind
                 'paper_invitation': self.conference.get_blind_submission_id(),
                 'metadata_invitation': self.get_metadata_id(),
                 'assignment_invitation': self.get_paper_assignment_id(),
@@ -316,8 +191,8 @@ class ConferenceConfig:
         constraint_entries = {}
         if not self.params.constraints_config:
             return
-        self.insert_constraints(self.params.constraints_vetos, constraint_entries,Configuration.VETO)
-        self.insert_constraints(self.params.constraints_locks, constraint_entries,Configuration.LOCK)
+        self.insert_constraints(self.params.constraints_vetos, constraint_entries, Configuration.VETO)
+        self.insert_constraints(self.params.constraints_locks, constraint_entries, Configuration.LOCK)
         self.config_note.content[Configuration.CONSTRAINTS] = constraint_entries
 
 
@@ -365,7 +240,7 @@ class ConferenceConfig:
         self._config_note_id = config_note_id
 
 
-    ## Below are proposed API routines that should go into the matching portion of the conference builder
+    ## Below are routines some of which could go into the matching portion of the conference builder
 
     def get_paper (self, forum_id):
         for p in self.paper_notes:
@@ -395,6 +270,17 @@ class ConferenceConfig:
     def get_custom_loads (self):
         return self.config_note.content[Configuration.CUSTOM_LOADS]
 
+    # return papers and their user conflicts as dictionary of forum_ids mapped to lists of users that conflict with the paper.
+    def get_conflicts (self):
+        res = {}
+        for md_note in self.get_metadata_notes():
+            forum_id = md_note.forum
+            res[forum_id] = []
+            for entry in self.get_metadata_note_entries(forum_id):
+                if entry.get(PaperReviewerScore.CONFLICTS):
+                    res[forum_id].append(entry[PaperReviewerScore.USERID])
+        return res
+
 
     def get_config_note (self):
         config_note = self.client.get_note(id=self.config_note_id)
@@ -420,7 +306,3 @@ class ConferenceConfig:
         # return self.conference.get_assignment_notes()   # cannot call this until released
         return self.client.get_notes(invitation=self.get_paper_assignment_id())
 
-
-
-if __name__ == '__main__':
-    tc = ConferenceConfig(None, 4, 4)

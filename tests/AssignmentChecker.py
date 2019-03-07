@@ -5,10 +5,12 @@ import pprint
 class AssignmentChecker:
 
 
-    def __init__ (self, conf, check_loads, check_constraints, check_conflicts, assignment_notes):
+    def __init__ (self, conf, check_loads, check_constraints, check_conflicts, silent, assignment_notes):
         self.conf = conf
+        self.silent = silent
         self.custom_loads = self.conf.get_custom_loads()
         self.constraints =  self.conf.get_constraints()
+        self.conflicts = self.conf.get_conflicts()
         self.check_loads = check_loads
         self.check_constraints = check_constraints
         self.check_conflicts = check_conflicts
@@ -26,7 +28,8 @@ class AssignmentChecker:
             if self.check_conflicts:
                 self.check_paper_conflicts()
         finally:
-            self.show_assignment()
+            if not self.silent:
+                self.show_assignment()
 
     def count_user_reviews(self):
         self.reviewer_stats = defaultdict(int)
@@ -53,8 +56,9 @@ class AssignmentChecker:
                         assert not self.has_reviewer(reviewer, self.get_assignment_note_assigned_reviewers(note)), \
                             "Reviewer {} assigned to paper id={}.  But there was a constraint vetoing this".format(reviewer, forum_id)
                 except AssertionError as e:
-                    print("Assignment note for forum", note.forum, "has content assignedGroups of:")
-                    pprint.pprint(self.get_assignment_note_assigned_reviewers(note))
+                    if not self.silent:
+                        print("Assignment note for forum", note.forum, "has content assignedGroups of:")
+                        pprint.pprint(self.get_assignment_note_assigned_reviewers(note))
                     raise e
 
     # all locks in the constraints must result in a corresponding assignment
@@ -125,15 +129,20 @@ class AssignmentChecker:
 
     def get_notation_for_paper_review(self, forum_id, reviewer):
         paper_constraints = self.constraints.get(forum_id)
+        paper_conflicts = self.conflicts
+        notation = ""
+        if reviewer in paper_conflicts[forum_id]:
+            notation += "Warning: A conflict was declared in metadata!"
         if not paper_constraints:
-            return ""
+            return notation
         constraint = paper_constraints.get(reviewer)
         if not constraint:
-            return ""
+            return notation
         elif constraint == Configuration.LOCK:
-            return "by lock constraint"
+            notation += " Assigned by lock constraint"
         elif constraint == Configuration.VETO:
-            return "Warning: VETOED BY CONSTRAINT!"
+            notation +=  "Warning: VETOED BY CONSTRAINT!"
+        return notation
 
     def get_assignment_note(self, forum_id):
         for note in self.assignment_notes:
