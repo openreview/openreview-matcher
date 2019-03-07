@@ -24,6 +24,7 @@ class FullMatchTest(unittest.TestCase):
         # The flask test client does not start the matcher app in such a way that matcher/app.py runs
         # so this config option is set here
         matcher.app.config['OPENREVIEW_BASEURL'] = cls.or_baseurl
+        cls.test_util = TestUtil.get_instance(FullMatchTest.or_baseurl, FullMatchTest.flask_app_test_client)
 
 
     @classmethod
@@ -32,8 +33,6 @@ class FullMatchTest(unittest.TestCase):
 
     # called at the beginning of each test
     def setUp (self):
-        # TestUtil is a singleton object.
-        self.test_util = TestUtil.get_instance(FullMatchTest.or_baseurl, FullMatchTest.flask_app_test_client)
         print('-'*60)
 
 
