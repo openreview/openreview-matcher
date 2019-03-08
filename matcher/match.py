@@ -8,11 +8,9 @@ import logging
 import time
 import importlib
 
-def get_solver(solver_type, solver_params, logger=logging.getLogger(__name__)):
+def get_solver(solver_type, solver_params):
     solver_module = importlib.import_module(f'matcher.solvers.{solver_type}')
-    logger.debug('solver_module {}'.format(solver_module))
     solver_class = getattr(solver_module, solver_type)
-    logger.debug('solver_class {}'.format(solver_class))
     solver_instance = solver_class(**solver_params)
     return solver_instance
 
@@ -98,7 +96,7 @@ class Match:
                 'cost_matrix': encoder.cost_matrix,
                 'constraint_matrix': encoder.constraint_matrix
             }
-            solver = get_solver(solver_type, solver_params, logger=self.logger)
+            solver = get_solver(solver_type, solver_params)
             solution = solver.solve()
 
             if solver.solved:
