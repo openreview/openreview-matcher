@@ -43,7 +43,7 @@ class GraphBuilder:
 
     @staticmethod
     def get_builder(class_name):
-        builder_module = importlib.import_module('matcher.assignment_graph', class_name)
+        builder_module = importlib.import_module('matcher.solvers.assignment_graph', class_name)
         builder_class = getattr(builder_module, class_name)
         builder_instance = builder_class()
         return builder_instance

@@ -1,11 +1,20 @@
 import openreview
 import threading
-from matcher.assignment_graph import AssignmentGraph, GraphBuilder
+from matcher.solvers.assignment_graph import AssignmentGraph, GraphBuilder
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import Assignment
 import logging
 import time
+import importlib
+
+def get_solver(solver_type, solver_params, logger=logging.getLogger(__name__)):
+    solver_module = importlib.import_module(f'matcher.solvers.{solver_type}')
+    logger.debug('solver_module {}'.format(solver_module))
+    solver_class = getattr(solver_module, solver_type)
+    logger.debug('solver_class {}'.format(solver_class))
+    solver_instance = solver_class(**solver_params)
+    return solver_instance
 
 class Match:
     def __init__ (self, client, config_note, logger=logging.getLogger(__name__)):
@@ -81,23 +90,18 @@ class Match:
                     if custom_load < minimums[reviewer_index]:
                         minimums[reviewer_index] = custom_load
 
-            graph_builder = GraphBuilder.get_builder(
-                self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
+            solver_type = self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleSolver')
+            solver_params = {
+                'minimums': minimums,
+                'maximums': maximums,
+                'demands': demands,
+                'cost_matrix': encoder.cost_matrix,
+                'constraint_matrix': encoder.constraint_matrix
+            }
+            solver = get_solver(solver_type, solver_params, logger=self.logger)
+            solution = solver.solve()
 
-            self.logger.debug("Preparing Graph")
-            graph = AssignmentGraph(
-                minimums,
-                maximums,
-                demands,
-                encoder.cost_matrix,
-                encoder.constraint_matrix,
-                graph_builder = graph_builder
-            )
-
-            self.logger.debug("Solving Graph")
-            solution = graph.solve()
-
-            if graph.solved:
+            if solver.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
                 self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)

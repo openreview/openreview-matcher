@@ -1,7 +1,7 @@
 from __future__ import print_function
 import numpy as np
 
-from matcher.assignment_graph import GraphBuilder
+from matcher.solvers.assignment_graph import GraphBuilder
 
 class SimpleGraphBuilder(GraphBuilder):
     '''
