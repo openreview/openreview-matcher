@@ -1,7 +1,7 @@
 import openreview.tools
 import random
 import datetime
-from matcher.fields import Configuration, PaperReviewerScore
+from matcher.fields import Configuration, PaperReviewerScore, Assignment
 
 
 class ConfIds:
@@ -305,4 +305,14 @@ class ConferenceConfig:
     def get_assignment_notes (self):
         # return self.conference.get_assignment_notes()   # cannot call this until released
         return self.client.get_notes(invitation=self.get_paper_assignment_id())
+
+
+    def get_assignment_note(self, forum_id):
+        for note in self.get_assignment_notes():
+            if note.forum == forum_id:
+                return note
+        return None
+
+    def get_assignment_note_assigned_reviewers (self, assignment_note):
+        return assignment_note.content[Assignment.ASSIGNED_GROUPS]
 

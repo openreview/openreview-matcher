@@ -1,9 +1,9 @@
 import time
 import json
-import pprint
+
+from helpers.display_conf import DisplayConf
 from matcher.fields import Configuration
-from conference_config import ConferenceConfig
-from AssignmentChecker import AssignmentChecker
+from helpers.conference_config import ConferenceConfig
 import openreview
 import matcher
 
@@ -58,37 +58,18 @@ class TestUtil:
         assert group
         assert group.members == ['~Super_User1']
 
-    def check_completed_match(self, check_loads=True, check_constraints=True, check_conflicts=True):
-        if not self.silent:
-            self.show_custom_loads()
-            print()
-            self.show_constraints()
-            print()
-            self.show_conflicts()
-        AssignmentChecker(self.conf, check_loads, check_constraints, check_conflicts, self.silent, self.conf.get_assignment_notes()).check_results()
+    def get_conference (self):
+        return self.conf
 
     def check_match_error(self, reason):
         config_stat = self.conf.get_config_note_status()
         assert config_stat == Configuration.STATUS_ERROR, "Error: Config status is {} expected {}".format(config_stat, Configuration.STATUS_ERROR)
         print("Reason expecting error:", reason)
 
-    def set_and_print_test_params (self, params):
+    def set_test_params (self, params):
         self.params = params
         if not self.silent:
             self.params.print_params()
-
-    def show_custom_loads (self):
-        print("Custom_loads in config {} are:".format(self.conf.config_note_id))
-        pprint.pprint(self.conf.get_custom_loads())
-
-    def show_constraints (self):
-        print("Constraints in config {} are:".format(self.conf.config_note_id))
-        pprint.pprint(self.conf.get_constraints())
-
-    def show_conflicts (self):
-        print("Conflicts in metadata objects are:")
-        pprint.pprint(self.conf.get_conflicts())
-        pass
 
 
     def test_matcher (self):
@@ -98,6 +79,9 @@ class TestUtil:
 
     def build_conference (self):
         self.conf = ConferenceConfig(self.client, self.test_count, self.params)
+        if not self.silent:
+            DisplayConf(self.conf).display_input_structures()
+
 
     def run_matcher (self):
         config_id = self.conf.config_note_id
