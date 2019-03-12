@@ -27,6 +27,30 @@ OPENREVIEW_BASEURL, LOG_FILE
 
 **Testing:**
 
+test_end_to_end.py is a test suite that tests all aspects of the matcher.  
+
+**Instructions for running this test case with pytest**
+
+This requires running a clean (empty mongo db).  This can be done by running
+a local OpenReview service using its scripts/clean_start_app.js with the environment var:
+NODE_ENV=circleci like:
+
+1. export NODE_ENV=circleci
+1. node scripts/clean_start_app.js
+
+Note Well: The clean_start_app must be restarted each time before running the end_to_end tests.
+
+To run the end-to-end test suite:
+
+1. Go into the virtual environment for running the matcher (e.g. source venv/bin/activate)
+1. cd openreview-matcher
+1. *python -m pytest test_end_to_end.py 
+
+*Currently (3/11/19) 5 of these tests fail because the matcher is not correctly
+honoring the vetos and constraints set up in the test conference.
+
+**Integration tests**
+
  test_match is a set of integration tests.  They use a flask test_client which invokes
  the Flask server with TESTING=True.   The server switches to using tests.MockORClient if TESTING=True.
  Otherwise, it uses the openreview.Client to communicate with OpenReview.

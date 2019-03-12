@@ -94,10 +94,11 @@ class Encoder(object):
                 # overwrite constraints with user-added constraints found in config
                 user_constraint = self.constraints.get(forum, {}).get(id)
                 if user_constraint:
-                    if '-inf' in user_constraint:
+                    if Configuration.VETO in user_constraint:
                         self.constraint_matrix[coordinates] = -1
-                    if '+inf' in user_constraint:
+                    if Configuration.LOCK in user_constraint:
                         self.constraint_matrix[coordinates] = 1
+
 
     def decode(self, solution):
         '''
@@ -107,7 +108,6 @@ class Encoder(object):
 
         assignments_by_forum = defaultdict(list)
         alternates_by_forum = defaultdict(list)
-
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
             user_id = self.reviewer_by_index[reviewer_index]
 
@@ -132,7 +132,6 @@ class Encoder(object):
                     assignments_by_forum[forum].append(assignment)
                 elif assignment[Assignment.FINAL_SCORE] and not assignment[Assignment.CONFLICTS]:
                     alternates_by_forum[forum].append(assignment)
-
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
             alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]

@@ -259,11 +259,11 @@ class AssignmentGraph:
 
     def solve(self):
         assert hasattr(self, 'min_cost_flow'), 'Solver not constructed. Run self.construct_solver() first.'
-
+        self.cost = 0
         if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
             self.solved = True
             for i in range(self.min_cost_flow.NumArcs()):
-                cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
+                self.cost += self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
                 t_node = self.node_by_number[self.min_cost_flow.Tail(i)]
                 h_node = self.node_by_number[self.min_cost_flow.Head(i)]
                 flow = self.min_cost_flow.Flow(i)
