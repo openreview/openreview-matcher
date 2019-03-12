@@ -44,8 +44,7 @@ To run the end-to-end test suite:
 
 1. Go into the virtual environment for running the matcher (e.g. source venv/bin/activate)
 1. cd openreview-matcher
-1. export OPENREVIEW_BASEURL=http://localhost:3000
-1. *python -m pytest full_match_test.py 
+1. *python -m pytest test_end_to_end.py 
 
 *Currently (3/11/19) 5 of these tests fail because the matcher is not correctly
 honoring the vetos and constraints set up in the test conference.
