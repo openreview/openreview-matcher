@@ -35,16 +35,23 @@ This requires running a clean (empty mongo db).  This can be done by running
 a local OpenReview service using its scripts/clean_start_app.js with the environment var:
 NODE_ENV=circleci like:
 
-1. export NODE_ENV=circleci
-1. node scripts/clean_start_app.js
+```
+NODE_ENV=circleci node scripts/clean_start_app.js
+```
 
 Note Well: The clean_start_app must be restarted each time before running the end_to_end tests.
 
 To run the end-to-end test suite:
 
 1. Go into the virtual environment for running the matcher (e.g. source venv/bin/activate)
-1. cd openreview-matcher
-1. *python -m pytest test_end_to_end.py 
+
+```
+cd openreview-matcher
+```
+
+```
+python -m pytest test_end_to_end.py 
+```
 
 *Currently (3/11/19) 5 of these tests fail because the matcher is not correctly
 honoring the vetos and constraints set up in the test conference.
@@ -69,9 +76,15 @@ honoring the vetos and constraints set up in the test conference.
 From the command line (must run from toplevel project dir because logging paths are relative to working dir)
 
 cd to project dir (e.g. openreview-matcher)
+```
 source venv/bin/activate
+```
+```
 export FLASK_APP=matcher/app.py
+```
+```
 flask run
+```
 
 This will set the app running on localhost:5000
 
