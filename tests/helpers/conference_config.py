@@ -2,6 +2,7 @@ import openreview.tools
 import random
 import datetime
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
+from tests.params import Params
 
 
 class ConfIds:
@@ -35,7 +36,6 @@ class ConferenceConfig:
         self.conference = None
         self.paper_notes = []
         self.config_note = None
-
         self.build_conference()
 
 
@@ -74,6 +74,14 @@ class ConferenceConfig:
                 }
             self.client.post_invitation(config_inv)
 
+    def gen_scores (self):
+        tpms = 1
+        rec = 1
+        if self.params.scores_config == Params.RANDOM_SCORE:
+            tpms = random.random()
+            rec = random.random()
+        return {'tpms': tpms, 'recommendation': rec}
+
     # adds randomly generated scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
         metadata_notes = self.get_metadata_notes()
@@ -83,7 +91,7 @@ class ConferenceConfig:
             entries = []
             for reviewer in reviewers:
                 entry = {PaperReviewerScore.USERID: reviewer,
-                         PaperReviewerScore.SCORES: {'tpms': random.random(), 'recommendation': random.random() }}
+                         PaperReviewerScore.SCORES: self.gen_scores()}
                 entries.append(entry)
             md_note.content[PaperReviewerScore.ENTRIES] = entries
             self.client.post_note(md_note)
@@ -112,22 +120,22 @@ class ConferenceConfig:
 
 
     def create_papers (self):
-        paper_note_ids = []
+        self.paper_notes = []
         for i in range(self.params.num_papers):
             content = {
                 'title':  "Paper-" + str(i),
                 'authorids': ['jimbob@acme.com']
             }
-            posted_submission = self.client.post_note(openreview.Note(**{
+            paper_note = openreview.Note(**{
                 'signatures': ['~Super_User1'],
                 'writers': [self.conference.id],
                 'readers': [self.conference.id],
                 'content': content,
                 'invitation': self.conference.get_submission_id()
-            }))
-            paper_note_ids.append(posted_submission.id)
+            })
+            posted_submission = self.client.post_note(paper_note)
+            self.paper_notes.append(posted_submission)
 
-        self.paper_notes = list(openreview.tools.iterget_notes(self.client, invitation=self.conference.get_submission_id()))
         print("There are ", len(self.paper_notes), " papers")
 
 

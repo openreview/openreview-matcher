@@ -26,6 +26,9 @@ class TestUtil:
         self.silent = silent
         self.initialize_matcher_app()
 
+    def set_silent (self, silent):
+        self.silent = silent
+
     def initialize_matcher_app (self):
         # The matcher app config needs to know to use real (not mock) openreview-py API and it needs the superuser
         # credentials.

@@ -309,7 +309,7 @@ class AssignmentGraph:
                 h_node = self.node_by_number[self.min_cost_flow.Head(i)]
                 flow = self.min_cost_flow.Flow(i)
 
-                if t_node.index in self.reviewer_node_by_index and h_node.index in self.paper_node_by_index:
+                if t_node in self.reviewer_nodes and h_node in self.paper_nodes:
                     self.flow_matrix[t_node.index, h_node.index] = flow
         else:
             self.solved = False
