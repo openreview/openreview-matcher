@@ -9,6 +9,9 @@ class Params:
     CONSTRAINTS_VETOS = 'constraints_vetos'
     CONSTRAINTS_LOCKS = 'constraints_locks'
     CONFLICTS_CONFIG = 'conflicts_config'
+    SCORES_CONFIG = 'scores_config'
+    RANDOM_SCORE = 'random'
+    FIXED_SCORE = 'fixed'
     THEORETICAL_SUPPLY = 'theoretical_supply'
     ACTUAL_SUPPLY = 'actual_supply'
     DEMAND = 'demand'
@@ -25,6 +28,7 @@ class Params:
         self.constraints_locks = self.constraints_config.get(Params.CONSTRAINTS_LOCKS, {})
         self.constraints_vetos = self.constraints_config.get(Params.CONSTRAINTS_VETOS, {})
         self.conflicts_config = self.params.get(Params.CONFLICTS_CONFIG, {})
+        self.scores_config = self.params.get(Params.SCORES_CONFIG, Params.FIXED_SCORE)
         self.set_other_params()
 
     def set_other_params (self):
