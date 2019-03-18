@@ -14,7 +14,7 @@ This is implemented as a Flask RESTful service.   Structure of the project:
  
 '/matcher/match.py' contains the task function compute_match which runs the match solver in a thread
 
-'/matcher/solver.py' Defines the Solver class which wraps the min cost flow_solver
+'/matcher/assignment_graph/AssignmentGraph.py' Defines a class which wraps the algorithm/library for solving the assignment problem.
 
 **Configuration of the app**
 
@@ -29,41 +29,34 @@ OPENREVIEW_BASEURL, LOG_FILE
 
 From the command line (must run from toplevel project dir because logging paths are relative to working dir)
 
-cd to project dir (e.g. openreview-matcher)
-source venv/bin/activate
-export FLASK_APP=matcher/app.py
-flask run
+1. cd to project dir (e.g. openreview-matcher)
+1. ```source venv/bin/activate```
+1. ```export FLASK_APP=matcher/app.py```
+1. ```flask run```
 
 This will set the app running on localhost:5000
 
-Test that its running in browser:
-http://localhost:5000/match/test
+**Test that it's running in browser:**
+
+http://localhost:5000/match/test should show a simple page indicating that Flask is running
 
 
-From Intellij IDEA:
 
-There are pre-built run/debug configurations:  _matching_app_ should be used to 
-run the app during development and debugging.  N.B.  The _matching_app_ configuration sets Flask running
-on port 8050.
-
-
-**Testing:**
+**Testing with pytest:**
 
 We have three test suites below.  The end-to-end test suite relies on running the OR service with a clean database
 and the clean_start_app.  The other two test suites do not need this.  
 
-N.B. Currently there is an interaction between the tests such that all three cannot be simply run with:
+All tests may be run by doing the following:
 
-    python -m pytest tests  #  Fails because the integration test suite cannot connect to Flask after the end-to-end runs.
+    cd openreview
+    export NODE_ENV=circleci
+    node scripts/clean_start_app.js
+    cd openreview-matcher
+    source venv/bin/activate
+    python -m pytest tests
 
-Alternative:
-
-1. restart clean_start_app (see below)
-1. cd to matcher root dir.
-1. enter virtual environment
-1. python -m pytest tests/test_match_service.py tests/test_solver.py tests/test_end_to_end.py
-
-
+Note:  Each time you run the test suite clean_start_app must be run to start with a clean db.
 
 **End to End Test Suite**
 
@@ -83,11 +76,9 @@ Note Well: The clean_start_app must be restarted each time before running the en
 To run the end-to-end test suite:
 
 1. cd to openreview-matcher root directory.
-1. Go into the virtual environment for running the matcher (e.g. source venv/bin/activate)
-1. *python -m pytest tests/test_end_to_end.py 
+1. Go into the virtual environment for running the matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_end_to_end.py ```
 
-*Currently (3/11/19) 5 of these tests fail because the matcher is not correctly
-honoring the vetos and constraints set up in the test conference.
 
 **Matcher Unit Tests**
 
@@ -98,14 +89,13 @@ the algorithm finds optimal solutions and respects constraints between users and
 To run the unit tests:
 
 1. Cd to openreview-matcher root directory.
-1. Go into virtual environment for running matcher (e.g. source venv/bin/activate)
-1. python -m pytest tests/test_solver.py
+1. Go into virtual environment for running matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_solver.py```
 
 **Integration tests**
 
- test_match_service is a set of integration tests.  They use a flask test_client which invokes
- the Flask server with TESTING=True.   The server switches to using tests.MockORClient if TESTING=True.
- Otherwise, it uses the openreview.Client to communicate with OpenReview.
+ test_match_service is a set of integration tests produce the variety of error conditions that result from passing the
+ matcher incorrect inputs.
  
  A known issue during integration testing:  This app logs to both the console and a file.
  During testing Flask sets the console logging level to ERROR
@@ -117,8 +107,8 @@ To run the unit tests:
 To run the integration tests:
 
 1. Cd to openreview-matcher root directory.
-1. Go into virtual environment for running matcher (e.g. source venv/bin/activate)
-1. python -m pytest tests/test_match_service.py
+1. Go into virtual environment for running matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_match_service.py```
 
 
 

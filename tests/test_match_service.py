@@ -48,6 +48,7 @@ class TestMatchService():
         or_baseurl = 'http://localhost:3000'
         assert or_baseurl != None and or_baseurl != ''
         matcher.app.config['OPENREVIEW_BASEURL'] = or_baseurl
+        matcher.app.config['USE_API'] = False
 
     def teardown (self):
         pass
