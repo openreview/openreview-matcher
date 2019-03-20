@@ -14,7 +14,7 @@ This is implemented as a Flask RESTful service.   Structure of the project:
  
 '/matcher/match.py' contains the task function compute_match which runs the match solver in a thread
 
-'/matcher/solver.py' Defines the Solver class which wraps the min cost flow_solver
+'/matcher/assignment_graph/AssignmentGraph.py' Defines a class which wraps the algorithm/library for solving the assignment problem.
 
 **Configuration of the app**
 
@@ -25,9 +25,42 @@ were set in the first file.  Settings that are necessary:
 OPENREVIEW_BASEURL, LOG_FILE
 
 
-**Testing:**
+**To run it:**
 
-test_end_to_end.py is a test suite that tests all aspects of the matcher.  
+From the command line (must run from toplevel project dir because logging paths are relative to working dir)
+
+1. cd to project dir (e.g. openreview-matcher)
+1. ```source venv/bin/activate```
+1. ```export FLASK_APP=matcher/app.py```
+1. ```flask run```
+
+This will set the app running on localhost:5000
+
+**Test that it's running in browser:**
+
+http://localhost:5000/match/test should show a simple page indicating that Flask is running
+
+
+
+**Testing with pytest:**
+
+We have three test suites below.  The end-to-end test suite relies on running the OR service with a clean database
+and the clean_start_app.  The other two test suites do not need this.  
+
+All tests may be run by doing the following:
+
+    cd openreview
+    export NODE_ENV=circleci
+    node scripts/clean_start_app.js
+    cd openreview-matcher
+    source venv/bin/activate
+    python -m pytest tests
+
+Note:  Each time you run the test suite clean_start_app must be run to start with a clean db.
+
+**End to End Test Suite**
+
+tests/test_end_to_end.py is a test suite that tests all aspects of the matcher.  
 
 **Instructions for running this test case with pytest**
 
@@ -35,25 +68,34 @@ This requires running a clean (empty mongo db).  This can be done by running
 a local OpenReview service using its scripts/clean_start_app.js with the environment var:
 NODE_ENV=circleci like:
 
-1. export NODE_ENV=circleci
-1. node scripts/clean_start_app.js
+    export NODE_ENV=circleci
+    node scripts/clean_start_app.js
 
 Note Well: The clean_start_app must be restarted each time before running the end_to_end tests.
 
 To run the end-to-end test suite:
 
-1. Go into the virtual environment for running the matcher (e.g. source venv/bin/activate)
-1. cd openreview-matcher
-1. *python -m pytest test_end_to_end.py 
+1. cd to openreview-matcher root directory.
+1. Go into the virtual environment for running the matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_end_to_end.py ```
 
-*Currently (3/11/19) 5 of these tests fail because the matcher is not correctly
-honoring the vetos and constraints set up in the test conference.
+
+**Matcher Unit Tests**
+
+tests/test_solver.py contains unit tests to check the AssignmentGraph interface to the Google OR library.
+It sends the flow solver inputs that are representative of common situations within OpenReview.   Verifies that
+the algorithm finds optimal solutions and respects constraints between users and papers.
+
+To run the unit tests:
+
+1. Cd to openreview-matcher root directory.
+1. Go into virtual environment for running matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_solver.py```
 
 **Integration tests**
 
- test_match is a set of integration tests.  They use a flask test_client which invokes
- the Flask server with TESTING=True.   The server switches to using tests.MockORClient if TESTING=True.
- Otherwise, it uses the openreview.Client to communicate with OpenReview.
+ test_match_service is a set of integration tests produce the variety of error conditions that result from passing the
+ matcher incorrect inputs.
  
  A known issue during integration testing:  This app logs to both the console and a file.
  During testing Flask sets the console logging level to ERROR
@@ -62,26 +104,11 @@ honoring the vetos and constraints set up in the test conference.
  testing will NOT JUST SHOW "OK" messages.  There will be exception stack traces
  shown because of the error logger. 
  
- test_solver is a single unit test that runs the solver on a simple matrix.
+To run the integration tests:
 
-**To run it:**
-
-From the command line (must run from toplevel project dir because logging paths are relative to working dir)
-
-cd to project dir (e.g. openreview-matcher)
-source venv/bin/activate
-export FLASK_APP=matcher/app.py
-flask run
-
-This will set the app running on localhost:5000
-
-Test that its running in browser:
-http://localhost:5000/match/test
+1. Cd to openreview-matcher root directory.
+1. Go into virtual environment for running matcher (e.g. ```source venv/bin/activate```)
+1. ```python -m pytest tests/test_match_service.py```
 
 
-From Intellij IDEA:
-
-There are pre-built run/debug configurations:  _matching_app_ should be used to 
-run the app during development and debugging.  N.B.  The _matching_app_ configuration sets Flask running
-on port 8050.
 
