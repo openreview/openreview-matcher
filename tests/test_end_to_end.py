@@ -58,6 +58,7 @@ class TestEndToEnd():
         assert len(conference.get_assignment_notes()) == len(conference.get_paper_notes()), "Number of assignments {} is not same as number of papers {}". \
             format(len(conference.get_assignment_notes()), len(conference.get_paper_notes()))
 
+    @pytest.mark.skip
     def test2_10papers_7reviewers_5cust_load_5shortfall (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 5
@@ -77,6 +78,7 @@ class TestEndToEnd():
         assert len(conference.get_assignment_notes()) == 0, "Assignment notes should not be created if match fails"
 
 
+    @pytest.mark.skip
     def test3_10papers_7reviewers_0cust_load (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.  Custom_loads will reduce supply by 0
@@ -102,7 +104,7 @@ class TestEndToEnd():
             assert review_count_map[reviewer] <= custom_load, "Reviewer " + reviewer + \
                 " custom_load " +custom_load+ " exceeded.  Papers assigned: " + review_count_map[reviewer]
 
-
+    @pytest.mark.skip
     def test4_10papers_7reviewers_5cust_load_excess (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Custom_loads will reduce supply by 5
@@ -128,7 +130,7 @@ class TestEndToEnd():
             assert review_count_map[reviewer] <= custom_load, "Reviewer " + reviewer + \
                 " custom_load " +custom_load+ " exceeded.  Papers assigned: " + review_count_map[reviewer]
 
-
+    @pytest.mark.skip
     def test5_10papers_7reviewers_4locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock in users to 4 papers
@@ -160,7 +162,7 @@ class TestEndToEnd():
                     assert checker.is_paper_assigned_to_reviewer(forum_id, reviewer), \
                         "Reviewer {} was locked to paper {} by constraint but not found in assignment".format(reviewer,forum_id)
 
-
+    @pytest.mark.skip
     def test6_10papers_7reviewers_8vetos (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers
@@ -199,7 +201,7 @@ class TestEndToEnd():
             raise exc
 
 
-
+    @pytest.mark.skip
     def test6a_5papers_3reviewers_5vetos (self, test_util):
         '''
         Tests 5 papers each requiring 1 reviews.  3 users each capable of giving 2 reviews.  Constraints veto users in 3 papers
@@ -238,7 +240,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
-    # @pytest.mark.skip(reason="bug in matcher")
+    @pytest.mark.skip
     def test7_10papers_7reviewers_3vetos (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 3 papers
@@ -277,6 +279,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
+    @pytest.mark.skip
     def test8_10papers_7reviewers_3locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in 2 papers
@@ -315,7 +318,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
-
+    @pytest.mark.skip
     def test9_10papers_7reviewers_10locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in all 10 papers
@@ -354,7 +357,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
-    # @pytest.mark.skip(reason="bug in matcher")
+    @pytest.mark.skip
     def test10_10papers_7reviewers_4vetos_8locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers and lock users in 4 papers
@@ -396,7 +399,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
-    # @pytest.mark.skip(reason="bug in matcher")
+    @pytest.mark.skip
     def test11_5papers_4reviewers_conflicts (self, test_util):
         '''
         Tests 5 papers each requiring 2 reviews.  4 users each capable of giving 3 reviews.  6 conflicts are created between papers/reviewers.
@@ -428,7 +431,7 @@ class TestEndToEnd():
                 DisplayConf(conference).show_assignment()
             raise exc
 
-    # @pytest.mark.skip(reason="bug in matcher")
+    @pytest.mark.skip
     def test12_5papers_4reviewers_conflicts (self, test_util):
         '''
         Tests 5 papers each requiring 2 reviews.  4 users each capable of giving 3 reviews.  3 conflicts are created between papers/reviewers.

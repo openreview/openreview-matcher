@@ -4,6 +4,7 @@ import json
 from helpers.display_conf import DisplayConf
 from matcher.fields import Configuration
 from helpers.conference_config import ConferenceConfig
+from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 import openreview
 import matcher
 
@@ -25,6 +26,15 @@ class TestUtil:
         self.flask_test_client = flask_test_client
         self.silent = silent
         self.initialize_matcher_app()
+        self.conf_builder = 'Old'
+
+
+    def set_conf_builder (self, use_edge_builder):
+        self.conf_builder = 'Edge' if use_edge_builder else 'Old'
+
+    def use_edge_conf_builder (self):
+        return self.conf_builder == 'Edge'
+
 
     def set_silent (self, silent):
         self.silent = silent
@@ -81,7 +91,10 @@ class TestUtil:
         self.run_matcher()
 
     def build_conference (self):
-        self.conf = ConferenceConfig(self.client, self.test_count, self.params)
+        if self.use_edge_conf_builder():
+            self.conf = ConferenceConfigWithEdges(self.client, self.test_count, self.params)
+        else:
+            self.conf = ConferenceConfig(self.client, self.test_count, self.params)
         if not self.silent:
             DisplayConf(self.conf).display_input_structures()
 
@@ -107,3 +120,6 @@ class TestUtil:
             return self.flask_test_client.post(url, data=config_note, content_type='application/json', headers=headers)
         else:
             return self.flask_test_client.post(url, data=config_note, content_type='application/json')
+
+
+

@@ -1,3 +1,4 @@
+import time
 from collections import defaultdict
 import numpy as np
 
@@ -10,12 +11,12 @@ from matcher.fields import Assignment
 class Encoder(object):
 
 
-    def __init__(self, metadata=None, config=None, reviewer_ids=None, cost_func=utils.cost):
+    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost):
 
-        self.metadata = []
+        self.metadata = metadata
         self.config = config
-        self.reviewer_ids = []
-        self.cost = cost_func
+        self.reviewer_ids = reviewer_ids
+        self.cost_func = cost_func
 
         self.cost_matrix = np.zeros((0, 0))
         self.constraint_matrix = np.zeros((0, 0))
@@ -28,8 +29,8 @@ class Encoder(object):
         self.weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
-        if metadata and config and reviewer_ids:
-            self.encode(metadata, config, reviewer_ids, cost_func)
+        if self.metadata and self.config and self.reviewer_ids:
+            self.encode()
 
     def _get_weight_dict (self, names, weights):
         return dict(zip(names, [ float(w) for w in weights]))
@@ -39,30 +40,34 @@ class Encoder(object):
             assert k in valid_score_names, \
             "The entry in the note id={} has a score name ({}) that isn't in the config".format(prs_note_id, k)
 
-    def encode(self, metadata, config, reviewer_ids, cost_func):
+    # extract the scores from the entry record to form a vector that is ordered the same as the score_names (and weights)
+    def order_scores (self, entry):
+        scores = []
+        for score_name in self.score_names:
+            scores.append(entry[score_name])
+        return scores
+
+    def encode(self):
         '''
         Encodes the cost and constraint matrices to be used by the solver.
-
-        metadata    = a list of metadata Notes
         weights     = a dict of weights keyed on score type
           e.g. { 'tpms': 0.5, 'bid': 1.0, 'recommendation': 2.0 }
-        reviewers   = a list of reviewer IDs (to lookup in metadata entries)
 
         '''
-        self.metadata = metadata
-        self.config = config
-        self.reviewer_ids = reviewer_ids
-        self.cost_func = cost_func
+        print("Encoding")
+        now = time.time()
 
-        self.cost_matrix = np.zeros((len(self.reviewer_ids), len(self.metadata)))
+        self.cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
         self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
 
-        self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
-                                           for entry in m.content[PaperReviewerScore.ENTRIES]}
-                                 for m in self.metadata}
+        self.entries_by_forum  = self.metadata._entries_by_forum_map
 
-        self.index_by_forum = {m.forum: index
-                               for index, m in enumerate(self.metadata)}
+        # self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
+        #                                    for entry in m.content[PaperReviewerScore.ENTRIES]}
+        #                          for m in self.metadata}
+
+        self.index_by_forum = {m.id: index
+                               for index, m in enumerate(self.metadata.paper_notes)}
 
         self.index_by_reviewer = {r: index
                                   for index, r in enumerate(self.reviewer_ids)}
@@ -73,19 +78,21 @@ class Encoder(object):
         self.reviewer_by_index = {index: id
                                   for id, index in self.index_by_reviewer.items()}
 
-        self.constraints = config.get(Configuration.CONSTRAINTS,{})
+        self.constraints = self.config.get(Configuration.CONSTRAINTS,{})
 
-        for forum, entry_by_id in self.entries_by_forum.items():
+        for forum, entry_by_userid in self.entries_by_forum.items():
             paper_index = self.index_by_forum[forum]
 
             for id, reviewer_index in self.index_by_reviewer.items():
                 # first check the metadata entry for scores and conflicts
                 coordinates = reviewer_index, paper_index
-                entry = entry_by_id.get(id)
+                entry = entry_by_userid.get(id)
                 if entry:
                     # Check that the scores in the entry have same names as those in the config note
-                    self._error_check_scores(entry, self.metadata[paper_index], self.score_names)
-                    self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
+                    #TODO restore this error check when I know how
+                    # self._error_check_scores(entry, self.metadata[paper_index], self.score_names)
+                    # self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
+                    self.cost_matrix[coordinates] = self.cost_func(entry, self.weights)
                     if entry.get(PaperReviewerScore.CONFLICTS):
                         self.constraint_matrix[coordinates] = -1
                     else:
@@ -98,6 +105,8 @@ class Encoder(object):
                         self.constraint_matrix[coordinates] = -1
                     if Configuration.LOCK in user_constraint:
                         self.constraint_matrix[coordinates] = 1
+
+        print("Done encoding. Took", time.time() - now)
 
 
     def decode(self, solution):
@@ -123,10 +132,12 @@ class Encoder(object):
                 entry = self.entries_by_forum[forum].get(user_id)
 
                 if entry:
-                    assignment[Assignment.SCORES] = utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights)
+                    # assignment[Assignment.SCORES] = utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights)
+                    assignment[Assignment.SCORES] = utils.weight_scores(entry, self.weights)
                     assignment[Assignment.CONFLICTS] = entry.get(PaperReviewerScore.CONFLICTS)
                     assignment[Assignment.FINAL_SCORE] = utils.safe_sum(
-                        utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights).values())
+                        # utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights).values())
+                        utils.weight_scores(entry, self.weights).values())
 
                 if flow:
                     assignments_by_forum[forum].append(assignment)

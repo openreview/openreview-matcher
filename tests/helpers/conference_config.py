@@ -18,6 +18,10 @@ class ConfIds:
         self.METADATA_INV_ID = self.CONF_ID + '/-/Paper_Metadata'
         self.CONFIG_ID = self.CONF_ID + "/-/Assignment_Configuration"
         self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
+        self.BID_ID = self.CONF_ID + "/-/Bid"
+        self.TPMS_ID = self.CONF_ID + "/-/Tpms"
+        self.RECOMMENDATION_ID = self.CONF_ID + "/-/Recommendation"
+        self.AFFINITY_ID = self.CONF_ID + "/-/Affinity"
 
 
 # To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
@@ -36,6 +40,7 @@ class ConferenceConfig:
         self.conference = None
         self.paper_notes = []
         self.config_note = None
+        self.incremental_score = 0.0
         self.build_conference()
 
 
@@ -49,6 +54,7 @@ class ConferenceConfig:
                                     remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.set_program_chairs(emails=[])
+        self.conference.has_area_chairs(True)
         self.conference.set_area_chairs(emails=[])
         self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.params.num_reviewers)]
         self.conference.set_reviewers(emails=self.reviewers)
@@ -66,7 +72,7 @@ class ConferenceConfig:
             content = config_inv.reply['content']
             del content['scores_names']
             content["scores_names"] = {
-                "values-dropdown": ['bid', 'recommendation', 'tpms'],
+                "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
                 # "values": ['bid', 'recommendation', 'tpms'],
                 "required": True,
                 "description": "List of scores names",
@@ -74,13 +80,25 @@ class ConferenceConfig:
                 }
             self.client.post_invitation(config_inv)
 
+    def gen_score (self, paper_ix=0, reviewer_ix=0):
+        if self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
+            score = random.random()
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
+            fixed_score = self.params.scores_config[Params.FIXED_SCORE_VALUE]
+            score = fixed_score
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
+            score = self.params.scores_config[Params.SCORE_MATRIX][reviewer_ix, paper_ix]
+        else: #  incremental scores go like 0.1, 0.2, 0.3... to create a discernable pattern we can look for in cost matrix
+            self.incremental_score += self.params.scores_config[Params.SCORE_INCREMENT]
+            score = self.incremental_score
+        return float(score)
+
     def gen_scores (self):
-        tpms = 1
-        rec = 1
-        if self.params.scores_config == Params.RANDOM_SCORE:
-            tpms = random.random()
-            rec = random.random()
-        return {'tpms': tpms, 'recommendation': rec}
+        score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
+        record = {}
+        for score_name in score_names:
+            record[score_name] = self.gen_score()
+        return record
 
     # adds randomly generated scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
@@ -153,8 +171,8 @@ class ConferenceConfig:
             'content': {
                 'title': 'reviewers',
                 # TODO Question:  Can only set these because I customized the invitation
-                'scores_names': ['bid','recommendation', 'tpms'],
-                'scores_weights': ['1', '2', '3'],
+                'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
+                'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review
@@ -246,6 +264,9 @@ class ConferenceConfig:
     @config_note_id.setter
     def config_note_id (self, config_note_id):
         self._config_note_id = config_note_id
+
+    def get_reviewer (self, index):
+        return self.reviewers[index]
 
 
     ## Below are routines some of which could go into the matching portion of the conference builder

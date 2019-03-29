@@ -2,8 +2,10 @@ import openreview
 import threading
 from matcher.assignment_graph import AssignmentGraph, GraphBuilder
 from matcher.encoder import Encoder
+from matcher.encoder2 import Encoder2
 from matcher.fields import Configuration
 from matcher.fields import Assignment
+from Metadata import Metadata
 from matcher import app
 import logging
 import time
@@ -49,15 +51,18 @@ class Match:
     def compute_match(self):
         try:
             self.set_status(Configuration.STATUS_RUNNING)
-            metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
+            papers = list(openreview.tools.iterget_notes(self.client, invitation=self.config[Configuration.PAPER_INVITATION]))
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
+            score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
             reviewer_ids = reviewer_group.members
+            metadata = Metadata(papers, reviewer_ids, score_invitation_ids)
+            metadata.load_data(self.client)
 
             if type(self.config[Configuration.MAX_USERS]) == str:
-                demands = [int(self.config[Configuration.MAX_USERS])] * len(metadata)
+                demands = [int(self.config[Configuration.MAX_USERS])] * len(papers)
             else:
-                demands = [self.config[Configuration.MAX_USERS]] * len(metadata)
+                demands = [self.config[Configuration.MAX_USERS]] * len(papers)
 
             if type(self.config[Configuration.MIN_PAPERS]) == str:
                 minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(reviewer_ids)
@@ -71,6 +76,7 @@ class Match:
 
             self.logger.debug("Encoding metadata")
             encoder = Encoder(metadata, self.config, reviewer_ids)
+            # encoder = Encoder2(metadata, self.config)
 
             # The config contains custom_loads which is a dictionary where keys are user names
             # and values are max values to override the max_papers coming from the general config.

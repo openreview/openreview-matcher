@@ -12,6 +12,13 @@ class Params:
     SCORES_CONFIG = 'scores_config'
     RANDOM_SCORE = 'random'
     FIXED_SCORE = 'fixed'
+    FIXED_SCORE_VALUE = 'fixed_score_value'
+    INCREMENTAL_SCORE = 'incremental'
+    MATRIX_SCORE = 'matrix'
+    SCORE_MATRIX = 'score_matrix'
+    SCORE_INCREMENT = 'score_increment'
+    SCORE_TYPE = 'type'
+    SCORE_NAMES_LIST = 'score_names'
     THEORETICAL_SUPPLY = 'theoretical_supply'
     ACTUAL_SUPPLY = 'actual_supply'
     DEMAND = 'demand'
@@ -28,7 +35,11 @@ class Params:
         self.constraints_locks = self.constraints_config.get(Params.CONSTRAINTS_LOCKS, {})
         self.constraints_vetos = self.constraints_config.get(Params.CONSTRAINTS_VETOS, {})
         self.conflicts_config = self.params.get(Params.CONFLICTS_CONFIG, {})
-        self.scores_config = self.params.get(Params.SCORES_CONFIG, Params.FIXED_SCORE)
+        # default scoring is affinity=1 for every paper-reviewer
+        self.scores_config = self.params.get(Params.SCORES_CONFIG,
+                                             {Params.SCORE_TYPE: Params.FIXED_SCORE,
+                                              Params.FIXED_SCORE_VALUE: 1,
+                                              Params.SCORE_NAMES_LIST: ['affinity']})
         self.set_other_params()
 
     def set_other_params (self):

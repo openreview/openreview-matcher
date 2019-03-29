@@ -9,3 +9,6 @@ class AlreadyRunningException (Exception):
 
 class AlreadyCompleteException (Exception):
     pass
+
+class NotFoundError (Exception):
+    pass

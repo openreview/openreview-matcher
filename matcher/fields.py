@@ -3,6 +3,7 @@ class Configuration:
     TITLE = 'title'
     SCORES_WEIGHTS = 'scores_weights'
     SCORES_NAMES = 'scores_names'
+    SCORES_INVITATIONS = 'scores_invitations'
     CONSTRAINTS = 'constraints'
     CUSTOM_LOADS = 'custom_loads'
     MAX_USERS = 'max_users'
@@ -20,6 +21,8 @@ class Configuration:
     OBJECTIVE_TYPE = "objective_type"
     LOCK = '+inf'
     VETO = '-inf'
+    PAPER_INVITATION = "paper_invitation"
+
 
 class PaperReviewerScore:
     USERID = 'userid'
