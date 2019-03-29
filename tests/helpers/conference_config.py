@@ -290,6 +290,12 @@ class ConferenceConfig:
                 return note
         return None
 
+    def get_metadata_notes_following_paper_order (self):
+        res = []
+        for p in self.paper_notes:
+            res.append(self.paper_to_metadata_map[p.id])
+        return res
+
     def get_metadata_notes (self):
         return list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
 

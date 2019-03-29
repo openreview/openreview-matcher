@@ -18,7 +18,7 @@ class TestEncoderUnit:
 
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -51,7 +51,7 @@ class TestEncoderUnit:
             for p in range(num_papers):
                 assert(cost_matrix[r,p] == -1)
 
-    # @pytest.mark.skip
+    @pytest.mark.skip
     def test_big_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -86,7 +86,7 @@ class TestEncoderUnit:
             for p in range(num_papers):
                 assert(cost_matrix[r,p] == -1)
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_decode (self, test_util):
         '''
         There is a dependency where testing decode means that the Encoder must have first been instantiated and this
