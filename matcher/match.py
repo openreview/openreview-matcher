@@ -75,8 +75,8 @@ class Match:
                 maximums = [self.config[Configuration.MAX_PAPERS]] * len(reviewer_ids)
 
             self.logger.debug("Encoding metadata")
-            encoder = Encoder(metadata, self.config, reviewer_ids)
-            # encoder = Encoder2(metadata, self.config)
+            # encoder = Encoder(metadata, self.config, reviewer_ids)
+            encoder = Encoder2(metadata, self.config)
 
             # The config contains custom_loads which is a dictionary where keys are user names
             # and values are max values to override the max_papers coming from the general config.
