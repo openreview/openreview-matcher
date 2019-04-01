@@ -60,7 +60,7 @@ class Encoder(object):
         self.cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
         self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
 
-        self.entries_by_forum  = self.metadata._entries_by_forum_map
+        self.entries_by_forum  = self.metadata.entries_by_forum_map
 
         # self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
         #                                    for entry in m.content[PaperReviewerScore.ENTRIES]}

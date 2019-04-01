@@ -39,6 +39,7 @@ class ConferenceConfig:
         self.config_inv = None
         self.conference = None
         self.paper_notes = []
+        self.paper_to_metadata_map = {}
         self.config_note = None
         self.incremental_score = 0.0
         self.build_conference()
@@ -51,7 +52,7 @@ class ConferenceConfig:
         builder.set_conference_short_name('Integration Test')
         self.conference = builder.get_result()
         self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
-                                    remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
+                                         remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.set_program_chairs(emails=[])
         self.conference.has_area_chairs(True)
@@ -61,6 +62,7 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
+        self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
         self.create_config_note()
@@ -77,10 +79,14 @@ class ConferenceConfig:
                 "required": True,
                 "description": "List of scores names",
                 "order": 3
-                }
+            }
             self.client.post_invitation(config_inv)
 
-    def gen_score (self, paper_ix=0, reviewer_ix=0):
+    def build_paper_to_metadata_map (self):
+        for md_note in self.get_metadata_notes():
+            self.paper_to_metadata_map[md_note.forum] = md_note
+
+    def gen_score (self, reviewer_ix=0, paper_ix=0):
         if self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
             score = random.random()
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
@@ -93,23 +99,26 @@ class ConferenceConfig:
             score = self.incremental_score
         return float(score)
 
-    def gen_scores (self):
+    def gen_scores (self, reviewer_ix, paper_ix):
         score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
         record = {}
         for score_name in score_names:
-            record[score_name] = self.gen_score()
+            record[score_name] = self.gen_score(reviewer_ix, paper_ix)
         return record
 
     # adds randomly generated scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
-        metadata_notes = self.get_metadata_notes()
+        # metadata_notes = self.get_metadata_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
         reviewers = reviewers_group.members
-        for md_note in metadata_notes:
+        # iterate through paper notes and then fetch its metadata because order of
+        # papers_notes we know, metadata may be in some other order.
+        for paper_ix, paper_note in enumerate(self.paper_notes):
+            md_note = self.paper_to_metadata_map[paper_note.id]
             entries = []
-            for reviewer in reviewers:
+            for reviewer_ix, reviewer in enumerate(reviewers):
                 entry = {PaperReviewerScore.USERID: reviewer,
-                         PaperReviewerScore.SCORES: self.gen_scores()}
+                         PaperReviewerScore.SCORES: self.gen_scores(reviewer_ix, paper_ix)}
                 entries.append(entry)
             md_note.content[PaperReviewerScore.ENTRIES] = entries
             self.client.post_note(md_note)
