@@ -75,8 +75,8 @@ class Match:
                 maximums = [self.config[Configuration.MAX_PAPERS]] * len(reviewer_ids)
 
             self.logger.debug("Encoding metadata")
-            # encoder = Encoder(metadata, self.config, reviewer_ids)
-            encoder = Encoder2(metadata, self.config)
+            encoder = Encoder(metadata, self.config, reviewer_ids)
+            # encoder = Encoder2(metadata, self.config)
 
             # The config contains custom_loads which is a dictionary where keys are user names
             # and values are max values to override the max_papers coming from the general config.
@@ -106,7 +106,7 @@ class Match:
             if graph.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
-                self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
+                self.save_suggested_assignment2(alternates_by_forum, assignment_inv, assignments_by_forum)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -155,3 +155,34 @@ class Match:
                     Assignment.ALTERNATE_GROUPS: alternates
                 }
             }))
+
+    def clear_existing_match2(self, assignment_inv):
+        label = self.config[Configuration.TITLE]
+        assignment_edges = list(openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label))
+        for edge in assignment_edges:
+            edge.ddate = round(time.time()) * 1000
+            self.client.post_edge(edge)
+
+
+
+    def save_suggested_assignment2 (self, alternates_by_forum, assignment_inv, assignments_by_forum):
+        # self.clear_existing_match2(assignment_inv)
+        label = self.config[Configuration.TITLE]
+        for forum, assignments in assignments_by_forum.items():
+            for entry in assignments:
+                score = entry[Assignment.FINAL_SCORE]
+                try:
+                    e = openreview.Edge(invitation=assignment_inv.id,
+                                        head=forum,
+                                        tail=entry[Assignment.USERID],
+                                        label=label,
+                                        weight=score,
+                                        readers=['everyone'],
+                                        writers=['everyone'],
+                                        signatures=[])
+                    self.client.post_edge(e)
+                except Exception as exc:
+                    print(exc)
+                    raise exc
+
+

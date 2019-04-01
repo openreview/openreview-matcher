@@ -114,7 +114,8 @@ class Encoder(object):
         Decodes a solution into assignments
         '''
         flow_matrix = solution
-
+        now = time.time()
+        print("Decoding")
         assignments_by_forum = defaultdict(list)
         alternates_by_forum = defaultdict(list)
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
@@ -146,5 +147,5 @@ class Encoder(object):
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
             alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
-
+        print("Done deconding.  Took", time.time() - now)
         return dict(assignments_by_forum), dict(alternates_by_forum)
