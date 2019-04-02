@@ -1,9 +1,9 @@
 import time
 import json
 
-from helpers.display_conf import DisplayConf
+from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
-from helpers.conference_config import ConferenceConfig
+from helpers.ConferenceConfig import ConferenceConfig
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 import openreview
 import matcher

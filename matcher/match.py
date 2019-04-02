@@ -55,10 +55,13 @@ class Match:
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
+            score_names = self.config[Configuration.SCORES_NAMES]
+            weights = self.config[Configuration.SCORES_WEIGHTS]
             reviewer_ids = reviewer_group.members
-            metadata = Metadata(papers, reviewer_ids, score_invitation_ids)
-            metadata.load_data(self.client)
-
+            assert len(score_invitation_ids) == score_names == weights, "The configuration note should specify the same number of scores, weights, and score-invitations"
+            metadata = Metadata(self.client, papers, reviewer_ids, score_invitation_ids)
+            inv_score_names = [metadata.translate_score_inv_to_score_name(inv_id) for inv_id in score_invitation_ids]
+            assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
             if type(self.config[Configuration.MAX_USERS]) == str:
                 demands = [int(self.config[Configuration.MAX_USERS])] * len(papers)
             else:

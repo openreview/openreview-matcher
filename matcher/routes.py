@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from matcher import app
 from matcher.match import Match
-import tests.mock_or_client
+from tests.mock_or_client import MockORClient
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException, AlreadyCompleteException
 from matcher.fields  import Configuration
@@ -13,7 +13,7 @@ def get_client (token=None):
         pw = app.config.get('OPENREVIEW_PASSWORD')
         return openreview.Client(baseurl=baseurl,username=email, password=pw)
     elif app.config['TESTING']:
-        return tests.mock_or_client.MockORClient(baseurl=baseurl,token=token)
+        return MockORClient(baseurl=baseurl,token=token)
     else:
         return openreview.Client(baseurl=baseurl,token=token)
 

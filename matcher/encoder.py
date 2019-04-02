@@ -25,20 +25,20 @@ class Encoder(object):
         self.index_by_reviewer = {}
         self.forum_by_index = {}
         self.reviewer_by_index = {}
+        self.score_edge_invitations = config[Configuration.SCORES_INVITATIONS]
         self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
         self.weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
         if self.metadata and self.config and self.reviewer_ids:
+            self._error_check_scores()
             self.encode()
 
     def _get_weight_dict (self, names, weights):
         return dict(zip(names, [ float(w) for w in weights]))
 
-    def _error_check_scores (self, entry, prs_note_id, valid_score_names):
-        for k in entry['scores']:
-            assert k in valid_score_names, \
-            "The entry in the note id={} has a score name ({}) that isn't in the config".format(prs_note_id, k)
+    def _error_check_scores (self):
+        assert len(self.score_edge_invitations) == self.score_names == self.weights, "The configuration note should specify the same number of scores, weights, and score-invitations"
 
     # extract the scores from the entry record to form a vector that is ordered the same as the score_names (and weights)
     def order_scores (self, entry):
@@ -62,10 +62,6 @@ class Encoder(object):
 
         self.entries_by_forum  = self.metadata.entries_by_forum_map
 
-        # self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
-        #                                    for entry in m.content[PaperReviewerScore.ENTRIES]}
-        #                          for m in self.metadata}
-
         self.index_by_forum = {m.id: index
                                for index, m in enumerate(self.metadata.paper_notes)}
 
@@ -88,10 +84,7 @@ class Encoder(object):
                 coordinates = reviewer_index, paper_index
                 entry = entry_by_userid.get(id)
                 if entry:
-                    # Check that the scores in the entry have same names as those in the config note
-                    #TODO restore this error check when I know how
-                    # self._error_check_scores(entry, self.metadata[paper_index], self.score_names)
-                    # self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
+
                     self.cost_matrix[coordinates] = self.cost_func(entry, self.weights)
                     if entry.get(PaperReviewerScore.CONFLICTS):
                         self.constraint_matrix[coordinates] = -1

@@ -2,10 +2,10 @@ import matcher
 import os
 import pytest
 
-from helpers.display_conf import DisplayConf
+from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
 from params import Params
-from helpers.assignment_checker import AssignmentChecker
+from helpers.AssignmentChecker import AssignmentChecker
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
 

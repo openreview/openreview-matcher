@@ -2,7 +2,7 @@ import pytest
 import os
 import matcher
 import openreview
-from helpers.test_util import TestUtil
+from helpers.TestUtil import TestUtil
 
 @pytest.fixture
 def test_util (scope="class"):

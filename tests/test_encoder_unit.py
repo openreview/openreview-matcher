@@ -4,7 +4,7 @@ from params import Params
 import numpy as np
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
-from helpers.conference_config import ConferenceConfig
+from helpers.ConferenceConfig import ConferenceConfig
 from matcher.encoder import Encoder
 from matcher.Metadata import Metadata
 
@@ -18,7 +18,7 @@ class TestEncoderUnit:
 
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -31,7 +31,7 @@ class TestEncoderUnit:
                          Params.NUM_REVIEWERS: 3,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
                          Params.REVIEWER_MAX_PAPERS: 2,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity', 'recommendation'],
                                                 Params.SCORE_TYPE: Params.FIXED_SCORE,
                                                 Params.FIXED_SCORE_VALUE: 0.01
                                                 }
@@ -40,8 +40,7 @@ class TestEncoderUnit:
         or_client = test_util.client
         conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
         # md = conf.get_metadata_notes_following_paper_order()
-        md = Metadata(conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
-        md.load_data(or_client)
+        md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         config = conf.get_config_note()
         now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
@@ -51,10 +50,10 @@ class TestEncoderUnit:
         assert shape == (num_reviewers,num_papers)
         for r in range(num_reviewers):
             for p in range(num_papers):
-                assert(cost_matrix[r,p] == -1)
+                assert(cost_matrix[r,p] == -2)
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip
     def test_big_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -79,8 +78,7 @@ class TestEncoderUnit:
         print("Time to build test conference: ", time.time() - now)
         config = conf.get_config_note()
         now = time.time()
-        md = Metadata(conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
-        md.load_data(or_client)
+        md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
@@ -92,7 +90,7 @@ class TestEncoderUnit:
             for p in range(num_papers):
                 assert(cost_matrix[r,p] == -1)
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_decode (self, test_util):
         '''
         There is a dependency where testing decode means that the Encoder must have first been instantiated and this
@@ -128,8 +126,7 @@ class TestEncoderUnit:
         conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
         papers = conf.get_paper_notes()
         reviewers = conf.reviewers
-        md = Metadata(conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
-        md.load_data(or_client)
+        md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         config = conf.get_config_note()
         enc = Encoder(md, config.content, reviewers)
         cost_matrix = enc.cost_matrix
