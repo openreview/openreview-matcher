@@ -2,7 +2,8 @@ import pytest
 import os
 import matcher
 import openreview
-from helpers.TestUtil import TestUtil
+import helpers.TestUtil
+# from helpers.TestUtil import TestUtil
 
 @pytest.fixture
 def test_util (scope="class"):
@@ -11,7 +12,7 @@ def test_util (scope="class"):
     flask_app_test_client = matcher.app.test_client()
     flask_app_test_client.testing = True
     silent = True
-    test_util = TestUtil.get_instance(or_baseurl, flask_app_test_client, silent=silent)
+    test_util = helpers.TestUtil.TestUtil.get_instance(or_baseurl, flask_app_test_client, silent=silent)
     test_util.set_conf_builder(use_edge_builder=True)
     yield test_util
 

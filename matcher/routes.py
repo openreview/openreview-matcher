@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from matcher import app
 from matcher.match import Match
-from tests.mock_or_client import MockORClient
+from matcher.mock_or_client import MockORClient
 import openreview
 from exc.exceptions import NoTokenException, BadTokenException, AlreadyRunningException, AlreadyCompleteException
 from matcher.fields  import Configuration

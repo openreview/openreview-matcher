@@ -1,6 +1,3 @@
-import time
-
-from fields import PaperReviewerScore
 import openreview.tools
 from collections import defaultdict
 

@@ -5,7 +5,7 @@ from matcher.encoder import Encoder
 from matcher.encoder2 import Encoder2
 from matcher.fields import Configuration
 from matcher.fields import Assignment
-from Metadata import Metadata
+from matcher.Metadata import Metadata
 from matcher import app
 import logging
 import time
