@@ -38,7 +38,7 @@ class Encoder(object):
         return dict(zip(names, [ float(w) for w in weights]))
 
     def _error_check_scores (self):
-        assert len(self.score_edge_invitations) == self.score_names == self.weights, "The configuration note should specify the same number of scores, weights, and score-invitations"
+        assert len(self.score_edge_invitations) == len(self.score_names) == len(self.weights.keys()), "The configuration note should specify the same number of scores, weights, and score-invitations"
 
     # extract the scores from the entry record to form a vector that is ordered the same as the score_names (and weights)
     def order_scores (self, entry):
