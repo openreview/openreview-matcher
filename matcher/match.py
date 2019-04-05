@@ -159,32 +159,39 @@ class Match:
             }))
 
     def clear_existing_match2(self, assignment_inv):
+        self.logger.debug("Clearing Existing Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
-        assignment_edges = list(openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label))
+        assignment_edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label)
+        edges = []
+        # change all the assignment-edges
         for edge in assignment_edges:
             edge.ddate = round(time.time()) * 1000
-            self.client.post_edge(edge)
+            edges.append(edge)
+        # post them all back in bulk
+        self.client.post_bulk_edges(edges)
+        self.logger.debug("Done clearing Existing Edges for " + assignment_inv.id)
 
 
 
     def save_suggested_assignment2 (self, alternates_by_forum, assignment_inv, assignments_by_forum):
-        # self.clear_existing_match2(assignment_inv)
+        self.clear_existing_match2(assignment_inv)
+        self.logger.debug("Saving Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
+        edges = []
         for forum, assignments in assignments_by_forum.items():
             for entry in assignments:
                 score = entry[Assignment.FINAL_SCORE]
-                try:
-                    e = openreview.Edge(invitation=assignment_inv.id,
-                                        head=forum,
-                                        tail=entry[Assignment.USERID],
-                                        label=label,
-                                        weight=score,
-                                        readers=['everyone'],
-                                        writers=['everyone'],
-                                        signatures=[])
-                    self.client.post_edge(e)
-                except Exception as exc:
-                    print(exc)
-                    raise exc
+                e = openreview.Edge(invitation=assignment_inv.id,
+                                    head=forum,
+                                    tail=entry[Assignment.USERID],
+                                    label=label,
+                                    weight=score,
+                                    readers=['everyone'],
+                                    writers=['everyone'],
+                                    signatures=[])
+                edges.append(e)
+        self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
+        self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
+
 
 

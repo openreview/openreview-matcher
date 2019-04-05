@@ -35,10 +35,10 @@ class Metadata:
     def len (self):
         return len(self.paper_notes)
 
-    # translate the invitation id to a score name
+    # translate the invitation id to a score name by plucking off the last piece of the invitation id
     def translate_score_inv_to_score_name (self, score_inv_id):
-        score_name = score_inv_id.split('/')[-1]  # like Bid or Affinity
-        return score_name.lower() # case has to match the list of score_names in the config note which are lower case
+        score_name = score_inv_id.split('/')[-1]  # like bid, tpms, subjectArea
+        return score_name
 
 
     def load_data (self, or_client):
