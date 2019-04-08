@@ -6,6 +6,7 @@ from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuild
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 from helpers.ConferenceConfig import ConferenceConfig
 from matcher.encoder import Encoder
+from matcher.encoder2 import Encoder2
 from matcher.Metadata import Metadata
 
 class TestEncoderUnit:
@@ -18,7 +19,7 @@ class TestEncoderUnit:
 
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip
     def test_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -43,7 +44,7 @@ class TestEncoderUnit:
         md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         config = conf.get_config_note()
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder2(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -60,8 +61,8 @@ class TestEncoderUnit:
         :param test_util:
         :return:
         '''
-        num_papers = 2000
-        num_reviewers = 1500
+        num_papers = 200
+        num_reviewers = 150
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
@@ -81,7 +82,7 @@ class TestEncoderUnit:
         md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder2(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -128,7 +129,7 @@ class TestEncoderUnit:
         reviewers = conf.reviewers
         md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         config = conf.get_config_note()
-        enc = Encoder(md, config.content, reviewers)
+        enc = Encoder2(md, config.content, reviewers)
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')

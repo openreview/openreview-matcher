@@ -10,7 +10,7 @@ from matcher.fields import Assignment
 class Encoder2:
 
 
-    def __init__(self, metadata=None, config=None, cost_func=utils.cost):
+    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost):
 
         self.metadata = metadata
         self.config = config
@@ -46,7 +46,7 @@ class Encoder2:
             else:
                 self.constraint_matrix[coordinates] = 0
 
-    def update_constraint_matrix (self, reviewer_index, paper_index):
+    def update_constraint_matrix (self, entry, reviewer_index, paper_index):
         pass
         '''
         # overwrite constraints with user-added constraints found in config
@@ -93,9 +93,9 @@ class Encoder2:
                         utils.weight_scores(entry, self.weights).values())
 
                 if flow:
-                    assignments_by_forum[paper_note].append(assignment)
+                    assignments_by_forum[paper_note.id].append(assignment)
                 elif assignment[Assignment.FINAL_SCORE] and not assignment[Assignment.CONFLICTS]:
-                    alternates_by_forum[paper_note].append(assignment)
+                    alternates_by_forum[paper_note.id].append(assignment)
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
             alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
