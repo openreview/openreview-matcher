@@ -5,13 +5,14 @@ from . import utils
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
-
+import time
 
 class Encoder2:
 
 
-    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost):
-
+    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost, logger=None):
+        self.logger = logger
+        self.logger.debug("Using Encoder2")
         self.metadata = metadata
         self.config = config
         self.cost_func = cost_func
@@ -60,6 +61,8 @@ class Encoder2:
 
 
     def encode (self):
+        self.logger.debug("Encoding")
+        now = time.time()
         self.cost_matrix = np.zeros((len(self.metadata.reviewers), len(self.metadata.paper_notes)))
         self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
         for paper_index, paper_note in enumerate(self.metadata.paper_notes):
@@ -67,9 +70,12 @@ class Encoder2:
                 entry = self.metadata.get_entry(paper_note.id, reviewer)
                 self.update_cost_matrix(entry,reviewer_index, paper_index)
                 self.update_constraint_matrix(entry, reviewer_index, paper_index)
+        self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
 
 
     def decode (self, flow_matrix):
+        now = time.time()
+        self.logger.debug("Decoding")
         assignments_by_forum = defaultdict(list)
         alternates_by_forum = defaultdict(list)
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
@@ -99,7 +105,7 @@ class Encoder2:
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
             alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
-
+        self.logger.debug("Done decoding.  Took {}".format(time.time() - now))
         return dict(assignments_by_forum), dict(alternates_by_forum)
 
 

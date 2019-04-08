@@ -58,7 +58,7 @@ class Match:
             score_names = self.config[Configuration.SCORES_NAMES]
             weights = self.config[Configuration.SCORES_WEIGHTS]
             reviewer_ids = reviewer_group.members
-            metadata = Metadata(self.client, papers, reviewer_ids, score_invitation_ids)
+            metadata = Metadata(self.client, papers, reviewer_ids, score_invitation_ids, self.logger)
             inv_score_names = [metadata.translate_score_inv_to_score_name(inv_id) for inv_id in score_invitation_ids]
             assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
             if type(self.config[Configuration.MAX_USERS]) == str:
@@ -77,8 +77,8 @@ class Match:
                 maximums = [self.config[Configuration.MAX_PAPERS]] * len(reviewer_ids)
 
             self.logger.debug("Encoding metadata")
-            encoder = Encoder(metadata, self.config, reviewer_ids)
-            # encoder = Encoder2(metadata, self.config)
+            # encoder = Encoder(metadata, self.config, reviewer_ids, logger=self.logger)
+            encoder = Encoder2(metadata, self.config, reviewer_ids, logger=self.logger)
 
             # The config contains custom_loads which is a dictionary where keys are user names
             # and values are max values to override the max_papers coming from the general config.

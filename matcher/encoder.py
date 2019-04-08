@@ -11,8 +11,9 @@ from matcher.fields import Assignment
 class Encoder(object):
 
 
-    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost):
-
+    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost, logger=None):
+        self.logger = logger
+        self.logger.debug("Using Encoder")
         self.metadata = metadata
         self.config = config
         self.reviewer_ids = reviewer_ids
@@ -54,7 +55,7 @@ class Encoder(object):
           e.g. { 'tpms': 0.5, 'bid': 1.0, 'recommendation': 2.0 }
 
         '''
-        print("Encoding")
+        self.logger.debug("Encoding")
         now = time.time()
 
         self.cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
@@ -99,7 +100,7 @@ class Encoder(object):
                     if Configuration.LOCK in user_constraint:
                         self.constraint_matrix[coordinates] = 1
 
-        print("Done encoding. Took", time.time() - now)
+        self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
 
 
     def decode(self, solution):
@@ -108,7 +109,7 @@ class Encoder(object):
         '''
         flow_matrix = solution
         now = time.time()
-        print("Decoding")
+        self.logger.debug("Decoding")
         assignments_by_forum = defaultdict(list)
         alternates_by_forum = defaultdict(list)
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
@@ -140,5 +141,5 @@ class Encoder(object):
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
             alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
-        print("Done decoding.  Took", time.time() - now)
+        self.logger.debug("Done decoding.  Took {}".format(time.time() - now))
         return dict(assignments_by_forum), dict(alternates_by_forum)

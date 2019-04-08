@@ -1,11 +1,14 @@
 import openreview.tools
+from exc.exceptions import NotFoundError
+import time
 from collections import defaultdict
 
 # This is a replacement for the old metadata note object that is passed into the encoder
 # This will hold a paper_metadata map keyed on forum id where the value held there is the same as what was held in a metadata note in its content.entries field
 class Metadata:
 
-    def __init__ (self, client, paper_notes, reviewers, score_invitation_ids):
+    def __init__ (self, client, paper_notes, reviewers, score_invitation_ids, logger):
+        self.logger = logger
         self._paper_notes = paper_notes
         self._reviewers = reviewers
         self._score_invitation_ids = score_invitation_ids
@@ -30,7 +33,8 @@ class Metadata:
 
 
     def get_entry (self, paper_id, reviewer):
-        return self._entries_by_forum_map[paper_id][reviewer]
+        val = self._entries_by_forum_map[paper_id].get(reviewer, {})
+        return val
 
     def len (self):
         return len(self.paper_notes)
@@ -42,6 +46,8 @@ class Metadata:
 
 
     def load_data (self, or_client):
+        now = time.time()
+        self.logger.debug("Loading metadata from edges")
         self._entries_by_forum_map = defaultdict(defaultdict)
         for count, inv_id in enumerate(self.score_invitation_ids):
             score_name = self.translate_score_inv_to_score_name(inv_id)
@@ -51,6 +57,7 @@ class Metadata:
                     self._entries_by_forum_map[e.head][e.tail][score_name] = e.weight
                 else:
                     self._entries_by_forum_map[e.head][e.tail] = {score_name:  e.weight}
+        self.logger.debug("Done loading metadata from edges.  Took:" + str(time.time() - now))
 
 
 
