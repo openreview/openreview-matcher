@@ -54,20 +54,20 @@ class TestEncoderUnit:
                 assert(cost_matrix[r,p] == -2)
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_big_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
         :param test_util:
         :return:
         '''
-        num_papers = 200
-        num_reviewers = 150
+        num_papers = 500
+        num_reviewers = 200
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 2,
-                         Params.REVIEWER_MAX_PAPERS: 3,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.REVIEWER_MAX_PAPERS: 6,
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity', 'bid'],
                                                 Params.SCORE_TYPE: Params.FIXED_SCORE,
                                                 Params.FIXED_SCORE_VALUE: 0.01
                                                 }
@@ -86,12 +86,14 @@ class TestEncoderUnit:
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
+        num_scores = len(params.scores_config[Params.SCORE_NAMES_LIST])
         assert shape == (num_reviewers,num_papers)
         for r in range(num_reviewers):
             for p in range(num_papers):
-                assert(cost_matrix[r,p] == -1)
+                assert(cost_matrix[r,p] == -1*num_scores)
 
-    # @pytest.mark.skip
+
+    @pytest.mark.skip
     def test_decode (self, test_util):
         '''
         There is a dependency where testing decode means that the Encoder must have first been instantiated and this

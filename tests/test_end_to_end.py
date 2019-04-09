@@ -1,6 +1,7 @@
 import matcher
 import os
 import pytest
+import time
 
 from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
@@ -39,7 +40,7 @@ class TestEndToEnd():
     def tearDown (self):
         pass
 
-
+    @pytest.mark.skip
     def test1_10papers_7reviewers (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.
@@ -53,6 +54,35 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
+        conference = test_util.get_conference()
+        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+            "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
+        # assert len(conference.get_assignment_notes()) == len(conference.get_paper_notes()), "Number of assignments {} is not same as number of papers {}". \
+        #     format(len(conference.get_assignment_notes()), len(conference.get_paper_notes()))
+        assignment_edges = conference.get_assignment_edges()
+        assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
+            format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+
+    def test1a_5000papers_2000reviewers (self, test_util):
+        '''
+        Tests 5000 papers each requiring 2 reviews.  2000 users each capable of giving 6 reviews.
+        Expects:  produce an assignment
+        '''
+        num_reviews_per_paper = 2
+        num_papers = 5000
+        num_reviewers = 2000
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.REVIEWER_MAX_PAPERS: 6,
+                         })
+        test_util.set_test_params(params)
+        now = time.time()
+        test_util.build_conference()
+        print("Time to build conference", time.time() - now)
+        now = time.time()
+        test_util.run_matcher()
+        print("Time to run matcher", time.time() - now)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)

@@ -1,16 +1,18 @@
 from collections import defaultdict
 import numpy as np
+import logging
+import time
 
 from . import utils
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
-import time
+
 
 class Encoder2:
 
 
-    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost, logger=None):
+    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost, logger=logging.getLogger(__name__)):
         self.logger = logger
         self.logger.debug("Using Encoder2")
         self.metadata = metadata

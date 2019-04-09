@@ -108,7 +108,7 @@ class Match:
             if graph.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
-                self.save_suggested_assignment2(alternates_by_forum, assignment_inv, assignments_by_forum)
+                self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -121,47 +121,10 @@ class Match:
             raise e
 
 
-
     def clear_existing_match(self, assignment_inv):
-        '''
-        Clears assignment notes created by previous runs of the matcher.
-        '''
-        notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                         content = {Configuration.TITLE: self.config[Configuration.TITLE]}))
-        for assignment_note in notes_list:
-            assignment_note.ddate = round(time.time()) * 1000
-            self.client.post_note(assignment_note)
-        assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                       content = {Configuration.TITLE: self.config[Configuration.TITLE]}))) == 0, \
-            "All assignment notes with the label " + self.config[Configuration.TITLE] + " were not deleted!"
-
-
-    # save the assignment as a set of notes.
-    def save_suggested_assignment(self, alternates_by_forum, assignment_inv, assignments_by_forum):
-        self.logger.debug("Clearing Existing Assignment notes")
-        self.clear_existing_match(assignment_inv)
-        self.logger.debug("Saving New Assignment notes")
-
-        for forum, assignments in assignments_by_forum.items():
-            alternates = alternates_by_forum.get(forum, [])
-            self.client.post_note(openreview.Note.from_json({
-                'forum': forum,
-                'invitation': assignment_inv.id,
-                'replyto': forum,
-                'readers': assignment_inv.reply['readers']['values'],
-                'writers': assignment_inv.reply['writers']['values'],
-                'signatures': assignment_inv.reply['signatures']['values'],
-                'content': {
-                    Assignment.TITLE: self.config[Configuration.TITLE],
-                    Assignment.ASSIGNED_GROUPS: assignments,
-                    Assignment.ALTERNATE_GROUPS: alternates
-                }
-            }))
-
-    def clear_existing_match2(self, assignment_inv):
         self.logger.debug("Clearing Existing Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
-        assignment_edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label)
+        assignment_edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label, limit=10000)
         edges = []
         # change all the assignment-edges
         for edge in assignment_edges:
@@ -172,9 +135,9 @@ class Match:
         self.logger.debug("Done clearing Existing Edges for " + assignment_inv.id)
 
 
-
-    def save_suggested_assignment2 (self, alternates_by_forum, assignment_inv, assignments_by_forum):
-        self.clear_existing_match2(assignment_inv)
+    # TODO nothing is being done with alternates
+    def save_suggested_assignment (self, alternates_by_forum, assignment_inv, assignments_by_forum):
+        # self.clear_existing_match(assignment_inv)
         self.logger.debug("Saving Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
         edges = []

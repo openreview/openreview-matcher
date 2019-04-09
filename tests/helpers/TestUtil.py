@@ -86,11 +86,11 @@ class TestUtil:
 
 
     def test_matcher (self):
-        self.test_count += 1
         self.build_conference()
         self.run_matcher()
 
     def build_conference (self):
+        self.test_count += 1
         if self.use_edge_conf_builder():
             self.conf = ConferenceConfigWithEdges(self.client, self.test_count, self.params)
         else:

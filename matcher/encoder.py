@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict
 import numpy as np
+import logging
 
 from . import utils
 from matcher.fields import Configuration
@@ -11,7 +12,7 @@ from matcher.fields import Assignment
 class Encoder(object):
 
 
-    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost, logger=None):
+    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost, logger=logging.getLogger(__name__)):
         self.logger = logger
         self.logger.debug("Using Encoder")
         self.metadata = metadata
