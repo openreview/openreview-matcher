@@ -66,8 +66,6 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         self.config_note.content[Configuration.AGGREGATE_SCORE_INVITATION] = self.aggregate_score_invitation.id
 
 
-
-    # This conference will use affinity, recommendation, bid
     def add_reviewer_entries_to_metadata (self):
         print("Starting to build score edges")
         now = time.time()
@@ -89,7 +87,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             paper_ix += 1
         self.client.post_bulk_edges(edges)
         print("Time to build score edges: ", time.time() - now)
-        self.add_conflicts()
+        self.add_conflicts_to_metadata()
 
     def get_assignment_edges (self):
         '''
@@ -117,8 +115,9 @@ class ConferenceConfigWithEdges (ConferenceConfig):
 
     # adds in conflicts as edges between papers/reviewers as specified in params.
     # params.conflicts_config is dict that maps paper indices to list of user indices that conflict with the paper
-    def add_conflicts (self):
-        pass
+    #
+    def add_conflict (self, metadata_note, reviewer):
+        super().add_conflict(metadata_note, reviewer) #todo for now
         # for paper_index, user_index_list in self.params.conflicts_config.items():
         #     paper_note = self.paper_notes[paper_index]
         #     for user_ix in user_index_list:
@@ -127,7 +126,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         #         self.client.post_edge(edge)
 
     def add_config_custom_loads (self):
-        pass
+        super().add_config_custom_loads() # todo for now
         # if self.params.custom_load_supply_deduction:
         #     reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
         #     config_note = self.get_config_note()
@@ -151,7 +150,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         #         self.client.post_edge(edge)
 
     def add_config_constraints(self):
-        pass
+        super().add_config_constraints() # for now we'll let this go into the config note.
         # if not self.params.constraints_config:
         #     return
         # self.create_constraint_edges(self.params.constraints_vetos, 'veto')

@@ -60,6 +60,8 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
+        # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
+        self.repair_metadata_notes()
         self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
@@ -83,6 +85,11 @@ class ConferenceConfig:
         self.customize_config_invitation()
 
 
+    def repair_metadata_notes (self):
+        for md_note in self.get_metadata_notes():
+            for entry in md_note.content['entries']:
+                del entry['conflicts']
+            self.client.post_note(md_note)
 
     def build_paper_to_metadata_map (self):
         for md_note in self.get_metadata_notes():
@@ -108,7 +115,7 @@ class ConferenceConfig:
             record[score_name] = self.gen_score(reviewer_ix, paper_ix)
         return record
 
-    # adds randomly generated scores for reviewers into the papers
+    # adds scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
         # metadata_notes = self.get_metadata_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())

@@ -6,6 +6,9 @@ from collections import defaultdict
 
 # This is a replacement for the old metadata note object that is passed into the encoder
 # This will hold a paper_metadata map keyed on forum id where the value held there is the same as what was held in a metadata note in its content.entries field
+from fields import PaperReviewerScore
+
+
 class Metadata:
 
     def __init__ (self, client, paper_notes, reviewers, score_invitation_ids, logger=logging.getLogger(__name__)):
@@ -61,7 +64,26 @@ class Metadata:
         self.logger.debug("Done loading metadata from edges.  Took:" + str(time.time() - now))
 
 
+    def add_conflicts (self, metadata_notes):
+        for md_note in metadata_notes:
+            forum_id = md_note.forum
+            for entry in md_note.content['entries']:
+                userid = entry[PaperReviewerScore.USERID]
+                conflicts = entry.get(PaperReviewerScore.CONFLICTS)
+                if conflicts:
+                    if self._entries_by_forum_map[forum_id].get(userid):
+                        self._entries_by_forum_map[forum_id][userid]['conflicts'] = conflicts
+                    else:
+                        self._entries_by_forum_map[forum_id][userid] = {'conflicts': conflicts}
 
+
+    def add_constraints (self, constraints_dict):
+        for forum_id, reviewers in constraints_dict.items():
+            for reviewer, val in reviewers.items():
+                if self._entries_by_forum_map[forum_id].get(reviewer):
+                    self._entries_by_forum_map[forum_id][reviewer]['constraint'] = val
+                else:
+                    self._entries_by_forum_map[forum_id][reviewer] = {'constraint': val}
 
 
 

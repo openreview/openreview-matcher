@@ -52,17 +52,19 @@ class Encoder2:
             else:
                 self.constraint_matrix[coordinates] = 0
 
+    # The entry may contain constraints ('+inf'/ '-inf') and/or conflicts
+    # Rules:
+    # 1.  If constraint == LOCK set the matrix cell to 1
+    # 2.  If constraint == VETO or conflict set the matrix cell to -1
     def _update_constraint_matrix (self, entry, reviewer_index, paper_index):
-        pass
-        '''
-        # overwrite constraints with user-added constraints found in config
-        user_constraint = self.constraints.get(forum, {}).get(id)
-        if user_constraint:
-            if Configuration.VETO in user_constraint:
-                self.constraint_matrix[coordinates] = -1
-            if Configuration.LOCK in user_constraint:
-                self.constraint_matrix[coordinates] = 1
-        '''
+        coordinates = reviewer_index, paper_index
+        constraint = entry.get('constraint')
+        conflict = entry.get('conflicts')
+        if constraint and constraint == Configuration.LOCK:
+            self.constraint_matrix[coordinates] = 1
+        elif constraint or conflict:
+            self.constraint_matrix[coordinates] = -1
+
 
 
     def encode (self):

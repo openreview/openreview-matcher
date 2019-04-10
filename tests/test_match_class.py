@@ -1,4 +1,7 @@
 import numpy as np
+import pytest
+
+from exceptions import NotFoundError
 from matcher.match import Match
 from matcher.encoder2 import Encoder2
 from matcher.encoder import Encoder
@@ -46,7 +49,7 @@ class TestMatchClass():
                 ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                 assert ag_sc_edge.weight == agg_score
 
-    # @pytest.mark.skip
+    @pytest.mark.skip
     def test1_10papers_7reviewers (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.
@@ -86,7 +89,7 @@ class TestMatchClass():
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip
     def test2_3papers_4reviewers (self, test_util):
         '''
         Validates that the output aggregate score edges are correct with respect to the paper-reviewer scores input
@@ -141,3 +144,121 @@ class TestMatchClass():
         # 3 -> 2
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
 
+
+    @pytest.mark.skip
+    def test3_3papers_4reviewers_1conflict (self, test_util):
+        '''
+        Paper 0 conflicts with Reviewer 0 so this cannot be in the solution.
+        :param test_util:
+        :return:
+        '''
+        score_matrix = np.array([
+            [10.67801, 0, 0],
+            [0, 10.67801, 0],
+            [0, 0, 10.67801],
+            [0, 0, 10.67801]
+        ])
+        num_papers = 3
+        num_reviewers = 4
+        num_reviews_per_paper = 2
+        reviewer_max_papers = 2
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
+                         Params.CONFLICTS_CONFIG: {0: [0]},
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                                                Params.SCORE_TYPE: Params.MATRIX_SCORE,
+                                                Params.SCORE_MATRIX: score_matrix
+                                                }
+                         })
+
+        test_util.set_test_params(params)
+        test_util.build_conference()
+        match = Match(test_util.client, test_util.get_conference().get_config_note())
+        match.compute_match()
+        conference = test_util.get_conference()
+        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+            "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
+        assignment_edges = conference.get_assignment_edges()
+        assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
+            format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+
+        aggregate_score_edges = conference.get_aggregate_score_edges()
+        assert len(aggregate_score_edges) == num_reviewers * num_papers
+
+        reviewers = conference.reviewers
+        papers = conference.get_paper_notes()
+        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        # Validate that the assignment edges are correct
+        # reviewer-1 -> paper-1
+        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
+        # 2 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
+        # 3 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
+        # !reviewer-0 -> paper-0
+        try:
+            conference.get_assignment_edge(papers[0].id, reviewers[0])
+        except NotFoundError:
+            assert True
+
+
+    # @pytest.mark.skip
+    def test4_3papers_4reviewers_1conflict (self, test_util):
+        '''
+        Paper 0 conflicts with Reviewer 0 so this cannot be in the solution.
+        But Reviewer 0 is locked to Paper 0 so the constraint wins.
+        :param test_util:
+        :return:
+        '''
+        score_matrix = np.array([
+            [10.67801, 0, 0],
+            [0, 10.67801, 0],
+            [0, 0, 10.67801],
+            [0, 0, 10.67801]
+        ])
+        num_papers = 3
+        num_reviewers = 4
+        num_reviews_per_paper = 2
+        reviewer_max_papers = 2
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
+                         Params.CONFLICTS_CONFIG: {0: [0]},
+                         Params.CONSTRAINTS_CONFIG: {Params.CONSTRAINTS_LOCKS: {0: [0]}},
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                                                Params.SCORE_TYPE: Params.MATRIX_SCORE,
+                                                Params.SCORE_MATRIX: score_matrix
+                                                }
+                         })
+
+        test_util.set_test_params(params)
+        test_util.build_conference()
+        match = Match(test_util.client, test_util.get_conference().get_config_note())
+        match.compute_match()
+        conference = test_util.get_conference()
+        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+            "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
+        assignment_edges = conference.get_assignment_edges()
+        assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
+            format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+
+        aggregate_score_edges = conference.get_aggregate_score_edges()
+        assert len(aggregate_score_edges) == num_reviewers * num_papers
+
+        reviewers = conference.reviewers
+        papers = conference.get_paper_notes()
+        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        # Validate that the assignment edges are correct
+        # reviewer-1 -> paper-1
+        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
+        # 2 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
+        # 3 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
+        # !reviewer-0 -> paper-0
+        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
