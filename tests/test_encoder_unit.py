@@ -46,7 +46,7 @@ class TestEncoderUnit:
         now = time.time()
         enc = Encoder2(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
-        cost_matrix = enc.cost_matrix
+        cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
         for r in range(num_reviewers):
@@ -84,7 +84,7 @@ class TestEncoderUnit:
         now = time.time()
         enc = Encoder2(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
-        cost_matrix = enc.cost_matrix
+        cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
         num_scores = len(params.scores_config[Params.SCORE_NAMES_LIST])
         assert shape == (num_reviewers,num_papers)
@@ -132,7 +132,7 @@ class TestEncoderUnit:
         md = Metadata(or_client, conf.paper_notes,conf.reviewers,conf.score_invitation_ids)
         config = conf.get_config_note()
         enc = Encoder2(md, config.content, reviewers)
-        cost_matrix = enc.cost_matrix
+        cost_matrix = enc._cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, [1,1,2], cost_matrix, constraint_matrix, graph_builder)

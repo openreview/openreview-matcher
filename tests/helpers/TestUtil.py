@@ -22,7 +22,8 @@ class TestUtil:
         self.test_count = 0
         self.OR_CLIENT_USER = 'openreview.net'
         self.OR_CLIENT_PASSWORD = '1234'
-        self.get_client(base_url)
+        self.client = self.get_client(base_url)
+        self.create_super_user()
         self.flask_test_client = flask_test_client
         self.silent = silent
         self.initialize_matcher_app()
@@ -50,8 +51,10 @@ class TestUtil:
         matcher.app.logger.disabled = True
         matcher.app.logger.parent.disabled = True
 
-    def get_client(self, base_url):
-        self.client = openreview.Client(baseurl = base_url)
+    def get_client (self, base_url):
+        return openreview.Client(baseurl = base_url)
+
+    def create_super_user(self):
         assert self.client is not None, "Client is none"
         res = self.client.register_user(email = self.OR_CLIENT_USER, first = 'Super', last = 'User', password = self.OR_CLIENT_PASSWORD)
         assert res, "Res i none"
@@ -70,6 +73,7 @@ class TestUtil:
         group = self.client.get_group(id = 'openreview.net')
         assert group
         assert group.members == ['~Super_User1']
+
 
     def get_conference (self):
         return self.conf

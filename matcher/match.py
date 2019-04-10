@@ -51,34 +51,34 @@ class Match:
     def compute_match(self):
         try:
             self.set_status(Configuration.STATUS_RUNNING)
-            papers = list(openreview.tools.iterget_notes(self.client, invitation=self.config[Configuration.PAPER_INVITATION]))
+            self.papers = list(openreview.tools.iterget_notes(self.client, invitation=self.config[Configuration.PAPER_INVITATION]))
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
             score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
             score_names = self.config[Configuration.SCORES_NAMES]
             weights = self.config[Configuration.SCORES_WEIGHTS]
-            reviewer_ids = reviewer_group.members
-            metadata = Metadata(self.client, papers, reviewer_ids, score_invitation_ids, self.logger)
+            self.reviewer_ids = reviewer_group.members
+            metadata = Metadata(self.client, self.papers, self.reviewer_ids, score_invitation_ids, self.logger)
             inv_score_names = [metadata.translate_score_inv_to_score_name(inv_id) for inv_id in score_invitation_ids]
             assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
             if type(self.config[Configuration.MAX_USERS]) == str:
-                demands = [int(self.config[Configuration.MAX_USERS])] * len(papers)
+                demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
             else:
-                demands = [self.config[Configuration.MAX_USERS]] * len(papers)
+                demands = [self.config[Configuration.MAX_USERS]] * len(self.papers)
 
             if type(self.config[Configuration.MIN_PAPERS]) == str:
-                minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(reviewer_ids)
+                minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
             else:
-                minimums = [self.config[Configuration.MIN_PAPERS]] * len(reviewer_ids)
+                minimums = [self.config[Configuration.MIN_PAPERS]] * len(self.reviewer_ids)
 
             if type(self.config[Configuration.MAX_PAPERS]) == str:
-                maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(reviewer_ids)
+                maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(self.reviewer_ids)
             else:
-                maximums = [self.config[Configuration.MAX_PAPERS]] * len(reviewer_ids)
+                maximums = [self.config[Configuration.MAX_PAPERS]] * len(self.reviewer_ids)
 
             self.logger.debug("Encoding metadata")
             # encoder = Encoder(metadata, self.config, reviewer_ids, logger=self.logger)
-            encoder = Encoder2(metadata, self.config, reviewer_ids, logger=self.logger)
+            encoder = Encoder2(metadata, self.config, self.reviewer_ids, logger=self.logger)
 
             # The config contains custom_loads which is a dictionary where keys are user names
             # and values are max values to override the max_papers coming from the general config.
@@ -97,7 +97,7 @@ class Match:
                 minimums,
                 maximums,
                 demands,
-                encoder.cost_matrix,
+                encoder._cost_matrix,
                 encoder.constraint_matrix,
                 graph_builder = graph_builder
             )
@@ -109,6 +109,7 @@ class Match:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
                 self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
+                self.save_aggregate_scores2(encoder, metadata)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -120,6 +121,47 @@ class Match:
             self.set_status(Configuration.STATUS_ERROR,msg)
             raise e
 
+    def save_aggregate_scores2 (self, encoder, metadata):
+        '''
+        Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
+        :param encoder:
+        :return:
+        '''
+        aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
+        edges = []
+        for forum_id, reviewers in metadata.entries_by_forum_map.items():
+            for reviewer, entry in reviewers.items():
+                ag_score = encoder.cost_function.aggregate_score(entry,encoder.weights)
+                e = openreview.Edge(head=forum_id, tail=reviewer, weight=ag_score, invitation=aggregate_inv_id,
+                                    readers=['everyone'], writers=[self.config[Configuration.CONFIG_INVITATION_ID]], signatures=[reviewer])
+                edges.append(e)
+        self.client.post_bulk_edges(edges)
+
+
+    def save_aggregate_scores (self, encoder):
+        '''
+        An alternative to the above which builds the aggregate score edges using the encoder's cost-matrix.
+        The reason this is problematic is that the cost-matrix holds COSTS and not scores.   These costs are negative floats
+        that have been scaled up from the scores using a cost-function object.   This uses that cost function object to reverse the
+        process and convert the cost back into a score but it loses a little bit of floating point precision in so doing.   It's negligible
+        but a unit test then has to do rounding in order for the verification and the above save_aggregate_scores2 because it turns the raw
+        score data into an aggregate.
+        :param encoder:
+        :return:
+        '''
+        aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
+        edges = []
+        cost_matrix = encoder.cost_matrix
+        num_reviewers, num_papers = cost_matrix.shape
+        for r_ix in range(num_reviewers):
+            for p_ix in range(num_papers):
+                paper = self.papers[p_ix]
+                reviewer = self.reviewer_ids[r_ix]
+                val = encoder.cost_function.cost_to_aggregate_score(cost_matrix[r_ix,p_ix])
+                e = openreview.Edge(head=paper.id, tail=reviewer, weight=val, invitation=aggregate_inv_id,
+                                    readers=['everyone'], writers=[self.config[Configuration.CONFIG_INVITATION_ID]], signatures=[reviewer])
+                edges.append(e)
+        self.client.post_bulk_edges(edges)
 
     def clear_existing_match(self, assignment_inv):
         self.logger.debug("Clearing Existing Edges for " + assignment_inv.id)

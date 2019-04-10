@@ -10,7 +10,6 @@ class Configuration:
     MIN_USERS = 'min_users'
     MAX_PAPERS = 'max_papers'
     MIN_PAPERS = 'min_papers'
-    META_DATA_INVITATION = 'metadata_invitation'
     STATUS = "status"
     ERROR_MESSAGE = "error_message"
     STATUS_ERROR = "Error"
@@ -22,6 +21,8 @@ class Configuration:
     LOCK = '+inf'
     VETO = '-inf'
     PAPER_INVITATION = "paper_invitation"
+    AGGREGATE_SCORE_INVITATION = "aggregate_score_invitation"
+    CONFIG_INVITATION_ID = "config_invitation"
 
 
 class PaperReviewerScore:

@@ -18,10 +18,8 @@ class ConfIds:
         self.METADATA_INV_ID = self.CONF_ID + '/-/Paper_Metadata'
         self.CONFIG_ID = self.CONF_ID + "/-/Assignment_Configuration"
         self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
-        self.BID_ID = self.CONF_ID + "/-/Bid"
-        self.TPMS_ID = self.CONF_ID + "/-/Tpms"
-        self.RECOMMENDATION_ID = self.CONF_ID + "/-/Recommendation"
-        self.AFFINITY_ID = self.CONF_ID + "/-/Affinity"
+        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Aggregate_Score"
+
 
 
 # To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
@@ -65,10 +63,9 @@ class ConferenceConfig:
         self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
-        self.create_config_note()
+        self.config_note = self.create_and_post_config_note()
 
-    def customize_invitations (self):
-        # replace the default score_names that builder gave with the ones I want
+    def customize_config_invitation (self):
         config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
         if config_inv:
             content = config_inv.reply['content']
@@ -81,6 +78,11 @@ class ConferenceConfig:
                 "order": 3
             }
             self.client.post_invitation(config_inv)
+
+    def customize_invitations (self):
+        self.customize_config_invitation()
+
+
 
     def build_paper_to_metadata_map (self):
         for md_note in self.get_metadata_notes():
@@ -166,8 +168,16 @@ class ConferenceConfig:
         print("There are ", len(self.paper_notes), " papers")
 
 
+    def create_and_post_config_note (self):
+        self.create_config_note() # override in the subclass adds in other fields before posting can be done
+        self.post_config_note()
+
     def create_config_note (self):
-        self.config_note = self.client.post_note(openreview.Note(**{
+        '''
+        creates a config note but does not post it so that the sublcass override method can add additional stuff before posting happens.
+        :return:
+        '''
+        self.config_note = openreview.Note(**{
             'invitation': self.get_assignment_configuration_id(),
             # TODO Question: Had to change because invitation wants conf_id and program_chairs.  Is this always the way readers should be?
             # 'readers': [self.conference.id],
@@ -203,9 +213,11 @@ class ConferenceConfig:
                 'match_group': self.conference.get_reviewers_id(),
                 'status': 'Initialized'
             }
-        }))
+        })
         self.add_config_custom_loads()
         self.add_config_constraints()
+
+    def post_config_note (self):
         self.config_note = self.client.post_note(self.config_note)
         self._config_note_id = self.config_note.id
 

@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 
-from . import utils
+from matcher.CostFunction import CostFunction
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
@@ -12,17 +12,17 @@ from matcher.fields import Assignment
 class Encoder2:
 
 
-    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=utils.cost, logger=logging.getLogger(__name__)):
+    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
         self.logger = logger
         self.logger.debug("Using Encoder2")
         self.metadata = metadata
         self.config = config
-        self.cost_func = cost_func
+        self._cost_func = cost_func
 
-        self.cost_matrix = np.zeros((0, 0))
+        self._cost_matrix = np.zeros((0, 0))
         self.constraint_matrix = np.zeros((0, 0))
         self.score_names = config[Configuration.SCORES_NAMES]
-        self.weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
+        self._weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
         self.constraints = config.get(Configuration.CONSTRAINTS,{})
 
         if self.metadata and self.config and self.metadata.reviewers and self.metadata.paper_notes:
@@ -31,25 +31,28 @@ class Encoder2:
     def _get_weight_dict (self, names, weights):
         return dict(zip(names, [ float(w) for w in weights]))
 
+    @property
+    def cost_function (self):
+        return self._cost_func
 
-    # extract the scores from the entry record to form a vector that is ordered the same as the score_names (and weights)
-    def order_scores (self, entry):
-        scores = []
-        for score_name in self.score_names:
-            scores.append(entry[score_name])
-        return scores
+    @property
+    def cost_matrix (self):
+        return self._cost_matrix
 
+    @property
+    def weights (self):
+        return self._weights
 
-    def update_cost_matrix (self, entry, reviewer_index, paper_index):
+    def _update_cost_matrix (self, entry, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
         if entry:
-            self.cost_matrix[coordinates] = self.cost_func(entry, self.weights)
+            self._cost_matrix[coordinates] = self.cost_function.cost(entry, self.weights)
             if entry.get(PaperReviewerScore.CONFLICTS):
                 self.constraint_matrix[coordinates] = -1
             else:
                 self.constraint_matrix[coordinates] = 0
 
-    def update_constraint_matrix (self, entry, reviewer_index, paper_index):
+    def _update_constraint_matrix (self, entry, reviewer_index, paper_index):
         pass
         '''
         # overwrite constraints with user-added constraints found in config
@@ -65,13 +68,13 @@ class Encoder2:
     def encode (self):
         self.logger.debug("Encoding")
         now = time.time()
-        self.cost_matrix = np.zeros((len(self.metadata.reviewers), len(self.metadata.paper_notes)))
-        self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
+        self._cost_matrix = np.zeros((len(self.metadata.reviewers), len(self.metadata.paper_notes)))
+        self.constraint_matrix = np.zeros(np.shape(self._cost_matrix))
         for paper_index, paper_note in enumerate(self.metadata.paper_notes):
             for reviewer_index, reviewer in enumerate(self.metadata.reviewers):
                 entry = self.metadata.get_entry(paper_note.id, reviewer)
-                self.update_cost_matrix(entry,reviewer_index, paper_index)
-                self.update_constraint_matrix(entry, reviewer_index, paper_index)
+                self._update_cost_matrix(entry, reviewer_index, paper_index)
+                self._update_constraint_matrix(entry, reviewer_index, paper_index)
         self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
 
 
@@ -95,10 +98,9 @@ class Encoder2:
                 entry = self.metadata.get_entry(paper_note.id, reviewer)
 
                 if entry:
-                    assignment[Assignment.SCORES] = utils.weight_scores(entry, self.weights)
+                    assignment[Assignment.SCORES] = self.cost_function.weight_scores(entry, self.weights)
                     assignment[Assignment.CONFLICTS] = entry.get(PaperReviewerScore.CONFLICTS)
-                    assignment[Assignment.FINAL_SCORE] = utils.safe_sum(
-                        utils.weight_scores(entry, self.weights).values())
+                    assignment[Assignment.FINAL_SCORE] = self.cost_function.aggregate_score(entry, self.weights)
 
                 if flow:
                     assignments_by_forum[paper_note.id].append(assignment)

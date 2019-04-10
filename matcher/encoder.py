@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 import logging
 
-from . import utils
+from matcher.CostFunction import CostFunction
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
@@ -12,15 +12,15 @@ from matcher.fields import Assignment
 class Encoder(object):
 
 
-    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=utils.cost, logger=logging.getLogger(__name__)):
+    def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=CostFunction(), logger=logging.getLogger(__name__)):
         self.logger = logger
         self.logger.debug("Using Encoder")
         self.metadata = metadata
         self.config = config
         self.reviewer_ids = reviewer_ids
-        self.cost_func = cost_func
+        self._cost_func = cost_func
 
-        self.cost_matrix = np.zeros((0, 0))
+        self._cost_matrix = np.zeros((0, 0))
         self.constraint_matrix = np.zeros((0, 0))
         self.entries_by_forum = {}
         self.index_by_forum = {}
@@ -36,18 +36,19 @@ class Encoder(object):
             self._error_check_scores()
             self.encode()
 
+    @property
+    def cost_matrix (self):
+        return self._cost_matrix
+
+    @property
+    def cost_function (self):
+        return self._cost_func
+
     def _get_weight_dict (self, names, weights):
         return dict(zip(names, [ float(w) for w in weights]))
 
     def _error_check_scores (self):
         assert len(self.score_edge_invitations) == len(self.score_names) == len(self.weights.keys()), "The configuration note should specify the same number of scores, weights, and score-invitations"
-
-    # extract the scores from the entry record to form a vector that is ordered the same as the score_names (and weights)
-    def order_scores (self, entry):
-        scores = []
-        for score_name in self.score_names:
-            scores.append(entry[score_name])
-        return scores
 
     def encode(self):
         '''
@@ -59,8 +60,8 @@ class Encoder(object):
         self.logger.debug("Encoding")
         now = time.time()
 
-        self.cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
-        self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
+        self._cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
+        self.constraint_matrix = np.zeros(np.shape(self._cost_matrix))
 
         self.entries_by_forum  = self.metadata.entries_by_forum_map
 
@@ -87,7 +88,7 @@ class Encoder(object):
                 entry = entry_by_userid.get(id)
                 if entry:
 
-                    self.cost_matrix[coordinates] = self.cost_func(entry, self.weights)
+                    self._cost_matrix[coordinates] = self.cost_function.cost(entry, self.weights)
                     if entry.get(PaperReviewerScore.CONFLICTS):
                         self.constraint_matrix[coordinates] = -1
                     else:
@@ -129,11 +130,9 @@ class Encoder(object):
 
                 if entry:
                     # assignment[Assignment.SCORES] = utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights)
-                    assignment[Assignment.SCORES] = utils.weight_scores(entry, self.weights)
+                    assignment[Assignment.SCORES] = self.cost_function.weight_scores(entry, self.weights)
                     assignment[Assignment.CONFLICTS] = entry.get(PaperReviewerScore.CONFLICTS)
-                    assignment[Assignment.FINAL_SCORE] = utils.safe_sum(
-                        # utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights).values())
-                        utils.weight_scores(entry, self.weights).values())
+                    assignment[Assignment.FINAL_SCORE] = self.cost_function.aggregate_score(entry, self.weights)
 
                 if flow:
                     assignments_by_forum[forum].append(assignment)
