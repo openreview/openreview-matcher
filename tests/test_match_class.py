@@ -50,7 +50,7 @@ class TestMatchClass():
     def test1_10papers_7reviewers (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.
-        Expects:  produce an assignment
+        Validates that the output aggregate score edges are correct with respect to the paper-reviewer scores input
         '''
         num_papers = 10
         num_reviewers = 7
@@ -87,7 +87,12 @@ class TestMatchClass():
 
 
     # @pytest.mark.skip
-    def test3_papers_4reviewers (self, test_util):
+    def test2_3papers_4reviewers (self, test_util):
+        '''
+        Validates that the output aggregate score edges are correct with respect to the paper-reviewer scores input
+        :param test_util:
+        :return:
+        '''
         score_matrix = np.array([
             [10.67801, 0, 0],
             [0, 10.67801, 0],
@@ -126,4 +131,13 @@ class TestMatchClass():
         papers = conference.get_paper_notes()
         enc = Encoder2(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        # Validate that the assignment edges are correct
+        # reviewer-0 -> paper-0
+        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
+        # reviewer-1 -> paper-1
+        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
+        # 2 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
+        # 3 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
 
