@@ -11,13 +11,12 @@ from fields import PaperReviewerScore
 
 class Metadata:
 
-    def __init__ (self, client, paper_notes, reviewers, score_invitation_ids, logger=logging.getLogger(__name__)):
+    def __init__ (self, client, paper_notes, reviewers, score_invitation_ids, logger=logging.getLogger(__name__), map=None):
         self.logger = logger
         self._paper_notes = paper_notes
         self._reviewers = reviewers
         self._score_invitation_ids = score_invitation_ids
-        self._entries_by_forum_map = {}
-        self.load_data(client)
+        self._entries_by_forum_map = map if map else self.load_data(client)
 
     @property
     def paper_notes (self):
@@ -34,6 +33,9 @@ class Metadata:
     @property
     def entries_by_forum_map (self):
         return self._entries_by_forum_map
+
+    def set_entries_by_forum_map (self, map):
+        self._entries_by_forum_map = map
 
 
     def get_entry (self, paper_id, reviewer):
@@ -62,7 +64,7 @@ class Metadata:
                 else:
                     self._entries_by_forum_map[e.head][e.tail] = {score_name:  e.weight}
         self.logger.debug("Done loading metadata from edges.  Took:" + str(time.time() - now))
-
+        return self._entries_by_forum_map
 
     def add_conflicts (self, metadata_notes):
         for md_note in metadata_notes:

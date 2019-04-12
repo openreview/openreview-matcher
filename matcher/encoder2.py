@@ -65,6 +65,13 @@ class Encoder2:
         elif constraint or conflict:
             self.constraint_matrix[coordinates] = -1
 
+    def validate (self, reviewer, forum_id, entry):
+        md_note = self.metadata_note_map[forum_id]
+        for e in md_note.content['entries']:
+            if e['userid'] == reviewer:
+                scores = e['scores']
+                assert self.cost_function.cost(scores,self.weights) == self.cost_function.cost(entry, self.weights)
+
 
 
     def encode (self):
@@ -72,9 +79,10 @@ class Encoder2:
         now = time.time()
         self._cost_matrix = np.zeros((len(self.metadata.reviewers), len(self.metadata.paper_notes)))
         self.constraint_matrix = np.zeros(np.shape(self._cost_matrix))
-        for paper_index, paper_note in enumerate(self.metadata.paper_notes):
-            for reviewer_index, reviewer in enumerate(self.metadata.reviewers):
+        for reviewer_index, reviewer in enumerate(self.metadata.reviewers):
+            for paper_index, paper_note in enumerate(self.metadata.paper_notes):
                 entry = self.metadata.get_entry(paper_note.id, reviewer)
+                # self.validate(reviewer,paper_note.id,entry)
                 self._update_cost_matrix(entry, reviewer_index, paper_index)
                 self._update_constraint_matrix(entry, reviewer_index, paper_index)
         self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
