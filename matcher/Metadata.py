@@ -34,9 +34,6 @@ class Metadata:
     def entries_by_forum_map (self):
         return self._entries_by_forum_map
 
-    def set_entries_by_forum_map (self, map):
-        self._entries_by_forum_map = map
-
 
     def get_entry (self, paper_id, reviewer):
         val = self._entries_by_forum_map[paper_id].get(reviewer, {})
@@ -66,6 +63,8 @@ class Metadata:
         self.logger.debug("Done loading metadata from edges.  Took:" + str(time.time() - now))
         return self._entries_by_forum_map
 
+    # Temporary implementation using metadata notes so that I can load this object correctly with
+    # conflict info (which will eventually be given as edges)
     def add_conflicts (self, metadata_notes):
         for md_note in metadata_notes:
             forum_id = md_note.forum
@@ -79,6 +78,8 @@ class Metadata:
                         self._entries_by_forum_map[forum_id][userid] = {'conflicts': conflicts}
 
 
+    # Temporary implementation using config dictionary so that I can load this object correctly with
+    # constraints info (which will eventually be given as edges)
     def add_constraints (self, constraints_dict):
         for forum_id, reviewers in constraints_dict.items():
             for reviewer, val in reviewers.items():
@@ -88,7 +89,14 @@ class Metadata:
                     self._entries_by_forum_map[forum_id][reviewer] = {'constraint': val}
 
 
+    def get_coords (self, rev, forum_id):
+        for i, paper in enumerate(self.paper_notes):
+            if paper.id == forum_id:
+                break
 
+        pix = i
+        rix = self.reviewers.index(rev)
+        return rix, pix
 
 
 

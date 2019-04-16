@@ -48,7 +48,11 @@ class CostFunction:
         :param weights: a dict like {'tpms': 1, 'recommendation': 2}
         :return:
         '''
-        return -1 * self.aggregate_score(scores, weights) / self.precision
+        val = -1 * self.aggregate_score(scores, weights) / self.precision
+        if val == -0.0:
+            return 0.0
+        else:
+            return val
 
     def cost_to_aggregate_score (self, cost):
         '''

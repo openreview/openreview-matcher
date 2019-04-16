@@ -65,13 +65,6 @@ class Encoder2:
         elif constraint or conflict:
             self.constraint_matrix[coordinates] = -1
 
-    def validate (self, reviewer, forum_id, entry):
-        md_note = self.metadata_note_map[forum_id]
-        for e in md_note.content['entries']:
-            if e['userid'] == reviewer:
-                scores = e['scores']
-                assert self.cost_function.cost(scores,self.weights) == self.cost_function.cost(entry, self.weights)
-
 
 
     def encode (self):
@@ -123,3 +116,16 @@ class Encoder2:
         return dict(assignments_by_forum), dict(alternates_by_forum)
 
 
+    # Temporary methods used for validation that UAI conference is same under edge version of matcher as it was without edges.
+
+    def get_cost_matrix_cell (self, forum_id, rev):
+        rix, pix = self.metadata.get_coords(rev,forum_id)
+        return self.cost_matrix[rix, pix]
+
+    def get_solution_cell (self, solution, forum_id, rev):
+        rix, pix = self.metadata.get_coords(rev,forum_id)
+        return solution[rix, pix]
+
+    def get_constraint_matrix_cell (self, forum_id, rev):
+        rix, pix = self.metadata.get_coords(rev,forum_id)
+        return self.constraint_matrix[rix, pix]
