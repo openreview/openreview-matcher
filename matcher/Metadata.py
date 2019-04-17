@@ -8,15 +8,30 @@ from collections import defaultdict
 # This will hold a paper_metadata map keyed on forum id where the value held there is the same as what was held in a metadata note in its content.entries field
 from fields import PaperReviewerScore
 
+class MetadataEdgeInvitationIds:
+
+    def __init__ (self, scores, conflicts=None, constraints=None, custom_loads=None):
+        self.scores_invitation_id = scores
+        self.conflicts_invitation_id = conflicts
+        self.constraints_invitation_id = constraints
+        self.custom_loads_id = custom_loads
+
 
 class Metadata:
 
-    def __init__ (self, client, paper_notes, reviewers, score_invitation_ids, logger=logging.getLogger(__name__), map=None):
+    def __init__ (self, client, config_title, paper_notes, reviewers, edge_invitations, logger=logging.getLogger(__name__), map=None):
         self.logger = logger
+        self.config_title = config_title
         self._paper_notes = paper_notes
         self._reviewers = reviewers
-        self._score_invitation_ids = score_invitation_ids
-        self._entries_by_forum_map = map if map else self.load_data(client)
+        self.edge_invitations = edge_invitations # type: MetadataEdgeInvitationIds
+        self._scores_invitation_ids = edge_invitations.scores_invitation_id
+        if map:
+            self._entries_by_forum_map = map
+        else:
+            self.load_scores(client)
+            self.load_conflicts(client)
+            self.load_constraints(client)
 
     @property
     def paper_notes (self):
@@ -28,7 +43,7 @@ class Metadata:
 
     @property
     def score_invitation_ids (self):
-        return self._score_invitation_ids
+        return self._scores_invitation_ids
 
     @property
     def entries_by_forum_map (self):
@@ -48,7 +63,7 @@ class Metadata:
         return score_name
 
 
-    def load_data (self, or_client):
+    def load_scores (self, or_client):
         now = time.time()
         self.logger.debug("Loading metadata from edges")
         self._entries_by_forum_map = defaultdict(defaultdict)
@@ -61,7 +76,28 @@ class Metadata:
                 else:
                     self._entries_by_forum_map[e.head][e.tail] = {score_name:  e.weight}
         self.logger.debug("Done loading metadata from edges.  Took:" + str(time.time() - now))
-        return self._entries_by_forum_map
+
+    def load_constraints (self, or_client):
+        constraints_inv_id = self.edge_invitations.constraints_invitation_id
+        # The constraints query has to ask for its label == config-note.title because constraints are set for each config
+        # The problem with this is that weight is not a number.  It's a '-inf' or '+inf'.   This won't work if edge validation rejects the string.
+        edges = openreview.tools.iterget_edges(or_client, invitation=constraints_inv_id, label=self.config_title, limit=50000)
+        for e in edges:
+            if self._entries_by_forum_map[e.head].get(e.tail):
+                self._entries_by_forum_map[e.head][e.tail]['constraint'] = e.weight
+            else:
+                self._entries_by_forum_map[e.head][e.tail] = {'constraint': e.weight}
+
+    def load_conflicts (self, or_client):
+        conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
+        edges = openreview.tools.iterget_edges(or_client, invitation=conflicts_inv_id, limit=50000)
+        # TODO Conflicts are defined at the conference level.   For now, I'm assuming a pre-processing step which
+        # produces conflicts edges that contain lists of domains in the label of the conflict with the weight empty.
+        for e in edges:
+            if self._entries_by_forum_map[e.head].get(e.tail):
+                self._entries_by_forum_map[e.head][e.tail]['conflicts'] = e.label
+            else:
+                self._entries_by_forum_map[e.head][e.tail] = {'conflicts': e.label}
 
     # Temporary implementation using metadata notes so that I can load this object correctly with
     # conflict info (which will eventually be given as edges)

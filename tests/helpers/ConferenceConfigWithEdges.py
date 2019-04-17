@@ -8,6 +8,8 @@ import openreview
 from openreview import Edge, Invitation
 
 from params import Params
+from collections import defaultdict
+from itertools import cycle
 
 
 class ConferenceConfigWithEdges (ConferenceConfig):
@@ -37,6 +39,12 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                                                          'values': self.score_invitation_ids}
             content[Configuration.AGGREGATE_SCORE_INVITATION] = {'order': 17, 'required': True, 'description': 'Aggregrate Score invitation',
                                                                  'value': self.conf_ids.AGGREGATE_SCORE_ID}
+            content[Configuration.CONFLICTS_INVITATION_ID] = {'order': 18, 'required': True, 'description': 'Conflicts invitation',
+                                                                 'value': self.conf_ids.CONFLICTS_INV_ID}
+            content[Configuration.CONSTRAINTS_INVITATION_ID] = {'order': 19, 'required': True, 'description': 'Constraints invitation',
+                                                                 'value': self.conf_ids.CONSTRAINTS_INV_ID}
+            content[Configuration.CUSTOM_LOAD_INVITATION_ID] = {'order': 20, 'required': True, 'description': 'Custom-load invitation',
+                                                                 'value': self.conf_ids.CUSTOM_LOAD_INV_ID}
             self.client.post_invitation(config_inv)
 
     def build_score_invitations (self):
@@ -64,6 +72,10 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         super().create_config_note()
         self.config_note.content[Configuration.SCORES_INVITATIONS] = [inv.id for inv in self.score_invitations]
         self.config_note.content[Configuration.AGGREGATE_SCORE_INVITATION] = self.aggregate_score_invitation.id
+        self.config_note.content[Configuration.CONFLICTS_INVITATION_ID] = self.conf_ids.CONFLICTS_INV_ID
+        self.config_note.content[Configuration.CONSTRAINTS_INVITATION_ID] = self.conf_ids.CONSTRAINTS_INV_ID
+        self.config_note.content[Configuration.CUSTOM_LOAD_INVITATION_ID] = self.conf_ids.CUSTOM_LOAD_INV_ID
+
 
 
     def add_reviewer_entries_to_metadata (self):
@@ -103,7 +115,15 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         if edges:
             return edges[0]
         else:
-            raise NotFoundError("Edge not found for {} and {}->{}".format(assignment_inv_id, paper_id, reviewer))
+            return None
+
+    def get_assignment_edges_by_reviewer (self, reviewer ):
+        assignment_inv_id = self.conf_ids.ASSIGNMENT_ID
+        edges = self.client.get_edges(invitation=assignment_inv_id, tail=reviewer)
+        if edges:
+            return edges
+        else:
+            return None
 
     def get_aggregate_score_edges (self):
         '''
@@ -113,64 +133,80 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         edges = openreview.tools.iterget_edges(self.client, invitation=agg_inv_id, limit=10000)
         return list(edges)
 
-    # adds in conflicts as edges between papers/reviewers as specified in params.
-    # params.conflicts_config is dict that maps paper indices to list of user indices that conflict with the paper
-    #
-    def add_conflict (self, metadata_note, reviewer):
-        super().add_conflict(metadata_note, reviewer) #todo for now
-        # for paper_index, user_index_list in self.params.conflicts_config.items():
-        #     paper_note = self.paper_notes[paper_index]
-        #     for user_ix in user_index_list:
-        #         reviewer = self.reviewers[user_ix]
-        #         edge = Edge(head=paper_note, tail=reviewer, invitation=self.config_wrapper.get_conflict_edge_invitation())
-        #         self.client.post_edge(edge)
+    # meta data notes are not part of conferences built with edges so this skips doing anything with them
+    # TODO The conference builder should no longer build metadata notes for each paper
+    def build_paper_to_metadata_map (self):
+        pass
+
+
+    def add_conflicts_to_metadata(self):
+        edges = []
+        for paper_index, user_index_list in self.params.conflicts_config.items():
+            paper_note = self.paper_notes[paper_index]
+            for user_ix in user_index_list:
+                reviewer = self.reviewers[user_ix]
+                edge = Edge(head=paper_note.id, tail=reviewer, invitation=self.conf_ids.CONFLICTS_INV_ID,
+                            label=['conflict-exists'], readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                edges.append(edge)
+        self.client.post_bulk_edges(edges)
+
+
+    def reduce_reviewer_loads (self, loads, shortfall):
+        count = shortfall
+        keys = cycle(self.reviewers)
+        for k in keys:
+            loads[k] -= 1
+            count -= 1
+            if count == 0:
+                break
+
+    # The Params specify custom load settings for reviewers based on index of reviewer.
+    def set_reviewer_loads (self, loads, custom_load_map):
+        for rev_ix, load in custom_load_map.items():
+            reviewer = self.reviewers[rev_ix]
+            loads[reviewer] = load
 
     def add_config_custom_loads (self):
-        super().add_config_custom_loads() # todo for now
-        # if self.params.custom_load_supply_deduction:
-        #     reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
-        #     config_note = self.get_config_note()
-        #     reviewers = reviewers_group.members
-        #     default_load = self.params.reviewer_max_papers
-        #     deduction = 0
-        #     reviewer_ix = 0
-        #     # build a map of reviewers to their loads starting with default max and cycling through reducing until
-        #     # hit the supply deduction
-        #     reviewer_loads = {}
-        #     for r in reviewers:
-        #         reviewer_loads[r] = default_load
-        #     while deduction < self.params.custom_load_supply_deduction:
-        #         r = reviewers[reviewer_ix]
-        #         reviewer_loads[r] -= 1
-        #         reviewer_ix += 1
-        #         deduction += 1
-        #     # build edges from this map
-        #     for reviewer, load in reviewer_loads.items():
-        #         edge = Edge(head=config_note, tail=reviewer, weight=load, invitation=self.config_wrapper.get_custom_load_edge_invitation())
-        #         self.client.post_edge(edge)
+        '''
+        The supply deduction > 0 indicates that some reviewers cannot do the default minimum number of reviews and
+        we want to cycle through the reviewers lowering their loads until the supply deduction is met.
+        :return:
+        '''
+        loads = {reviewer: self.params.reviewer_max_papers for reviewer in self.reviewers}
+        if self.params.custom_load_supply_deduction:
+            self.reduce_reviewer_loads(loads, self.params.custom_load_supply_deduction)
+        elif self.params.custom_load_map != {}:
+            self.set_reviewer_loads(loads, self.params.custom_load_map)
+        # build custom_load edge for those reviewers that are different from the default max
+        edges = []
+        for rev, load in loads.items():
+            if load != self.params.reviewer_max_papers:
+                edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_ID, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[rev])
+                edges.append(edge)
+        self.client.post_bulk_edges(edges)
+
 
     def add_config_constraints(self):
-        super().add_config_constraints() # for now we'll let this go into the config note.
-        # if not self.params.constraints_config:
-        #     return
-        # self.create_constraint_edges(self.params.constraints_vetos, 'veto')
-        # self.create_constraint_edges(self.params.constraints_locks, 'lock')
+        if self.params.constraints_vetos != {}:
+            self.create_constraint_edges(self.params.constraints_vetos, Configuration.VETO)
+        if self.params.constraints_locks != {}:
+            self.create_constraint_edges(self.params.constraints_locks, Configuration.LOCK)
+
 
 
     # constraints is a dictionary mapping paper indices to list of reviewer indices.
-    # N.B. we are no longer representing veto/lock with -inf/+inf.   We now create an edge with a label
-    def create_constraint_edges (self, constraints, label):
-        pass
-        # constraint_edge_inv = self.config_wrapper.get_constraint_edge_invitation()
-        # paper_notes = self.get_paper_notes()
-        # reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
-        # reviewers = reviewers_group.members
-        # for paper_ix, reviewers_list in constraints.items():
-        #     p = paper_notes[paper_ix]
-        #     for reviewer_ix in reviewers_list:
-        #         r = reviewers[reviewer_ix]
-        #         e = Edge(head=p, tail=r, label=label, invitation=constraint_edge_inv)
-        #         self.client.post_edge(e)
+    # N.B. THe constraint label is the configuration title.  THe weight is '-inf' or '+inf' A NON-NUMBER!!
+    def create_constraint_edges (self, constraints, val):
+        constraint_edge_inv = self.conf_ids.CONSTRAINTS_INV_ID
+        edges = []
+        for paper_ix, reviewers_list in constraints.items():
+            p = self.paper_notes[paper_ix]
+            for reviewer_ix in reviewers_list:
+                r = self.reviewers[reviewer_ix]
+                e = openreview.Edge(head=p.id, tail=r, label=self.config_title, weight=val, invitation=constraint_edge_inv,
+                                    readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[r])
+                edges.append(e)
+        self.client.post_bulk_edges(edges)
 
     def get_score_edges (self, paper, reviewer):
         edges = []

@@ -11,7 +11,7 @@ from params import Params
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
 
-class TestMatchClass():
+class TestMatchClassAggregateScores():
 
     # called once at beginning of suite
     # See conftest.py for other run-once setup that is part of the test_util fixture passed to each test.
@@ -49,7 +49,7 @@ class TestMatchClass():
                 ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                 assert ag_sc_edge.weight == agg_score
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test1_10papers_7reviewers (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 3 reviews.
@@ -89,7 +89,7 @@ class TestMatchClass():
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test2_3papers_4reviewers (self, test_util):
         '''
         Validates that the output aggregate score edges are correct with respect to the paper-reviewer scores input
@@ -145,7 +145,7 @@ class TestMatchClass():
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test3_3papers_4reviewers_1conflict (self, test_util):
         '''
         Paper 0 conflicts with Reviewer 0 so this cannot be in the solution.
@@ -262,3 +262,5 @@ class TestMatchClass():
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
         # !reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
+
+

@@ -23,6 +23,9 @@ class Configuration:
     PAPER_INVITATION = "paper_invitation"
     AGGREGATE_SCORE_INVITATION = "aggregate_score_invitation"
     CONFIG_INVITATION_ID = "config_invitation"
+    CUSTOM_LOAD_INVITATION_ID = "custom_load_invitation"
+    CONSTRAINTS_INVITATION_ID = "constraints_invitation"
+    CONFLICTS_INVITATION_ID = "conflicts_invitation"
 
 
 class PaperReviewerScore:

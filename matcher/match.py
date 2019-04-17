@@ -5,7 +5,7 @@ from matcher.encoder import Encoder
 from matcher.encoder2 import Encoder2
 from matcher.fields import Configuration
 from matcher.fields import Assignment
-from matcher.Metadata import Metadata
+from matcher.Metadata import Metadata, MetadataEdgeInvitationIds
 from matcher import app
 import logging
 import time
@@ -46,6 +46,9 @@ class Match:
             return self.config_note
 
 
+
+
+
     # Compute a match of reviewers to papers and post it to the as assignment notes.
     # The config note's status field will be set to reflect completion or the variety of failures.
     def compute_match(self):
@@ -58,14 +61,21 @@ class Match:
             score_names = self.config[Configuration.SCORES_NAMES]
             weights = self.config[Configuration.SCORES_WEIGHTS]
             self.reviewer_ids = reviewer_group.members
-            metadata = Metadata(self.client, self.papers, self.reviewer_ids, score_invitation_ids, self.logger)
+            conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
+            constraints_inv_id = self.config[Configuration.CONSTRAINTS_INVITATION_ID]
+            custom_loads_inv_id = self.config[Configuration.CUSTOM_LOADS_INVITATION_ID]
+            md_invitations = MetadataEdgeInvitationIds(score_invitation_ids,
+                                                       conflicts=conflicts_inv_id,
+                                                       constraints=constraints_inv_id,
+                                                       custom_loads=custom_loads_inv_id)
+            metadata = Metadata(self.client, self.config[Configuration.TITLE], self.papers, self.reviewer_ids, md_invitations, self.logger)
             inv_score_names = [metadata.translate_score_inv_to_score_name(inv_id) for inv_id in score_invitation_ids]
 
             # temporary stuff until I convert conflicts and constraints to edges
-            md_inv = self.config['metadata_invitation']
-            md_notes = list(openreview.tools.iterget_notes(self.client, invitation=md_inv))
-            metadata.add_conflicts(md_notes)
-            metadata.add_constraints(self.config[Configuration.CONSTRAINTS])
+            # md_inv = self.config['metadata_invitation']
+            # md_notes = list(openreview.tools.iterget_notes(self.client, invitation=md_inv))
+            # metadata.add_conflicts(md_notes)
+            # metadata.add_constraints(self.config[Configuration.CONSTRAINTS])
             #end temp stuff
 
             assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
@@ -74,28 +84,14 @@ class Match:
             else:
                 demands = [self.config[Configuration.MAX_USERS]] * len(self.papers)
 
-            if type(self.config[Configuration.MIN_PAPERS]) == str:
-                minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
-            else:
-                minimums = [self.config[Configuration.MIN_PAPERS]] * len(self.reviewer_ids)
 
-            if type(self.config[Configuration.MAX_PAPERS]) == str:
-                maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(self.reviewer_ids)
-            else:
-                maximums = [self.config[Configuration.MAX_PAPERS]] * len(self.reviewer_ids)
 
             self.logger.debug("Encoding metadata")
             # encoder = Encoder(metadata, self.config, reviewer_ids, logger=self.logger)
-            encoder = Encoder(metadata, self.config, self.reviewer_ids, logger=self.logger)
+            encoder = Encoder2(metadata, self.config, self.reviewer_ids, logger=self.logger)
+            self.encoder = encoder # TODO Remove this.  Its so I can peek inside during testing.
+            minimums, maximums = self.get_reviewer_loads(custom_loads_inv_id)
 
-            # The config contains custom_loads which is a dictionary where keys are user names
-            # and values are max values to override the max_papers coming from the general config.
-            for reviewer_id, custom_load in self.config.get(Configuration.CUSTOM_LOADS, {}).items():
-                if reviewer_id in encoder.index_by_reviewer:
-                    reviewer_index = encoder.index_by_reviewer[reviewer_id]
-                    maximums[reviewer_index] = custom_load
-                    if custom_load < minimums[reviewer_index]:
-                        minimums[reviewer_index] = custom_load
 
             graph_builder = GraphBuilder.get_builder(
                 self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
@@ -105,19 +101,19 @@ class Match:
                 minimums,
                 maximums,
                 demands,
-                encoder._cost_matrix,
+                encoder.cost_matrix,
                 encoder.constraint_matrix,
                 graph_builder = graph_builder
             )
 
             self.logger.debug("Solving Graph")
             solution = graph.solve()
-
+            self.solution = solution # TODO Remove this.  Its so I can peek inside during testing.
             if graph.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum, alternates_by_forum = encoder.decode(solution)
                 self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
-                self.save_aggregate_scores2(encoder, metadata)
+                self.save_aggregate_scores(encoder, metadata)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -129,7 +125,30 @@ class Match:
             self.set_status(Configuration.STATUS_ERROR,msg)
             raise e
 
-    def save_aggregate_scores2 (self, encoder, metadata):
+    def get_reviewer_loads (self, custom_load_invitation_id):
+        if type(self.config[Configuration.MIN_PAPERS]) == str:
+            minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
+        else:
+            minimums = [self.config[Configuration.MIN_PAPERS]] * len(self.reviewer_ids)
+        if type(self.config[Configuration.MAX_PAPERS]) == str:
+            maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(self.reviewer_ids)
+        else:
+            maximums = [self.config[Configuration.MAX_PAPERS]] * len(self.reviewer_ids)
+
+        return self.get_custom_loads(custom_load_invitation_id, minimums, maximums)
+
+    def get_custom_loads (self, custom_load_invitation_id, minimums, maximums):
+        custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id, head=self.config[Configuration.CONFIG_INVITATION_ID], limit=10000)
+        for edge in custom_load_edges:
+            custom_load = edge.weight
+            reviewer = edge.tail
+            index = self.reviewer_ids.index(reviewer)
+            maximums[index] = custom_load
+            if custom_load < minimums[index]:
+                minimums[index] = custom_load
+        return minimums, maximums
+
+    def save_aggregate_scores (self, encoder, metadata):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
         :param encoder:
@@ -146,7 +165,8 @@ class Match:
         self.client.post_bulk_edges(edges)
 
 
-    def save_aggregate_scores (self, encoder):
+    # TODO get rid of this when I'm sure I don't want to invert cost matrix cells into agg scores.
+    def save_aggregate_scores_old (self, encoder):
         '''
         An alternative to the above which builds the aggregate score edges using the encoder's cost-matrix.
         The reason this is problematic is that the cost-matrix holds COSTS and not scores.   These costs are negative floats
@@ -185,7 +205,8 @@ class Match:
         self.logger.debug("Done clearing Existing Edges for " + assignment_inv.id)
 
 
-    # TODO nothing is being done with alternates
+    # TODO nothing is being done with alternates - aggregate score edges hold ALL paper-reviewer scores which UI will use
+    # to populate alternates lists.
     def save_suggested_assignment (self, alternates_by_forum, assignment_inv, assignments_by_forum):
         # self.clear_existing_match(assignment_inv)
         self.logger.debug("Saving Edges for " + assignment_inv.id)

@@ -19,6 +19,9 @@ class ConfIds:
         self.CONFIG_ID = self.CONF_ID + "/-/Assignment_Configuration"
         self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
         self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Aggregate_Score"
+        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Custom_Load"
+        self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
+        self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Conflicts"
 
 
 
@@ -31,6 +34,7 @@ class ConferenceConfig:
 
         random.seed(10) # want a reproducible sequence of random numbers
         self.client = client
+        self.config_title = 'Reviewers'
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
         print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
         self.params = params
@@ -195,7 +199,7 @@ class ConferenceConfig:
             # 'signatures': [self.conference.id],
             'signatures': [self.conference.get_program_chairs_id()],
             'content': {
-                'title': 'reviewers',
+                'title': self.config_title,
                 # TODO Question:  Can only set these because I customized the invitation
                 'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
                 'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
@@ -250,19 +254,32 @@ class ConferenceConfig:
         self.config_note.content[Configuration.CONSTRAINTS] = constraint_entries
 
 
+    # custom loads may be specified as a deduction in the total supply which results in cycling through the reviewers reducing their loads incrementally
+    # OR by giving a map that provides the load of given reviewers.  If a reviewer's load != default max, the value is put in the custom_loads
     def add_config_custom_loads(self):
         if self.params.custom_load_supply_deduction:
             self.set_reviewers_custom_load_to_default()
             self.reduce_reviewers_custom_load_by_shortfall(self.params.custom_load_supply_deduction)
             self.remove_default_custom_loads()
+        elif self.params.custom_load_map != {}:
+            self.set_custom_loads_from_map()
+
+    def set_custom_loads_from_map (self):
+        loads = {}
+        default_load = self.params.reviewer_max_papers
+        for rev_ix, load in self.params.custom_load_map.items():
+            if load != default_load:
+                loads[self.reviewers[rev_ix]] = load
+        if len(loads.keys()) > 0:
+            self.config_note.content[Configuration.CUSTOM_LOADS] = loads
 
 
     def set_reviewers_custom_load_to_default (self):
-        custom_loads = {}
-        default_load = self.params.reviewer_max_papers
-        for rev in self.reviewers:
-            custom_loads[rev] = default_load
-        self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
+            custom_loads = {}
+            default_load = self.params.reviewer_max_papers
+            for rev in self.reviewers:
+                custom_loads[rev] = default_load
+            self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
 
     # cycle through the reviewers reducing their load until supply deduction has been reached
     def reduce_reviewers_custom_load_by_shortfall (self, supply_deduction):

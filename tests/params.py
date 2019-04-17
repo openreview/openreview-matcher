@@ -5,6 +5,7 @@ class Params:
     REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
     CUSTOM_LOAD_CONFIG = 'custom_load_config'
     CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
+    CUSTOM_LOAD_MAP = 'reviewer_custom_loads'
     CONSTRAINTS_CONFIG = 'constraints_config'
     CONSTRAINTS_VETOS = 'constraints_vetos'
     CONSTRAINTS_LOCKS = 'constraints_locks'
@@ -19,9 +20,6 @@ class Params:
     SCORE_INCREMENT = 'score_increment'
     SCORE_TYPE = 'type'
     SCORE_NAMES_LIST = 'score_names'
-    THEORETICAL_SUPPLY = 'theoretical_supply'
-    ACTUAL_SUPPLY = 'actual_supply'
-    DEMAND = 'demand'
 
     def __init__ (self, params):
         self.params = params
@@ -31,6 +29,7 @@ class Params:
         self.reviewer_max_papers = self.params[Params.REVIEWER_MAX_PAPERS]
         self.custom_load_config = self.params.get(Params.CUSTOM_LOAD_CONFIG, {})
         self.custom_load_supply_deduction = self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION, 0)
+        self.custom_load_map = self.custom_load_config.get(Params.CUSTOM_LOAD_MAP, {})
         self.constraints_config = self.params.get(Params.CONSTRAINTS_CONFIG, {})
         self.constraints_locks = self.constraints_config.get(Params.CONSTRAINTS_LOCKS, {})
         self.constraints_vetos = self.constraints_config.get(Params.CONSTRAINTS_VETOS, {})
