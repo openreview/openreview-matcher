@@ -1,12 +1,10 @@
 import numpy as np
 import pytest
 
-from exceptions import NotFoundError
-from matcher.match import Match
-from matcher.encoder2 import Encoder2
-from matcher.encoder import Encoder
+from matcher.Encoder import Encoder
 from matcher.fields import Configuration
-from params import Params
+from matcher.Match import Match
+from Params import Params
 
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
@@ -78,7 +76,7 @@ class TestMatchClassCustomLoads():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
@@ -227,6 +225,7 @@ class TestMatchClassCustomLoads():
         assert conference.get_assignment_edge(papers[4].id, reviewers[4]) == None
 
 
+    # @pytest.mark.skip
     def test4_5papers_5reviewers_custom_loads (self, test_util):
         '''
         Reviewer 0 can only do 1 paper, but reviewer 1 can do 3, so result should make use of these

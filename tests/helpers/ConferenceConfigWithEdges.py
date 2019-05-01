@@ -1,15 +1,13 @@
-import random
 import time
-
-from exceptions import NotFoundError
-from helpers.ConferenceConfig import ConferenceConfig, ConfIds
+from collections import defaultdict
+from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 import openreview
 from openreview import Edge, Invitation
 
-from params import Params
-from collections import defaultdict
+from Params import Params
 from itertools import cycle
+import pymongo
 
 
 class ConferenceConfigWithEdges (ConferenceConfig):
@@ -101,6 +99,14 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         print("Time to build score edges: ", time.time() - now)
         self.add_conflicts_to_metadata()
 
+    def get_aggregate_edges (self):
+        '''
+        :return: a list of the conferences aggregate edges
+        '''
+        agg_inv_id = self.conf_ids.AGGREGATE_SCORE_ID
+        edges = openreview.tools.iterget_edges(self.client, invitation=agg_inv_id)
+        return list(edges)
+
     def get_assignment_edges (self):
         '''
         :return: a list of the conferences assignment edges
@@ -112,6 +118,14 @@ class ConferenceConfigWithEdges (ConferenceConfig):
     def get_assignment_edge (self, paper_id, reviewer ):
         assignment_inv_id = self.conf_ids.ASSIGNMENT_ID
         edges = self.client.get_edges(invitation=assignment_inv_id, head=paper_id, tail=reviewer)
+        if edges:
+            return edges[0]
+        else:
+            return None
+
+    def get_aggregate_score_edge (self, paper_id, reviewer):
+        agg_inv_id = self.conf_ids.AGGREGATE_SCORE_ID
+        edges = self.client.get_edges(invitation=agg_inv_id, head=paper_id, tail=reviewer)
         if edges:
             return edges[0]
         else:
@@ -181,10 +195,28 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         edges = []
         for rev, load in loads.items():
             if load != self.params.reviewer_max_papers:
-                edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_ID, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[rev])
+                edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[rev])
                 edges.append(edge)
         self.client.post_bulk_edges(edges)
 
+    def get_custom_loads_edges (self):
+        return openreview.tools.iterget_edges(self.client, invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title)
+
+    def get_constraints_edges (self):
+        return openreview.tools.iterget_edges(self.client, invitation=self.conf_ids.CONSTRAINTS_INV_ID, label=self.config_title)
+
+    # returns custom-load info as a dict {reviewer-0: load, review-1: load}
+    def get_custom_loads (self):
+        return {edge.tail: edge.weight for edge in self.get_custom_loads_edges()}
+
+    # returns constraints as dict of {forum-id0: {reviewer-0: '-inf', reviewer=1: '+inf'}, forum_id1 ... }
+    def get_constraints (self):
+        d = defaultdict(defaultdict)
+        for edge in self.get_constraints_edges():
+            forum_id = edge.head
+            reviewer = edge.tail
+            d[forum_id][reviewer] = edge.weight
+        return d
 
     def add_config_constraints(self):
         if self.params.constraints_vetos != {}:
@@ -211,6 +243,25 @@ class ConferenceConfigWithEdges (ConferenceConfig):
     def get_score_edges (self, paper, reviewer):
         edges = []
         for score_inv in self.score_invitations:
-            e = self.client.get_edges(invitation=score_inv.id, head=paper.id, tail=reviewer)[0]
-            edges.append(e)
+            e = self.client.get_edges(invitation=score_inv.id, head=paper.id, tail=reviewer)
+            if e:
+                e = e[0]
+                edges.append(e)
         return edges
+
+
+
+    # This is hack which allows deleting a score edge for the purpose of testing that
+    # the matcher fills in the right default when scores are missing.  This method is used
+    # in a very limited way to set up tests like that.
+    def remove_score_edge (self, reviewer_index, paper_index, score_inv=None):
+        paper_id = self.paper_notes[paper_index].id
+        reviewer = self.reviewers[reviewer_index]
+        mongo_client = pymongo.MongoClient('localhost', 27017)
+        db = mongo_client.openreview_test
+        db_edges = db.openreview_edges
+        if not score_inv:
+            score_inv = self.score_invitation_ids[0]
+
+        res = db_edges.delete_one({'head': paper_id, 'tail': reviewer, 'invitation': score_inv})
+        print(res.deleted_count)

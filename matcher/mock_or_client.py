@@ -1,7 +1,7 @@
 import openreview
 from openreview import OpenReviewException
 from exc.exceptions import BadTokenException
-from matcher.match import Match
+from matcher.Match import Match
 from matcher.fields import Configuration
 
 # This is used by the matcher web app to mock the OR-py Client class.  It is set up to throw it's full variety of exceptions

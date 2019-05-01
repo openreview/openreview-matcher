@@ -2,15 +2,13 @@ import numpy as np
 import pytest
 
 from exceptions import NotFoundError
-from matcher.match import Match
-from matcher.encoder2 import Encoder2
-from matcher.encoder import Encoder
+from matcher.Match import Match
+from matcher.Encoder import Encoder
 from matcher.fields import Configuration
-from params import Params
+from Params import Params
 
-
-# Note Well:  To run this test you must be running OR with a clean db.  See README for details.
-
+# Tests that aggregate score edges are correctly produced when a match is run.
+# N.B.:  To run this test you must be running OR with a clean db.  See README for details.
 class TestMatchClassAggregateScores():
 
     # called once at beginning of suite
@@ -38,6 +36,7 @@ class TestMatchClassAggregateScores():
             entry[score_name] = e.weight
         return entry
 
+    # verify aggregate score edges have values that are correct wrt input score edges * weights
     def check_aggregate_score_edges (self, client, reviewers, papers, conference, encoder):
         agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
         for rix, r in enumerate(reviewers):
@@ -45,7 +44,6 @@ class TestMatchClassAggregateScores():
                 score_edges = conference.get_score_edges(p, r)
                 entry = self.make_entry_from_edges(score_edges)
                 agg_score = encoder.cost_function.aggregate_score(entry, encoder.weights)
-                print("reviewer",rix,"paper",pix,"agg-score",agg_score)
                 ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                 assert ag_sc_edge.weight == agg_score
 
@@ -85,7 +83,7 @@ class TestMatchClassAggregateScores():
         # score edges will be closer to the source of the data that forms the cost.
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
 
 
@@ -132,7 +130,7 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
         # Validate that the assignment edges are correct
         # reviewer-0 -> paper-0
@@ -143,7 +141,6 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
         # 3 -> 2
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
-
 
     # @pytest.mark.skip
     def test3_3papers_4reviewers_1conflict (self, test_util):
@@ -189,7 +186,7 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
@@ -198,6 +195,7 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
         # 3 -> 2
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
+
         # !reviewer-0 -> paper-0
         try:
             conference.get_assignment_edge(papers[0].id, reviewers[0])
@@ -251,7 +249,7 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder2(config=test_util.get_conference().get_config_note().content)
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
         self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
@@ -263,4 +261,71 @@ class TestMatchClassAggregateScores():
         # !reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
 
+
+    # @pytest.mark.skip
+    def test5_3papers_4reviewers_1conflict (self, test_util):
+        '''
+        Is the same as test4 above but it deletes all the edges created from the 0's in the score_matrix which sets up the test case.
+        This will test the matcher's ability to use a default when no score is present in the configuration.
+        :param test_util:
+        :return:
+        '''
+        score_matrix = np.array([
+            [10.67801, 0, 0],
+            [0, 10.67801, 0],
+            [0, 0, 10.67801],
+            [0, 0, 10.67801]
+        ])
+        num_papers = 3
+        num_reviewers = 4
+        num_reviews_per_paper = 2
+        reviewer_max_papers = 2
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
+                         Params.CONFLICTS_CONFIG: {0: [0]},
+                         Params.CONSTRAINTS_CONFIG: {Params.CONSTRAINTS_LOCKS: {0: [0]}},
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                                                Params.SCORE_TYPE: Params.MATRIX_SCORE,
+                                                Params.SCORE_MATRIX: score_matrix
+                                                }
+                         })
+
+        test_util.set_test_params(params)
+        test_util.build_conference()
+        # hack:  Delete the edges created from 0s in matrix.  Matcher will supply default scores.
+        test_util.get_conference().remove_score_edge(0,1)
+        test_util.get_conference().remove_score_edge(0,2)
+        test_util.get_conference().remove_score_edge(1,0)
+        test_util.get_conference().remove_score_edge(1,2)
+        test_util.get_conference().remove_score_edge(2,0)
+        test_util.get_conference().remove_score_edge(2,1)
+        test_util.get_conference().remove_score_edge(3,0)
+        test_util.get_conference().remove_score_edge(3,1)
+        match = Match(test_util.client, test_util.get_conference().get_config_note())
+        match.compute_match()
+        conference = test_util.get_conference()
+        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+            "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
+        assignment_edges = conference.get_assignment_edges()
+        assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
+            format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+
+        aggregate_score_edges = conference.get_aggregate_score_edges()
+        assert len(aggregate_score_edges) == num_reviewers * num_papers
+
+        reviewers = conference.reviewers
+        papers = conference.get_paper_notes()
+        enc = Encoder(config=test_util.get_conference().get_config_note().content)
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        # Validate that the assignment edges are correct
+        # reviewer-1 -> paper-1
+        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
+        # 2 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
+        # 3 -> 2
+        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
+        # !reviewer-0 -> paper-0
+        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
 

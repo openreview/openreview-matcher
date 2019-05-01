@@ -9,7 +9,7 @@ from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
 
 
-class Encoder(object):
+class EncoderAlternate(object):
 
 
     def __init__(self, metadata=None, config=None, reviewer_ids=[], cost_func=CostFunction(), logger=logging.getLogger(__name__)):
@@ -63,7 +63,7 @@ class Encoder(object):
         self._cost_matrix = np.zeros((len(self.reviewer_ids), self.metadata.len()))
         self.constraint_matrix = np.zeros(np.shape(self._cost_matrix))
 
-        self.entries_by_forum  = self.metadata.entries_by_forum_map
+        self.entries_by_forum  = self.metadata.items()
 
         self.index_by_forum = {m.id: index
                                for index, m in enumerate(self.metadata.paper_notes)}

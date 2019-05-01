@@ -1,11 +1,12 @@
 import openreview
 import threading
 from matcher.assignment_graph import AssignmentGraph, GraphBuilder
-from matcher.encoder import Encoder
-from matcher.encoder2 import Encoder2
+from matcher.EncoderAlternate import EncoderAlternate
+from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import Assignment
-from matcher.Metadata import Metadata, MetadataEdgeInvitationIds
+from matcher.PaperReviewerInfo import PaperReviewerInfo
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher import app
 import logging
 import time
@@ -63,33 +64,22 @@ class Match:
             self.reviewer_ids = reviewer_group.members
             conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
             constraints_inv_id = self.config[Configuration.CONSTRAINTS_INVITATION_ID]
-            custom_loads_inv_id = self.config[Configuration.CUSTOM_LOADS_INVITATION_ID]
-            md_invitations = MetadataEdgeInvitationIds(score_invitation_ids,
-                                                       conflicts=conflicts_inv_id,
-                                                       constraints=constraints_inv_id,
-                                                       custom_loads=custom_loads_inv_id)
-            metadata = Metadata(self.client, self.config[Configuration.TITLE], self.papers, self.reviewer_ids, md_invitations, self.logger)
+            custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
+            md_invitations = PaperReviewerEdgeInvitationIds(score_invitation_ids,
+                                                            conflicts=conflicts_inv_id,
+                                                            constraints=constraints_inv_id,
+                                                            custom_loads=custom_loads_inv_id)
+            metadata = PaperReviewerInfo(self.client, self.config[Configuration.TITLE], self.papers, self.reviewer_ids, md_invitations, self.logger)
             inv_score_names = [metadata.translate_score_inv_to_score_name(inv_id) for inv_id in score_invitation_ids]
-
-            # temporary stuff until I convert conflicts and constraints to edges
-            # md_inv = self.config['metadata_invitation']
-            # md_notes = list(openreview.tools.iterget_notes(self.client, invitation=md_inv))
-            # metadata.add_conflicts(md_notes)
-            # metadata.add_constraints(self.config[Configuration.CONSTRAINTS])
-            #end temp stuff
-
             assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
             if type(self.config[Configuration.MAX_USERS]) == str:
                 demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
             else:
                 demands = [self.config[Configuration.MAX_USERS]] * len(self.papers)
 
-
-
             self.logger.debug("Encoding metadata")
-            # encoder = Encoder(metadata, self.config, reviewer_ids, logger=self.logger)
-            encoder = Encoder2(metadata, self.config, self.reviewer_ids, logger=self.logger)
-            self.encoder = encoder # TODO Remove this.  Its so I can peek inside during testing.
+            # encoder = EncoderAlternate(metadata, self.config, reviewer_ids, logger=self.logger)
+            encoder = Encoder(metadata, self.config, self.reviewer_ids, logger=self.logger)
             minimums, maximums = self.get_reviewer_loads(custom_loads_inv_id)
 
 
@@ -102,17 +92,17 @@ class Match:
                 maximums,
                 demands,
                 encoder.cost_matrix,
-                encoder.constraint_matrix,
+                encoder._constraint_matrix,
                 graph_builder = graph_builder
             )
 
             self.logger.debug("Solving Graph")
             solution = graph.solve()
-            self.solution = solution # TODO Remove this.  Its so I can peek inside during testing.
+
             if graph.solved:
                 self.logger.debug("Decoding Solution")
-                assignments_by_forum, alternates_by_forum = encoder.decode(solution)
-                self.save_suggested_assignment(alternates_by_forum, assignment_inv, assignments_by_forum)
+                assignments_by_forum = encoder.decode(solution)
+                self.save_suggested_assignment(assignment_inv, assignments_by_forum)
                 self.save_aggregate_scores(encoder, metadata)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
@@ -148,49 +138,41 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
+    def create_reviewers_scored_map (self):
+        return {r: False for r in self.reviewer_ids}
+
     def save_aggregate_scores (self, encoder, metadata):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
         :param encoder:
         :return:
         '''
-        aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
+        # Note:  If a paper recieved no scoring info for a particular user, there will be no data in the Metadata object about
+        # that paper/reviewer and a default aggregate score of 0 will be emitted.
         edges = []
-        for forum_id, reviewers in metadata.entries_by_forum_map.items():
+        for forum_id, reviewers in metadata.items():
+            reviewers_scored_map = self.create_reviewers_scored_map() # map of flags
             for reviewer, entry in reviewers.items():
+                reviewers_scored_map[reviewer] = True # remember the ones that have score data.
                 ag_score = encoder.cost_function.aggregate_score(entry,encoder.weights)
-                e = openreview.Edge(head=forum_id, tail=reviewer, weight=ag_score, invitation=aggregate_inv_id,
-                                    readers=['everyone'], writers=[self.config[Configuration.CONFIG_INVITATION_ID]], signatures=[reviewer])
-                edges.append(e)
+                edges.append(self.build_aggregate_edge(forum_id, reviewer, ag_score))
+            # produce the default aggregate scores for the paper/reviewers that had no scoring data given
+            for reviewer, is_scored in reviewers_scored_map.items():
+                if not is_scored:
+                    edges.append(self.build_aggregate_edge(forum_id, reviewer, 0.0))
+
+        self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         self.client.post_bulk_edges(edges)
 
-
-    # TODO get rid of this when I'm sure I don't want to invert cost matrix cells into agg scores.
-    def save_aggregate_scores_old (self, encoder):
-        '''
-        An alternative to the above which builds the aggregate score edges using the encoder's cost-matrix.
-        The reason this is problematic is that the cost-matrix holds COSTS and not scores.   These costs are negative floats
-        that have been scaled up from the scores using a cost-function object.   This uses that cost function object to reverse the
-        process and convert the cost back into a score but it loses a little bit of floating point precision in so doing.   It's negligible
-        but a unit test then has to do rounding in order for the verification and the above save_aggregate_scores2 because it turns the raw
-        score data into an aggregate.
-        :param encoder:
-        :return:
-        '''
+    def build_aggregate_edge (self, forum_id, reviewer, agg_score):
         aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
-        edges = []
-        cost_matrix = encoder.cost_matrix
-        num_reviewers, num_papers = cost_matrix.shape
-        for r_ix in range(num_reviewers):
-            for p_ix in range(num_papers):
-                paper = self.papers[p_ix]
-                reviewer = self.reviewer_ids[r_ix]
-                val = encoder.cost_function.cost_to_aggregate_score(cost_matrix[r_ix,p_ix])
-                e = openreview.Edge(head=paper.id, tail=reviewer, weight=val, invitation=aggregate_inv_id,
-                                    readers=['everyone'], writers=[self.config[Configuration.CONFIG_INVITATION_ID]], signatures=[reviewer])
-                edges.append(e)
-        self.client.post_bulk_edges(edges)
+        conf_inv_id = self.config[Configuration.CONFIG_INVITATION_ID]
+        return openreview.Edge(head=forum_id, tail=reviewer, weight=agg_score, invitation=aggregate_inv_id,
+                            readers=['everyone'], writers=[conf_inv_id], signatures=[reviewer])
 
+
+    # The assumption is that a match configuration is never run more than once so clearing edges of a solution is not necessary.
+    # Leaving here just because its an example of the best we can do to "delete" an edge.
     def clear_existing_match(self, assignment_inv):
         self.logger.debug("Clearing Existing Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
@@ -205,9 +187,7 @@ class Match:
         self.logger.debug("Done clearing Existing Edges for " + assignment_inv.id)
 
 
-    # TODO nothing is being done with alternates - aggregate score edges hold ALL paper-reviewer scores which UI will use
-    # to populate alternates lists.
-    def save_suggested_assignment (self, alternates_by_forum, assignment_inv, assignments_by_forum):
+    def save_suggested_assignment (self, assignment_inv, assignments_by_forum):
         # self.clear_existing_match(assignment_inv)
         self.logger.debug("Saving Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]

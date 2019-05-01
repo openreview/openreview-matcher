@@ -2,15 +2,15 @@ import pytest
 import time
 
 from fields import Configuration
-from params import Params
+from Params import Params
 import numpy as np
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
-from helpers.ConferenceConfig import ConferenceConfig
-from matcher.encoder import Encoder
-from matcher.encoder2 import Encoder2
-from matcher.Metadata import Metadata, MetadataEdgeInvitationIds
+from matcher.Encoder import Encoder
+from matcher.PaperReviewerInfo import PaperReviewerInfo
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 
+#Unit tests that exercise the Encoder class's two public methods: encode and decode.
 class TestEncoderUnit:
 
     def setup_class (cls):
@@ -21,7 +21,7 @@ class TestEncoderUnit:
 
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test1_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -45,11 +45,11 @@ class TestEncoderUnit:
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids)
-        md = Metadata(or_client, title, conf.paper_notes,conf.reviewers,md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder2(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
@@ -85,16 +85,16 @@ class TestEncoderUnit:
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids,
-                                                   conf.conf_ids.CONFLICTS_INV_ID,
-                                                   conf.conf_ids.CONSTRAINTS_INV_ID,
-                                                   conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = Metadata(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
+                                                        conf.conf_ids.CONFLICTS_INV_ID,
+                                                        conf.conf_ids.CONSTRAINTS_INV_ID,
+                                                        conf.conf_ids.CUSTOM_LOAD_INV_ID)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder2(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
-        constraint_matrix = enc.constraint_matrix
+        constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
         assert shape == (num_reviewers,num_papers)
         # locks
@@ -138,16 +138,16 @@ class TestEncoderUnit:
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids,
-                                                   conf.conf_ids.CONFLICTS_INV_ID,
-                                                   conf.conf_ids.CONSTRAINTS_INV_ID,
-                                                   conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = Metadata(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
+                                                        conf.conf_ids.CONFLICTS_INV_ID,
+                                                        conf.conf_ids.CONSTRAINTS_INV_ID,
+                                                        conf.conf_ids.CUSTOM_LOAD_INV_ID)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder2(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
-        constraint_matrix = enc.constraint_matrix
+        constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
         assert shape == (num_reviewers,num_papers)
         # conflicts paper-0/user-0, paper-1/user-2
@@ -197,16 +197,16 @@ class TestEncoderUnit:
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids,
-                                                   conf.conf_ids.CONFLICTS_INV_ID,
-                                                   conf.conf_ids.CONSTRAINTS_INV_ID,
-                                                   conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = Metadata(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
+                                                        conf.conf_ids.CONFLICTS_INV_ID,
+                                                        conf.conf_ids.CONSTRAINTS_INV_ID,
+                                                        conf.conf_ids.CUSTOM_LOAD_INV_ID)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder2(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
-        constraint_matrix = enc.constraint_matrix
+        constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
         assert shape == (num_reviewers,num_papers)
         # conflicts paper-0/user-0, paper-1/user-2
@@ -257,11 +257,11 @@ class TestEncoderUnit:
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
         now = time.time()
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids)
-        md = Metadata(or_client, title, conf.paper_notes,conf.reviewers,md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder2(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content, conf.reviewers)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
@@ -272,12 +272,11 @@ class TestEncoderUnit:
                 assert(cost_matrix[r,p] == -1*num_scores)
 
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_decode (self, test_util):
         '''
-        There is a dependency where testing decode means that the Encoder must have first been instantiated and this
-        calls the encode method.  Unforunately, decode makes reference to dictionaries built during encode so I can't
-        just remove the call to encode that is in the constructor
+        There is a dependency where testing decode means that the Encoder must have first been instantiated and encode called.
+        decode makes reference to dictionaries built during encode so I can't just remove the call to encode that is in the constructor
         '''
         score_matrix = np.array([
             [10, 0, 0],
@@ -310,17 +309,17 @@ class TestEncoderUnit:
         reviewers = conf.reviewers
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = MetadataEdgeInvitationIds(conf.score_invitation_ids)
-        md = Metadata(or_client, title, conf.paper_notes,conf.reviewers,md_invitations)
+        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
+        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
-        enc = Encoder2(md, config.content, reviewers)
+        enc = Encoder(md, config.content, reviewers)
         cost_matrix = enc._cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, [1,1,2], cost_matrix, constraint_matrix, graph_builder)
         solution = solver.solve()
         now = time.time()
-        assignments_by_forum, alternates_by_forum = enc.decode(solution)
+        assignments_by_forum = enc.decode(solution)
         print("Time to decode: ", time.time() - now)
         assert assignments_by_forum[papers[0].id][0]['userId'] == reviewers[0]
         assert assignments_by_forum[papers[1].id][0]['userId'] == reviewers[1]

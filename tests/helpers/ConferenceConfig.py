@@ -2,7 +2,7 @@ import openreview.tools
 import random
 import datetime
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
-from tests.params import Params
+from tests.Params import Params
 
 
 class ConfIds:
@@ -190,17 +190,11 @@ class ConferenceConfig:
         '''
         self.config_note = openreview.Note(**{
             'invitation': self.get_assignment_configuration_id(),
-            # TODO Question: Had to change because invitation wants conf_id and program_chairs.  Is this always the way readers should be?
-            # 'readers': [self.conference.id],
             'readers': [self.conference.id, self.conference.get_program_chairs_id()],
-            # TODO Question: Similar to above with writers
             'writers': [self.conference.id, self.conference.get_program_chairs_id()],
-            # TODO Question: Had to change because invitation wants it to be program_chairs.  Is this always the way signatures should be?
-            # 'signatures': [self.conference.id],
             'signatures': [self.conference.get_program_chairs_id()],
             'content': {
                 'title': self.config_title,
-                # TODO Question:  Can only set these because I customized the invitation
                 'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
                 'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
@@ -214,7 +208,6 @@ class ConferenceConfig:
                 # TODO Question: Shouldn't the config_invitation be CONF_ID/-/Assignment_Configuration
                 # 'config_invitation': self.conf_ids.CONFIG_ID,
                 'config_invitation': self.conf_ids.CONF_ID,
-                # 'paper_invitation': self.conf_ids.SUBMISSION_ID,
                 # TODO Question:  The name of the method get_blind_submission_id is misleading
                 # because this conference is not using blind papers.   It would be more straightforward if the method
                 # was called get_submission_id which would return a blind id if the papers happen to be blind
