@@ -11,7 +11,7 @@ from matcher.fields import Assignment
 
 class Encoder:
 
-    def __init__(self, metadata=None, config=None, reviewers=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
+    def __init__(self, metadata=None, config=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
         self.logger = logger
         self.metadata = metadata
         self.config = config

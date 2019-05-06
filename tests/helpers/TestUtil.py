@@ -1,5 +1,6 @@
 import time
 import json
+import traceback
 
 from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
@@ -19,7 +20,7 @@ class TestUtil:
         return cls.instance
 
     def __init__(self, base_url, flask_test_client, silent):
-        self.test_count = 0
+        self._test_count = 0
         self.OR_CLIENT_USER = 'openreview.net'
         self.OR_CLIENT_PASSWORD = '1234'
         self.client = self.get_client(base_url)
@@ -56,8 +57,12 @@ class TestUtil:
 
     def create_super_user(self):
         assert self.client is not None, "Client is none"
-        res = self.client.register_user(email = self.OR_CLIENT_USER, first = 'Super', last = 'User', password = self.OR_CLIENT_PASSWORD)
-        assert res, "Res i none"
+        try:
+            res = self.client.register_user(email = self.OR_CLIENT_USER, first = 'Super', last = 'User', password = self.OR_CLIENT_PASSWORD)
+        except:
+            traceback.print_last()
+
+        assert res, "No result for registering user"
         res = self.client.activate_user('openreview.net', {
             'names': [
                 {
@@ -88,17 +93,20 @@ class TestUtil:
         if not self.silent:
             self.params.print_params()
 
+    def next_conference_count (self):
+        self._test_count += 1
+        return self._test_count
 
     def test_matcher (self):
         self.build_conference()
         self.run_matcher()
 
     def build_conference (self):
-        self.test_count += 1
+        self.next_conference_count()
         if self.use_edge_conf_builder():
-            self.conf = ConferenceConfigWithEdges(self.client, self.test_count, self.params)
+            self.conf = ConferenceConfigWithEdges(self.client, self._test_count, self.params)
         else:
-            self.conf = ConferenceConfig(self.client, self.test_count, self.params)
+            self.conf = ConferenceConfig(self.client, self._test_count, self.params)
         if not self.silent:
             DisplayConf(self.conf).display_input_structures()
 

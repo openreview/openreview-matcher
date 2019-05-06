@@ -17,7 +17,7 @@ class TestEncoderUnit:
         cls.counter = 0
 
     def setup (self):
-        TestEncoderUnit.counter += 1
+        pass
 
 
 
@@ -41,7 +41,7 @@ class TestEncoderUnit:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
@@ -49,7 +49,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
@@ -81,7 +81,7 @@ class TestEncoderUnit:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
@@ -92,7 +92,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
@@ -134,7 +134,7 @@ class TestEncoderUnit:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
@@ -145,7 +145,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
@@ -193,7 +193,7 @@ class TestEncoderUnit:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
@@ -204,7 +204,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
@@ -252,7 +252,7 @@ class TestEncoderUnit:
 
         or_client = test_util.client
         now = time.time()
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         print("Time to build test conference: ", time.time() - now)
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
@@ -261,7 +261,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder(md, config.content, conf.reviewers)
+        enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc._cost_matrix
         shape = cost_matrix.shape
@@ -304,7 +304,7 @@ class TestEncoderUnit:
                          
         '''
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, TestEncoderUnit.counter , params)
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         papers = conf.get_paper_notes()
         reviewers = conf.reviewers
         config = conf.get_config_note()
@@ -312,7 +312,7 @@ class TestEncoderUnit:
         md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
-        enc = Encoder(md, config.content, reviewers)
+        enc = Encoder(md, config.content)
         cost_matrix = enc._cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')

@@ -1,7 +1,6 @@
 import openreview
 import threading
 from matcher.assignment_graph import AssignmentGraph, GraphBuilder
-from matcher.EncoderAlternate import EncoderAlternate
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import Assignment
@@ -78,8 +77,7 @@ class Match:
                 demands = [self.config[Configuration.MAX_USERS]] * len(self.papers)
 
             self.logger.debug("Encoding metadata")
-            # encoder = EncoderAlternate(metadata, self.config, reviewer_ids, logger=self.logger)
-            encoder = Encoder(metadata, self.config, self.reviewer_ids, logger=self.logger)
+            encoder = Encoder(metadata, self.config, logger=self.logger)
             minimums, maximums = self.get_reviewer_loads(custom_loads_inv_id)
 
 

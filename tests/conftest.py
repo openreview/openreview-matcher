@@ -6,7 +6,7 @@ import helpers.TestUtil
 # from helpers.TestUtil import TestUtil
 
 @pytest.fixture
-def test_util (scope="class"):
+def test_util (scope="session"):
     # or_baseurl = os.getenv('OPENREVIEW_BASEURL')
     or_baseurl = 'http://localhost:3000'
     flask_app_test_client = matcher.app.test_client()
@@ -18,7 +18,7 @@ def test_util (scope="class"):
 
 
 @pytest.fixture
-def or_client (scope="class"):
+def or_client (scope="session"):
     or_baseurl = 'http://localhost:3000'
     or_user = os.getenv("OPENREVIEW_USERNAME")
     or_password = os.getenv("OPENREVIEW_PASSWORD")
