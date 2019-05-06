@@ -4,7 +4,7 @@ import pytest
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.Match import Match
-from Params import Params
+from helpers.Params import Params
 
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.

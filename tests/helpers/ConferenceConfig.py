@@ -2,7 +2,7 @@ import openreview.tools
 import random
 import datetime
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
-from tests.Params import Params
+from helpers.Params import Params
 
 
 class ConfIds:

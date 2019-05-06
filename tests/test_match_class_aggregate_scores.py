@@ -1,11 +1,10 @@
 import numpy as np
-import pytest
 
 from exceptions import NotFoundError
 from matcher.Match import Match
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
-from Params import Params
+from helpers.Params import Params
 
 # Tests that aggregate score edges are correctly produced when a match is run.
 # N.B.:  To run this test you must be running OR with a clean db.  See README for details.

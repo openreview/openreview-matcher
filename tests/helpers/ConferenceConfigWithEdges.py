@@ -5,7 +5,7 @@ from matcher.fields import Configuration
 import openreview
 from openreview import Edge, Invitation
 
-from Params import Params
+from helpers.Params import Params
 from itertools import cycle
 import pymongo
 

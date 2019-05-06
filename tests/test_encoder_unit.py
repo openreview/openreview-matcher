@@ -2,7 +2,7 @@ import pytest
 import time
 
 from fields import Configuration
-from Params import Params
+from helpers.Params import Params
 import numpy as np
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges

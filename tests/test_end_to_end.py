@@ -1,12 +1,11 @@
 import matcher
-import os
 import pytest
 import time
 
 from helpers.DisplayConf import DisplayConf
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 from matcher.fields import Configuration
-from Params import Params
+from helpers.Params import Params
 from helpers.AssignmentChecker import AssignmentChecker
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
