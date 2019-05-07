@@ -13,6 +13,7 @@ jobs:
 #    - run: sudo apt-get install python3
 #    - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 #    - run: sudo python3 get-pip.py
+    # nothing
     - run: sudo pip3 install ~/openreview-matcher-repo
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
     - run: mkdir ~/openreview/logs
