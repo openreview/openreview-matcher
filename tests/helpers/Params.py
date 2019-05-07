@@ -19,6 +19,7 @@ class Params:
     SCORE_MATRIX = 'score_matrix'
     SCORE_INCREMENT = 'score_increment'
     SCORE_TYPE = 'type'
+    OMIT_ZERO_SCORE_EDGES = 'omit_zero_score_edges'
     SCORE_NAMES_LIST = 'score_names'
 
     def __init__ (self, params):
@@ -38,6 +39,7 @@ class Params:
         self.scores_config = self.params.get(Params.SCORES_CONFIG,
                                              {Params.SCORE_TYPE: Params.FIXED_SCORE,
                                               Params.FIXED_SCORE_VALUE: 1,
+                                              Params.OMIT_ZERO_SCORE_EDGES: False,
                                               Params.SCORE_NAMES_LIST: ['affinity']})
         self.set_other_params()
 

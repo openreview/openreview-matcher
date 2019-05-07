@@ -45,10 +45,19 @@ jobs:
           python3 -m venv venv
           . venv/bin/activate
           pip install -r requirements.txt
+          deactivate
+    - run:
+        name: install openreview-py
+        command: |
+          cd ~/openreview-matcher-repo
+          . venv/bin/activate
+          pip install openreview-py
+          deactivate
     - run:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
+          mkdir test-reports
           . venv/bin/activate
           python -m pytest tests
     - store_test_results:

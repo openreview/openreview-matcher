@@ -12,6 +12,7 @@ setup(name='openreview-matcher',
           'numpy',
           'openreview-py',
           'ortools',
-          'pytest'
+          'pytest',
+          'Flask'
       ],
       zip_safe=False)

@@ -7,8 +7,6 @@ from openreview import Edge, Invitation
 
 from helpers.Params import Params
 from itertools import cycle
-import pymongo
-
 
 class ConferenceConfigWithEdges (ConferenceConfig):
 
@@ -91,8 +89,11 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             for reviewer in reviewers:
                 for score_inv in self.score_invitations:
                     score = self.gen_score(reviewer_ix=reviewer_ix, paper_ix=paper_ix )
-                    edge = Edge(head=paper_note.id, tail=reviewer, weight=score, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
-                    edges.append(edge)
+                    if score == 0 and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
+                        pass
+                    else:
+                        edge = Edge(head=paper_note.id, tail=reviewer, weight=score, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                        edges.append(edge)
                 reviewer_ix += 1
             paper_ix += 1
         self.client.post_bulk_edges(edges)
@@ -251,17 +252,3 @@ class ConferenceConfigWithEdges (ConferenceConfig):
 
 
 
-    # This is hack which allows deleting a score edge for the purpose of testing that
-    # the matcher fills in the right default when scores are missing.  This method is used
-    # in a very limited way to set up tests like that.
-    def remove_score_edge (self, reviewer_index, paper_index, score_inv=None):
-        paper_id = self.paper_notes[paper_index].id
-        reviewer = self.reviewers[reviewer_index]
-        mongo_client = pymongo.MongoClient('localhost', 27017)
-        db = mongo_client.openreview_test
-        db_edges = db.openreview_edges
-        if not score_inv:
-            score_inv = self.score_invitation_ids[0]
-
-        res = db_edges.delete_one({'head': paper_id, 'tail': reviewer, 'invitation': score_inv})
-        print(res.deleted_count)

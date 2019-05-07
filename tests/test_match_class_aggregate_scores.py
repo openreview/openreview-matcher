@@ -287,6 +287,7 @@ class TestMatchClassAggregateScores():
                          Params.CONSTRAINTS_CONFIG: {Params.CONSTRAINTS_LOCKS: {0: [0]}},
                          Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
+                                                Params.OMIT_ZERO_SCORE_EDGES: True,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
                          })
@@ -294,14 +295,14 @@ class TestMatchClassAggregateScores():
         test_util.set_test_params(params)
         test_util.build_conference()
         # hack:  Delete the edges created from 0s in matrix.  Matcher will supply default scores.
-        test_util.get_conference().remove_score_edge(0,1)
-        test_util.get_conference().remove_score_edge(0,2)
-        test_util.get_conference().remove_score_edge(1,0)
-        test_util.get_conference().remove_score_edge(1,2)
-        test_util.get_conference().remove_score_edge(2,0)
-        test_util.get_conference().remove_score_edge(2,1)
-        test_util.get_conference().remove_score_edge(3,0)
-        test_util.get_conference().remove_score_edge(3,1)
+        # test_util.get_conference().remove_score_edge(0,1)
+        # test_util.get_conference().remove_score_edge(0,2)
+        # test_util.get_conference().remove_score_edge(1,0)
+        # test_util.get_conference().remove_score_edge(1,2)
+        # test_util.get_conference().remove_score_edge(2,0)
+        # test_util.get_conference().remove_score_edge(2,1)
+        # test_util.get_conference().remove_score_edge(3,0)
+        # test_util.get_conference().remove_score_edge(3,1)
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
         conference = test_util.get_conference()
