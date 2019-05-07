@@ -49,7 +49,7 @@ jobs:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
-          mkdir test-reports
+          . venv/bin/activate
           python -m pytest tests
     - store_test_results:
         path: test-reports
