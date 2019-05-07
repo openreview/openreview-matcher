@@ -35,6 +35,8 @@ jobs:
     - run: sudo apt-get install python3
     - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
     - run: sudo python3 get-pip.py
+    - run: sudo apt-get update
+    - run: sudo apt-get install python3-venv
     - run:
         name: install dependencies
         command: |
