@@ -5,8 +5,7 @@ jobs:
     working_directory: ~/openreview-matcher-repo
     docker:
     - image: circleci/node:8.9.1-stretch
-    - image: circleci/python:2.7-stretch
-#    - image: circleci/python:3.6.1
+    - image: circleci/python:3.6.1
     - image: circleci/redis:3-stretch
     - image: circleci/mongo:3.6-stretch
     - image: elastic/elasticsearch:6.2.2
@@ -24,12 +23,14 @@ jobs:
           mkdir pdfs
           NODE_ENV=circleci node scripts/setup.js
 #          NODE_ENV=circleci node scripts/clean_start_app
-        background: true
+
     - run:
         name: run app
         command: |
           cd ~/openreview
-          NODE_ENV=circleci node app
+#          NODE_ENV=circleci node app
+          NODE_ENV=circleci node scripts/clean_start_app
+        background: true
     - run:
         shell: /bin/sh
         command: |
