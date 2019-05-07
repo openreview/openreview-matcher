@@ -10,11 +10,6 @@ jobs:
     - image: circleci/python:3.6.1
     steps:
     - checkout
-#    - run: sudo apt-get install python3
-#    - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-#    - run: sudo python3 get-pip.py
-    # nothing
-    - run: sudo pip3 install ~/openreview-matcher-repo
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
     - run: mkdir ~/openreview/logs
     - run:
@@ -25,11 +20,6 @@ jobs:
           sudo npm install -g grunt-cli
           grunt regen
           mkdir pdfs
-          NODE_ENV=circleci node scripts/setup.js
-    - run:
-        name: run app
-        command: |
-          cd ~/openreview
           NODE_ENV=circleci node scripts/clean_start_app
         background: true
     - run:
