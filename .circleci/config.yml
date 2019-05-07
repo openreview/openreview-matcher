@@ -32,10 +32,13 @@ jobs:
         shell: /bin/sh
         command: |
           wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
+    - run: sudo apt-get install python3
+    - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    - run: sudo python3 get-pip.py
     - run:
         name: install dependencies
         command: |
-          sudo apt-get install python3-venv
+#          sudo apt-get install python3-venv
           cd ~/openreview-matcher-repo
           python3 -m venv venv
           . venv/bin/activate
