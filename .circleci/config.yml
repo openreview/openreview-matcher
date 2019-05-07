@@ -1,4 +1,4 @@
-# OpenReview Matcher CircleCI 2.0 configuration file 13
+# OpenReview Matcher CircleCI 2.0 configuration file 14
 version: 2
 jobs:
   build:
@@ -22,13 +22,10 @@ jobs:
           grunt regen
           mkdir pdfs
           NODE_ENV=circleci node scripts/setup.js
-#          NODE_ENV=circleci node scripts/clean_start_app
-
     - run:
         name: run app
         command: |
           cd ~/openreview
-#          NODE_ENV=circleci node app
           NODE_ENV=circleci node scripts/clean_start_app
         background: true
     - run:
