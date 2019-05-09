@@ -1,9 +1,11 @@
 import pytest
+import sys
 import os
 import matcher
 import openreview
-import helpers.TestUtil
-# from helpers.TestUtil import TestUtil
+from helpers.TestUtil import TestUtil
+
+# sys.path.append(os.path.join(os.path.dirname(__file__), 'helpers'))
 
 @pytest.fixture
 def test_util (scope="session"):
@@ -12,7 +14,7 @@ def test_util (scope="session"):
     flask_app_test_client = matcher.app.test_client()
     flask_app_test_client.testing = True
     silent = True
-    test_util = helpers.TestUtil.TestUtil.get_instance(or_baseurl, flask_app_test_client, silent=silent)
+    test_util = TestUtil.get_instance(or_baseurl, flask_app_test_client, silent=silent)
     test_util.set_conf_builder(use_edge_builder=True)
     yield test_util
 

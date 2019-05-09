@@ -1,6 +1,6 @@
 import numpy as np
 
-from exceptions import NotFoundError
+from exc.exceptions import NotFoundError
 from matcher.Match import Match
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration

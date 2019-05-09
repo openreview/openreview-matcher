@@ -1,9 +1,8 @@
 import pytest
 import time
-
-from fields import Configuration
-from helpers.Params import Params
 import numpy as np
+from matcher.fields import Configuration
+from helpers.Params import Params
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 from matcher.Encoder import Encoder
