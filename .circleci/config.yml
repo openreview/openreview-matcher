@@ -12,6 +12,8 @@ jobs:
     steps:
     - checkout
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
+#      Temporarily clone the use-edges branch of openreview-py
+    - run: git clone -b feature/use-edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
         name: install openreview node app
@@ -46,13 +48,20 @@ jobs:
           . venv/bin/activate
           pip install -r requirements.txt
           deactivate
+#    - run:
+#        name: install openreview-py
+#        command: |
+#          cd ~/openreview-matcher-repo
+#          . venv/bin/activate
+#          pip install openreview-py
+#          deactivate
     - run:
-        name: install openreview-py
+        name: use the locally installed openreview-py
         command: |
           cd ~/openreview-matcher-repo
+          python3 -m venv venv
           . venv/bin/activate
-          pip install openreview-py
-          deactivate
+          pip install -e ~/openreview-py
     - run:
         name: run tests
         command: |
