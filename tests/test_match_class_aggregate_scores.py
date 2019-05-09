@@ -294,15 +294,6 @@ class TestMatchClassAggregateScores():
 
         test_util.set_test_params(params)
         test_util.build_conference()
-        # hack:  Delete the edges created from 0s in matrix.  Matcher will supply default scores.
-        # test_util.get_conference().remove_score_edge(0,1)
-        # test_util.get_conference().remove_score_edge(0,2)
-        # test_util.get_conference().remove_score_edge(1,0)
-        # test_util.get_conference().remove_score_edge(1,2)
-        # test_util.get_conference().remove_score_edge(2,0)
-        # test_util.get_conference().remove_score_edge(2,1)
-        # test_util.get_conference().remove_score_edge(3,0)
-        # test_util.get_conference().remove_score_edge(3,1)
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
         conference = test_util.get_conference()
@@ -328,4 +319,3 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
         # !reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
-

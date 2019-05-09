@@ -68,7 +68,7 @@ jobs:
           cd ~/openreview-matcher-repo
           mkdir test-reports
           . venv/bin/activate
-          python -m pytest -s tests
+          python -m pytest -s tests/test_match_class_aggregate_scores.py
     - store_test_results:
         path: test-reports
     - store_artifacts:
