@@ -68,7 +68,7 @@ jobs:
           cd ~/openreview-matcher-repo
           mkdir test-reports
           . venv/bin/activate
-          python -m pytest tests
+          python -m pytest -s tests
     - store_test_results:
         path: test-reports
     - store_artifacts:
