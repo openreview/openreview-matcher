@@ -13,7 +13,7 @@ jobs:
     - checkout
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
 #      Temporarily clone the use-edges branch of openreview-py
-    - run: git clone -b feature/use-edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
+    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
         name: install openreview node app
