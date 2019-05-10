@@ -11,7 +11,8 @@ jobs:
     - image: elastic/elasticsearch:6.2.2
     steps:
     - checkout
-    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
+#    temporarily using the feature/edges branch
+    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
 #      Temporarily clone the feature/edges branch of openreview-py
     - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
@@ -67,7 +68,7 @@ jobs:
           cd ~/openreview-matcher-repo
           mkdir test-reports
           . venv/bin/activate
-          python -m pytest -s tests/test_match_class_aggregate_scores.py
+          python -m pytest -s tests
     - store_test_results:
         path: test-reports
     - store_artifacts:
