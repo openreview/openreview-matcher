@@ -12,7 +12,7 @@ jobs:
     steps:
     - checkout
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-#      Temporarily clone the use-edges branch of openreview-py
+#      Temporarily clone the feature/edges branch of openreview-py
     - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
@@ -56,10 +56,9 @@ jobs:
 #          pip install openreview-py
 #          deactivate
     - run:
-        name: use the locally installed openreview-py
+        name: install the local openreview-py as a dependency
         command: |
           cd ~/openreview-matcher-repo
-          python3 -m venv venv
           . venv/bin/activate
           pip install -e ~/openreview-py
     - run:
