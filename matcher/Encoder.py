@@ -11,9 +11,9 @@ from matcher.fields import Assignment
 
 class Encoder:
 
-    def __init__(self, metadata=None, config=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
+    def __init__(self, paper_reviewer_info=None, config=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.metadata = metadata
+        self.paper_reviewer_info = paper_reviewer_info
         self.config = config
         self._cost_func = cost_func
 
@@ -23,7 +23,7 @@ class Encoder:
         self._weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
         self._constraints = config.get(Configuration.CONSTRAINTS, {})
 
-        if self.metadata and self.config and self.metadata.reviewers and self.metadata.paper_notes:
+        if self.paper_reviewer_info and self.config and self.paper_reviewer_info.reviewers and self.paper_reviewer_info.paper_notes:
             self.encode()
 
     @property
@@ -44,11 +44,11 @@ class Encoder:
     def encode (self):
         self.logger.debug("Encoding")
         now = time.time()
-        self._cost_matrix = np.zeros((len(self.metadata.reviewers), len(self.metadata.paper_notes)))
+        self._cost_matrix = np.zeros((len(self.paper_reviewer_info.reviewers), len(self.paper_reviewer_info.paper_notes)))
         self._constraint_matrix = np.zeros(np.shape(self._cost_matrix))
-        for reviewer_index, reviewer in enumerate(self.metadata.reviewers):
-            for paper_index, paper_note in enumerate(self.metadata.paper_notes):
-                entry = self.metadata.get_entry(paper_note.id, reviewer)
+        for reviewer_index, reviewer in enumerate(self.paper_reviewer_info.reviewers):
+            for paper_index, paper_note in enumerate(self.paper_reviewer_info.paper_notes):
+                entry = self.paper_reviewer_info.get_entry(paper_note.id, reviewer)
                 self._update_cost_matrix(entry, reviewer_index, paper_index)
                 self._update_constraint_matrix(entry, reviewer_index, paper_index)
         self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
@@ -75,13 +75,13 @@ class Encoder:
         assignments_by_forum = defaultdict(list)
 
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
-            reviewer = self.metadata.reviewers[reviewer_index]
+            reviewer = self.paper_reviewer_info.reviewers[reviewer_index]
 
             for paper_index, flow in enumerate(reviewer_flows):
-                paper_note = self.metadata.paper_notes[paper_index]
+                paper_note = self.paper_reviewer_info.paper_notes[paper_index]
 
                 assignment = self._make_assignment_record(reviewer)
-                entry = self.metadata.get_entry(paper_note.id, reviewer)
+                entry = self.paper_reviewer_info.get_entry(paper_note.id, reviewer)
 
                 if entry:
                     self._set_assignment_scores_and_conflicts(assignment, entry)
