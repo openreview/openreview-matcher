@@ -54,11 +54,5 @@ class CostFunction:
         else:
             return val
 
-    def cost_to_aggregate_score (self, cost):
-        '''
-        Turn a cost back into the aggregate score
-        :param cost:
-        :return:
-        '''
-        return cost * self.precision * -1
+
 
