@@ -7,8 +7,8 @@ from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationId
 
 class PaperReviewerInfo:
     '''
-    Holds a map keyed on forum id where the value held there is the same as what was held in a metadata note
-    in its content.entries field
+    Holds a map keyed on forum id where the value is another map from reviewers to entry objects that have fields
+     containing scores, constraints, and conflicts
     '''
 
     def __init__ (self, client, config_title, paper_notes, reviewers, edge_invitations, logger=logging.getLogger(__name__)):
@@ -54,7 +54,7 @@ class PaperReviewerInfo:
 
     def _load_scores (self, or_client):
         now = time.time()
-        self.logger.debug("Loading metadata from edges")
+        self.logger.debug("Loading score entries from edges")
         self._entries_by_forum_map = defaultdict(defaultdict)
         num_entries = 0
         for score_index, inv_id in enumerate(self.score_invitation_ids):
@@ -66,7 +66,7 @@ class PaperReviewerInfo:
                 else:
                     num_entries += 1
                     self._entries_by_forum_map[e.head][e.tail] = {score_name:  e.weight}
-        self.logger.debug("Done loading metadata from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
+        self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
 
     def _load_constraints (self, or_client):
         constraints_inv_id = self.edge_invitations.constraints_invitation_id
@@ -83,7 +83,7 @@ class PaperReviewerInfo:
         edges = openreview.tools.iterget_edges(or_client, invitation=conflicts_inv_id, limit=50000)
         # Assumption: Conflicts are defined at the conference level.   For now, I'm assuming a pre-processing step which
         # produces conflicts edges that contain lists of domains in the label of the conflict with the weight empty.
-        # TODO If conflict detection between reviewer and paper is not a pre-processing step,  it would be calculated here
+        # TODO If conflict detection between reviewer and paper is not a pre-processing step,  it could be calculated here
         for e in edges:
             if self._entries_by_forum_map[e.head].get(e.tail):
                 self._entries_by_forum_map[e.head][e.tail]['conflicts'] = e.label
