@@ -3,7 +3,7 @@ from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuild
 
 
 class TestSolver:
-    ''' Unit tests that check the correctness of teh SimpleGraphBuilder Solver'''
+    ''' Unit tests that check the correctness of the SimpleGraphBuilder Solver'''
 
     @classmethod
     def setup_class(cls):

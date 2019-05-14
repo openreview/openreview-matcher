@@ -10,6 +10,8 @@ from matcher.PaperReviewerInfo import PaperReviewerInfo
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 
 #Unit tests that exercise the Encoder class's two public methods: encode and decode.
+# Each test builds a conference and then directly calls the Encoder classes methods.   Assertions are then made about the
+# constraint and cost matrices within the encoder.
 class TestEncoderUnit:
 
     def setup_class (cls):
@@ -50,7 +52,7 @@ class TestEncoderUnit:
         now = time.time()
         enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
-        cost_matrix = enc._cost_matrix
+        cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
         for r in range(num_reviewers):
@@ -262,7 +264,7 @@ class TestEncoderUnit:
         now = time.time()
         enc = Encoder(md, config.content)
         print("Time to encode: ", time.time() - now)
-        cost_matrix = enc._cost_matrix
+        cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         num_scores = len(params.scores_config[Params.SCORE_NAMES_LIST])
         assert shape == (num_reviewers,num_papers)
@@ -312,7 +314,7 @@ class TestEncoderUnit:
         md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
 
         enc = Encoder(md, config.content)
-        cost_matrix = enc._cost_matrix
+        cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, [1,1,2], cost_matrix, constraint_matrix, graph_builder)

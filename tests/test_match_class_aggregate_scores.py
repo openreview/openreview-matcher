@@ -6,7 +6,10 @@ from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from helpers.Params import Params
 
-# Tests that aggregate score edges are correctly produced when a match is run.
+# Unit tests that make sure that aggregate score edges are correctly produced when a match is run.
+#  Each test uses the test_util fixture to build a conference.  We directly access the Matcher object
+# to run the matcher.  To test, we then create an encoder object and use it to compute the aggregate score of each paper/reviewer
+# and then verify that an aggregate_score edge was produced with that value.
 # N.B.:  To run this test you must be running OR with a clean db.  See README for details.
 class TestMatchClassAggregateScores():
 

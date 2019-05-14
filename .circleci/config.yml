@@ -42,7 +42,6 @@ jobs:
     - run: sudo apt-get install python3-venv
     - run:
         name: install dependencies
-        # pip install -r requirements.txt
         command: |
           cd ~/openreview-matcher-repo
           python3 -m venv venv

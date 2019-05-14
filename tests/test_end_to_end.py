@@ -9,6 +9,9 @@ from helpers.Params import Params
 from helpers.AssignmentChecker import AssignmentChecker
 
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
+# End-to-end tests in this suite all build a conference using the test_util fixture passed to each test.
+# This object builds a conference using edges to represent all the inputs to the matcher and then calls
+# Flask endpoint to run the matcher.   Edge outputs of the matcher are then tested.
 
 class TestEndToEnd():
 
@@ -20,7 +23,6 @@ class TestEndToEnd():
         # Turn off logging in the web app so that tests run with a clean console
         matcher.app.logger.disabled = True
         matcher.app.logger.parent.disabled = True
-        # cls.or_baseurl = os.getenv('OPENREVIEW_BASEURL')
         cls.or_baseurl = 'http://localhost:3000'
         cls.silent = True
         assert cls.or_baseurl != None and cls.or_baseurl != ''
@@ -562,7 +564,3 @@ class TestEndToEnd():
             if not silence_debugging_output:
                 DisplayConf(conference).show_assignment()
             raise exc
-
-#
-# if __name__ == "__main__":
-#     unittest.main()

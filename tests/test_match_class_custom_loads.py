@@ -6,7 +6,8 @@ from matcher.fields import Configuration
 from matcher.Match import Match
 from helpers.Params import Params
 
-
+# Verifies that custom loads are being used correctly in the matcher.  Each unit test uses the test_util fixture to build a conference
+# and the matcher is called to find a solution.  We then check the solution to make sure custom_loads were not violated.
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
 
 class TestMatchClassCustomLoads():
@@ -76,8 +77,7 @@ class TestMatchClassCustomLoads():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -233,11 +233,11 @@ class TestMatchClassCustomLoads():
         :return:
         '''
         score_matrix = np.array([
-            [10.67801, 0,0,0, 0],
-            [0,0, 10.67801, 0,0],
-            [0, 0, 0,0, 10.67801],
+            [10.67801, 0, 0, 0, 0],
+            [0, 0, 10.67801, 0, 0],
+            [0, 0, 0, 0, 10.67801],
             [0, 0, 0, 10.67801, 0],
-            [0, 10.67801, 0,0,0]
+            [0, 10.67801, 0, 0, 0]
         ])
         num_papers = 5
         num_reviewers = 5
@@ -279,10 +279,6 @@ class TestMatchClassCustomLoads():
         assert len(conference.get_assignment_edges_by_reviewer(reviewers[2])) == 2
         assert len(conference.get_assignment_edges_by_reviewer(reviewers[3])) == 2
         assert len(conference.get_assignment_edges_by_reviewer(reviewers[4])) == 2
-
-
-
-
 
     def show_assignment (self, papers, conference):
         edges = conference.get_assignment_edges()

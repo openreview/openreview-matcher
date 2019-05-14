@@ -1,11 +1,9 @@
 import pytest
-import sys
 import os
 import matcher
 import openreview
 from helpers.TestUtil import TestUtil
 
-# sys.path.append(os.path.join(os.path.dirname(__file__), 'helpers'))
 
 @pytest.fixture
 def test_util (scope="session"):
