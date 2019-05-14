@@ -74,7 +74,7 @@ class Match:
 
             self.logger.debug("Encoding")
             encoder = Encoder(paper_reviewer_info, self.config, logger=self.logger)
-            minimums, maximums = self.get_reviewer_loads(custom_loads_inv_id)
+            minimums, maximums = self._get_reviewer_loads(custom_loads_inv_id)
 
 
             graph_builder = GraphBuilder.get_builder(
@@ -96,8 +96,8 @@ class Match:
             if graph.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum = encoder.decode(solution)
-                self.save_suggested_assignment(assignment_inv, assignments_by_forum)
-                self.save_aggregate_scores(encoder, paper_reviewer_info)
+                self._save_suggested_assignment(assignment_inv, assignments_by_forum)
+                self._save_aggregate_scores(encoder, paper_reviewer_info)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -109,7 +109,7 @@ class Match:
             self.set_status(Configuration.STATUS_ERROR,msg)
             raise e
 
-    def get_reviewer_loads (self, custom_load_invitation_id):
+    def _get_reviewer_loads (self, custom_load_invitation_id):
         if type(self.config[Configuration.MIN_PAPERS]) == str:
             minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
         else:
@@ -119,9 +119,9 @@ class Match:
         else:
             maximums = [self.config[Configuration.MAX_PAPERS]] * len(self.reviewer_ids)
 
-        return self.get_custom_loads(custom_load_invitation_id, minimums, maximums)
+        return self._get_custom_loads(custom_load_invitation_id, minimums, maximums)
 
-    def get_custom_loads (self, custom_load_invitation_id, minimums, maximums):
+    def _get_custom_loads (self, custom_load_invitation_id, minimums, maximums):
         custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id, head=self.config[Configuration.CONFIG_INVITATION_ID], limit=10000)
         for edge in custom_load_edges:
             custom_load = edge.weight
@@ -132,57 +132,38 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
-    def create_reviewers_scored_map (self):
+    def _create_reviewers_scored_map (self):
         return {r: False for r in self.reviewer_ids}
 
-    def save_aggregate_scores (self, encoder, paper_reviewer_info):
+    def _save_aggregate_scores (self, encoder, paper_reviewer_info):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
-        :param encoder:
-        :return:
         '''
-        # Note:  If a paper recieved no scoring info for a particular user, there will be no data in the Metadata object about
+        # Note:  If a paper recieved no scoring info for a particular user, there will be no data in the PaperReviewerInfo object about
         # that paper/reviewer and a default aggregate score of 0 will be emitted.
         edges = []
         for forum_id, reviewers in paper_reviewer_info.items():
-            reviewers_scored_map = self.create_reviewers_scored_map() # map of flags
+            reviewers_scored_map = self._create_reviewers_scored_map() # map of flags
             for reviewer, entry in reviewers.items():
                 reviewers_scored_map[reviewer] = True # remember the ones that have score data.
                 ag_score = encoder.cost_function.aggregate_score(entry,encoder.weights)
-                edges.append(self.build_aggregate_edge(forum_id, reviewer, ag_score))
+                edges.append(self._build_aggregate_edge(forum_id, reviewer, ag_score))
             # produce the default aggregate scores for the paper/reviewers that had no scoring data given
             for reviewer, is_scored in reviewers_scored_map.items():
                 if not is_scored:
-                    edges.append(self.build_aggregate_edge(forum_id, reviewer, 0.0))
+                    edges.append(self._build_aggregate_edge(forum_id, reviewer, 0.0))
 
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         self.client.post_bulk_edges(edges)
 
-    def build_aggregate_edge (self, forum_id, reviewer, agg_score):
+    def _build_aggregate_edge (self, forum_id, reviewer, agg_score):
         aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
         conf_inv_id = self.config[Configuration.CONFIG_INVITATION_ID]
         return openreview.Edge(head=forum_id, tail=reviewer, weight=agg_score, invitation=aggregate_inv_id,
                             readers=['everyone'], writers=[conf_inv_id], signatures=[reviewer])
 
 
-    # The assumption is that a match configuration is never run more than once so clearing edges of a solution is not necessary.
-    # Leaving here just because its an example of the best we can do to "delete" an edge.
-    def clear_existing_match(self, assignment_inv):
-        self.logger.debug("Clearing Existing Edges for " + assignment_inv.id)
-        label = self.config[Configuration.TITLE]
-        assignment_edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv.id, label=label, limit=10000)
-        edges = []
-        # change all the assignment-edges
-        for edge in assignment_edges:
-            edge.ddate = round(time.time()) * 1000
-            edges.append(edge)
-        # post them all back in bulk
-        self.client.post_bulk_edges(edges)
-        self.logger.debug("Done clearing Existing Edges for " + assignment_inv.id)
-
-
-    def save_suggested_assignment (self, assignment_inv, assignments_by_forum):
-        # self.clear_existing_match(assignment_inv)
+    def _save_suggested_assignment (self, assignment_inv, assignments_by_forum):
         self.logger.debug("Saving Edges for " + assignment_inv.id)
         label = self.config[Configuration.TITLE]
         edges = []
