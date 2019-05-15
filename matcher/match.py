@@ -4,6 +4,7 @@ from matcher.solvers.assignment_graph import AssignmentGraph, GraphBuilder
 from matcher.encoder import Encoder
 from matcher.fields import Configuration
 from matcher.fields import Assignment
+from matcher import app
 import logging
 import time
 import importlib
@@ -14,7 +15,11 @@ def get_solver(solver_type, solver_params):
     solver_instance = solver_class(**solver_params)
     return solver_instance
 
+def time_ms ():
+    return int(round(time.time() * 1000))
+
 class Match:
+
     def __init__ (self, client, config_note, logger=logging.getLogger(__name__)):
         self.client = client
         self.config_note = config_note
@@ -26,7 +31,7 @@ class Match:
         self.config_note.content[Configuration.STATUS] = status
         if message:
             self.config_note.content[Configuration.ERROR_MESSAGE] = message
-        self.client.post_note(self.config_note)
+        self.config_note = self.client.post_note(self.config_note)
         return self.config_note
 
     def run (self):
@@ -46,16 +51,11 @@ class Match:
             return self.config_note
 
 
-    # A function that can be called from a script to compute a match.
-    # Given a config_note and an openreview.client object, this will compute a match of
-    # reviewers to papers and post it to the db.  It will return the config note with a status field
-    # set to 'complete' if it succeeds.  Otherwise a failure message will be placed in the status field.
-    # Pass in a logger if you want logging;  otherwise a default logger will be used.
+    # Compute a match of reviewers to papers and post it to the as assignment notes.
+    # The config note's status field will be set to reflect completion or the variety of failures.
     def compute_match(self):
         try:
             self.set_status(Configuration.STATUS_RUNNING)
-            # TODO I want to stop using the term metadata which means changing the name of this field in the config note
-            # and its invitation.
             metadata = list(openreview.tools.iterget_notes(self.client, invitation=self.config['metadata_invitation']))
             reviewer_group = self.client.get_group(self.config['match_group'])
             assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
@@ -108,12 +108,12 @@ class Match:
                 self.logger.debug('Failure: Solver could not find a solution.')
                 self.set_status(Configuration.STATUS_NO_SOLUTION, 'Solver could not find a solution.  Adjust your parameters' )
 
+            return self.config_note
         except Exception as e:
             msg = "Internal Error while running solver: " + str(e)
             self.set_status(Configuration.STATUS_ERROR,msg)
             raise e
-        else:
-             return self.config_note
+
 
 
     def clear_existing_match(self, assignment_inv):
@@ -121,13 +121,13 @@ class Match:
         Clears assignment notes created by previous runs of the matcher.
         '''
         notes_list = list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                         content = { 'title': self.config[Configuration.TITLE]}))
+                                                         content = {Configuration.TITLE: self.config[Configuration.TITLE]}))
         for assignment_note in notes_list:
             assignment_note.ddate = round(time.time()) * 1000
             self.client.post_note(assignment_note)
         assert len(list(openreview.tools.iterget_notes(self.client, invitation=assignment_inv.id,
-                                                       content = { 'title': self.config[Configuration.TITLE]}))) == 0, \
-            "All assignment notes with the title " +self.config[Configuration.TITLE]+ " were not deleted!"
+                                                       content = {Configuration.TITLE: self.config[Configuration.TITLE]}))) == 0, \
+            "All assignment notes with the label " + self.config[Configuration.TITLE] + " were not deleted!"
 
 
     # save the assignment as a set of notes.
@@ -151,5 +151,3 @@ class Match:
                     Assignment.ALTERNATE_GROUPS: alternates
                 }
             }))
-
-

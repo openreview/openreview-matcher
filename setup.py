@@ -11,6 +11,6 @@ setup(name='openreview-matcher',
       install_requires=[
           'numpy',
           'openreview-py',
-          'ortools',
+          'ortools'
       ],
       zip_safe=False)
