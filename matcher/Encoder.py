@@ -7,23 +7,24 @@ from matcher.CostFunction import CostFunction
 from matcher.fields import Configuration
 from matcher.fields import PaperReviewerScore
 from matcher.fields import Assignment
+from matcher.WeightedScorer import WeightedScorer
 
 
 class Encoder:
 
     def __init__(self, paper_reviewer_info=None, config=None, cost_func=CostFunction(), logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.paper_reviewer_info = paper_reviewer_info
+        self.paper_reviewer_data = paper_reviewer_info #type: PaperReviewerData
         self.config = config
         self._cost_func = cost_func
 
         self._cost_matrix = np.zeros((0, 0))
         self._constraint_matrix = np.zeros((0, 0))
         self._score_names = config[Configuration.SCORES_NAMES]
-        self._weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
+        self._scorer = WeightedScorer(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
         self._constraints = config.get(Configuration.CONSTRAINTS, {})
 
-        if self.paper_reviewer_info and self.config and self.paper_reviewer_info.reviewers and self.paper_reviewer_info.paper_notes:
+        if self.paper_reviewer_data and self.config and self.paper_reviewer_data.reviewers and self.paper_reviewer_data.paper_notes:
             self.encode()
 
     @property
@@ -38,36 +39,34 @@ class Encoder:
     def weights (self):
         return self._weights
 
-    def _get_weight_dict (self, names, weights):
-        return dict(zip(names, [ float(w) for w in weights]))
+    def _score_to_cost (self, aggregate_score):
+        return -1 * (aggregate_score / 0.01)
 
     def encode (self):
         self.logger.debug("Encoding")
         now = time.time()
-        self._cost_matrix = np.zeros((len(self.paper_reviewer_info.reviewers), len(self.paper_reviewer_info.paper_notes)))
+        self._cost_matrix = np.zeros((len(self.paper_reviewer_data.reviewers), len(self.paper_reviewer_data.paper_notes)))
         self._constraint_matrix = np.zeros(np.shape(self._cost_matrix))
-        for reviewer_index, reviewer in enumerate(self.paper_reviewer_info.reviewers):
-            for paper_index, paper_note in enumerate(self.paper_reviewer_info.paper_notes):
-                entry = self.paper_reviewer_info.get_entry(paper_note.id, reviewer)
-                self._update_cost_matrix(entry, reviewer_index, paper_index)
-                self._update_constraint_matrix(entry, reviewer_index, paper_index)
+        for reviewer_index, reviewer in enumerate(self.paper_reviewer_data.reviewers):
+            for paper_index, paper_note in enumerate(self.paper_reviewer_data.paper_notes):
+                paper_user_scores = self.paper_reviewer_data.get_entry(paper_note.id, reviewer)
+                self._update_cost_matrix(paper_user_scores, reviewer_index, paper_index)
+                self._update_constraint_matrix(paper_user_scores, reviewer_index, paper_index)
         self.logger.debug("Done encoding.  Took {}".format(time.time() - now))
 
-    def _update_cost_matrix (self, entry, reviewer_index, paper_index):
+    def _update_cost_matrix (self, paper_user_scores, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
-        if entry:
-            self._cost_matrix[coordinates] = self.cost_function.cost(entry, self.weights)
-            self._constraint_matrix[coordinates] = -1 if entry.get(PaperReviewerScore.CONFLICTS) else 0
+        if paper_user_scores:
+            aggregate_score = self._scorer.weighted_score(paper_user_scores.scores)
+            cost = self._score_to_cost(aggregate_score)
+            paper_user_scores.set_aggregate_score(aggregate_score) # save aggregate score so we can generate edges from this later
+            self._cost_matrix[coordinates] = cost
 
-    # The entry may contain constraints ('+inf'/ '-inf') and/or conflicts
-    def _update_constraint_matrix (self, entry, reviewer_index, paper_index):
+    # Conflicts between paper/reviewer sets the constraint matrix cell to -1 ; 0 otherwise
+    def _update_constraint_matrix (self, paper_user_scores, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
-        constraint = entry.get('constraint')
-        conflict = entry.get('conflicts')
-        if constraint and constraint == Configuration.LOCK:
-            self._constraint_matrix[coordinates] = 1
-        elif constraint or conflict:
-            self._constraint_matrix[coordinates] = -1
+        self._constraint_matrix[coordinates] = -1 if paper_user_scores.conflicts else 0
+
 
     def decode (self, flow_matrix):
         now = time.time()
@@ -75,18 +74,19 @@ class Encoder:
         assignments_by_forum = defaultdict(list)
 
         for reviewer_index, reviewer_flows in enumerate(flow_matrix):
-            reviewer = self.paper_reviewer_info.reviewers[reviewer_index]
+            reviewer = self.paper_reviewer_data.reviewers[reviewer_index]
 
             for paper_index, flow in enumerate(reviewer_flows):
-                paper_note = self.paper_reviewer_info.paper_notes[paper_index]
+                paper_note = self.paper_reviewer_data.paper_notes[paper_index]
 
-                assignment = self._make_assignment_record(reviewer)
-                entry = self.paper_reviewer_info.get_entry(paper_note.id, reviewer)
+                # assignment = self._make_assignment_record(reviewer)
+                paper_user_scores = self.paper_reviewer_data.get_entry(paper_note.id, reviewer) #type : PaperUserScores
 
-                if entry:
-                    self._set_assignment_scores_and_conflicts(assignment, entry)
+                # if entry:
+                #     self._set_assignment_scores_and_conflicts(assignment, entry)
                 if flow:
-                    assignments_by_forum[paper_note.id].append(assignment)
+                    # assignments_by_forum[paper_note.id].append(assignment)
+                    assignments_by_forum[paper_note.id].append(paper_user_scores)
 
         self.logger.debug("Done decoding.  Took {}".format(time.time() - now))
         return dict(assignments_by_forum)

@@ -186,7 +186,7 @@ class TestEndToEnd():
                 " custom_load " +custom_load+ " exceeded.  Papers assigned: " + review_count_map[reviewer]
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test5_10papers_7reviewers_4locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock in users to 4 papers
@@ -357,7 +357,7 @@ class TestEndToEnd():
             raise exc
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test8_10papers_7reviewers_3locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in 2 papers
@@ -402,7 +402,7 @@ class TestEndToEnd():
 
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test9_10papers_7reviewers_10locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints lock users in all 10 papers
@@ -446,7 +446,7 @@ class TestEndToEnd():
 
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test10_10papers_7reviewers_4vetos_8locks (self, test_util):
         '''
         Tests 10 papers each requiring 2 reviews.  7 users each capable of giving 4 reviews.  Constraints veto users in 4 papers and lock users in 4 papers

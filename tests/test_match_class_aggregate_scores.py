@@ -1,9 +1,10 @@
 import numpy as np
-
+import pytest
 from exc.exceptions import NotFoundError
 from matcher.Match import Match
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
+from matcher.PaperUserScores import PaperUserScores
 from helpers.Params import Params
 
 # Unit tests that make sure that aggregate score edges are correctly produced when a match is run.
@@ -38,14 +39,24 @@ class TestMatchClassAggregateScores():
             entry[score_name] = e.weight
         return entry
 
-    # verify aggregate score edges have values that are correct wrt input score edges * weights
-    def check_aggregate_score_edges (self, client, reviewers, papers, conference, encoder):
+    # verify aggregate score edges have values that are correct
+    def check_aggregate_score_edges_old (self, client, reviewers, papers, conference, encoder):
         agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
         for rix, r in enumerate(reviewers):
             for pix, p in enumerate(papers):
                 score_edges = conference.get_score_edges(p, r)
                 entry = self.make_entry_from_edges(score_edges)
                 agg_score = encoder.cost_function.aggregate_score(entry, encoder.weights)
+                ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
+                assert ag_sc_edge.weight == agg_score
+
+    # verify aggregate score edges have values that are correct
+    def check_aggregate_score_edges (self, client, reviewers, papers, conference, paper_reviewer_data):
+        agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
+        for rix, r in enumerate(reviewers):
+            for pix, p in enumerate(papers):
+                paper_user_scores = paper_reviewer_data.get_entry(p.id, r) #type: PaperUserScores
+                agg_score = paper_user_scores.aggregate_score
                 ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                 assert ag_sc_edge.weight == agg_score
 
@@ -85,8 +96,9 @@ class TestMatchClassAggregateScores():
         # score edges will be closer to the source of the data that forms the cost.
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        # enc = Encoder(config=test_util.get_conference().get_config_note().content)
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data)
 
 
     # @pytest.mark.skip
@@ -132,8 +144,8 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
         # Validate that the assignment edges are correct
         # reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
@@ -188,8 +200,8 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -205,7 +217,7 @@ class TestMatchClassAggregateScores():
             assert True
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test4_3papers_4reviewers_1conflict (self, test_util):
         '''
         Paper 0 conflicts with Reviewer 0 so this cannot be in the solution.
@@ -251,8 +263,8 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -264,7 +276,7 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
 
 
-    # @pytest.mark.skip
+    @pytest.mark.skip("Lock/veto constraints no longer supported")
     def test5_3papers_4reviewers_1conflict (self, test_util):
         '''
         Is the same as test4 above but it deletes all the edges created from the 0's in the score_matrix which sets up the test case.
@@ -311,8 +323,8 @@ class TestMatchClassAggregateScores():
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
-        enc = Encoder(config=test_util.get_conference().get_config_note().content)
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,enc)
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None

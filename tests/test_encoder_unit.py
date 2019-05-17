@@ -6,7 +6,7 @@ from helpers.Params import Params
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 from matcher.Encoder import Encoder
-from matcher.PaperReviewerInfo import PaperReviewerInfo
+from matcher.PaperReviewerData import PaperReviewerData
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 
 #Unit tests that exercise the Encoder class's two public methods: encode and decode.
@@ -47,10 +47,10 @@ class TestEncoderUnit:
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
         md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content)
+        enc = Encoder(pr_data, config.content)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -59,7 +59,7 @@ class TestEncoderUnit:
             for p in range(num_papers):
                 assert(cost_matrix[r,p] == -2)
 
-    # @pytest.mark.skip()
+    @pytest.mark.skip("No longer supporting locks and vetos in edge version of matcher")
     def test2_encode_constraints_locks_and_vetos (self, test_util):
         '''
         lock paper 0: reviewer 0, paper 1: reviewer 1
@@ -86,14 +86,14 @@ class TestEncoderUnit:
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
         title = config.content[Configuration.TITLE]
-        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
+        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
                                                         conf.conf_ids.CONFLICTS_INV_ID,
                                                         conf.conf_ids.CONSTRAINTS_INV_ID,
                                                         conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content)
+        enc = Encoder(pr_data, config.content)
         print("Time to encode: ", time.time() - now)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
@@ -138,15 +138,14 @@ class TestEncoderUnit:
         conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
-        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
+        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
                                                         conf.conf_ids.CONFLICTS_INV_ID,
                                                         conf.conf_ids.CONSTRAINTS_INV_ID,
                                                         conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations)
 
         now = time.time()
-        enc = Encoder(md, config.content)
+        enc = Encoder(prd, config.content)
         print("Time to encode: ", time.time() - now)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
@@ -166,6 +165,7 @@ class TestEncoderUnit:
         assert constraint_matrix[2,2] == 0
         assert constraint_matrix[2,3] == 0
 
+    @pytest.mark.skip("locks/vetoes no longer supported")
     def test4_encode_conflicts_and_constraints (self, test_util):
         '''
         conflicts paper-0/user-0, paper-1/user-2
@@ -202,7 +202,7 @@ class TestEncoderUnit:
                                                         conf.conf_ids.CONFLICTS_INV_ID,
                                                         conf.conf_ids.CONSTRAINTS_INV_ID,
                                                         conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        md = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, md_invitations)
 
         now = time.time()
         enc = Encoder(md, config.content)
@@ -256,13 +256,12 @@ class TestEncoderUnit:
         conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
         print("Time to build test conference: ", time.time() - now)
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
         now = time.time()
-        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
+        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder(md, config.content)
+        enc = Encoder(prd, config.content)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -309,11 +308,10 @@ class TestEncoderUnit:
         papers = conf.get_paper_notes()
         reviewers = conf.reviewers
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
-        md_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
-        md = PaperReviewerInfo(or_client, title, conf.paper_notes, conf.reviewers, md_invitations)
+        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids)
+        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations)
 
-        enc = Encoder(md, config.content)
+        enc = Encoder(prd, config.content)
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
@@ -322,8 +320,8 @@ class TestEncoderUnit:
         now = time.time()
         assignments_by_forum = enc.decode(solution)
         print("Time to decode: ", time.time() - now)
-        assert assignments_by_forum[papers[0].id][0]['userId'] == reviewers[0]
-        assert assignments_by_forum[papers[1].id][0]['userId'] == reviewers[1]
-        assert assignments_by_forum[papers[2].id][0]['userId'] == reviewers[2]
-        assert assignments_by_forum[papers[2].id][1]['userId'] == reviewers[3]
+        assert assignments_by_forum[papers[0].id][0].user == reviewers[0]
+        assert assignments_by_forum[papers[1].id][0].user == reviewers[1]
+        assert assignments_by_forum[papers[2].id][0].user == reviewers[2]
+        assert assignments_by_forum[papers[2].id][1].user == reviewers[3]
 
