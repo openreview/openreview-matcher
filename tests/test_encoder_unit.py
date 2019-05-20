@@ -21,10 +21,9 @@ class TestEncoderUnit:
         pass
 
 
-    # @pytest.mark.skip
-    def test1_encode (self, test_util):
+    def test_simple_encode (self, test_util):
         '''
-        Build a conference using edges for the three scores tpms, recommendation, bid
+        Build a conference affinity and recommendation.  Verify cost matrix is correct
         :param test_util:
         :return:
         '''
@@ -42,14 +41,10 @@ class TestEncoderUnit:
 
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count() , params)
-        # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
         md = conf.get_metadata_notes()
 
-        now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
-        print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -62,8 +57,7 @@ class TestEncoderUnit:
 
 
 
-    # @pytest.mark.skip("No longer supporting locks and vetos in edge version of matcher")
-    def test2_encode_constraints_locks_and_vetos (self, test_util):
+    def test_encode_constraints_locks_and_vetos (self, test_util):
         '''
         lock paper 0: reviewer 0, paper 1: reviewer 1
         veto paper 0: reviewer 1, paper 2: reviewer 0
@@ -86,15 +80,11 @@ class TestEncoderUnit:
 
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
-        # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
 
         md = conf.get_metadata_notes()
 
-        now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
-        print("Time to encode: ", time.time() - now)
         constraint_matrix = enc.constraint_matrix
         shape = constraint_matrix.shape
         rev_indices = [enc.index_by_reviewer[r] for r in conf.reviewers]
@@ -116,8 +106,7 @@ class TestEncoderUnit:
         assert constraint_matrix[rev_indices[2],pap_indices[2]] == 0
         assert constraint_matrix[rev_indices[2],pap_indices[3]] == 0
 
-    # @pytest.mark.skip()
-    def test3_encode_conflicts (self, test_util):
+    def test_encode_conflicts (self, test_util):
         '''
         conflicts paper-0/user-0, paper-1/user-2
         :param test_util:
@@ -138,14 +127,11 @@ class TestEncoderUnit:
 
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
-        # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
 
         md = conf.get_metadata_notes()
 
-        now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
-        print("Time to encode: ", time.time() - now)
         constraint_matrix = enc.constraint_matrix
         rev_indices = [enc.index_by_reviewer[r] for r in conf.reviewers]
         pap_indices = [enc.index_by_forum[p.id] for p in conf.paper_notes]
@@ -162,19 +148,17 @@ class TestEncoderUnit:
         assert constraint_matrix[rev_indices[1],pap_indices[2]] == 0
         assert constraint_matrix[rev_indices[1],pap_indices[3]] == 0
         assert constraint_matrix[rev_indices[2],pap_indices[0]] == 0
-        # assert constraint_matrix[2,1] == 0
         assert constraint_matrix[rev_indices[2],pap_indices[2]] == 0
         assert constraint_matrix[rev_indices[2],pap_indices[3]] == 0
 
 
-    # @pytest.mark.skip("locks/vetoes no longer supported")
-    def test4_encode_conflicts_and_constraints (self, test_util):
+    def test_encode_conflicts_and_constraints (self, test_util):
         '''
         conflicts paper-0/user-0, paper-1/user-2
         vetos: paper-3/users 1,2
         locks: paper-0/user-0, paper-2/user-2
 
-        the lock of paper-0/user-0 will dominate the conflict between these two.
+        the lock of paper-0/user-0 will take precedence over the conflict between these two.
         :param test_util:
         :return:
         '''
@@ -197,15 +181,11 @@ class TestEncoderUnit:
 
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
-        # md = conf.get_metadata_notes_following_paper_order()
         config = conf.get_config_note()
-        title = config.content[Configuration.TITLE]
 
         md = conf.get_metadata_notes()
 
-        now = time.time()
         enc = Encoder(md, config.content, conf.reviewers)
-        print("Time to encode: ", time.time() - now)
         constraint_matrix = enc.constraint_matrix
         shape = constraint_matrix.shape
         rev_indices = [enc.index_by_reviewer[r] for r in conf.reviewers]
@@ -236,7 +216,7 @@ class TestEncoderUnit:
     @pytest.mark.skip("Takes several minutes to run")
     def test_big_encode (self, test_util):
         '''
-        Build a conference using edges for the three scores tpms, recommendation, bid
+        Build a large conference and make sure cost matrix is correct
         :param test_util:
         :return:
         '''
@@ -276,9 +256,13 @@ class TestEncoderUnit:
 
     def test_decode (self, test_util):
         '''
-        There is a dependency where testing decode means that the Encoder must have first been instantiated and encode called.
-        decode makes reference to dictionaries built during encode so I can't just remove the call to encode that is in the constructor
+        Test that the decoder produces the expected assignment.   It's necessary to configure
+        the inputs to get a predictable solution.   We send a score matrix that forces
+        it to choose the expected solution reviewer-0->paper-0, 1->1, 2->2, 3->2
         '''
+
+        # There is a dependency where testing decode means that the Encoder must have first been instantiated.  Encoder's constructor calls encode.
+        # decode makes reference to dictionaries built during encode
         score_matrix = np.array([
             [10, 0, 0],
             [0, 10, 0],
@@ -298,12 +282,7 @@ class TestEncoderUnit:
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
                          })
-        '''
-        Test that the decoder produces the expected assignment.   Its necessary to configure
-        the inputs to get a predictable solution.   We send a score matrix that forces
-        it to choose the expected solution reviewer-0->paper-0, 1->1, 2->2, 3->2
-                         
-        '''
+
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
         papers = conf.get_paper_notes()
@@ -326,11 +305,8 @@ class TestEncoderUnit:
 
         solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, demands, cost_matrix, constraint_matrix, graph_builder)
         solution = solver.solve()
-        rev_indices = [enc.index_by_reviewer[r] for r in conf.reviewers]
-        pap_indices = [enc.index_by_forum[p.id] for p in conf.paper_notes]
-        now = time.time()
+
         assignments_by_forum = enc.decode(solution)[0]
-        print("Time to decode: ", time.time() - now)
         assert assignments_by_forum[papers[0].id][0]['userId'] == reviewers[0]
         assert assignments_by_forum[papers[1].id][0]['userId'] == reviewers[1]
         assert assignments_by_forum[papers[2].id][0]['userId'] in [reviewers[2], reviewers[3]]

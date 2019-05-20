@@ -9,7 +9,7 @@ class TestSolver:
     def setup_class(cls):
         cls.silent = True
 
-    def test_solver1 (self):
+    def test_solver_finds_lowest_cost_soln (self):
         '''
         4 reviewers 3 papers.   Papers 0,1 need 1 review; Paper 2 needs 2 reviews.  Reviewers can do max of 2 reviews
         Setup so that lowest cost solution should be
@@ -38,7 +38,7 @@ class TestSolver:
         assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
         assert cost == 0,  "Lowest cost solution should have cost = 0"
 
-    def test_solver2 (self):
+    def test_solver_respects_constraints (self):
         '''
         Tests 4 papers, 3 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
         Constrained such that:
@@ -76,7 +76,7 @@ class TestSolver:
 
         assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
 
-    def test_solver3 (self):
+    def test_solver_find_lowest_cost_and_respect_constraints (self):
         '''
         Tests 4 papers, 3 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
         Constrained such that:
@@ -117,11 +117,11 @@ class TestSolver:
         assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
 
 
-    def test_solver5 (self):
+    def test_solver_respects_one_minimum (self):
         '''
         Tests 3 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 3 reviews.
         Reviewer 4 has very high cost.  Other reviewers have 0 cost.
-        Purpose:  Make sure all reviewers get at least their minimum
+        Purpose:  Make sure all reviewers (including reviewer 4) get at least their minimum
         '''
         num_papers = 3
         num_reviewers = 4
@@ -162,11 +162,11 @@ class TestSolver:
         print("solution matrix")
         print(res)
 
-    def test_solver6 (self):
+    def test_solver_respects_two_minimum (self):
         '''
         Tests 3 papers, 4 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 3 reviews.
         Reviewer 4 has very high cost.  Other reviewers have 0 cost.
-        Purpose:  Make sure all reviewers get at least their minimum
+        Purpose:  Make sure all reviewers (including reviewer 4) get at least their minimum
         '''
         num_papers = 3
         num_reviewers = 4
