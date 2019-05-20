@@ -117,6 +117,96 @@ class TestSolver:
         assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
 
 
+    def test_solver5 (self):
+        '''
+        Tests 3 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 3 reviews.
+        Reviewer 4 has very high cost.  Other reviewers have 0 cost.
+        Purpose:  Make sure all reviewers get at least their minimum
+        '''
+        num_papers = 3
+        num_reviewers = 4
+        min_papers_per_reviewer = 1
+        max_papers_per_reviewer = 3
+        paper_revs_reqd = 3
+        cost_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [2000, 2000, 2000]])
+        constraint_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]])
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (4,3)
+        # make sure every reviewer has at least 1 paper
+        nrows, ncols = res.shape
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            assert reviewer_count_reviews >= 1
+        # TestSolver.silent = False
+        print("-----")
+        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
+        print("cost matrix")
+        print(cost_matrix)
+        print("solution matrix")
+        print(res)
+
+    def test_solver6 (self):
+        '''
+        Tests 3 papers, 4 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 3 reviews.
+        Reviewer 4 has very high cost.  Other reviewers have 0 cost.
+        Purpose:  Make sure all reviewers get at least their minimum
+        '''
+        num_papers = 3
+        num_reviewers = 4
+        min_papers_per_reviewer = 2
+        max_papers_per_reviewer = 3
+        paper_revs_reqd = 3
+        cost_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [2000, 2000, 2000]])
+        constraint_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]])
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (4,3)
+        # make sure every reviewer has at least 1 paper
+        nrows, ncols = res.shape
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            assert reviewer_count_reviews >= 1
+        # TestSolver.silent = False
+        print("-----")
+        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
+        print("cost matrix")
+        print(cost_matrix)
+        print("solution matrix")
+        print(res)
+
     def print_header  (self):
         if not self.silent:
             print('  Arc    Flow / Capacity  Cost')

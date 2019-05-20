@@ -48,6 +48,7 @@ class ConferenceConfig:
         self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
                                     remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
+        self.conference.has_area_chairs(True)
         self.conference.set_program_chairs(emails=[])
         self.conference.set_area_chairs(emails=[])
         self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.params.num_reviewers)]
