@@ -207,6 +207,60 @@ class TestSolver:
         print("solution matrix")
         print(res)
 
+    def test_solver_respects_minimums_icml (self):
+        '''
+        Based on ICML workshop which produces a match that has users either getting 4 or 6 papers with one user
+        getting just 2.
+        There are 44 papers, 27 reviewers. 3 users per paper and between 4 and 6 papers per user.
+        All reviewers are 0 cost.
+        Purpose:  Make sure all reviewers get between their min and max
+        TODO Why do all reviewers get either the min or max?  None of them get a number in between!
+        '''
+        num_papers = 44
+        num_reviewers = 27
+        min_papers_per_reviewer = 4
+        max_papers_per_reviewer = 6
+        paper_revs_reqd = 3
+        cost_matrix = np.zeros((num_reviewers, num_papers))
+        constraint_matrix = np.zeros((num_reviewers, num_papers))
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (27,44)
+        # make sure every reviewer has >= minimum number of papers
+        # make sure every reviewer has <= maximum number of papers
+        nrows, ncols = res.shape
+        total = 0
+        num4=0
+        num6=0
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            total += reviewer_count_reviews
+            if reviewer_count_reviews == 4:
+                num4 += 1
+            else:
+                num6 += 1
+            print("Reviewer: {} has {} papers".format(rix, reviewer_count_reviews))
+            assert reviewer_count_reviews >= min_papers_per_reviewer
+            assert reviewer_count_reviews <= max_papers_per_reviewer
+        assert total == num_papers * paper_revs_reqd
+        assert total == num4*4 + num6*6
+        print("Total reviews",total, "num 4", num4, "num 6", num6)
+        # TestSolver.silent = False
+        print("-----")
+        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
+        print("cost matrix")
+        print(cost_matrix)
+        print("solution matrix")
+        print(res)
+
     def print_header  (self):
         if not self.silent:
             print('  Arc    Flow / Capacity  Cost')
