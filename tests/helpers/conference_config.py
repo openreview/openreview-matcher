@@ -67,8 +67,7 @@ class ConferenceConfig:
             content = config_inv.reply['content']
             del content['scores_names']
             content["scores_names"] = {
-                "values-dropdown": ['bid', 'recommendation', 'tpms'],
-                # "values": ['bid', 'recommendation', 'tpms'],
+                "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
                 "required": True,
                 "description": "List of scores names",
                 "order": 3
@@ -76,12 +75,18 @@ class ConferenceConfig:
             self.client.post_invitation(config_inv)
 
     def gen_scores (self):
-        tpms = 1
-        rec = 1
-        if self.params.scores_config == Params.RANDOM_SCORE:
-            tpms = random.random()
-            rec = random.random()
-        return {'tpms': tpms, 'recommendation': rec}
+        d = {}
+        cur_sc = 0.0
+        for sc in self.params.scores_config[Params.SCORE_NAMES_LIST]:
+            if self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
+                d[sc] = self.params.scores_config[Params.FIXED_SCORE_VALUE]
+            elif self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
+                d[sc] = random.random()
+            elif self.params.scores_config[Params.SCORE_TYPE] == Params.INCREMENTAL_SCORE:
+                cur_sc += self.params.scores_config[Params.SCORE_INCREMENT]
+                d[sc] = cur_sc
+        return d
+
 
     # adds randomly generated scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
@@ -91,12 +96,24 @@ class ConferenceConfig:
         for md_note in metadata_notes:
             entries = []
             for reviewer in reviewers:
-                entry = {PaperReviewerScore.USERID: reviewer,
+                if self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
+                    entry = self. get_matrix_entry(md_note.forum, reviewer)
+                else:
+                    entry = {PaperReviewerScore.USERID: reviewer,
                          PaperReviewerScore.SCORES: self.gen_scores()}
                 entries.append(entry)
             md_note.content[PaperReviewerScore.ENTRIES] = entries
             self.client.post_note(md_note)
         self.add_conflicts_to_metadata()
+
+    def get_matrix_entry (self, forum_id, reviewer):
+        pap_ix = next(i for i,v in enumerate(self.paper_notes) if v.id == forum_id)
+        rev_ix = next(i for i,v in enumerate(self.reviewers) if v == reviewer)
+        sc = str(self.params.scores_config[Params.SCORE_MATRIX][rev_ix,pap_ix])
+        return {PaperReviewerScore.USERID: reviewer,
+                PaperReviewerScore.SCORES: {self.params.scores_config[Params.SCORE_NAMES_LIST][0]: sc}
+                }
+
 
     # params.conflicts_config is dict that maps paper indices to list of user indices that conflict with the paper
     def add_conflicts_to_metadata (self):
@@ -154,8 +171,8 @@ class ConferenceConfig:
             'content': {
                 'title': 'reviewers',
                 # TODO Question:  Can only set these because I customized the invitation
-                'scores_names': ['bid','recommendation', 'tpms'],
-                'scores_weights': ['1', '2', '3'],
+                'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
+                'scores_weights': ['1'] * len(self.params.scores_config[Params.SCORE_NAMES_LIST]),
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review

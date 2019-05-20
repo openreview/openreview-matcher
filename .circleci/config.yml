@@ -11,20 +11,10 @@ jobs:
     - image: elastic/elasticsearch:6.2.2
     steps:
     - checkout
-#    temporarily using the feature/edges branch
-    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-#      Temporarily clone the feature/edges branch of openreview-py
-    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
+#      may need to put openreview-py on this machine
+#    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
-#    - run:
-#        name: install openreview node app
-#        command: |
-#          cd ~/openreview
-#          npm install
-#          sudo npm install -g grunt-cli
-#          grunt regen
-#          mkdir pdfs
-#          NODE_ENV=circleci node scripts/setup.js
     - run:
         name: run openreview node app with clean db
         command: |
@@ -49,19 +39,20 @@ jobs:
           . venv/bin/activate
           pip install -r requirements.txt
           deactivate
-#    - run:
-#        name: install openreview-py
-#        command: |
-#          cd ~/openreview-matcher-repo
-#          . venv/bin/activate
-#          pip install openreview-py
-#          deactivate
+#   Will install openreview-py from released version in web repo.
     - run:
-        name: install the local openreview-py as a dependency
+        name: install openreview-py
         command: |
           cd ~/openreview-matcher-repo
           . venv/bin/activate
-          pip install -e ~/openreview-py
+          pip install openreview-py
+          deactivate
+#    - run:
+#        name: install the local openreview-py as a dependency
+#        command: |
+#          cd ~/openreview-matcher-repo
+#          . venv/bin/activate
+#          pip install -e ~/openreview-py
     - run:
         name: run tests
         command: |

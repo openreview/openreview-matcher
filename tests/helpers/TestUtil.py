@@ -1,9 +1,11 @@
 import time
 import json
+import traceback
 
-from helpers.display_conf import DisplayConf
+from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
 from helpers.conference_config import ConferenceConfig
+
 import openreview
 import matcher
 
@@ -18,13 +20,23 @@ class TestUtil:
         return cls.instance
 
     def __init__(self, base_url, flask_test_client, silent):
-        self.test_count = 0
+        self._test_count = 0
         self.OR_CLIENT_USER = 'openreview.net'
         self.OR_CLIENT_PASSWORD = '1234'
-        self.get_client(base_url)
+        self.client = self.get_client(base_url)
+        self.create_super_user()
         self.flask_test_client = flask_test_client
         self.silent = silent
         self.initialize_matcher_app()
+        self.conf_builder = 'Old'
+
+
+    def set_conf_builder (self, use_edge_builder):
+        self.conf_builder = 'Edge' if use_edge_builder else 'Old'
+
+    def use_edge_conf_builder (self):
+        return self.conf_builder == 'Edge'
+
 
     def set_silent (self, silent):
         self.silent = silent
@@ -40,11 +52,17 @@ class TestUtil:
         matcher.app.logger.disabled = True
         matcher.app.logger.parent.disabled = True
 
-    def get_client(self, base_url):
-        self.client = openreview.Client(baseurl = base_url)
+    def get_client (self, base_url):
+        return openreview.Client(baseurl = base_url)
+
+    def create_super_user(self):
         assert self.client is not None, "Client is none"
-        res = self.client.register_user(email = self.OR_CLIENT_USER, first = 'Super', last = 'User', password = self.OR_CLIENT_PASSWORD)
-        assert res, "Res i none"
+        try:
+            res = self.client.register_user(email = self.OR_CLIENT_USER, first = 'Super', last = 'User', password = self.OR_CLIENT_PASSWORD)
+        except:
+            traceback.print_last()
+
+        assert res, "No result for registering user"
         res = self.client.activate_user('openreview.net', {
             'names': [
                 {
@@ -61,6 +79,7 @@ class TestUtil:
         assert group
         assert group.members == ['~Super_User1']
 
+
     def get_conference (self):
         return self.conf
 
@@ -74,14 +93,17 @@ class TestUtil:
         if not self.silent:
             self.params.print_params()
 
+    def next_conference_count (self):
+        self._test_count += 1
+        return self._test_count
 
     def test_matcher (self):
-        self.test_count += 1
         self.build_conference()
         self.run_matcher()
 
     def build_conference (self):
-        self.conf = ConferenceConfig(self.client, self.test_count, self.params)
+        self.next_conference_count()
+        self.conf = ConferenceConfig(self.client, self._test_count, self.params)
         if not self.silent:
             DisplayConf(self.conf).display_input_structures()
 
@@ -107,3 +129,6 @@ class TestUtil:
             return self.flask_test_client.post(url, data=config_note, content_type='application/json', headers=headers)
         else:
             return self.flask_test_client.post(url, data=config_note, content_type='application/json')
+
+
+
