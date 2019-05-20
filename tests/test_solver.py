@@ -253,13 +253,7 @@ class TestSolver:
         assert total == num_papers * paper_revs_reqd
         assert total == num4*4 + num6*6
         print("Total reviews",total, "num 4", num4, "num 6", num6)
-        # TestSolver.silent = False
-        print("-----")
-        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
-        print("cost matrix")
-        print(cost_matrix)
-        print("solution matrix")
-        print(res)
+
 
     def print_header  (self):
         if not self.silent:
