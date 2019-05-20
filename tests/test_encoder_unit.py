@@ -21,7 +21,6 @@ class TestEncoderUnit:
         pass
 
 
-
     # @pytest.mark.skip
     def test1_encode (self, test_util):
         '''
@@ -234,7 +233,7 @@ class TestEncoderUnit:
 
 
 
-    @pytest.mark.skip
+    @pytest.mark.skip("Takes several minutes to run")
     def test_big_encode (self, test_util):
         '''
         Build a conference using edges for the three scores tpms, recommendation, bid
@@ -275,7 +274,6 @@ class TestEncoderUnit:
                 assert(cost_matrix[rix,pix] == -1*num_scores)
 
 
-    @pytest.mark.skip("This not quite working for non-edge matcher")
     def test_decode (self, test_util):
         '''
         There is a dependency where testing decode means that the Encoder must have first been instantiated and encode called.
@@ -317,7 +315,16 @@ class TestEncoderUnit:
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, [1,1,2], cost_matrix, constraint_matrix, graph_builder)
+        # set demands so that paper-0: 1, paper-1: 1, paper-2: 2
+        demands = [0,0,0]
+        ix = enc.index_by_forum[papers[0].id]
+        demands[ix] = 1
+        ix = enc.index_by_forum[papers[1].id]
+        demands[ix] = 1
+        ix = enc.index_by_forum[papers[2].id]
+        demands[ix] = 2
+
+        solver = AssignmentGraph([1] * num_reviewers, [reviewer_max_papers] * num_reviewers, demands, cost_matrix, constraint_matrix, graph_builder)
         solution = solver.solve()
         rev_indices = [enc.index_by_reviewer[r] for r in conf.reviewers]
         pap_indices = [enc.index_by_forum[p.id] for p in conf.paper_notes]
@@ -326,6 +333,6 @@ class TestEncoderUnit:
         print("Time to decode: ", time.time() - now)
         assert assignments_by_forum[papers[0].id][0]['userId'] == reviewers[0]
         assert assignments_by_forum[papers[1].id][0]['userId'] == reviewers[1]
-        assert assignments_by_forum[papers[2].id][0]['userId'] == reviewers[2]
-        assert assignments_by_forum[papers[2].id][1]['userId'] == reviewers[3]
+        assert assignments_by_forum[papers[2].id][0]['userId'] in [reviewers[2], reviewers[3]]
+        assert assignments_by_forum[papers[2].id][1]['userId'] in [reviewers[2], reviewers[3]]
 
