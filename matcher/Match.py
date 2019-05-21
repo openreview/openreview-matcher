@@ -47,45 +47,42 @@ class Match:
             self.logger.debug("Finished task for configId: " + self.config_note.id)
             return self.config_note
 
+
+    # from notes and edges get the necessary data and keep internally
+    def extract_conference_data (self):
+        self.papers = list(openreview.tools.iterget_notes(self.client, invitation=self.config[Configuration.PAPER_INVITATION]))
+        reviewer_group = self.client.get_group(self.config['match_group'])
+        self.reviewer_ids = reviewer_group.members
+        self.assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
+        score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
+        score_names = self.config[Configuration.SCORES_NAMES]
+        conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
+        custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
+        edge_invitations = PaperReviewerEdgeInvitationIds(score_invitation_ids,
+                                                          conflicts=conflicts_inv_id,
+                                                          custom_loads=custom_loads_inv_id)
+        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, self.logger)
+        inv_score_names = edge_invitations.get_score_names()
+        assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
+        self.demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
+        self.minimums, self.maximums = self._get_reviewer_loads(custom_loads_inv_id)
+
     # Compute a match of reviewers to papers and post it to the as assignment notes.
     # The config note's status field will be set to reflect completion or the variety of failures.
     def compute_match(self):
         try:
             self.set_status(Configuration.STATUS_RUNNING)
-            self.papers = list(openreview.tools.iterget_notes(self.client, invitation=self.config[Configuration.PAPER_INVITATION]))
-            reviewer_group = self.client.get_group(self.config['match_group'])
-            assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
-            score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
-            score_names = self.config[Configuration.SCORES_NAMES]
-            self.reviewer_ids = reviewer_group.members
-            conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
-            constraints_inv_id = self.config[Configuration.CONSTRAINTS_INVITATION_ID]
-            custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
-            edge_invitations = PaperReviewerEdgeInvitationIds(score_invitation_ids,
-                                                            conflicts=conflicts_inv_id,
-                                                            constraints=constraints_inv_id,
-                                                            custom_loads=custom_loads_inv_id)
-            self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, self.logger)
-            inv_score_names = edge_invitations.get_score_names()
-            assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
-            if type(self.config[Configuration.MAX_USERS]) == str:
-                demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
-            else:
-                demands = [self.config[Configuration.MAX_USERS]] * len(self.papers)
-
+            self.extract_conference_data()
             self.logger.debug("Encoding")
             encoder = Encoder(self.paper_reviewer_data, self.config, logger=self.logger)
-            minimums, maximums = self._get_reviewer_loads(custom_loads_inv_id)
-
-
             graph_builder = GraphBuilder.get_builder(
                 self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
 
             self.logger.debug("Preparing Graph")
             graph = AssignmentGraph(
-                minimums,
-                maximums,
-                demands,
+                self.minimums,
+                self.maximums,
+                self.demands,
                 encoder.cost_matrix,
                 encoder._constraint_matrix,
                 graph_builder = graph_builder
@@ -97,7 +94,7 @@ class Match:
             if graph.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum = encoder.decode(solution)
-                self._save_suggested_assignment(assignment_inv, assignments_by_forum)
+                self._save_suggested_assignment(self.assignment_inv, assignments_by_forum)
                 self._save_aggregate_scores()
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
@@ -111,15 +108,8 @@ class Match:
             raise e
 
     def _get_reviewer_loads (self, custom_load_invitation_id):
-        if type(self.config[Configuration.MIN_PAPERS]) == str:
-            minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
-        else:
-            minimums = [self.config[Configuration.MIN_PAPERS]] * len(self.reviewer_ids)
-        if type(self.config[Configuration.MAX_PAPERS]) == str:
-            maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(self.reviewer_ids)
-        else:
-            maximums = [self.config[Configuration.MAX_PAPERS]] * len(self.reviewer_ids)
-
+        minimums = [int(self.config[Configuration.MIN_PAPERS])] * len(self.reviewer_ids)
+        maximums = [int(self.config[Configuration.MAX_PAPERS])] * len(self.reviewer_ids)
         return self._get_custom_loads(custom_load_invitation_id, minimums, maximums)
 
     def _get_custom_loads (self, custom_load_invitation_id, minimums, maximums):

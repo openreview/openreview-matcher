@@ -33,10 +33,12 @@ class ConferenceConfig:
     def __init__ (self, client, suffix_num, params):
 
         random.seed(10) # want a reproducible sequence of random numbers
+        self._silence = True
         self.client = client
         self.config_title = 'Reviewers'
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
-        print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
+        if not self._silence:
+            print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
         self.params = params
         self.config_inv = None
         self.conference = None
@@ -46,6 +48,13 @@ class ConferenceConfig:
         self.incremental_score = 0.0
         self.build_conference()
 
+    @property
+    def silence (self):
+        return self._silence
+
+    @silence.setter
+    def silence (self, silence):
+        self._silence= silence
 
     def build_conference (self):
         builder = openreview.conference.ConferenceBuilder(self.client)
@@ -175,8 +184,8 @@ class ConferenceConfig:
             })
             posted_submission = self.client.post_note(paper_note)
             self.paper_notes.append(posted_submission)
-
-        print("There are ", len(self.paper_notes), " papers")
+        if not self._silence:
+            print("There are ", len(self.paper_notes), " papers")
 
 
     def create_and_post_config_note (self):
@@ -308,6 +317,13 @@ class ConferenceConfig:
 
 
     ## Below are routines some of which could go into the matching portion of the conference builder
+
+
+    def get_paper_index (self, forum_id):
+        return next (i for i,p in enumerate(self.paper_notes) if p.id == forum_id )
+
+    def get_reviewer_index (self, reviewer):
+        return self.reviewers.index(reviewer)
 
     def get_paper (self, forum_id):
         for p in self.paper_notes:

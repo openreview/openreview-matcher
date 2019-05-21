@@ -1,4 +1,3 @@
-from matcher.fields import Assignment, Configuration
 from collections import defaultdict
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 
@@ -13,7 +12,6 @@ class AssignmentChecker:
         '''
         :return: a map of reviewers to a count of how many papers they are reviewing.
         '''
-        review_counts = defaultdict(int)
         d = defaultdict(int)
         for e in self.conf.get_assignment_edges():
             d[e.tail] += 1

@@ -3,6 +3,7 @@ class Params:
     NUM_REVIEWERS = 'num_reviewers'
     NUM_REVIEWS_NEEDED_PER_PAPER = 'reviews_needed_per_paper'
     REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
+    REVIEWER_MIN_PAPERS = 'reviewer_min_papers'
     CUSTOM_LOAD_CONFIG = 'custom_load_config'
     CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
     CUSTOM_LOAD_MAP = 'reviewer_custom_loads'
@@ -28,6 +29,7 @@ class Params:
         self.num_reviewers = self.params[Params.NUM_REVIEWERS]
         self.num_reviews_needed_per_paper = self.params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
         self.reviewer_max_papers = self.params[Params.REVIEWER_MAX_PAPERS]
+        self.reviewer_min_papers = self.params.get(Params.REVIEWER_MIN_PAPERS, 1)
         self.custom_load_config = self.params.get(Params.CUSTOM_LOAD_CONFIG, {})
         self.custom_load_supply_deduction = self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION, 0)
         self.custom_load_map = self.custom_load_config.get(Params.CUSTOM_LOAD_MAP, {})

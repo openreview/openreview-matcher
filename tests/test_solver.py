@@ -178,12 +178,7 @@ class TestSolver:
             assert reviewer_count_reviews >= 1
         # TestSolver.silent = False
         self.check_solution(solver,solver.min_cost_flow.OptimalCost())
-        print("-----")
-        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
-        print("cost matrix")
-        print(cost_matrix)
-        print("solution matrix")
-        print(res)
+
 
     def test_solver6 (self):
         '''
@@ -224,12 +219,7 @@ class TestSolver:
             assert reviewer_count_reviews >= 1
         # TestSolver.silent = False
         self.check_solution(solver,solver.min_cost_flow.OptimalCost())
-        print("-----")
-        print("Reviewer min: {}, max: {}".format(min_papers_per_reviewer, max_papers_per_reviewer))
-        print("cost matrix")
-        print(cost_matrix)
-        print("solution matrix")
-        print(res)
+
 
     def test_solver_respects_minimums_icml (self):
         '''
@@ -271,12 +261,12 @@ class TestSolver:
                 num4 += 1
             else:
                 num6 += 1
-            print("Reviewer: {} has {} papers".format(rix, reviewer_count_reviews))
+            # print("Reviewer: {} has {} papers".format(rix, reviewer_count_reviews))
             assert reviewer_count_reviews >= min_papers_per_reviewer
             assert reviewer_count_reviews <= max_papers_per_reviewer
         assert total == num_papers * paper_revs_reqd
         assert total == num4*4 + num6*6
-        print("Total reviews",total, "num 4", num4, "num 6", num6)
+        # print("Total reviews",total, "num 4", num4, "num 6", num6)
 
     def check_solution (self, solver, expected_cost):
         self.print_header()

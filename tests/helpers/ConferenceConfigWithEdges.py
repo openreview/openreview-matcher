@@ -75,7 +75,8 @@ class ConferenceConfigWithEdges (ConferenceConfig):
 
 
     def add_reviewer_entries_to_metadata (self):
-        print("Starting to build score edges")
+        if not self._silence:
+            print("Starting to build score edges")
         now = time.time()
         # create the invitations for the score edges now that other parts of the conference have been built
         # self.build_score_invitations()
@@ -97,7 +98,8 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 reviewer_ix += 1
             paper_ix += 1
         self.client.post_bulk_edges(edges)
-        print("Time to build score edges: ", time.time() - now)
+        if not self._silence:
+            print("Time to build score edges: ", time.time() - now)
         self.add_conflicts_to_metadata()
 
     def get_aggregate_edges (self):
@@ -115,6 +117,14 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         assignment_inv_id = self.conf_ids.ASSIGNMENT_ID
         edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv_id)
         return list(edges)
+
+    def get_assignment_edges_as_tuples (self):
+        '''
+        return a list of (paper_index, reviewer-index) showing which papers are assigned which users
+        :return:
+        '''
+        edges = self.get_assignment_edges()
+        return [ (self.get_paper_index(e.head), self.get_reviewer_index(e.tail)) for e in edges ]
 
     def get_assignment_edge (self, paper_id, reviewer ):
         assignment_inv_id = self.conf_ids.ASSIGNMENT_ID

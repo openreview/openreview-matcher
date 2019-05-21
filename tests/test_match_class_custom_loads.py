@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.Match import Match
 from helpers.Params import Params
@@ -31,10 +30,10 @@ class TestMatchClassCustomLoads():
         pass
 
 
-    @pytest.mark.skip()
+    # @pytest.mark.skip("test fails")
     # This test is not working.  The custom_load of 0 for reviewer 0 doesn't cause the matcher to omit using this reviewer in its solution.
-    # Maybe we need a special case to add a constraint in the matrix if a load is zero????
-    def test1_3papers_4reviewers_1custom_load (self, test_util):
+    # The zero is sent to the solver in the list of minimums but it doesn't heed it.
+    def test_custom_load_is_zero (self, test_util):
         '''
         Reviewer 0 has a custom_load of 0 and cannot review paper 0 despite being the high scorer.
         :param test_util:
@@ -75,18 +74,25 @@ class TestMatchClassCustomLoads():
         aggregate_score_edges = conference.get_aggregate_score_edges()
         assert len(aggregate_score_edges) == num_reviewers * num_papers
 
-        reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
 
+        assigned = conference.get_assignment_edges_as_tuples()
         # Validate that the assignment edges are correct
+        # Each tuple is (paper_index, reviewer_index)
         # reviewer-1 -> paper-1
-        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
-        # 2 -> 2
-        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
-        # 3 -> 2
-        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
-        # !reviewer-0 -> paper-0
-        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) == None
+        assert (1,1) in assigned
+        assert (2,2) in assigned
+        assert (2,3) in assigned
+        # reviewer 0 is not assigned to a paper because the custom_load set to 0
+        assert (0,0) not in assigned and (1,0) not in assigned and (2,0) not in assigned
+        # paper 0 gets 2 reviews from among reviewers 1,2,3
+        a0 = list(filter(None, [(0,1) in assigned, (0,2) in assigned, (0,3) in assigned]))
+        assert len(a0) == 2, "Paper 0 should be assigned to 2 reviewers"
+        # paper 1 gets 2 reviews from among reviewers 0,1,2,3
+        a1 = list(filter(None, [(1,0) in assigned, (1,1) in assigned, (1,2) in assigned, (1,3) in assigned]))
+        assert len(a1) == 2, "Paper 1 should be assigned to 2 reviewers"
+        # paper 2 gets 2 reviews from among reviewers 0,1,2,3
+        a2 = list(filter(None, [(2,0) in assigned, (2,1) in assigned, (2,2) in assigned, (2,3) in assigned]))
+        assert len(a2) == 2, "Paper 2 should be assigned to 2 reviewers"
 
 
     # @pytest.mark.skip()
@@ -130,27 +136,15 @@ class TestMatchClassCustomLoads():
 
         aggregate_score_edges = conference.get_aggregate_score_edges()
         assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assigned = conference.get_assignment_edges_as_tuples()
+        # tuples are (paper_index, reviewer_index)
+        assert (0,0) in assigned
+        assert (0,1) in assigned
+        assert (1,1) in assigned
+        assert (1,2) in assigned
+        assert (2,2) in assigned
+        assert (2,3) in assigned
 
-        reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
-
-        # Validate that the assignment edges are correct
-        self.show_assignment(papers, conference)
-
-        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[2]) != None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[0]) == None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[3]) == None
-
-        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) != None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[1]) == None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[0]) == None
-
-        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[1]) != None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[2]) == None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[3]) == None
 
     # @pytest.mark.skip()
     def test3_5papers_5reviewers_custom_loads (self, test_util):
@@ -190,39 +184,14 @@ class TestMatchClassCustomLoads():
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+        assigned = conference.get_assignment_edges_as_tuples()
+        # tuples are (paper_index, reviewer_index)
+        assert (0,0) in assigned
+        assert (1,4) in assigned
+        assert (2,1) in assigned
+        assert (3,3) in assigned
+        assert (4,2) in assigned
 
-        reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
-
-        # Validate that the assignment edges are correct
-        self.show_assignment(papers, conference)
-
-        assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[4]) != None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[1]) != None
-        assert conference.get_assignment_edge(papers[3].id, reviewers[3]) != None
-        assert conference.get_assignment_edge(papers[4].id, reviewers[2]) != None
-
-        assert conference.get_assignment_edge(papers[0].id, reviewers[1]) == None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[2]) == None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[3]) == None
-        assert conference.get_assignment_edge(papers[0].id, reviewers[4]) == None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[0]) == None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[1]) == None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[2]) == None
-        assert conference.get_assignment_edge(papers[1].id, reviewers[3]) == None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[0]) == None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[2]) == None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[3]) == None
-        assert conference.get_assignment_edge(papers[2].id, reviewers[4]) == None
-        assert conference.get_assignment_edge(papers[3].id, reviewers[0]) == None
-        assert conference.get_assignment_edge(papers[3].id, reviewers[1]) == None
-        assert conference.get_assignment_edge(papers[3].id, reviewers[2]) == None
-        assert conference.get_assignment_edge(papers[3].id, reviewers[4]) == None
-        assert conference.get_assignment_edge(papers[4].id, reviewers[0]) == None
-        assert conference.get_assignment_edge(papers[4].id, reviewers[1]) == None
-        assert conference.get_assignment_edge(papers[4].id, reviewers[3]) == None
-        assert conference.get_assignment_edge(papers[4].id, reviewers[4]) == None
 
 
     # @pytest.mark.skip
@@ -269,10 +238,6 @@ class TestMatchClassCustomLoads():
         assert len(aggregate_score_edges) == num_reviewers * num_papers
 
         reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
-
-        # Validate that the custom loads are respected
-        self.show_assignment(papers, conference)
 
         assert len(conference.get_assignment_edges_by_reviewer(reviewers[0])) == 1
         assert len(conference.get_assignment_edges_by_reviewer(reviewers[1])) == 3

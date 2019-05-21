@@ -1,4 +1,7 @@
 class PaperUserScores:
+    '''
+    Holds scores and conflict information about a pair of paper/reviewer
+    '''
 
     def __init__ (self):
         self._paper_id = None
@@ -6,7 +9,6 @@ class PaperUserScores:
         self._scores_dict = {} #e.g. {'affinity': 0.2, 'recommendation': 0.5}
         self._conflicts = [] #e.g. ['umass.edu', 'google.com']
         self._aggregate_score = 0.0
-        self._total_cost = 0.0
 
     def set_paper (self, paper_id):
         self._paper_id = paper_id
