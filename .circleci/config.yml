@@ -1,0 +1,74 @@
+# OpenReview Matcher CircleCI 2.0 configuration file 28
+version: 2
+jobs:
+  build:
+    working_directory: ~/openreview-matcher-repo
+    docker:
+    - image: circleci/node:8.9.1-stretch
+    - image: circleci/python:3.6.1
+    - image: circleci/redis:3-stretch
+    - image: circleci/mongo:3.6-stretch
+    - image: elastic/elasticsearch:6.2.2
+    steps:
+    - checkout
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
+#      may need to put openreview-py on this machine
+#    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
+    - run: mkdir ~/openreview/logs
+    - run:
+        name: run openreview
+        command: |
+          cd ~/openreview
+          npm install
+          sudo npm install -g grunt-cli
+          grunt regen
+          mkdir pdfs
+          NODE_ENV=circleci node scripts/setup.js
+    - run:
+        name: run openreview node app with clean db
+        command: |
+          cd ~/openreview
+          NODE_ENV=circleci node scripts/clean_start_app
+        background: true
+    - run:
+        shell: /bin/sh
+        command: |
+          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
+    - run: sudo apt-get install python3
+    - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+    - run: sudo python3 get-pip.py
+    - run: sudo apt-get update
+    - run: sudo apt-get install python3-venv
+    - run:
+        name: install dependencies
+        command: |
+          cd ~/openreview-matcher-repo
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install -r requirements.txt
+          deactivate
+#   Will install openreview-py from released version in web repo.
+    - run:
+        name: install openreview-py
+        command: |
+          cd ~/openreview-matcher-repo
+          . venv/bin/activate
+          pip install openreview-py
+          deactivate
+#    - run:
+#        name: install the local openreview-py as a dependency
+#        command: |
+#          cd ~/openreview-matcher-repo
+#          . venv/bin/activate
+#          pip install -e ~/openreview-py
+    - run:
+        name: run tests
+        command: |
+          cd ~/openreview-matcher-repo
+          mkdir test-reports
+          . venv/bin/activate
+          python -m pytest -s tests
+    - store_test_results:
+        path: test-reports
+    - store_artifacts:
+        path: test-reports
