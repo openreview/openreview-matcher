@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/iesl/openreview-matcher/tree/master.svg?style=svg)](https://circleci.com/gh/iesl/openreview-matcher/tree/master)
+[![CircleCI](https://circleci.com/gh/iesl/openreview-matcher.svg?style=svg)](https://circleci.com/gh/iesl/openreview-matcher)
 
 
 # openreview-matcher
