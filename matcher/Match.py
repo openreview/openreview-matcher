@@ -65,7 +65,6 @@ class Match:
                                                             conflicts=conflicts_inv_id,
                                                             constraints=constraints_inv_id,
                                                             custom_loads=custom_loads_inv_id)
-            # paper_reviewer_info = PaperReviewerInfo(self.client, self.config[Configuration.TITLE], self.papers, self.reviewer_ids, edge_invitations, self.logger)
             self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, self.logger)
             inv_score_names = edge_invitations.get_score_names()
             assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
@@ -134,49 +133,16 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
-    def _create_reviewers_scored_map (self):
-        return {r: False for r in self.reviewer_ids}
-
-
-    def _save_aggregate_scores_old (self, encoder):
-        '''
-        Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
-        '''
-        # Note:  If a paper recieved no scoring info for a particular user, there will be no entry in the PaperReviewerData object about
-        # that paper/reviewer and a default aggregate score of 0 will be emitted.
-        edges = []
-        for forum_id, reviewers in self.paper_reviewer_data.items():
-            reviewers_scored_map = self._create_reviewers_scored_map() # map of flags
-            for reviewer, entry in reviewers.items():
-                reviewers_scored_map[reviewer] = True # remember the ones that have score data.
-                ag_score = encoder.cost_function.aggregate_score(entry,encoder.weights)
-                edges.append(self._build_aggregate_edge(forum_id, reviewer, ag_score))
-            # produce the default aggregate scores for the paper/reviewers that had no scoring data given
-            for reviewer, is_scored in reviewers_scored_map.items():
-                if not is_scored:
-                    edges.append(self._build_aggregate_edge(forum_id, reviewer, 0.0))
-
-        self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
-        self.client.post_bulk_edges(edges)
-
     def _save_aggregate_scores (self):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
         '''
-        # Note:  If a paper recieved no scoring info for a particular user, there will be no PaperUserScores in the PaperReviewerData object about
-        # that paper/reviewer and a default aggregate score of 0 will be emitted.
+        # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
-            reviewers_scored_map = self._create_reviewers_scored_map() # map of flags
             for reviewer, paper_user_scores in reviewers.items():
-                reviewers_scored_map[reviewer] = True # remember the ones that have score data.
                 ag_score = paper_user_scores.aggregate_score
                 edges.append(self._build_aggregate_edge(forum_id, reviewer, ag_score))
-            # produce the default aggregate scores for the paper/reviewers that had no scoring data given
-            for reviewer, is_scored in reviewers_scored_map.items():
-                if not is_scored:
-                    edges.append(self._build_aggregate_edge(forum_id, reviewer, 0.0))
-
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         self.client.post_bulk_edges(edges)
 
@@ -206,26 +172,4 @@ class Match:
                 edges.append(e)
         self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
         self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
-
-
-    def _save_suggested_assignment_old (self, assignment_inv, assignments_by_forum):
-        self.logger.debug("Saving Edges for " + assignment_inv.id)
-        label = self.config[Configuration.TITLE]
-        edges = []
-        for forum, assignments in assignments_by_forum.items():
-            for entry in assignments:
-                score = entry[Assignment.FINAL_SCORE]
-                e = openreview.Edge(invitation=assignment_inv.id,
-                                    head=forum,
-                                    tail=entry[Assignment.USERID],
-                                    label=label,
-                                    weight=score,
-                                    readers=['everyone'],
-                                    writers=['everyone'],
-                                    signatures=[])
-                edges.append(e)
-        self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
-        self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
-
-
 

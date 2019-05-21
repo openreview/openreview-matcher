@@ -14,6 +14,7 @@ class PaperReviewerData:
     def __init__ (self, client, paper_notes, reviewers, edge_invitations, logger=logging.getLogger(__name__)):
         self.logger = logger
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
+        # map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
         self._score_map = defaultdict(lambda: defaultdict(PaperUserScores))
         self._paper_notes = paper_notes
         self._reviewers = reviewers
@@ -30,7 +31,7 @@ class PaperReviewerData:
         return self._reviewers
 
 
-    # interator through the map of PaperUserScores objects
+    # iterator through the map of PaperUserScores objects
     def items (self):
         return self._score_map.items()
 

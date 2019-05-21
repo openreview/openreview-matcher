@@ -276,8 +276,8 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
 
 
-    @pytest.mark.skip("Lock/veto constraints no longer supported")
-    def test5_3papers_4reviewers_1conflict (self, test_util):
+    # @pytest.mark.skip()
+    def test_aggregate_score_with_missing_score (self, test_util):
         '''
         Is the same as test4 above but it deletes all the edges created from the 0's in the score_matrix which sets up the test case.
         This will test the matcher's ability to use a default when no score is present in the configuration.
@@ -298,8 +298,6 @@ class TestMatchClassAggregateScores():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
-                         Params.CONFLICTS_CONFIG: {0: [0]},
-                         Params.CONSTRAINTS_CONFIG: {Params.CONSTRAINTS_LOCKS: {0: [0]}},
                          Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.OMIT_ZERO_SCORE_EDGES: True,
@@ -334,3 +332,45 @@ class TestMatchClassAggregateScores():
         assert conference.get_assignment_edge(papers[2].id, reviewers[3]) != None
         # !reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
+
+    # @pytest.mark.skip()
+    def test_aggregate_with_missing_scores (self, test_util):
+        '''
+        Three scores are used but no user will provide them.
+        This will test the matcher's ability to use a default when no score is present in the configuration.
+        :param test_util:
+        :return:
+        '''
+        num_papers = 3
+        num_reviewers = 4
+        num_reviews_per_paper = 2
+        reviewer_max_papers = 2
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
+                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity', 'recommendation', 'bid'],
+                                                Params.SCORE_TYPE: Params.FIXED_SCORE,
+                                                Params.OMIT_ZERO_SCORE_EDGES: True,
+                                                Params.FIXED_SCORE_VALUE: 0
+                                                }
+                         })
+
+        test_util.set_test_params(params)
+        test_util.build_conference()
+        match = Match(test_util.client, test_util.get_conference().get_config_note())
+        match.compute_match()
+        conference = test_util.get_conference()
+        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+            "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
+        assignment_edges = conference.get_assignment_edges()
+        assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
+            format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+
+        aggregate_score_edges = conference.get_aggregate_score_edges()
+        assert len(aggregate_score_edges) == num_reviewers * num_papers
+
+        reviewers = conference.reviewers
+        papers = conference.get_paper_notes()
+        paper_reviewer_data = match.paper_reviewer_data
+        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
