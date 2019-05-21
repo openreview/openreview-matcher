@@ -318,13 +318,6 @@ class ConferenceConfig:
 
     ## Below are routines some of which could go into the matching portion of the conference builder
 
-
-    def get_paper_index (self, forum_id):
-        return next (i for i,p in enumerate(self.paper_notes) if p.id == forum_id )
-
-    def get_reviewer_index (self, reviewer):
-        return self.reviewers.index(reviewer)
-
     def get_paper (self, forum_id):
         for p in self.paper_notes:
             if p.id == forum_id:
@@ -386,6 +379,9 @@ class ConferenceConfig:
 
     def get_paper_notes (self):
         return self.paper_notes
+
+    def get_paper_note_ids (self):
+        return [p.id for p in self.get_paper_notes()]
 
     def get_config_note_status (self):
         config_note = self.get_config_note()

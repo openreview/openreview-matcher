@@ -4,6 +4,7 @@ import pytest
 from matcher.fields import Configuration
 from matcher.Match import Match
 from helpers.Params import Params
+from helpers.AssignmentChecker import AssignmentChecker
 
 # Verifies that custom loads are being used correctly in the matcher.  Each unit test uses the test_util fixture to build a conference
 # and the matcher is called to find a solution.  We then check the solution to make sure custom_loads were not violated.
@@ -73,26 +74,21 @@ class TestMatchClassCustomLoads():
 
         aggregate_score_edges = conference.get_aggregate_score_edges()
         assert len(aggregate_score_edges) == num_reviewers * num_papers
-
-
-        assigned = conference.get_assignment_edges_as_tuples()
-        # Validate that the assignment edges are correct
-        # Each tuple is (paper_index, reviewer_index)
-        # reviewer-1 -> paper-1
-        assert (1,1) in assigned
-        assert (2,2) in assigned
-        assert (2,3) in assigned
-        # reviewer 0 is not assigned to a paper because the custom_load set to 0
-        assert (0,0) not in assigned and (1,0) not in assigned and (2,0) not in assigned
+        paper_ids = conference.get_paper_note_ids()
+        reviewers = conference.reviewers
+        c = AssignmentChecker(conference)
+        assert c.is_paper_assigned_to_reviewer(paper_ids[1], reviewers[1])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[2])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[3])
+        assert not c.is_paper_assigned_to_reviewer(paper_ids[0], reviewers[0])
+        assert not c.is_paper_assigned_to_reviewer(paper_ids[1], reviewers[0])
+        assert not c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[0])
         # paper 0 gets 2 reviews from among reviewers 1,2,3
-        a0 = list(filter(None, [(0,1) in assigned, (0,2) in assigned, (0,3) in assigned]))
-        assert len(a0) == 2, "Paper 0 should be assigned to 2 reviewers"
+        assert c.count_reviewers_assigned_to_paper(paper_ids[0], reviewers[1:]) == 2
         # paper 1 gets 2 reviews from among reviewers 0,1,2,3
-        a1 = list(filter(None, [(1,0) in assigned, (1,1) in assigned, (1,2) in assigned, (1,3) in assigned]))
-        assert len(a1) == 2, "Paper 1 should be assigned to 2 reviewers"
+        assert c.count_reviewers_assigned_to_paper(paper_ids[1], reviewers) == 2
         # paper 2 gets 2 reviews from among reviewers 0,1,2,3
-        a2 = list(filter(None, [(2,0) in assigned, (2,1) in assigned, (2,2) in assigned, (2,3) in assigned]))
-        assert len(a2) == 2, "Paper 2 should be assigned to 2 reviewers"
+        assert c.count_reviewers_assigned_to_paper(paper_ids[2], reviewers) == 2
 
 
     # @pytest.mark.skip()
@@ -136,14 +132,15 @@ class TestMatchClassCustomLoads():
 
         aggregate_score_edges = conference.get_aggregate_score_edges()
         assert len(aggregate_score_edges) == num_reviewers * num_papers
-        assigned = conference.get_assignment_edges_as_tuples()
-        # tuples are (paper_index, reviewer_index)
-        assert (0,0) in assigned
-        assert (0,1) in assigned
-        assert (1,1) in assigned
-        assert (1,2) in assigned
-        assert (2,2) in assigned
-        assert (2,3) in assigned
+        paper_ids = conference.get_paper_note_ids()
+        reviewers = conference.reviewers
+        c = AssignmentChecker(conference)
+        assert c.is_paper_assigned_to_reviewer(paper_ids[0], reviewers[0])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[0], reviewers[1])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[1], reviewers[1])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[1], reviewers[2])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[2])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[3])
 
 
     # @pytest.mark.skip()
@@ -184,14 +181,14 @@ class TestMatchClassCustomLoads():
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-        assigned = conference.get_assignment_edges_as_tuples()
-        # tuples are (paper_index, reviewer_index)
-        assert (0,0) in assigned
-        assert (1,4) in assigned
-        assert (2,1) in assigned
-        assert (3,3) in assigned
-        assert (4,2) in assigned
-
+        paper_ids = conference.get_paper_note_ids()
+        reviewers = conference.reviewers
+        c = AssignmentChecker(conference)
+        assert c.is_paper_assigned_to_reviewer(paper_ids[0], reviewers[0])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[1], reviewers[4])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[2], reviewers[1])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[3], reviewers[3])
+        assert c.is_paper_assigned_to_reviewer(paper_ids[4], reviewers[2])
 
 
     # @pytest.mark.skip

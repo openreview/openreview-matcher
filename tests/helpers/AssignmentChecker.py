@@ -18,7 +18,9 @@ class AssignmentChecker:
 
         return d
 
-
+    def count_reviewers_assigned_to_paper(self, forum_id, reviewer_ids):
+        edges = self.conf.get_assignment_edges()
+        return len(list(filter(lambda e: e.head==forum_id and e.tail in reviewer_ids, edges)))
 
     def is_paper_assigned_to_reviewer(self, forum_id, reviewer):
         reviewer_edges = self.conf.get_assignment_edges_by_reviewer(reviewer)

@@ -118,13 +118,6 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         edges = openreview.tools.iterget_edges(self.client, invitation=assignment_inv_id)
         return list(edges)
 
-    def get_assignment_edges_as_tuples (self):
-        '''
-        return a list of (paper_index, reviewer-index) showing which papers are assigned which users
-        :return:
-        '''
-        edges = self.get_assignment_edges()
-        return [ (self.get_paper_index(e.head), self.get_reviewer_index(e.tail)) for e in edges ]
 
     def get_assignment_edge (self, paper_id, reviewer ):
         assignment_inv_id = self.conf_ids.ASSIGNMENT_ID
@@ -148,7 +141,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         if edges:
             return edges
         else:
-            return None
+            return []
 
     def get_aggregate_score_edges (self):
         '''
