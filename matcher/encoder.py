@@ -130,7 +130,7 @@ class Encoder(object):
 
                 if flow:
                     assignments_by_forum[forum].append(assignment)
-                elif assignment[Assignment.FINAL_SCORE] and not assignment[Assignment.CONFLICTS]:
+                elif not assignment[Assignment.CONFLICTS]:
                     alternates_by_forum[forum].append(assignment)
         num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
         for forum, alternates in alternates_by_forum.items():
