@@ -16,20 +16,19 @@ jobs:
 #      Temporarily clone the feature/edges branch of openreview-py
     - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
-#    - run:
-#        name: install openreview node app
-#        command: |
-#          cd ~/openreview
-#          npm install
-#          sudo npm install -g grunt-cli
-#          grunt regen
-#          mkdir pdfs
-#          NODE_ENV=circleci node scripts/setup.js
+    - run:
+        name: install openreview node app
+        command: |
+          cd ~/openreview
+          npm install
+          sudo npm install -g grunt-cli
+          grunt regen
+          mkdir pdfs
+          NODE_ENV=circleci node scripts/setup.js
     - run:
         name: run openreview node app with clean db
         command: |
           cd ~/openreview
-          npm install
           NODE_ENV=circleci node scripts/clean_start_app
         background: true
     - run:
