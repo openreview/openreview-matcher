@@ -56,10 +56,10 @@ jobs:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
-          mkdir test-reports
+          mkdir ~/junit
           . venv/bin/activate
-          python -m pytest -s tests --junitxml=test-reports/junit.xml
+          python -m pytest -s tests --junitxml=~/junit/test-results.xml
     - store_test_results:
-        path: test-reports
+        path: ~/junit
     - store_artifacts:
-        path: test-reports
+        path: ~/junits
