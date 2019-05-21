@@ -1,3 +1,6 @@
+[![CircleCI](https://circleci.com/gh/iesl/openreview-matcher.svg?style=svg)](https://circleci.com/gh/iesl/openreview-matcher)
+
+
 # openreview-matcher
 
 A package for finding sets of matches between papers and reviewers, subject to constraints and affinity scores.
