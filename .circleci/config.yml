@@ -5,15 +5,12 @@ jobs:
     working_directory: ~/openreview-matcher-repo
     docker:
     - image: circleci/node:8.9.1-stretch
-    - image: circleci/python:3.6.1
     - image: circleci/redis:3-stretch
     - image: circleci/mongo:3.6-stretch
     - image: elastic/elasticsearch:6.2.2
     steps:
     - checkout
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-#      may need to put openreview-py on this machine
-#    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
         name: run openreview
@@ -55,20 +52,15 @@ jobs:
           . venv/bin/activate
           pip install openreview-py
           deactivate
-#    - run:
-#        name: install the local openreview-py as a dependency
-#        command: |
-#          cd ~/openreview-matcher-repo
-#          . venv/bin/activate
-#          pip install -e ~/openreview-py
     - run:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
-          mkdir test-reports
+          mkdir reports
+          mkdir reports/pytest
           . venv/bin/activate
-          python -m pytest -s tests
+          python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
     - store_test_results:
-        path: test-reports
+        path: reports
     - store_artifacts:
-        path: test-reports
+        path: reports
