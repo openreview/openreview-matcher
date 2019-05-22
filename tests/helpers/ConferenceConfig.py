@@ -65,8 +65,8 @@ class ConferenceConfig:
         self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
                                          remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
-        self.conference.set_program_chairs(emails=[])
         self.conference.has_area_chairs(True)
+        self.conference.set_program_chairs(emails=[])
         self.conference.set_area_chairs(emails=[])
         self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.params.num_reviewers)]
         self.conference.set_reviewers(emails=self.reviewers)
@@ -87,11 +87,10 @@ class ConferenceConfig:
             del content['scores_names']
             content["scores_names"] = {
                 "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
-                # "values": ['bid', 'recommendation', 'tpms'],
                 "required": True,
                 "description": "List of scores names",
                 "order": 3
-            }
+                }
             self.client.post_invitation(config_inv)
 
     def customize_invitations (self):
