@@ -50,17 +50,17 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
         for name in score_names:
             inv_id = self.conf_ids.CONF_ID + '/-/' + name
-            inv = Invitation(id=inv_id)
+            inv = Invitation(id=inv_id, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
             inv = self.client.post_invitation(inv)
             self._score_invitations.append(inv)
 
         inv_id = self.conf_ids.AGGREGATE_SCORE_ID
-        inv = Invitation(id=inv_id)
+        inv = Invitation(id=inv_id, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
         self.aggregate_score_invitation = self.client.post_invitation(inv)
 
     # builds the assignment edge invitation.
     def build_assignment_invitations (self):
-        self.assignment_inv = Invitation(id=self.conf_ids.ASSIGNMENT_ID)
+        self.assignment_inv = Invitation(id=self.conf_ids.ASSIGNMENT_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
         self.assignment_inv = self.client.post_invitation(self.assignment_inv)
 
 
@@ -93,7 +93,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                     if score == 0 and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
                         pass
                     else:
-                        edge = Edge(head=paper_note.id, tail=reviewer, weight=score, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                        edge = Edge(head=paper_note.id, tail=reviewer, label='x', weight=score, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
                         edges.append(edge)
                 reviewer_ix += 1
             paper_ix += 1

@@ -3,6 +3,7 @@ class Configuration:
     TITLE = 'title'
     SCORES_WEIGHTS = 'scores_weights'
     SCORES_NAMES = 'scores_names'
+    SCORES_SPECIFICATION = 'scores_specification'
     SCORES_INVITATIONS = 'scores_invitations'
     CONSTRAINTS = 'constraints'
     CUSTOM_LOADS = 'custom_loads'

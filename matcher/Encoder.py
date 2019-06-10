@@ -16,8 +16,11 @@ class Encoder:
         self.config = config
         self._cost_matrix = np.zeros((0, 0))
         self._constraint_matrix = np.zeros((0, 0))
-        self._score_names = config[Configuration.SCORES_NAMES]
-        self._scorer = WeightedScorer(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
+        # self._score_names = config[Configuration.SCORES_NAMES]
+        # self._score_weights = config[Configuration.SCORES_WEIGHTS]
+        self._score_spec = config[Configuration.SCORES_SPECIFICATION] # JSON that gives score names, weights, and other info
+        # self._weight_dict = {n: w for n, w in zip(self._score_names,  self._score_weights)}
+        # self._scorer = WeightedScorer(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
         self._cost_fn = cost_fn
         self._constraints = config.get(Configuration.CONSTRAINTS, {})
 
@@ -47,7 +50,7 @@ class Encoder:
     def _update_cost_matrix (self, paper_user_scores, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
         if paper_user_scores:
-            aggregate_score = self._scorer.weighted_score(paper_user_scores.scores)
+            aggregate_score = paper_user_scores.calculate_aggregrate_score(self._score_spec)
             cost = self._cost_fn(aggregate_score)
             paper_user_scores.set_aggregate_score(aggregate_score) # save aggregate score so we can generate edges from this later
             self._cost_matrix[coordinates] = cost

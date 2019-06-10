@@ -56,12 +56,13 @@ class Match:
         self.assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
         score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
         score_names = self.config[Configuration.SCORES_NAMES]
+        score_spec = self.config[Configuration.SCORES_SPECIFICATION]
         conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
         custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
         edge_invitations = PaperReviewerEdgeInvitationIds(score_invitation_ids,
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
-        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, self.logger)
+        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, score_spec, self.logger)
         inv_score_names = edge_invitations.get_score_names()
         assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
         self.demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
