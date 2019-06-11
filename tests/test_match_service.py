@@ -1,8 +1,9 @@
 import json
 import matcher
-import os
 import pytest
 
+# Tests the match service by calling the flask endpoint with a variety of erroneous inputs.  Tests verify that correct error codes
+# are returned.   The matcher app is configured so that it uses a mock openreview-py object
 
 def post_json(client, url, json_dict, headers=None):
     """Send dictionary json_dict as a json to the specified url """
@@ -128,6 +129,3 @@ class TestMatchService():
                              headers={'Authorization': 'Bearer Valid'})
         assert response.status_code == 200
 
-
-# if __name__ == "__main__":
-#     unittest.main()
