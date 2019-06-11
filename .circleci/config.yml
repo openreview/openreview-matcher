@@ -11,7 +11,7 @@ jobs:
     steps:
     - checkout
 #    temporarily using the feature/edges branch
-    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
 #      Temporarily clone the feature/edges branch of openreview-py
     - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
