@@ -33,8 +33,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         self.build_score_invitations()
         if config_inv:
             content = config_inv.reply['content']
-            # content[Configuration.SCORES_INVITATIONS] = {'order': 16, 'required': True, 'description': 'Score edge invitations',
-            #                                              'values': self.score_invitation_ids}
+
             content[Configuration.SCORES_SPECIFICATION] = {'order': 16, 'required': True, 'description': 'Score specification JSON',
                                                          'value-dict': {}}
             content[Configuration.AGGREGATE_SCORE_INVITATION] = {'order': 17, 'required': True, 'description': 'Aggregrate Score invitation',
@@ -77,11 +76,10 @@ class ConferenceConfigWithEdges (ConferenceConfig):
 
     def create_config_note (self):
         super().create_config_note()
-        # self.config_note.content[Configuration.SCORES_INVITATIONS] = [inv.id for inv in self.score_invitations]
         self.config_note.content[Configuration.SCORES_SPECIFICATION] = self.params.scores_config[Params.SCORES_SPEC]
         self.config_note.content[Configuration.AGGREGATE_SCORE_INVITATION] = self.aggregate_score_invitation.id
         self.config_note.content[Configuration.CONFLICTS_INVITATION_ID] = self.conf_ids.CONFLICTS_INV_ID
-        self.config_note.content[Configuration.CONSTRAINTS_INVITATION_ID] = self.conf_ids.CONSTRAINTS_INV_ID
+        # self.config_note.content[Configuration.CONSTRAINTS_INVITATION_ID] = self.conf_ids.CONSTRAINTS_INV_ID
         self.config_note.content[Configuration.CUSTOM_LOAD_INVITATION_ID] = self.conf_ids.CUSTOM_LOAD_INV_ID
 
 

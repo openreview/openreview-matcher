@@ -1,5 +1,5 @@
 import util.names
-from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+from matcher.fields import Configuration
 class PaperUserScores:
     '''
     Holds scores and conflict information about a pair of paper/reviewer
@@ -51,8 +51,8 @@ class PaperUserScores:
             score = self.scores.get(score_name) # gets score provided by an edge or None if edge did not provide it.
             if not score:
                 # must be expressed numerically because we cannot call the translate_fn here to convert (since score edge is the input to the translate function)
-                score = score_spec['default']
-            weighted_score = score_spec['weight'] * score
+                score = score_spec[Configuration.SCORE_DEFAULT]
+            weighted_score = score_spec[Configuration.SCORE_WEIGHT] * score
             ag_score += weighted_score
         return ag_score
 

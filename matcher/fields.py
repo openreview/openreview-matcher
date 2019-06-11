@@ -1,10 +1,10 @@
 class Configuration:
     ALTERNATES = 'alternates'
     TITLE = 'title'
-    SCORES_WEIGHTS = 'scores_weights'
-    SCORES_NAMES = 'scores_names'
     SCORES_SPECIFICATION = 'scores_specification'
-    SCORES_INVITATIONS = 'scores_invitations'
+    SCORE_WEIGHT = 'weight'
+    SCORE_DEFAULT = 'default'
+    SCORE_TRANSLATE_FN = 'translate_fn'
     CONSTRAINTS = 'constraints'
     CUSTOM_LOADS = 'custom_loads'
     MAX_USERS = 'max_users'

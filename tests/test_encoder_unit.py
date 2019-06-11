@@ -2,7 +2,6 @@ import pytest
 import time
 import numpy as np
 
-from matcher.WeightedScorer import WeightedScorer
 from matcher.fields import Configuration
 from helpers.Params import Params
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder

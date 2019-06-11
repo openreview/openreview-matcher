@@ -4,7 +4,6 @@ import logging
 import time
 
 from matcher.fields import Configuration
-from matcher.WeightedScorer import WeightedScorer
 import matcher.cost_function
 
 

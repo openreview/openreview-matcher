@@ -3,6 +3,7 @@ import time
 import logging
 from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+from matcher.fields import Configuration
 from util.PythonFunctionRunner import ORFunctionRunner
 
 
@@ -77,7 +78,7 @@ class PaperReviewerData:
     # The translate function for each score name does the job of converting a symbolic score to a number.
     # N.B. Only provided scores will be translated.  If an edge is not provided,
     def _translate_edge_to_score (self, score_spec, edge, or_client):
-        translate_fn = score_spec.get('translate_fn')
+        translate_fn = score_spec.get(Configuration.SCORE_TRANSLATE_FN)
         if translate_fn:
             runner = ORFunctionRunner(translate_fn, or_client=or_client)
             numeric_score = runner.run_function(edge)

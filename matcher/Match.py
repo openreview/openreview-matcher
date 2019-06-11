@@ -5,7 +5,6 @@ import time
 from matcher.assignment_graph import AssignmentGraph, GraphBuilder
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
-from matcher.fields import Assignment
 from matcher.PaperReviewerData import PaperReviewerData
 from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
@@ -54,8 +53,7 @@ class Match:
         reviewer_group = self.client.get_group(self.config['match_group'])
         self.reviewer_ids = reviewer_group.members
         self.assignment_inv = self.client.get_invitation(self.config['assignment_invitation'])
-        # score_invitation_ids = self.config[Configuration.SCORES_INVITATIONS]
-        # score_names = self.config[Configuration.SCORES_NAMES]
+
         # a dict with keys that are score invitation ids.  Each maps to a dict that contains weight, default, translate_fn
         score_spec = self.config[Configuration.SCORES_SPECIFICATION]
         conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
@@ -64,8 +62,6 @@ class Match:
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
         self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, score_spec, self.logger)
-        # inv_score_names = edge_invitations.get_score_names()
-        # assert set(inv_score_names) == set(score_names),  "In the configuration note, the invitations for scores must correspond to the score names"
         self.demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
         self.minimums, self.maximums = self._get_reviewer_loads(custom_loads_inv_id)
 
@@ -115,7 +111,8 @@ class Match:
         return self._get_custom_loads(custom_load_invitation_id, minimums, maximums)
 
     def _get_custom_loads (self, custom_load_invitation_id, minimums, maximums):
-        custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id, head=self.config[Configuration.CONFIG_INVITATION_ID], limit=10000)
+        custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id,
+                                                           head=self.config[Configuration.CONFIG_INVITATION_ID], limit=10000)
         for edge in custom_load_edges:
             custom_load = edge.weight
             reviewer = edge.tail

@@ -22,7 +22,7 @@ class ConfIds:
         self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
         self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Aggregate_Score"
         self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Custom_Load"
-        self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
+        # self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
         self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Conflicts"
 
 
@@ -213,11 +213,6 @@ class ConferenceConfig:
             'signatures': [self.conference.get_program_chairs_id()],
             'content': {
                 'title': self.config_title,
-                # scores_names and weights is going away but system is requiring values be there.
-                # 'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
-                # 'scores_names': [],
-                # 'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
-                # 'scores_weights': [], # each score is weighted 1
                 Configuration.SCORES_SPECIFICATION : self.params.scores_config[Params.SCORES_SPEC],
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
@@ -226,13 +221,7 @@ class ConferenceConfig:
                 'alternates': '2',
                 'constraints': {},
                 'custom_loads': {},
-                # This seems odd.
-                # TODO Question: Shouldn't the config_invitation be CONF_ID/-/Assignment_Configuration
-                # 'config_invitation': self.conf_ids.CONFIG_ID,
                 'config_invitation': self.conf_ids.CONF_ID,
-                # TODO Question:  The name of the method get_blind_submission_id is misleading
-                # because this conference is not using blind papers.   It would be more straightforward if the method
-                # was called get_submission_id which would return a blind id if the papers happen to be blind
                 'paper_invitation': self.conference.get_blind_submission_id(),
                 'metadata_invitation': self.get_metadata_id(),
                 'assignment_invitation': self.get_paper_assignment_id(),
