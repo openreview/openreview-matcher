@@ -44,9 +44,8 @@ class ConferenceConfig:
         builder.set_conference_id(self.conf_ids.CONF_ID)
         builder.set_conference_name('Conference for Integration Testing')
         builder.set_conference_short_name('Integration Test')
+        builder.set_submission_stage(due_date = datetime.datetime(2019, 3, 25, 23, 59), remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conference = builder.get_result()
-        self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
-                                    remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.has_area_chairs(True)
         self.conference.set_program_chairs(emails=[])
@@ -65,10 +64,10 @@ class ConferenceConfig:
         config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
         if config_inv:
             content = config_inv.reply['content']
-            del content['scores_names']
-            content["scores_names"] = {
+            del content['scores_specification']
+            content["scores_specification"] = {
                 "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
-                "required": True,
+                "required": False,
                 "description": "List of scores names",
                 "order": 3
                 }
