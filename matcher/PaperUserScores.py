@@ -1,22 +1,17 @@
-from util.PythonFunctionRunner import ORFunctionRunner
+import util.names
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 class PaperUserScores:
     '''
     Holds scores and conflict information about a pair of paper/reviewer
     '''
 
-    def __init__ (self):
-        self._paper_id = None
-        self._user = None
+    def __init__ (self, forum_id=None, reviewer=None):
+        self._paper_id = forum_id
+        self._user = reviewer
         self._scores_dict = {} #e.g. {'affinity': 0.2, 'recommendation': 0.5}
         self._conflicts = [] #e.g. ['umass.edu', 'google.com']
         self._aggregate_score = 0.0
 
-    def set_paper (self, paper_id):
-        self._paper_id = paper_id
-
-    def set_user (self, user):
-        self._user = user
 
     @property
     def user (self):
@@ -52,7 +47,7 @@ class PaperUserScores:
         '''
         ag_score = 0
         for score_edge_inv_id, score_spec in score_specs.items():
-            score_name = PaperReviewerEdgeInvitationIds.translate_score_inv_to_score_name(score_edge_inv_id)
+            score_name = util.names.translate_score_inv_to_score_name(score_edge_inv_id)
             score = self.scores.get(score_name) # gets score provided by an edge or None if edge did not provide it.
             if not score:
                 # must be expressed numerically because we cannot call the translate_fn here to convert (since score edge is the input to the translate function)

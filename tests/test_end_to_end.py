@@ -50,11 +50,13 @@ class TestEndToEnd():
         num_reviewers = 7
         num_papers = 10
         num_reviews_per_paper = 2
-        params = Params({Params.NUM_PAPERS: num_papers,
-                  Params.NUM_REVIEWERS: num_reviewers,
-                  Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
-                  Params.REVIEWER_MAX_PAPERS: 3,
-            })
+        params = Params({
+             Params.NUM_PAPERS: num_papers,
+             Params.NUM_REVIEWERS: num_reviewers,
+             Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+             Params.REVIEWER_MAX_PAPERS: 3,
+             }
+        )
         test_util.set_test_params(params)
         test_util.test_matcher()
         conference = test_util.get_conference() # type: ConferenceConfigWithEdges
@@ -223,6 +225,7 @@ class TestEndToEnd():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_revs_per_paper,
                          Params.REVIEWER_MAX_PAPERS: 3,
+                         Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                          Params.CONFLICTS_CONFIG : {0: [0], 1: [1], 3: [3]}
                          })
 

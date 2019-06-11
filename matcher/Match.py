@@ -141,7 +141,7 @@ class Match:
     def _build_aggregate_edge (self, forum_id, reviewer, agg_score):
         aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
         conf_inv_id = self.config[Configuration.CONFIG_INVITATION_ID]
-        return openreview.Edge(head=forum_id, tail=reviewer, weight=agg_score, invitation=aggregate_inv_id,
+        return openreview.Edge(head=forum_id, tail=reviewer, weight=agg_score, label='aggregateScore', invitation=aggregate_inv_id,
                                readers=['everyone'], writers=[conf_inv_id], signatures=[reviewer])
 
 
@@ -160,7 +160,7 @@ class Match:
                                     weight=score,
                                     readers=['everyone'],
                                     writers=['everyone'],
-                                    signatures=[])
+                                    signatures=[user])
                 edges.append(e)
         self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
         self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)

@@ -2,8 +2,7 @@ import openreview.tools
 import random
 import datetime
 import openreview
-
-from PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+import util.names
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
 from helpers.Params import Params
 
@@ -78,7 +77,7 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
-        self.score_names = [PaperReviewerEdgeInvitationIds.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
+        self.score_names = [util.names.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
 
         self.build_invitations()
         # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
@@ -118,15 +117,13 @@ class ConferenceConfig:
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_CHOICE_SCORE:
             score = random.choice(self.params.scores_config[Params.SCORE_CHOICES])
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
-            fixed_score = self.params.scores_config[Params.FIXED_SCORE_VALUE]
+            fixed_score_or_scores = self.params.scores_config[Params.FIXED_SCORE_VALUE]
+            fixed_score = fixed_score_or_scores[score_name] if isinstance(fixed_score_or_scores, dict) else fixed_score_or_scores
             score = fixed_score
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
             # Extended to allow storing a dict of matrices where a score_name maps to each matrix
             matrix_or_matrices = self.params.scores_config[Params.SCORE_MATRIX]
-            if type(matrix_or_matrices) == dict:
-                matrix = matrix_or_matrices[score_name]
-            else:
-                matrix = matrix_or_matrices
+            matrix = matrix_or_matrices[score_name] if type(matrix_or_matrices) == dict else matrix_or_matrices
             score = matrix[reviewer_ix, paper_ix]
         else: #  incremental scores go like 0.1, 0.2, 0.3... to create a discernable pattern we can look for in cost matrix
             self.incremental_score += self.params.scores_config[Params.SCORE_INCREMENT]

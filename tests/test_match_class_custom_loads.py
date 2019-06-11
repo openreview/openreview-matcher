@@ -58,7 +58,7 @@ class TestMatchClassCustomLoads():
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_MAP: {0: 0, 1: 2}},
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -116,7 +116,7 @@ class TestMatchClassCustomLoads():
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_MAP: {0: 1, 1: 2}},
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -168,7 +168,7 @@ class TestMatchClassCustomLoads():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -217,7 +217,7 @@ class TestMatchClassCustomLoads():
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_MAP: {0: 1, 1: 3}},
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }

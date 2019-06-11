@@ -14,6 +14,21 @@ from helpers.Params import Params
 # N.B.:  To run this test you must be running OR with a clean db.  See README for details.
 class TestMatchClassAggregateScores():
 
+    bid_translate_fn = """
+lambda edge:
+    if edge.label == 'low':
+        return 0.2
+    elif edge.label == 'medium':
+        return 0.5
+    elif edge.label == 'high':
+        return 0.8
+    elif edge.label == 'very high':
+        return 0.95
+    elif edge.label == 'none':
+        return 0
+    else:
+        return 0.6
+"""
     # called once at beginning of suite
     # See conftest.py for other run-once setup that is part of the test_util fixture passed to each test.
     @classmethod
@@ -31,6 +46,8 @@ class TestMatchClassAggregateScores():
 
     def tearDown (self):
         pass
+
+
 
     def make_entry_from_edges (self, score_edges):
         entry = {}
@@ -75,7 +92,7 @@ class TestMatchClassAggregateScores():
                          Params.REVIEWER_MAX_PAPERS: 3,
                          Params.SCORES_CONFIG: { Params.SCORE_TYPE: Params.INCREMENTAL_SCORE,
                                                  Params.SCORE_INCREMENT: 0.01,
-                                                 Params.SCORE_NAMES_LIST: ['affinity']}
+                                                 Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}}}
                          })
         test_util.set_test_params(params)
         test_util.build_conference()
@@ -122,7 +139,7 @@ class TestMatchClassAggregateScores():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -178,7 +195,7 @@ class TestMatchClassAggregateScores():
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CONFLICTS_CONFIG: {0: [0]},
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -241,7 +258,7 @@ class TestMatchClassAggregateScores():
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CONFLICTS_CONFIG: {0: [0]},
                          Params.CONSTRAINTS_CONFIG: {Params.CONSTRAINTS_LOCKS: {0: [0]}},
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.SCORE_MATRIX: score_matrix
                                                 }
@@ -298,7 +315,7 @@ class TestMatchClassAggregateScores():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.MATRIX_SCORE,
                                                 Params.OMIT_ZERO_SCORE_EDGES: True,
                                                 Params.SCORE_MATRIX: score_matrix
@@ -333,7 +350,7 @@ class TestMatchClassAggregateScores():
         # !reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
 
-    # @pytest.mark.skip()
+    # @pytest.mark.skip("not sure this still builds correct setup omitting edges and bid needs to be symbolic")
     def test_aggregate_with_missing_scores (self, test_util):
         '''
         Three scores are used but no user will provide them.
@@ -349,10 +366,15 @@ class TestMatchClassAggregateScores():
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity', 'recommendation', 'bid'],
+                         Params.SCORES_CONFIG: {
+                                                Params.SCORES_SPEC: {
+                                                    'affinity': {'weight': 1, 'default': 0},
+                                                    'recommendation': {'weight': 1, 'default': 0},
+                                                    'bid': {'weight': 1, 'default': 0.3, 'translate_fn': self.bid_translate_fn}
+                                                },
                                                 Params.SCORE_TYPE: Params.FIXED_SCORE,
                                                 Params.OMIT_ZERO_SCORE_EDGES: True,
-                                                Params.FIXED_SCORE_VALUE: 0
+                                                Params.FIXED_SCORE_VALUE: {'affinity': 0, 'recommendation': 0, 'bid': 'low'}
                                                 }
                          })
 

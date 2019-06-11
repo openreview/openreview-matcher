@@ -5,7 +5,7 @@ from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 import openreview
 from openreview import Edge, Invitation
-from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+import util.names
 from helpers.Params import Params
 from itertools import cycle
 
@@ -101,7 +101,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             reviewer_ix = 0
             for reviewer in reviewers:
                 for score_inv in self.score_invitations:
-                    score_name = PaperReviewerEdgeInvitationIds.translate_score_inv_to_score_name(score_inv.id)
+                    score_name = util.names.translate_score_inv_to_score_name(score_inv.id)
                     score = self.gen_score(score_name, reviewer_ix=reviewer_ix, paper_ix=paper_ix )
                     if (score == 0 or score == '0') and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
                         pass

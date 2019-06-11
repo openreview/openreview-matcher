@@ -1,7 +1,6 @@
 import openreview.tools
 import time
 import logging
-from collections import defaultdict
 from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from util.PythonFunctionRunner import ORFunctionRunner
@@ -19,7 +18,7 @@ class PaperReviewerData:
         self.logger = logger
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
         # a map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
-        self._score_map = defaultdict(lambda: defaultdict(PaperUserScores))
+        self._score_map = {}
         self._paper_notes = paper_notes
         self._reviewers = reviewers
         self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
@@ -38,9 +37,9 @@ class PaperReviewerData:
     def items (self):
         return self._score_map.items()
 
-    # since _score_map is a defaultdict, it will return an empty one if none stored
+    # Will return an empty PaperUserScores object if none is mapped
     def get_entry (self, paper_id, reviewer):
-        return self._score_map[paper_id][reviewer]
+        return self._find_or_make_entry(self._score_map, paper_id, reviewer)
 
     # build map of PaperUserScore objects from the score edges.
     def _load_scores (self, or_client):
@@ -53,9 +52,7 @@ class PaperReviewerData:
             score_name = score_names[score_index]
             edges = openreview.tools.iterget_edges(or_client, invitation=inv_id, limit=50000)
             for e in edges:
-                paper_user_scores = self._score_map[e.head][e.tail] #type: PaperUserScores
-                paper_user_scores.set_paper(e.head)
-                paper_user_scores.set_user(e.tail)
+                paper_user_scores = self._find_or_make_entry(self._score_map, e.head, e.tail)
                 #N.B. We can only translate a score if there is an edge from paper->reviewer for that score.  If the score is
                 #not provided, then the Encoder will fetch a default value when it builds its cost matrix.
                 score_spec = self._score_specification[inv_id]
@@ -63,6 +60,19 @@ class PaperReviewerData:
                 paper_user_scores.add_score(score_name, score)
                 num_entries += 1
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
+
+    # behaves like a defaultdict but allows calling constructor of the PaperUserScores object with args so it is always correctly initialized.
+    def _find_or_make_entry (self, map, forum_id, reviewer):
+        fr = map.get(forum_id, None)
+        if fr != None:
+            rr = fr.get(reviewer)
+            if not rr:
+                rr = PaperUserScores(forum_id,reviewer)
+                fr[reviewer] = rr
+            return rr
+        else:
+            map[forum_id] = {}
+            return self._find_or_make_entry(map, forum_id, reviewer)
 
     # The translate function for each score name does the job of converting a symbolic score to a number.
     # N.B. Only provided scores will be translated.  If an edge is not provided,
@@ -84,9 +94,8 @@ class PaperReviewerData:
         # TODO If conflict detection between reviewer and paper is not a pre-processing step and becomes part of the matching process itself,
         # it could be calculated here
         for e in edges:
-            paper_user_scores = self._score_map[e.head][e.tail] #type: PaperUserScores
-            paper_user_scores.set_paper(e.head)
-            paper_user_scores.set_user(e.tail)
+
+            paper_user_scores = self._find_or_make_entry(self._score_map, e.head, e.tail)
             # Maybe an unecessary check.  These are edges for the conflicts invitation so it really doesn't matter what the label is
             # What does matter is that weight=0 is interpreted as no-conflicts and weight=1 means conflicts exist.  Since the edge
             # can't store the list of conflicts, the UI will have to get the conflicts from the original source and not this edge.

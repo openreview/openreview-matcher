@@ -45,8 +45,8 @@ class Params:
                                              {Params.SCORE_TYPE: Params.FIXED_SCORE,
                                               Params.FIXED_SCORE_VALUE: 1,
                                               Params.OMIT_ZERO_SCORE_EDGES: False,
-                                              Params.SCORES_SPEC: {},
-                                              Params.SCORE_NAMES_LIST: ['affinity']})
+                                              Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}}
+                                              })
         self.set_other_params()
 
     def set_other_params (self):
