@@ -5,6 +5,7 @@ class Configuration:
     SCORE_WEIGHT = 'weight'
     SCORE_DEFAULT = 'default'
     SCORE_TRANSLATE_FN = 'translate_fn'
+    SCORE_TRANSLATE_MAP = 'translate_map'
     CONSTRAINTS = 'constraints'
     CUSTOM_LOADS = 'custom_loads'
     MAX_USERS = 'max_users'

@@ -12,3 +12,6 @@ class AlreadyCompleteException (Exception):
 
 class NotFoundError (Exception):
     pass
+
+class TranslateScoreError (Exception):
+    pass

@@ -5,6 +5,7 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
 from util.PythonFunctionRunner import ORFunctionRunner
+from exc.exceptions import TranslateScoreError
 
 
 class PaperReviewerData:
@@ -79,9 +80,16 @@ class PaperReviewerData:
     # N.B. Only provided scores will be translated.  If an edge is not provided,
     def _translate_edge_to_score (self, score_spec, edge, or_client):
         translate_fn = score_spec.get(Configuration.SCORE_TRANSLATE_FN)
+        translate_map = score_spec.get(Configuration.SCORE_TRANSLATE_MAP)
         if translate_fn:
             runner = ORFunctionRunner(translate_fn, or_client=or_client)
             numeric_score = runner.run_function(edge)
+        # if using a map, the assumption is that the edge label is holding a symbol that needs to be translated via the map
+        elif translate_map:
+            try:
+                numeric_score = translate_map[edge.label]
+            except:
+                raise TranslateScoreError("Cannot translate score: {}.  Check the translate_map within scores_specification of the configuration note".format(edge.label) )
         else:
             numeric_score = edge.weight
         float(numeric_score) # convert to float here so it will throw ValueError if not a number
