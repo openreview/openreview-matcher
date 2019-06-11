@@ -3,6 +3,7 @@ class Params:
     NUM_REVIEWERS = 'num_reviewers'
     NUM_REVIEWS_NEEDED_PER_PAPER = 'reviews_needed_per_paper'
     REVIEWER_MAX_PAPERS = 'reviewer_max_papers'
+    REVIEWER_MIN_PAPERS = 'reviewer_min_papers'
     CUSTOM_LOAD_CONFIG = 'custom_load_config'
     CUSTOM_LOAD_SUPPLY_DEDUCTION = 'supply_deduction'
     CUSTOM_LOAD_MAP = 'reviewer_custom_loads'
@@ -12,15 +13,18 @@ class Params:
     CONFLICTS_CONFIG = 'conflicts_config'
     SCORES_CONFIG = 'scores_config'
     RANDOM_SCORE = 'random'
+    RANDOM_CHOICE_SCORE = 'random_choice'
     FIXED_SCORE = 'fixed'
     FIXED_SCORE_VALUE = 'fixed_score_value'
     INCREMENTAL_SCORE = 'incremental'
     MATRIX_SCORE = 'matrix'
     SCORE_MATRIX = 'score_matrix'
+    SCORE_CHOICES = 'score_choices'
     SCORE_INCREMENT = 'score_increment'
     SCORE_TYPE = 'type'
     OMIT_ZERO_SCORE_EDGES = 'omit_zero_score_edges'
     SCORE_NAMES_LIST = 'score_names'
+    SCORES_SPEC = 'scores_spec'
 
     def __init__ (self, params):
         self.params = params
@@ -28,6 +32,7 @@ class Params:
         self.num_reviewers = self.params[Params.NUM_REVIEWERS]
         self.num_reviews_needed_per_paper = self.params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
         self.reviewer_max_papers = self.params[Params.REVIEWER_MAX_PAPERS]
+        self.reviewer_min_papers = self.params.get(Params.REVIEWER_MIN_PAPERS, 1)
         self.custom_load_config = self.params.get(Params.CUSTOM_LOAD_CONFIG, {})
         self.custom_load_supply_deduction = self.custom_load_config.get(Params.CUSTOM_LOAD_SUPPLY_DEDUCTION, 0)
         self.custom_load_map = self.custom_load_config.get(Params.CUSTOM_LOAD_MAP, {})
@@ -40,7 +45,8 @@ class Params:
                                              {Params.SCORE_TYPE: Params.FIXED_SCORE,
                                               Params.FIXED_SCORE_VALUE: 1,
                                               Params.OMIT_ZERO_SCORE_EDGES: False,
-                                              Params.SCORE_NAMES_LIST: ['affinity']})
+                                              Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}}
+                                              })
         self.set_other_params()
 
     def set_other_params (self):

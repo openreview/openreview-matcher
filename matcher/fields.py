@@ -1,15 +1,17 @@
 class Configuration:
     ALTERNATES = 'alternates'
     TITLE = 'title'
-    SCORES_WEIGHTS = 'scores_weights'
-    SCORES_NAMES = 'scores_names'
+    SCORES_SPECIFICATION = 'scores_specification'
+    SCORE_WEIGHT = 'weight'
+    SCORE_DEFAULT = 'default'
+    SCORE_TRANSLATE_FN = 'translate_fn'
+    SCORE_TRANSLATE_MAP = 'translate_map'
     CONSTRAINTS = 'constraints'
     CUSTOM_LOADS = 'custom_loads'
     MAX_USERS = 'max_users'
     MIN_USERS = 'min_users'
     MAX_PAPERS = 'max_papers'
     MIN_PAPERS = 'min_papers'
-    META_DATA_INVITATION = 'metadata_invitation'
     STATUS = "status"
     ERROR_MESSAGE = "error_message"
     STATUS_ERROR = "Error"
@@ -20,6 +22,13 @@ class Configuration:
     OBJECTIVE_TYPE = "objective_type"
     LOCK = '+inf'
     VETO = '-inf'
+    PAPER_INVITATION = "paper_invitation"
+    AGGREGATE_SCORE_INVITATION = "aggregate_score_invitation"
+    CONFIG_INVITATION_ID = "config_invitation"
+    CUSTOM_LOAD_INVITATION_ID = "custom_load_invitation"
+    CONSTRAINTS_INVITATION_ID = "constraints_invitation"
+    CONFLICTS_INVITATION_ID = "conflicts_invitation"
+
 
 class PaperReviewerScore:
     USERID = 'userid'

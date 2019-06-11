@@ -1,8 +1,10 @@
 import openreview.tools
 import random
 import datetime
+import openreview
+import util.names
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
-from tests.params import Params
+from helpers.Params import Params
 
 
 class ConfIds:
@@ -18,6 +20,11 @@ class ConfIds:
         self.METADATA_INV_ID = self.CONF_ID + '/-/Paper_Metadata'
         self.CONFIG_ID = self.CONF_ID + "/-/Assignment_Configuration"
         self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
+        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Aggregate_Score"
+        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Custom_Load"
+        # self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
+        self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Conflicts"
+
 
 
 # To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
@@ -28,25 +35,39 @@ class ConferenceConfig:
     def __init__ (self, client, suffix_num, params):
 
         random.seed(10) # want a reproducible sequence of random numbers
+        self._silence = True
         self.client = client
+        self.config_title = 'Reviewers'
         self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
-        print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
+        if not self._silence:
+            print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
         self.params = params
         self.config_inv = None
         self.conference = None
+        self.score_names = None
         self.paper_notes = []
+        self.paper_to_metadata_map = {}
         self.config_note = None
+        self.incremental_score = 0.0
         self.build_conference()
 
+    @property
+    def silence (self):
+        return self._silence
+
+    @silence.setter
+    def silence (self, silence):
+        self._silence= silence
 
     def build_conference (self):
         builder = openreview.conference.ConferenceBuilder(self.client)
         builder.set_conference_id(self.conf_ids.CONF_ID)
+        print("Building conference "+ self.conf_ids.CONF_ID)
         builder.set_conference_name('Conference for Integration Testing')
         builder.set_conference_short_name('Integration Test')
         self.conference = builder.get_result()
         self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
-                                    remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
+                                         remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.has_area_chairs(True)
         self.conference.set_program_chairs(emails=[])
@@ -56,64 +77,83 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
+        self.score_names = [util.names.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
+
+        self.build_invitations()
+        # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
+        self.repair_metadata_notes()
+        self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
-        self.create_config_note()
+        self.config_note = self.create_and_post_config_note()
+
+    def build_invitations (self):
+        # custom_load
+        inv = openreview.Invitation(id=self.conf_ids.CUSTOM_LOAD_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
+        self.client.post_invitation(inv)
+        inv = openreview.Invitation(id=self.conf_ids.CONFLICTS_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
+        self.client.post_invitation(inv)
+
+    def customize_config_invitation (self):
+        pass
 
     def customize_invitations (self):
-        # replace the default score_names that builder gave with the ones I want
-        config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
-        if config_inv:
-            content = config_inv.reply['content']
-            del content['scores_names']
-            content["scores_names"] = {
-                "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
-                "required": True,
-                "description": "List of scores names",
-                "order": 3
-                }
-            self.client.post_invitation(config_inv)
-
-    def gen_scores (self):
-        d = {}
-        cur_sc = 0.0
-        for sc in self.params.scores_config[Params.SCORE_NAMES_LIST]:
-            if self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
-                d[sc] = self.params.scores_config[Params.FIXED_SCORE_VALUE]
-            elif self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
-                d[sc] = random.random()
-            elif self.params.scores_config[Params.SCORE_TYPE] == Params.INCREMENTAL_SCORE:
-                cur_sc += self.params.scores_config[Params.SCORE_INCREMENT]
-                d[sc] = cur_sc
-        return d
+        self.customize_config_invitation()
 
 
-    # adds randomly generated scores for reviewers into the papers
+    def repair_metadata_notes (self):
+        for md_note in self.get_metadata_notes():
+            for entry in md_note.content['entries']:
+                del entry['conflicts']
+            self.client.post_note(md_note)
+
+    def build_paper_to_metadata_map (self):
+        for md_note in self.get_metadata_notes():
+            self.paper_to_metadata_map[md_note.forum] = md_note
+
+    def gen_score (self, score_name, reviewer_ix=0, paper_ix=0):
+        if self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
+            score = random.random()
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_CHOICE_SCORE:
+            score = random.choice(self.params.scores_config[Params.SCORE_CHOICES])
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
+            fixed_score_or_scores = self.params.scores_config[Params.FIXED_SCORE_VALUE]
+            fixed_score = fixed_score_or_scores[score_name] if isinstance(fixed_score_or_scores, dict) else fixed_score_or_scores
+            score = fixed_score
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
+            # Extended to allow storing a dict of matrices where a score_name maps to each matrix
+            matrix_or_matrices = self.params.scores_config[Params.SCORE_MATRIX]
+            matrix = matrix_or_matrices[score_name] if type(matrix_or_matrices) == dict else matrix_or_matrices
+            score = matrix[reviewer_ix, paper_ix]
+        else: #  incremental scores go like 0.1, 0.2, 0.3... to create a discernable pattern we can look for in cost matrix
+            self.incremental_score += self.params.scores_config[Params.SCORE_INCREMENT]
+            score = self.incremental_score
+        return score
+
+    def gen_scores (self, reviewer_ix, paper_ix):
+        score_names = self.score_names
+        record = {}
+        for score_name in score_names:
+            record[score_name] = self.gen_score(score_name, reviewer_ix, paper_ix)
+        return record
+
+    # adds scores for reviewers into the papers
     def add_reviewer_entries_to_metadata (self):
-        metadata_notes = self.get_metadata_notes()
+        # metadata_notes = self.get_metadata_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
         reviewers = reviewers_group.members
-        for md_note in metadata_notes:
+        # iterate through paper notes and then fetch its metadata because order of
+        # papers_notes we know, metadata may be in some other order.
+        for paper_ix, paper_note in enumerate(self.paper_notes):
+            md_note = self.paper_to_metadata_map[paper_note.id]
             entries = []
-            for reviewer in reviewers:
-                if self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
-                    entry = self. get_matrix_entry(md_note.forum, reviewer)
-                else:
-                    entry = {PaperReviewerScore.USERID: reviewer,
-                         PaperReviewerScore.SCORES: self.gen_scores()}
+            for reviewer_ix, reviewer in enumerate(reviewers):
+                entry = {PaperReviewerScore.USERID: reviewer,
+                         PaperReviewerScore.SCORES: self.gen_scores(reviewer_ix, paper_ix)}
                 entries.append(entry)
             md_note.content[PaperReviewerScore.ENTRIES] = entries
             self.client.post_note(md_note)
         self.add_conflicts_to_metadata()
-
-    def get_matrix_entry (self, forum_id, reviewer):
-        pap_ix = next(i for i,v in enumerate(self.paper_notes) if v.id == forum_id)
-        rev_ix = next(i for i,v in enumerate(self.reviewers) if v == reviewer)
-        sc = str(self.params.scores_config[Params.SCORE_MATRIX][rev_ix,pap_ix])
-        return {PaperReviewerScore.USERID: reviewer,
-                PaperReviewerScore.SCORES: {self.params.scores_config[Params.SCORE_NAMES_LIST][0]: sc}
-                }
-
 
     # params.conflicts_config is dict that maps paper indices to list of user indices that conflict with the paper
     def add_conflicts_to_metadata (self):
@@ -153,26 +193,27 @@ class ConferenceConfig:
             })
             posted_submission = self.client.post_note(paper_note)
             self.paper_notes.append(posted_submission)
+        if not self._silence:
+            print("There are ", len(self.paper_notes), " papers")
 
-        print("There are ", len(self.paper_notes), " papers")
 
+    def create_and_post_config_note (self):
+        self.create_config_note() # override in the subclass adds in other fields before posting can be done
+        self.post_config_note()
 
     def create_config_note (self):
-        self.config_note = self.client.post_note(openreview.Note(**{
+        '''
+        creates a config note but does not post it so that the sublcass override method can add additional stuff before posting happens.
+        :return:
+        '''
+        self.config_note = openreview.Note(**{
             'invitation': self.get_assignment_configuration_id(),
-            # TODO Question: Had to change because invitation wants conf_id and program_chairs.  Is this always the way readers should be?
-            # 'readers': [self.conference.id],
             'readers': [self.conference.id, self.conference.get_program_chairs_id()],
-            # TODO Question: Similar to above with writers
             'writers': [self.conference.id, self.conference.get_program_chairs_id()],
-            # TODO Question: Had to change because invitation wants it to be program_chairs.  Is this always the way signatures should be?
-            # 'signatures': [self.conference.id],
             'signatures': [self.conference.get_program_chairs_id()],
             'content': {
-                'title': 'reviewers',
-                # TODO Question:  Can only set these because I customized the invitation
-                'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
-                'scores_weights': ['1'] * len(self.params.scores_config[Params.SCORE_NAMES_LIST]),
+                'title': self.config_title,
+                Configuration.SCORES_SPECIFICATION : self.params.scores_config[Params.SCORES_SPEC],
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review
@@ -180,23 +221,18 @@ class ConferenceConfig:
                 'alternates': '2',
                 'constraints': {},
                 'custom_loads': {},
-                # This seems odd.
-                # TODO Question: Shouldn't the config_invitation be CONF_ID/-/Assignment_Configuration
-                # 'config_invitation': self.conf_ids.CONFIG_ID,
                 'config_invitation': self.conf_ids.CONF_ID,
-                # 'paper_invitation': self.conf_ids.SUBMISSION_ID,
-                # TODO Question:  The name of the method get_blind_submission_id is misleading
-                # because this conference is not using blind papers.   It would be more straightforward if the method
-                # was called get_submission_id which would return a blind id if the papers happen to be blind
                 'paper_invitation': self.conference.get_blind_submission_id(),
                 'metadata_invitation': self.get_metadata_id(),
                 'assignment_invitation': self.get_paper_assignment_id(),
                 'match_group': self.conference.get_reviewers_id(),
                 'status': 'Initialized'
             }
-        }))
+        })
         self.add_config_custom_loads()
         self.add_config_constraints()
+
+    def post_config_note (self):
         self.config_note = self.client.post_note(self.config_note)
         self._config_note_id = self.config_note.id
 
@@ -222,19 +258,32 @@ class ConferenceConfig:
         self.config_note.content[Configuration.CONSTRAINTS] = constraint_entries
 
 
+    # custom loads may be specified as a deduction in the total supply which results in cycling through the reviewers reducing their loads incrementally
+    # OR by giving a map that provides the load of given reviewers.  If a reviewer's load != default max, the value is put in the custom_loads
     def add_config_custom_loads(self):
         if self.params.custom_load_supply_deduction:
             self.set_reviewers_custom_load_to_default()
             self.reduce_reviewers_custom_load_by_shortfall(self.params.custom_load_supply_deduction)
             self.remove_default_custom_loads()
+        elif self.params.custom_load_map != {}:
+            self.set_custom_loads_from_map()
+
+    def set_custom_loads_from_map (self):
+        loads = {}
+        default_load = self.params.reviewer_max_papers
+        for rev_ix, load in self.params.custom_load_map.items():
+            if load != default_load:
+                loads[self.reviewers[rev_ix]] = load
+        if len(loads.keys()) > 0:
+            self.config_note.content[Configuration.CUSTOM_LOADS] = loads
 
 
     def set_reviewers_custom_load_to_default (self):
-        custom_loads = {}
-        default_load = self.params.reviewer_max_papers
-        for rev in self.reviewers:
-            custom_loads[rev] = default_load
-        self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
+            custom_loads = {}
+            default_load = self.params.reviewer_max_papers
+            for rev in self.reviewers:
+                custom_loads[rev] = default_load
+            self.config_note.content[Configuration.CUSTOM_LOADS] = custom_loads
 
     # cycle through the reviewers reducing their load until supply deduction has been reached
     def reduce_reviewers_custom_load_by_shortfall (self, supply_deduction):
@@ -265,6 +314,9 @@ class ConferenceConfig:
     def config_note_id (self, config_note_id):
         self._config_note_id = config_note_id
 
+    def get_reviewer (self, index):
+        return self.reviewers[index]
+
 
     ## Below are routines some of which could go into the matching portion of the conference builder
 
@@ -286,6 +338,12 @@ class ConferenceConfig:
             if note.forum == forum_id:
                 return note
         return None
+
+    def get_metadata_notes_following_paper_order (self):
+        res = []
+        for p in self.paper_notes:
+            res.append(self.paper_to_metadata_map[p.id])
+        return res
 
     def get_metadata_notes (self):
         return list(openreview.tools.iterget_notes(self.client, invitation=self.get_metadata_id()))
@@ -323,6 +381,9 @@ class ConferenceConfig:
 
     def get_paper_notes (self):
         return self.paper_notes
+
+    def get_paper_note_ids (self):
+        return [p.id for p in self.get_paper_notes()]
 
     def get_config_note_status (self):
         config_note = self.get_config_note()

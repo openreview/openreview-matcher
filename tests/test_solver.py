@@ -3,7 +3,7 @@ from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuild
 
 
 class TestSolver:
-    ''' Unit tests that check the correctness of teh SimpleGraphBuilder Solver'''
+    ''' Unit tests that check the correctness of the SimpleGraphBuilder Solver'''
 
     @classmethod
     def setup_class(cls):
@@ -31,16 +31,13 @@ class TestSolver:
         res = solver.solve()
         assert res.shape == (4,3)
         self.print_header()
-        cost = 0
-        for i in range(solver.min_cost_flow.NumArcs()):
-            cost += solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
-            self.print_arc(solver.min_cost_flow, i)
-        assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
-        assert cost == 0,  "Lowest cost solution should have cost = 0"
+        expected_cost = 0
+        self.check_solution(solver, expected_cost)
+
 
     def test_solver_respects_constraints (self):
         '''
-        Tests 4 papers, 3 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
+        Tests 5 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
         Constrained such that:
         Reviewer 0: available for all papers
                  1: cannot review papers 2,3
@@ -69,16 +66,12 @@ class TestSolver:
             for j in range(ncols):
                 assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
         self.print_header()
-        cost = 0
-        for i in range(solver.min_cost_flow.NumArcs()):
-            cost += solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
-            self.print_arc(solver.min_cost_flow, i)
+        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
 
-        assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
 
     def test_solver_find_lowest_cost_and_respect_constraints (self):
         '''
-        Tests 4 papers, 3 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
+        Tests 5 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
         Constrained such that:
         Reviewer 0: available for all papers
                  1: cannot review papers 0,3
@@ -109,13 +102,180 @@ class TestSolver:
                 assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
                 assert not (res[i,j] > 0 and cost_matrix[i,j] > -10), "Solution contains an arc that is not part of an lowest-cost solution"
         self.print_header()
+        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+
+    def test_solver4 (self):
+        '''
+        Tests 6 papers, 6 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 2 reviews.
+        All scores set to 1 so that any match that does not violate constraints is optimal
+        Purpose:  Honors minimums == 2 for all reviewers
+        '''
+        cost_matrix = np.array([
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1]])
+        constraint_matrix = np.array([
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]])
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        solver = AssignmentGraph([2,2,2,2,2,2], [3,3,3,3,3,3], [2,2,2,2,2,2], cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (6,6)
+        # make sure every reviewer is reviewing 2 papers
+        nrows, ncols = res.shape
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            assert reviewer_count_reviews == 2
+        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+
+
+    def test_solver5 (self):
+        '''
+        Tests 3 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 3 reviews.
+        Reviewer 4 has very high cost.  Other reviewers have 0 cost.
+        Purpose:  Make sure all reviewers get at least their minimum
+        '''
+        num_papers = 3
+        num_reviewers = 4
+        min_papers_per_reviewer = 1
+        max_papers_per_reviewer = 3
+        paper_revs_reqd = 3
+        cost_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [2000, 2000, 2000]])
+        constraint_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]])
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (4,3)
+        # make sure every reviewer has at least 1 paper
+        nrows, ncols = res.shape
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            assert reviewer_count_reviews >= 1
+        # TestSolver.silent = False
+        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+
+
+    def test_solver6 (self):
+        '''
+        Tests 3 papers, 4 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 3 reviews.
+        Reviewer 4 has very high cost.  Other reviewers have 0 cost.
+        Purpose:  Make sure all reviewers get at least their minimum
+        '''
+        num_papers = 3
+        num_reviewers = 4
+        min_papers_per_reviewer = 2
+        max_papers_per_reviewer = 3
+        paper_revs_reqd = 3
+        cost_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [2000, 2000, 2000]])
+        constraint_matrix = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]])
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (4,3)
+        # make sure every reviewer has at least 1 paper
+        nrows, ncols = res.shape
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            assert reviewer_count_reviews >= 1
+        # TestSolver.silent = False
+        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+
+
+    def test_solver_respects_minimums_icml (self):
+        '''
+        Based on ICML workshop which produces a match that has users either getting 4 or 6 papers with one user
+        getting just 2.
+        There are 44 papers, 27 reviewers. 3 users per paper and between 4 and 6 papers per user.
+        All reviewers are 0 cost.
+        Purpose:  Make sure all reviewers get between their min and max
+        TODO Why do all reviewers get either the min or max?  None of them get a number in between!
+        '''
+        num_papers = 44
+        num_reviewers = 27
+        min_papers_per_reviewer = 4
+        max_papers_per_reviewer = 6
+        paper_revs_reqd = 3
+        cost_matrix = np.zeros((num_reviewers, num_papers))
+        constraint_matrix = np.zeros((num_reviewers, num_papers))
+
+        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+        rev_mins = [min_papers_per_reviewer] * num_reviewers
+        rev_maxs = [max_papers_per_reviewer] * num_reviewers
+        papers_reqd = [paper_revs_reqd] * num_papers
+        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        res = solver.solve()
+        assert res.shape == (27,44)
+        # make sure every reviewer has >= minimum number of papers
+        # make sure every reviewer has <= maximum number of papers
+        nrows, ncols = res.shape
+        total = 0
+        num4=0
+        num6=0
+        for rix in range(nrows):
+            reviewer_count_reviews = 0
+            for pix in range(ncols):
+                if res[rix,pix] != 0:
+                    reviewer_count_reviews += 1
+            total += reviewer_count_reviews
+            if reviewer_count_reviews == 4:
+                num4 += 1
+            else:
+                num6 += 1
+            # print("Reviewer: {} has {} papers".format(rix, reviewer_count_reviews))
+            assert reviewer_count_reviews >= min_papers_per_reviewer
+            assert reviewer_count_reviews <= max_papers_per_reviewer
+        assert total == num_papers * paper_revs_reqd
+        assert total == num4*4 + num6*6
+        # print("Total reviews",total, "num 4", num4, "num 6", num6)
+
+    def check_solution (self, solver, expected_cost):
+        self.print_header()
         cost = 0
         for i in range(solver.min_cost_flow.NumArcs()):
             cost += solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
             self.print_arc(solver.min_cost_flow, i)
-
         assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
-
+        assert cost == expected_cost,  "Lowest cost solution should have cost = {}".format(expected_cost)
 
     def test_solver_respects_one_minimum (self):
         '''
@@ -256,6 +416,7 @@ class TestSolver:
 
 
     def print_header  (self):
+        print("-"*60)
         if not self.silent:
             print('  Arc    Flow / Capacity  Cost')
 
