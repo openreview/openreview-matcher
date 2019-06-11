@@ -40,8 +40,8 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                                                                  'value': self.conf_ids.AGGREGATE_SCORE_ID}
             content[Configuration.CONFLICTS_INVITATION_ID] = {'order': 18, 'required': True, 'description': 'Conflicts invitation',
                                                                  'value': self.conf_ids.CONFLICTS_INV_ID}
-            content[Configuration.CONSTRAINTS_INVITATION_ID] = {'order': 19, 'required': True, 'description': 'Constraints invitation',
-                                                                 'value': self.conf_ids.CONSTRAINTS_INV_ID}
+            # content[Configuration.CONSTRAINTS_INVITATION_ID] = {'order': 19, 'required': True, 'description': 'Constraints invitation',
+            #                                                      'value': self.conf_ids.CONSTRAINTS_INV_ID}
             content[Configuration.CUSTOM_LOAD_INVITATION_ID] = {'order': 20, 'required': True, 'description': 'Custom-load invitation',
                                                                  'value': self.conf_ids.CUSTOM_LOAD_INV_ID}
             self.client.post_invitation(config_inv)
