@@ -131,7 +131,7 @@ else:
                          Params.NUM_REVIEWERS: 3,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
                          Params.REVIEWER_MAX_PAPERS: 2,
-                         Params.SCORES_CONFIG: {Params.SCORE_NAMES_LIST: ['affinity'],
+                         Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
                                                 Params.SCORE_TYPE: Params.FIXED_SCORE,
                                                 Params.FIXED_SCORE_VALUE: 0.01
                                                 }

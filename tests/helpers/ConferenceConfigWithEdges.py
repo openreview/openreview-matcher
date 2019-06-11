@@ -1,10 +1,11 @@
 import time
+import json
 from collections import defaultdict
 from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 import openreview
 from openreview import Edge, Invitation
-
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from helpers.Params import Params
 from itertools import cycle
 
@@ -24,15 +25,18 @@ class ConferenceConfigWithEdges (ConferenceConfig):
     def score_invitation_ids (self):
         return [inv.id for inv in self.score_invitations]
 
+
     def customize_config_invitation (self):
-        super().customize_config_invitation()
+        # super().customize_config_invitation()
         config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
-        # config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
+        self.update_score_spec()
         self.build_score_invitations()
         if config_inv:
             content = config_inv.reply['content']
-            content[Configuration.SCORES_INVITATIONS] = {'order': 16, 'required': True, 'description': 'Score edge invitations',
-                                                         'values': self.score_invitation_ids}
+            # content[Configuration.SCORES_INVITATIONS] = {'order': 16, 'required': True, 'description': 'Score edge invitations',
+            #                                              'values': self.score_invitation_ids}
+            content[Configuration.SCORES_SPECIFICATION] = {'order': 16, 'required': True, 'description': 'Score specification JSON',
+                                                         'value-dict': {}}
             content[Configuration.AGGREGATE_SCORE_INVITATION] = {'order': 17, 'required': True, 'description': 'Aggregrate Score invitation',
                                                                  'value': self.conf_ids.AGGREGATE_SCORE_ID}
             content[Configuration.CONFLICTS_INVITATION_ID] = {'order': 18, 'required': True, 'description': 'Conflicts invitation',
@@ -43,13 +47,20 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                                                                  'value': self.conf_ids.CUSTOM_LOAD_INV_ID}
             self.client.post_invitation(config_inv)
 
+    # The score_specification inside the params is like {'affinity': {'weight': 1, 'default': 0} ...}.   This will replace the
+    # dict with one that has keys which are score_edge_invitation_ids (e.g. FakeConference/2019/Conference/-/affinity)
+    def update_score_spec (self):
+        scores_spec = self.params.scores_config[Params.SCORES_SPEC]
+        fixed_key_spec = {self.conf_ids.CONF_ID + '/-/' + k : v for k, v in scores_spec.items()}
+        self.params.scores_config[Params.SCORES_SPEC] = fixed_key_spec
+
     def build_score_invitations (self):
         '''
         build only the invitations for the scores specified in the configuration parameters.  Also builds a score_invitation
         '''
-        score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
-        for name in score_names:
-            inv_id = self.conf_ids.CONF_ID + '/-/' + name
+        # score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
+        score_edge_inv_id = self.params.scores_config[Params.SCORES_SPEC].keys()
+        for inv_id in score_edge_inv_id:
             inv = Invitation(id=inv_id, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
             inv = self.client.post_invitation(inv)
             self._score_invitations.append(inv)
@@ -66,7 +77,8 @@ class ConferenceConfigWithEdges (ConferenceConfig):
 
     def create_config_note (self):
         super().create_config_note()
-        self.config_note.content[Configuration.SCORES_INVITATIONS] = [inv.id for inv in self.score_invitations]
+        # self.config_note.content[Configuration.SCORES_INVITATIONS] = [inv.id for inv in self.score_invitations]
+        self.config_note.content[Configuration.SCORES_SPECIFICATION] = self.params.scores_config[Params.SCORES_SPEC]
         self.config_note.content[Configuration.AGGREGATE_SCORE_INVITATION] = self.aggregate_score_invitation.id
         self.config_note.content[Configuration.CONFLICTS_INVITATION_ID] = self.conf_ids.CONFLICTS_INV_ID
         self.config_note.content[Configuration.CONSTRAINTS_INVITATION_ID] = self.conf_ids.CONSTRAINTS_INV_ID
@@ -83,21 +95,28 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         paper_notes = self.get_paper_notes()
         reviewers_group = self.client.get_group(self.conference.get_reviewers_id())
         reviewers = reviewers_group.members
+        edge_type_dict = defaultdict(list) # maps edge_inv_ids to a list of edges of that invitation / so that post_bulk won't complain
         paper_ix = 0
-        edges = []
         for paper_note in paper_notes:
             reviewer_ix = 0
             for reviewer in reviewers:
                 for score_inv in self.score_invitations:
-                    score = self.gen_score(reviewer_ix=reviewer_ix, paper_ix=paper_ix )
-                    if score == 0 and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
+                    score_name = PaperReviewerEdgeInvitationIds.translate_score_inv_to_score_name(score_inv.id)
+                    score = self.gen_score(score_name, reviewer_ix=reviewer_ix, paper_ix=paper_ix )
+                    if (score == 0 or score == '0') and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
                         pass
+                    elif isinstance(score, str):
+                        edge = Edge(head=paper_note.id, tail=reviewer, label=score, weight=0, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                        edge_type_dict[score_inv.id].append(edge)
                     else:
-                        edge = Edge(head=paper_note.id, tail=reviewer, label='x', weight=score, invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
-                        edges.append(edge)
+                        edge = Edge(head=paper_note.id, tail=reviewer, label='xx', weight=float(score), invitation=score_inv.id, readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                        edge_type_dict[score_inv.id].append(edge)
+
                 reviewer_ix += 1
             paper_ix += 1
-        self.client.post_bulk_edges(edges)
+        for score_edges in edge_type_dict.values():
+            self.client.post_bulk_edges(score_edges) # can only send one edge type in the bulk list
+
         if not self._silence:
             print("Time to build score edges: ", time.time() - now)
         self.add_conflicts_to_metadata()
@@ -163,8 +182,8 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             paper_note = self.paper_notes[paper_index]
             for user_ix in user_index_list:
                 reviewer = self.reviewers[user_ix]
-                edge = Edge(head=paper_note.id, tail=reviewer, invitation=self.conf_ids.CONFLICTS_INV_ID,
-                            label=['conflict-exists'], readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                edge = Edge(head=paper_note.id, tail=reviewer, invitation=self.conf_ids.CONFLICTS_INV_ID, weight=1,
+                            label='conflict-exists', readers=['everyone'], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
                 edges.append(edge)
         self.client.post_bulk_edges(edges)
 
@@ -252,6 +271,5 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 e = e[0]
                 edges.append(e)
         return edges
-
 
 

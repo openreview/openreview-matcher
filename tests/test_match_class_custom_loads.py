@@ -10,6 +10,9 @@ from helpers.AssignmentChecker import AssignmentChecker
 # and the matcher is called to find a solution.  We then check the solution to make sure custom_loads were not violated.
 # Note Well:  To run this test you must be running OR with a clean db.  See README for details.
 
+#TODO These tests may fail now because custom_load invitation is now validated by the server and will need to have the type of its
+# head object be a configuration Note.
+
 class TestMatchClassCustomLoads():
 
     # called once at beginning of suite

@@ -1,6 +1,9 @@
 import openreview.tools
 import random
 import datetime
+import openreview
+
+from PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
 from helpers.Params import Params
 
@@ -42,6 +45,7 @@ class ConferenceConfig:
         self.params = params
         self.config_inv = None
         self.conference = None
+        self.score_names = None
         self.paper_notes = []
         self.paper_to_metadata_map = {}
         self.config_note = None
@@ -59,6 +63,7 @@ class ConferenceConfig:
     def build_conference (self):
         builder = openreview.conference.ConferenceBuilder(self.client)
         builder.set_conference_id(self.conf_ids.CONF_ID)
+        print("Building conference "+ self.conf_ids.CONF_ID)
         builder.set_conference_name('Conference for Integration Testing')
         builder.set_conference_short_name('Integration Test')
         self.conference = builder.get_result()
@@ -73,6 +78,9 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
+        self.score_names = [PaperReviewerEdgeInvitationIds.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
+
+        self.build_invitations()
         # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
         self.repair_metadata_notes()
         self.build_paper_to_metadata_map()
@@ -80,18 +88,15 @@ class ConferenceConfig:
         self.add_reviewer_entries_to_metadata()
         self.config_note = self.create_and_post_config_note()
 
+    def build_invitations (self):
+        # custom_load
+        inv = openreview.Invitation(id=self.conf_ids.CUSTOM_LOAD_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
+        self.client.post_invitation(inv)
+        inv = openreview.Invitation(id=self.conf_ids.CONFLICTS_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
+        self.client.post_invitation(inv)
+
     def customize_config_invitation (self):
-        config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
-        if config_inv:
-            content = config_inv.reply['content']
-            del content['scores_names']
-            content["scores_names"] = {
-                "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
-                "required": True,
-                "description": "List of scores names",
-                "order": 3
-                }
-            self.client.post_invitation(config_inv)
+        pass
 
     def customize_invitations (self):
         self.customize_config_invitation()
@@ -107,24 +112,32 @@ class ConferenceConfig:
         for md_note in self.get_metadata_notes():
             self.paper_to_metadata_map[md_note.forum] = md_note
 
-    def gen_score (self, reviewer_ix=0, paper_ix=0):
+    def gen_score (self, score_name, reviewer_ix=0, paper_ix=0):
         if self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
             score = random.random()
+        elif self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_CHOICE_SCORE:
+            score = random.choice(self.params.scores_config[Params.SCORE_CHOICES])
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.FIXED_SCORE:
             fixed_score = self.params.scores_config[Params.FIXED_SCORE_VALUE]
             score = fixed_score
         elif self.params.scores_config[Params.SCORE_TYPE] == Params.MATRIX_SCORE:
-            score = self.params.scores_config[Params.SCORE_MATRIX][reviewer_ix, paper_ix]
+            # Extended to allow storing a dict of matrices where a score_name maps to each matrix
+            matrix_or_matrices = self.params.scores_config[Params.SCORE_MATRIX]
+            if type(matrix_or_matrices) == dict:
+                matrix = matrix_or_matrices[score_name]
+            else:
+                matrix = matrix_or_matrices
+            score = matrix[reviewer_ix, paper_ix]
         else: #  incremental scores go like 0.1, 0.2, 0.3... to create a discernable pattern we can look for in cost matrix
             self.incremental_score += self.params.scores_config[Params.SCORE_INCREMENT]
             score = self.incremental_score
-        return float(score)
+        return score
 
     def gen_scores (self, reviewer_ix, paper_ix):
-        score_names = self.params.scores_config[Params.SCORE_NAMES_LIST]
+        score_names = self.score_names
         record = {}
         for score_name in score_names:
-            record[score_name] = self.gen_score(reviewer_ix, paper_ix)
+            record[score_name] = self.gen_score(score_name, reviewer_ix, paper_ix)
         return record
 
     # adds scores for reviewers into the papers
@@ -203,8 +216,12 @@ class ConferenceConfig:
             'signatures': [self.conference.get_program_chairs_id()],
             'content': {
                 'title': self.config_title,
-                'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
-                'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
+                # scores_names and weights is going away but system is requiring values be there.
+                # 'scores_names': self.params.scores_config[Params.SCORE_NAMES_LIST],
+                # 'scores_names': [],
+                # 'scores_weights': [1 for n in self.params.scores_config[Params.SCORE_NAMES_LIST]], # each score is weighted 1
+                # 'scores_weights': [], # each score is weighted 1
+                Configuration.SCORES_SPECIFICATION : self.params.scores_config[Params.SCORES_SPEC],
                 'max_users': str(self.params.num_reviews_needed_per_paper), # max number of reviewers a paper can have
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review

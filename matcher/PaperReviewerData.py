@@ -22,7 +22,7 @@ class PaperReviewerData:
         self._score_map = defaultdict(lambda: defaultdict(PaperUserScores))
         self._paper_notes = paper_notes
         self._reviewers = reviewers
-        self._score_specification = score_specification # dict mapping score-names to a dict of weight,default,translate_fn
+        self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
         self._load_scores(client)
         self._load_conflicts(client)
 
@@ -58,7 +58,7 @@ class PaperReviewerData:
                 paper_user_scores.set_user(e.tail)
                 #N.B. We can only translate a score if there is an edge from paper->reviewer for that score.  If the score is
                 #not provided, then the Encoder will fetch a default value when it builds its cost matrix.
-                score_spec = self._score_specification[score_name]
+                score_spec = self._score_specification[inv_id]
                 score = self._translate_edge_to_score(score_spec, e, or_client)
                 paper_user_scores.add_score(score_name, score)
                 num_entries += 1
@@ -87,6 +87,11 @@ class PaperReviewerData:
             paper_user_scores = self._score_map[e.head][e.tail] #type: PaperUserScores
             paper_user_scores.set_paper(e.head)
             paper_user_scores.set_user(e.tail)
-            paper_user_scores.set_conflicts(e.label)
+            # Maybe an unecessary check.  These are edges for the conflicts invitation so it really doesn't matter what the label is
+            # What does matter is that weight=0 is interpreted as no-conflicts and weight=1 means conflicts exist.  Since the edge
+            # can't store the list of conflicts, the UI will have to get the conflicts from the original source and not this edge.
+            assert e.label == 'conflict-exists', "Conflict edge must have label = conflict-exists and weight of 0/1 for False/True"
+            paper_user_scores.set_conflicts(True if e.weight == 1 else False)
+
 
 

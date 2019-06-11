@@ -13,15 +13,18 @@ class Params:
     CONFLICTS_CONFIG = 'conflicts_config'
     SCORES_CONFIG = 'scores_config'
     RANDOM_SCORE = 'random'
+    RANDOM_CHOICE_SCORE = 'random_choice'
     FIXED_SCORE = 'fixed'
     FIXED_SCORE_VALUE = 'fixed_score_value'
     INCREMENTAL_SCORE = 'incremental'
     MATRIX_SCORE = 'matrix'
     SCORE_MATRIX = 'score_matrix'
+    SCORE_CHOICES = 'score_choices'
     SCORE_INCREMENT = 'score_increment'
     SCORE_TYPE = 'type'
     OMIT_ZERO_SCORE_EDGES = 'omit_zero_score_edges'
     SCORE_NAMES_LIST = 'score_names'
+    SCORES_SPEC = 'scores_spec'
 
     def __init__ (self, params):
         self.params = params
@@ -42,6 +45,7 @@ class Params:
                                              {Params.SCORE_TYPE: Params.FIXED_SCORE,
                                               Params.FIXED_SCORE_VALUE: 1,
                                               Params.OMIT_ZERO_SCORE_EDGES: False,
+                                              Params.SCORES_SPEC: {},
                                               Params.SCORE_NAMES_LIST: ['affinity']})
         self.set_other_params()
 
