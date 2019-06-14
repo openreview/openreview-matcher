@@ -65,10 +65,10 @@ class ConferenceConfig:
         print("Building conference "+ self.conf_ids.CONF_ID)
         builder.set_conference_name('Conference for Integration Testing')
         builder.set_conference_short_name('Integration Test')
+        builder.has_area_chairs(True)
         builder.set_submission_stage(due_date = datetime.datetime(2019, 3, 25, 23, 59), remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
         self.conference = builder.get_result()
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
-        self.conference.has_area_chairs(True)
         self.conference.set_program_chairs(emails=[])
         self.conference.set_area_chairs(emails=[])
         self.reviewers = ["reviewer-" + str(i) + "@acme.com" for i in range(self.params.num_reviewers)]
@@ -78,37 +78,16 @@ class ConferenceConfig:
         self.conference.setup_matching()
         self.score_names = [util.names.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
 
-        self.build_invitations()
         # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
-        self.repair_metadata_notes()
-        self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
         self.config_note = self.create_and_post_config_note()
-
-    def build_invitations (self):
-        # custom_load
-        inv = openreview.Invitation(id=self.conf_ids.CUSTOM_LOAD_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
-        self.client.post_invitation(inv)
-        inv = openreview.Invitation(id=self.conf_ids.CONFLICTS_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
-        self.client.post_invitation(inv)
 
     def customize_config_invitation (self):
         pass
 
     def customize_invitations (self):
         self.customize_config_invitation()
-
-
-    def repair_metadata_notes (self):
-        for md_note in self.get_metadata_notes():
-            for entry in md_note.content['entries']:
-                del entry['conflicts']
-            self.client.post_note(md_note)
-
-    def build_paper_to_metadata_map (self):
-        for md_note in self.get_metadata_notes():
-            self.paper_to_metadata_map[md_note.forum] = md_note
 
     def gen_score (self, score_name, reviewer_ix=0, paper_ix=0):
         if self.params.scores_config[Params.SCORE_TYPE] == Params.RANDOM_SCORE:
@@ -207,9 +186,9 @@ class ConferenceConfig:
         '''
         self.config_note = openreview.Note(**{
             'invitation': self.get_assignment_configuration_id(),
-            'readers': [self.conference.id, self.conference.get_program_chairs_id()],
-            'writers': [self.conference.id, self.conference.get_program_chairs_id()],
-            'signatures': [self.conference.get_program_chairs_id()],
+            'readers': [self.conference.id],
+            'writers': [self.conference.id,],
+            'signatures': [self.conference.id],
             'content': {
                 'title': self.config_title,
                 Configuration.SCORES_SPECIFICATION : self.params.scores_config[Params.SCORES_SPEC],
@@ -220,7 +199,7 @@ class ConferenceConfig:
                 'alternates': '2',
                 'constraints': {},
                 'custom_loads': {},
-                'config_invitation': self.conf_ids.CONF_ID,
+                'config_invitation': self.conf_ids.CONFIG_ID,
                 'paper_invitation': self.conference.get_blind_submission_id(),
                 'metadata_invitation': self.get_metadata_id(),
                 'assignment_invitation': self.get_paper_assignment_id(),
