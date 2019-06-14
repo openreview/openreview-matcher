@@ -219,7 +219,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         # build custom_load edge for those reviewers that are different from the default max
         edges = []
         for rev, load in loads.items():
-            if load <= self.params.reviewer_max_papers:
+            if load != self.params.reviewer_max_papers:
                 edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[rev])
                 edges.append(edge)
         self.client.post_bulk_edges(edges)
