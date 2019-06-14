@@ -127,19 +127,29 @@ class Match:
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
         '''
         # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
+        invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
             for reviewer, paper_user_scores in reviewers.items():
                 ag_score = paper_user_scores.aggregate_score
-                edges.append(self._build_aggregate_edge(forum_id, reviewer, ag_score))
+                edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score))
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         self.client.post_bulk_edges(edges)
 
-    def _build_aggregate_edge (self, forum_id, reviewer, agg_score):
-        aggregate_inv_id = self.config[Configuration.AGGREGATE_SCORE_INVITATION]
-        conf_inv_id = self.config[Configuration.CONFIG_INVITATION_ID]
-        return openreview.Edge(head=forum_id, tail=reviewer, weight=agg_score, label='aggregateScore', invitation=aggregate_inv_id,
-                               readers=['everyone'], writers=[conf_inv_id], signatures=[reviewer])
+    def _get_values(self, invitation, property):
+        return invitation.reply.get(property, {}).get('values', [])
+
+    def _build_edge (self, invitation, forum_id, reviewer, score, label = None):
+
+        return openreview.Edge(head = forum_id,
+            tail = reviewer,
+            weight = score,
+            label = label,
+            invitation = invitation.id,
+            readers = self._get_values(invitation, 'readers'),
+            nonreaders = self._get_values(invitation, 'nonreaders'),
+            writers = self._get_values(invitation, 'writers'),
+            signatures = self._get_values(invitation, 'signatures'))
 
 
     def _save_suggested_assignment (self, assignment_inv, assignments_by_forum):
@@ -150,15 +160,7 @@ class Match:
             for paper_user_scores in assignments: #type: PaperUserScores
                 score = paper_user_scores.aggregate_score
                 user = paper_user_scores.user
-                e = openreview.Edge(invitation=assignment_inv.id,
-                                    head=forum,
-                                    tail=user,
-                                    label=label,
-                                    weight=score,
-                                    readers=['everyone'],
-                                    writers=['everyone'],
-                                    signatures=[user])
-                edges.append(e)
+                edges.append(self._build_edge(assignment_inv, forum, user, score, label))
         self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
         self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
 
