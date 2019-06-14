@@ -117,7 +117,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                         edge = Edge(head=paper_note.id, tail=reviewer, label=score, weight=0, invitation=score_inv.id, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[self.conf_ids.CONF_ID])
                         edge_type_dict[score_inv.id].append(edge)
                     else:
-                        edge = Edge(head=paper_note.id, tail=reviewer, label='xx', weight=float(score), invitation=score_inv.id, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[self.conf_ids.CONF_ID])
+                        edge = Edge(head=paper_note.id, tail=reviewer, weight=float(score), invitation=score_inv.id, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[self.conf_ids.CONF_ID])
                         edge_type_dict[score_inv.id].append(edge)
 
                 reviewer_ix += 1
@@ -219,7 +219,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         # build custom_load edge for those reviewers that are different from the default max
         edges = []
         for rev, load in loads.items():
-            if load != self.params.reviewer_max_papers:
+            if load <= self.params.reviewer_max_papers:
                 edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[rev])
                 edges.append(edge)
         self.client.post_bulk_edges(edges)
