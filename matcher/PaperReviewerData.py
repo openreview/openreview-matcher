@@ -105,10 +105,6 @@ class PaperReviewerData:
         for e in edges:
 
             paper_user_scores = self._find_or_make_entry(self._score_map, e.head, e.tail)
-            # Maybe an unecessary check.  These are edges for the conflicts invitation so it really doesn't matter what the label is
-            # What does matter is that weight=0 is interpreted as no-conflicts and weight=1 means conflicts exist.  Since the edge
-            # can't store the list of conflicts, the UI will have to get the conflicts from the original source and not this edge.
-            assert e.label == 'conflict-exists', "Conflict edge must have label = conflict-exists and weight of 0/1 for False/True"
             paper_user_scores.set_conflicts(True if e.weight == 1 else False)
 
 

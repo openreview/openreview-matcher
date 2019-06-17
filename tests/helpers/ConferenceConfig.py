@@ -173,7 +173,7 @@ class ConferenceConfig:
         for i in range(self.params.num_papers):
             content = {
                 'title':  "Paper-" + str(i),
-                'authorids': ['jimbob@acme.com']
+                'authorids': ['jimbob@test.com']
             }
             paper_note = openreview.Note(**{
                 'signatures': ['~Super_User1'],
