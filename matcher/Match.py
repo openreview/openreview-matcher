@@ -133,7 +133,7 @@ class Match:
                 ag_score = paper_user_scores.get_aggregate_score()
                 edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score))
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
-        self.client.post_bulk_edges(edges)
+        openreview.tools.post_bulk_edges(self.client, edges)
 
     def _get_values(self, invitation, property):
         return invitation.reply.get(property, {}).get('values', [])
@@ -160,6 +160,6 @@ class Match:
                 score = paper_user_scores.get_aggregate_score()
                 user = paper_user_scores.user
                 edges.append(self._build_edge(assignment_inv, forum, user, score, label))
-        self.client.post_bulk_edges(edges) # bulk posting of edges is much faster than individually
+        openreview.tools.post_bulk_edges(self.client, edges)
         self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
 

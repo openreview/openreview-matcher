@@ -118,7 +118,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 reviewer_ix += 1
             paper_ix += 1
         for score_edges in edge_type_dict.values():
-            self.client.post_bulk_edges(score_edges) # can only send one edge type in the bulk list
+            openreview.tools.post_bulk_edges(self.client, score_edges)
 
         if not self._silence:
             print("Time to build score edges: ", time.time() - now)
@@ -185,9 +185,9 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             for user_ix in user_index_list:
                 reviewer = self.reviewers[user_ix]
                 edge = Edge(head=paper_note.id, tail=reviewer, invitation=self.conf_ids.CONFLICTS_INV_ID, weight=1,
-                            label='conflict-exists', readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[reviewer])
+                            label='domain.com', readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[self.conf_ids.CONF_ID])
                 edges.append(edge)
-        self.client.post_bulk_edges(edges)
+        openreview.tools.post_bulk_edges(self.client, edges)
 
 
     def reduce_reviewer_loads (self, loads, shortfall):
@@ -222,7 +222,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             if load != self.params.reviewer_max_papers:
                 edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[rev])
                 edges.append(edge)
-        self.client.post_bulk_edges(edges)
+        openreview.tools.post_bulk_edges(self.client, edges)
 
     def get_custom_loads_edges (self):
         return openreview.tools.iterget_edges(self.client, invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title)
@@ -263,7 +263,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 e = openreview.Edge(head=p.id, tail=r, label=self.config_title, weight=val, invitation=constraint_edge_inv,
                                     readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[r])
                 edges.append(e)
-        self.client.post_bulk_edges(edges)
+        openreview.tools.post_bulk_edges(self.client, edges)
 
     def get_score_edges (self, paper, reviewer):
         edges = []
