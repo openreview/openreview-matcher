@@ -16,6 +16,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         super().__init__(client, suffix_num, params)
         self.build_assignment_invitations()
 
+
     @property
     def score_invitations (self):
         return self._score_invitations
