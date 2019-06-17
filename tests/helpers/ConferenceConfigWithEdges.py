@@ -14,6 +14,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
     def __init__(self, client, suffix_num, params):
         self._score_invitations = []
         super().__init__(client, suffix_num, params)
+        self.build_assignment_invitations()
 
     @property
     def score_invitations (self):
@@ -177,6 +178,11 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         agg_inv_id = self.conf_ids.AGGREGATE_SCORE_ID
         edges = openreview.tools.iterget_edges(self.client, invitation=agg_inv_id, limit=10000)
         return list(edges)
+
+    # meta data notes are not part of conferences built with edges so this skips doing anything with them
+    # TODO The conference builder should no longer build metadata notes for each paper
+    def build_paper_to_metadata_map (self):
+        pass
 
     def add_conflicts_to_metadata(self):
         edges = []
