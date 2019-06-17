@@ -14,7 +14,6 @@ class ConferenceConfigWithEdges (ConferenceConfig):
     def __init__(self, client, suffix_num, params):
         self._score_invitations = []
         super().__init__(client, suffix_num, params)
-        self.build_assignment_invitations()
 
 
     @property
@@ -78,12 +77,6 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 })
             inv = self.client.post_invitation(inv)
             self._score_invitations.append(inv)
-
-
-    # builds the assignment edge invitation.
-    def build_assignment_invitations (self):
-        self.assignment_inv = Invitation(id=self.conf_ids.ASSIGNMENT_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
-        self.assignment_inv = self.client.post_invitation(self.assignment_inv)
 
 
     def create_config_note (self):
