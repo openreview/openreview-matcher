@@ -220,7 +220,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         edges = []
         for rev, load in loads.items():
             if load != self.params.reviewer_max_papers:
-                edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[rev])
+                edge = openreview.Edge(invitation=self.conf_ids.CUSTOM_LOAD_INV_ID, label=self.config_title, head=self.conf_ids.CONF_ID, tail=rev, weight=load, readers=[self.conf_ids.CONF_ID], writers=[self.conf_ids.CONF_ID], signatures=[self.conf_ids.CONF_ID])
                 edges.append(edge)
         openreview.tools.post_bulk_edges(self.client, edges)
 
