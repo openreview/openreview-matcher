@@ -111,8 +111,7 @@ class Match:
         return self._get_custom_loads(custom_load_invitation_id, minimums, maximums)
 
     def _get_custom_loads (self, custom_load_invitation_id, minimums, maximums):
-        custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id,
-                                                           head=self.config[Configuration.CONFIG_INVITATION_ID], limit=10000)
+        custom_load_edges = openreview.tools.iterget_edges(self.client, invitation=custom_load_invitation_id, limit=10000)
         for edge in custom_load_edges:
             custom_load = edge.weight
             reviewer = edge.tail
