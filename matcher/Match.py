@@ -127,18 +127,19 @@ class Match:
         '''
         # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
         invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
+        label = self.config[Configuration.TITLE]
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
             for reviewer, paper_user_scores in reviewers.items():
                 ag_score = paper_user_scores.get_aggregate_score()
-                edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score))
+                edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         openreview.tools.post_bulk_edges(self.client, edges)
 
     def _get_values(self, invitation, property):
         return invitation.reply.get(property, {}).get('values', [])
 
-    def _build_edge (self, invitation, forum_id, reviewer, score, label = None):
+    def _build_edge (self, invitation, forum_id, reviewer, score, label):
 
         return openreview.Edge(head = forum_id,
             tail = reviewer,
