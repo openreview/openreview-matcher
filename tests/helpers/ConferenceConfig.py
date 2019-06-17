@@ -99,6 +99,7 @@ class ConferenceConfig:
     def customize_invitations (self):
         self.customize_config_invitation()
 
+
     def repair_metadata_notes (self):
         for md_note in self.get_metadata_notes():
             for entry in md_note.content['entries']:
