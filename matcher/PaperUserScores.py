@@ -10,16 +10,11 @@ class PaperUserScores:
         self._user = reviewer
         self._scores_dict = {} #e.g. {'affinity': 0.2, 'recommendation': 0.5}
         self._conflicts = [] #e.g. ['umass.edu', 'google.com']
-        self._aggregate_score = 0.0
 
 
     @property
     def user (self):
         return self._user
-
-    @property
-    def aggregate_score (self):
-        return self._aggregate_score
 
     @property
     def scores (self):
@@ -30,13 +25,14 @@ class PaperUserScores:
         return self._conflicts
 
     def add_score (self, score_name, score):
+        print('add score', score_name, score)
         self._scores_dict[score_name] = score
 
     def set_conflicts (self, conflicts):
         self._conflicts = conflicts
 
-    def set_aggregate_score (self, ag_score):
-        self._aggregate_score = ag_score
+    def get_aggregate_score(self):
+        return sum(self._scores_dict.values())
 
     def calculate_aggregrate_score (self, score_specs):
         '''
