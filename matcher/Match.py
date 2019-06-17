@@ -131,7 +131,7 @@ class Match:
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
             for reviewer, paper_user_scores in reviewers.items():
-                ag_score = paper_user_scores.get_aggregate_score()
+                ag_score = paper_user_scores.aggregate_score
                 edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         openreview.tools.post_bulk_edges(self.client, edges)
@@ -158,7 +158,7 @@ class Match:
         edges = []
         for forum, assignments in assignments_by_forum.items():
             for paper_user_scores in assignments: #type: PaperUserScores
-                score = paper_user_scores.get_aggregate_score()
+                score = paper_user_scores.aggregate_score
                 user = paper_user_scores.user
                 edges.append(self._build_edge(assignment_inv, forum, user, score, label))
         openreview.tools.post_bulk_edges(self.client, edges)

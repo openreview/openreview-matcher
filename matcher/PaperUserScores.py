@@ -20,6 +20,10 @@ class PaperUserScores:
         return self._scores_dict
 
     @property
+    def aggregate_score (self):
+        return sum(self._scores_dict.values())
+
+    @property
     def conflicts (self):
         return self._conflicts
 
@@ -28,9 +32,6 @@ class PaperUserScores:
 
     def set_conflicts (self, conflicts):
         self._conflicts = conflicts
-
-    def get_aggregate_score(self):
-        return sum(self._scores_dict.values())
 
     # Deprecated, remove soon
     def calculate_aggregrate_score (self, score_specs):

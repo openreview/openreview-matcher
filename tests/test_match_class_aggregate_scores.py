@@ -73,7 +73,7 @@ lambda edge:
         for rix, r in enumerate(reviewers):
             for pix, p in enumerate(papers):
                 paper_user_scores = paper_reviewer_data.get_entry(p.id, r) #type: PaperUserScores
-                agg_score = paper_user_scores.get_aggregate_score()
+                agg_score = paper_user_scores.aggregate_score
                 ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                 assert ag_sc_edge.weight == agg_score
 
