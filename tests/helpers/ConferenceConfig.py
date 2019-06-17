@@ -78,20 +78,12 @@ class ConferenceConfig:
         self.conference.setup_matching()
         self.score_names = [util.names.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
 
-        self.build_invitations()
         # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
         self.repair_metadata_notes()
         self.build_paper_to_metadata_map()
         self.customize_invitations()
         self.add_reviewer_entries_to_metadata()
         self.config_note = self.create_and_post_config_note()
-
-    def build_invitations (self):
-        # custom_load
-        inv = openreview.Invitation(id=self.conf_ids.CUSTOM_LOAD_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
-        self.client.post_invitation(inv)
-        inv = openreview.Invitation(id=self.conf_ids.CONFLICTS_INV_ID, reply={'content': {'edge': {'head': 'note', 'tail': 'group'}}})
-        self.client.post_invitation(inv)
 
     def customize_config_invitation (self):
         pass
