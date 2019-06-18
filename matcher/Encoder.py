@@ -48,9 +48,9 @@ class Encoder:
 
     def _update_cost_matrix (self, paper_user_scores, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
-        if paper_user_scores:
-            cost = self._cost_fn(paper_user_scores.aggregate_score)
-            self._cost_matrix[coordinates] = cost
+        paper_user_scores.calculate_aggregrate_score(self._score_spec)
+        cost = self._cost_fn(paper_user_scores.aggregate_score)
+        self._cost_matrix[coordinates] = cost
 
     # Conflicts between paper/reviewer sets the constraint matrix cell to -1 ; 0 otherwise
     def _update_constraint_matrix (self, paper_user_scores, reviewer_index, paper_index):

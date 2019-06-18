@@ -37,6 +37,12 @@ lambda edge:
     else:
         return 0.6
 """
+    bid_translate_map = {
+        'low': 0.2,
+        'medium': 0.5,
+        'high': 0.8,
+        'very high': 0.9,
+    }
 
 
     # @pytest.mark.skip
@@ -179,6 +185,70 @@ lambda edge:
         assert cost_matrix[3,1] == 0
         assert cost_matrix[3,2] == 0
         assert cost_matrix[3,3] == 0
+
+    def test_encoder_weighting (self, test_util):
+        '''
+        Makes sure that weight is correctly applied as part of the process of computing the score during encoding.
+        :param test_util:
+        :return:
+        '''
+        num_papers = 4
+        num_reviewers = 4
+        aff_matrix = np.array([
+            [10, 0, 0, 0],
+            [0, 10, 0, 0],
+            [0, 0, 10, 0],
+            [0, 0, 0, 0]
+        ])
+        bid_matrix = np.array([
+            ['very high', 'low', 'low', 'low'],
+            ['low', 'very high', 'low', 'low'],
+            ['low', 'low', 'very high', 'low'],
+            [0, 0, 0, 0]
+        ])
+        params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.NUM_REVIEWERS: num_reviewers,
+                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
+                         Params.REVIEWER_MAX_PAPERS: 2,
+                         Params.SCORES_CONFIG: {
+                             Params.SCORES_SPEC: {'affinity': {'weight': 10, 'default': 0},
+                                                  'bid': {'weight': 2, 'default': 0, 'translate_map': self.bid_translate_map}},
+                             Params.SCORE_TYPE: Params.MATRIX_SCORE,
+                             Params.OMIT_ZERO_SCORE_EDGES: True,
+                             Params.SCORE_MATRIX: {'affinity': aff_matrix, 'bid': bid_matrix}
+                         }})
+
+        or_client = test_util.client
+        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
+        config = conf.get_config_note()
+        scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
+        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
+        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+
+        enc = Encoder(pr_data, config.content)
+        cost_matrix = enc.cost_matrix
+        shape = cost_matrix.shape
+        assert shape == (num_reviewers,num_papers)
+        # scores with [10*10 + 0.9 * 2] * 100 = 101.8 * 100 = 10180.
+        assert cost_matrix[0,0] == -10180
+        assert cost_matrix[1,1] == -10180
+        assert cost_matrix[2,2] == -10180
+        # scores with [10*0 + 0.2 * 2] * 100 = -4
+        assert cost_matrix[0,1] == -40
+        assert cost_matrix[0,2] == -40
+        assert cost_matrix[0,3] == -40
+        assert cost_matrix[1,0] == -40
+        assert cost_matrix[1,2] == -40
+        assert cost_matrix[1,3] == -40
+        assert cost_matrix[2,0] == -40
+        assert cost_matrix[2,1] == -40
+        assert cost_matrix[2,3] == -40
+        # scores with [0*10 + 0*2] * 100 = 0
+        assert cost_matrix[3,0] == 0
+        assert cost_matrix[3,1] == 0
+        assert cost_matrix[3,2] == 0
+        assert cost_matrix[3,3] == 0
+
 
 
         # @pytest.mark.skip()

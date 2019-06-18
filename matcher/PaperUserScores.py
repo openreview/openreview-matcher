@@ -10,6 +10,7 @@ class PaperUserScores:
         self._user = reviewer
         self._scores_dict = {} #e.g. {'affinity': 0.2, 'recommendation': 0.5}
         self._conflicts = [] #e.g. ['umass.edu', 'google.com']
+        self._aggregate_score = 0
 
     @property
     def user (self):
@@ -21,7 +22,8 @@ class PaperUserScores:
 
     @property
     def aggregate_score (self):
-        return sum(self._scores_dict.values())
+        return self._aggregate_score
+
 
     @property
     def conflicts (self):
@@ -33,7 +35,6 @@ class PaperUserScores:
     def set_conflicts (self, conflicts):
         self._conflicts = conflicts
 
-    # Deprecated, remove soon
     def calculate_aggregrate_score (self, score_specs):
         '''
         Computes the weighted sum of the individual scores.  If an individual score was present on an edge, then it will have been run through a translate function
@@ -50,6 +51,7 @@ class PaperUserScores:
                 score = score_spec[Configuration.SCORE_DEFAULT]
             weighted_score = score_spec[Configuration.SCORE_WEIGHT] * score
             ag_score += weighted_score
+        self._aggregate_score = ag_score
         return ag_score
 
 
