@@ -88,22 +88,22 @@ class TestPaperReviewerData:
         prd._load_score_map(None)
 
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId0')
+        pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
         # 1 * 0.2 + 2 * 0.4 + 3 * 0.6 = 2.8
         assert pair.aggregate_score == pytest.approx(2.8)
         assert pair.conflicts == []
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId1')
+        pair = prd.get_entry('PaperId1', 'ReviewerId1')
         # 1 * 0.3 + 2 * 0.5 + 3 * 0.7 = 3.4
         assert pair.aggregate_score == pytest.approx(3.4)
         assert pair.conflicts == []
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId1')
+        pair = prd.get_entry('PaperId0', 'ReviewerId1')
         # 1 * 0.75 + 2 * 0.85 + 3 * 0.95 = 5.3
         assert pair.aggregate_score == pytest.approx(5.3)
         assert pair.conflicts == []
 
         # This pair is created from default info - not edges
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId0')
+        pair = prd.get_entry('PaperId1', 'ReviewerId0')
         # 1 * 0.35 + 2 * 0.66 + 3 * 0 = 1.67
         assert pair.aggregate_score == pytest.approx(1.67)
         assert pair.conflicts == []
@@ -141,22 +141,22 @@ class TestPaperReviewerData:
         prd._load_score_map(None)
 
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId0')
+        pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
         # 1 * 0.2 + 2 * 0.4 + 3 * 0.2 = 1.6
         assert pair.aggregate_score == pytest.approx(1.6)
         assert pair.conflicts == []
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId1')
+        pair = prd.get_entry('PaperId1', 'ReviewerId1')
         # 1 * 0.3 + 2 * 0.5 + 3 * 0.5 = 2.8
         assert pair.aggregate_score == pytest.approx(2.8)
         assert pair.conflicts == []
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId1')
+        pair = prd.get_entry('PaperId0', 'ReviewerId1')
         # 1 * 0.75 + 2 * 0.85 + 3 * 0.8 = 4.85
         assert pair.aggregate_score == pytest.approx(4.85)
         assert pair.conflicts == []
 
         # This pair is created from default info - not edges
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId0')
+        pair = prd.get_entry('PaperId1', 'ReviewerId0')
         # 1 * 0.35 + 2 * 0.66 + 3 * 0.1 = 1.97
         assert pair.aggregate_score == pytest.approx(1.97)
         assert pair.conflicts == []
@@ -201,22 +201,22 @@ class TestPaperReviewerData:
         prd._load_score_map(None)
 
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId0')
+        pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
         # 1 * 0.2 + 2 * 0.4 + 3 * 0.2 = 1.6
         assert pair.aggregate_score == pytest.approx(1.6)
         assert pair.conflicts == ['umass.edu', 'google.com']
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId1')
+        pair = prd.get_entry('PaperId1', 'ReviewerId1')
         # 1 * 0.3 + 2 * 0.5 + 3 * 0.5 = 2.8
         assert pair.aggregate_score == pytest.approx(2.8)
         assert pair.conflicts == []
 
-        pair: PaperUserScores = prd.get_entry('PaperId0', 'ReviewerId1')
+        pair = prd.get_entry('PaperId0', 'ReviewerId1')
         # 1 * 0.75 + 2 * 0.85 + 3 * 0.8 = 4.85
         assert pair.aggregate_score == pytest.approx(4.85)
         assert pair.conflicts == []
 
         # This pair is created from default info - not edges
-        pair: PaperUserScores = prd.get_entry('PaperId1', 'ReviewerId0')
+        pair = prd.get_entry('PaperId1', 'ReviewerId0')
         # 1 * 0.35 + 2 * 0.66 + 3 * 0.1 = 1.97
         assert pair.aggregate_score == pytest.approx(1.97)
         assert pair.conflicts == []
