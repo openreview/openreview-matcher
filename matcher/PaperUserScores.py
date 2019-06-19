@@ -10,20 +10,20 @@ class PaperUserScores:
         self._user = reviewer
         self._scores_dict = {} #e.g. {'affinity': 0.2, 'recommendation': 0.5}
         self._conflicts = [] #e.g. ['umass.edu', 'google.com']
-        self._aggregate_score = 0.0
-
+        self._aggregate_score = 0
 
     @property
     def user (self):
         return self._user
 
     @property
+    def scores (self):
+        return self._scores_dict
+
+    @property
     def aggregate_score (self):
         return self._aggregate_score
 
-    @property
-    def scores (self):
-        return self._scores_dict
 
     @property
     def conflicts (self):
@@ -34,9 +34,6 @@ class PaperUserScores:
 
     def set_conflicts (self, conflicts):
         self._conflicts = conflicts
-
-    def set_aggregate_score (self, ag_score):
-        self._aggregate_score = ag_score
 
     def calculate_aggregrate_score (self, score_specs):
         '''
@@ -54,6 +51,7 @@ class PaperUserScores:
                 score = score_spec[Configuration.SCORE_DEFAULT]
             weighted_score = score_spec[Configuration.SCORE_WEIGHT] * score
             ag_score += weighted_score
+        self._aggregate_score = ag_score
         return ag_score
 
 
