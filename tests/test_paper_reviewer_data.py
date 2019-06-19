@@ -2,7 +2,7 @@ import pytest
 
 import logging
 
-from PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.PaperReviewerData import PaperReviewerData
 
 from matcher.PaperUserScores import PaperUserScores
