@@ -72,7 +72,7 @@ class Match:
             self.set_status(Configuration.STATUS_RUNNING)
             self.extract_conference_data()
             self.logger.debug("Encoding")
-            encoder = Encoder(self.paper_reviewer_data, self.config, logger=self.logger)
+            encoder = Encoder(self.paper_reviewer_data, logger=self.logger)
             graph_builder = GraphBuilder.get_builder(
                 self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
 

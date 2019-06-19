@@ -5,6 +5,7 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
 from util.PythonFunctionRunner import ORFunctionRunner
+from util.names import translate_score_inv_to_score_name
 from exc.exceptions import TranslateScoreError
 
 
@@ -24,8 +25,7 @@ class PaperReviewerData:
         self._paper_notes = paper_notes
         self._reviewers = reviewers
         self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
-        self._load_scores(client)
-        self._load_conflicts(client)
+        self._load_score_map(client)
 
     @property
     def paper_notes (self):
@@ -41,10 +41,11 @@ class PaperReviewerData:
 
     # Will return an empty PaperUserScores object if none is mapped
     def get_entry (self, paper_id, reviewer):
-        return self._find_or_make_entry(self._score_map, paper_id, reviewer)
+        return self._score_map[paper_id][reviewer]
 
-    # build map of PaperUserScore objects from the score edges.
-    def _load_scores (self, or_client):
+
+    # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
+    def _load_scores_from_edges (self, or_client):
         now = time.time()
         scores_invitation_ids = self.edge_invitations.scores_invitation_id
         score_names = self.edge_invitations.get_score_names()
@@ -52,35 +53,23 @@ class PaperReviewerData:
         num_entries = 0
         for score_index, inv_id in enumerate(scores_invitation_ids):
             score_name = score_names[score_index]
-            edges = openreview.tools.iterget_edges(or_client, invitation=inv_id, limit=50000)
+            edges = self._get_all_score_edges(or_client, inv_id)
             for e in edges:
-                paper_user_scores = self._find_or_make_entry(self._score_map, e.head, e.tail)
-                #N.B. We can only translate a score if there is an edge from paper->reviewer for that score.  If the score is
-                #not provided, then the Encoder will fetch a default value when it builds its cost matrix.
+                paper_user_scores = self._score_map[e.head][e.tail]
                 score_spec = self._score_specification[inv_id]
                 score = self._translate_edge_to_score(score_spec, e, or_client)
-                paper_user_scores.add_score(score_name, score)
+                weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
+                paper_user_scores.set_score(score_name, weighted_score)
                 num_entries += 1
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
 
-    # behaves like a defaultdict but allows calling constructor of the PaperUserScores object with args so it is always correctly initialized.
-    def _find_or_make_entry (self, map, forum_id, reviewer):
-        fr = map.get(forum_id, None)
-        if fr != None:
-            rr = fr.get(reviewer)
-            if not rr:
-                rr = PaperUserScores(forum_id,reviewer)
-                fr[reviewer] = rr
-            return rr
-        else:
-            map[forum_id] = {}
-            return self._find_or_make_entry(map, forum_id, reviewer)
+
 
     # The translate function for each score name does the job of converting a symbolic score to a number.
-    # N.B. Only provided scores will be translated.  If an edge is not provided,
     def _translate_edge_to_score (self, score_spec, edge, or_client):
         translate_fn = score_spec.get(Configuration.SCORE_TRANSLATE_FN)
         translate_map = score_spec.get(Configuration.SCORE_TRANSLATE_MAP)
+        # translate functions not in active use mostly because its hard to edit python within JSON displayed by OpenReview GUI
         if translate_fn:
             runner = ORFunctionRunner(translate_fn, or_client=or_client)
             numeric_score = runner.run_function(edge)
@@ -95,17 +84,42 @@ class PaperReviewerData:
         float(numeric_score) # convert to float here so it will throw ValueError if not a number
         return numeric_score
 
+    # fully populates the score map with PaperUserScores records that have scores based on defaults.
+    def _load_score_map_with_default_scores (self):
+        self._score_map = {}
+        for paper_note in self.paper_notes:
+            self._score_map[paper_note.id] = {}
+            for reviewer in self.reviewers:
+                self._score_map[paper_note.id][reviewer] = self._create_paper_user_scores_from_default(paper_note.id, reviewer)
+
+
+    # Create the record initialized with the weighted default value for each score
+    def _create_paper_user_scores_from_default (self, paper_id, reviewer):
+        score_rec = PaperUserScores(paper_id, reviewer)
+        for score_edge_inv, spec in self._score_specification.items():
+            score_name = translate_score_inv_to_score_name(score_edge_inv)
+            weighted_score = spec[Configuration.SCORE_DEFAULT] * spec[Configuration.SCORE_WEIGHT]
+            score_rec.set_score(score_name, weighted_score)
+        return score_rec
+
     def _load_conflicts (self, or_client):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
-        edges = openreview.tools.iterget_edges(or_client, invitation=conflicts_inv_id, limit=50000)
-        # Assumption: Conflicts are defined at the conference level.   For now, I'm assuming a pre-processing step which
-        # produces conflicts edges that contain lists of domains in the label of the conflict with the weight empty.
-        # TODO If conflict detection between reviewer and paper is not a pre-processing step and becomes part of the matching process itself,
-        # it could be calculated here
+        edges = self._get_all_conflict_edges(or_client, conflicts_inv_id)
         for e in edges:
+            paper_user_scores = self._score_map[e.head][e.tail]
+            paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
 
-            paper_user_scores = self._find_or_make_entry(self._score_map, e.head, e.tail)
-            paper_user_scores.set_conflicts(True if e.weight == 1 else False)
+    def _load_score_map (self, or_client):
+        self._load_score_map_with_default_scores() # fully populate the map with default info
+        self._load_scores_from_edges(or_client) # overwrite scores when an edge is provided
+        self._load_conflicts(or_client)
 
+    # This method gets overriden for purposes of mocking openreview-py in unit tests.
+    def _get_all_score_edges (self, or_client, inv_id):
+        return openreview.tools.iterget_edges(or_client, invitation=inv_id, limit=50000)
+
+    # This method gets overriden for purposes of mocking openreview-py in unit tests.
+    def _get_all_conflict_edges (self, or_client, conflicts_inv_id):
+        return  openreview.tools.iterget_edges(or_client, invitation=conflicts_inv_id, limit=50000)
 
 

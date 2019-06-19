@@ -76,7 +76,7 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
         pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -115,7 +115,7 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
         pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -165,7 +165,7 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
         pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -225,7 +225,7 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
         pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -281,7 +281,7 @@ lambda edge:
                                                         conf.conf_ids.CUSTOM_LOAD_INV_ID)
         prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -342,7 +342,7 @@ lambda edge:
         prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -398,7 +398,7 @@ lambda edge:
                                                           conf.conf_ids.CUSTOM_LOAD_INV_ID)
         prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
 
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
