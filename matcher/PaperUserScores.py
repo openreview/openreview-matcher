@@ -1,5 +1,3 @@
-import util.names
-from matcher.fields import Configuration
 class PaperUserScores:
     '''
     Holds scores and conflict information about a pair of paper/reviewer

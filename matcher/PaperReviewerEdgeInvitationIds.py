@@ -1,5 +1,3 @@
-import util.names
-
 class PaperReviewerEdgeInvitationIds:
     '''
     Keeps all the invitation ids of edges that are matcher inputs.
@@ -11,6 +9,8 @@ class PaperReviewerEdgeInvitationIds:
         self.custom_loads_id = custom_loads
 
     def get_score_names (self):
-        return [util.names.translate_score_inv_to_score_name(inv) for inv in self.scores_invitation_id]
+        return [self.get_score_name_from_invitation_id(inv) for inv in self.scores_invitation_id]
 
-
+    @classmethod
+    def get_score_name_from_invitation_id (cls, score_inv_id):
+        return  score_inv_id.split('/')[-1]

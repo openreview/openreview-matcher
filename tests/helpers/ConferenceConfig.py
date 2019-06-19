@@ -2,7 +2,8 @@ import openreview.tools
 import random
 import datetime
 import openreview
-import util.names
+
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration, PaperReviewerScore, Assignment
 from helpers.Params import Params
 
@@ -76,7 +77,7 @@ class ConferenceConfig:
         self.create_papers()
         # creates three invitations for: metadata, assignment, config AND metadata notes
         self.conference.setup_matching()
-        self.score_names = [util.names.translate_score_inv_to_score_name(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
+        self.score_names = [PaperReviewerEdgeInvitationIds.get_score_name_from_invitation_id(inv_id) for inv_id in self.params.scores_config[Params.SCORES_SPEC].keys()]
 
         # for some reason the above builds all metadata notes and adds conflicts to every one!  So repair this.
         self.repair_metadata_notes()

@@ -5,7 +5,6 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
 from util.PythonFunctionRunner import ORFunctionRunner
-from util.names import translate_score_inv_to_score_name
 from exc.exceptions import TranslateScoreError
 
 
@@ -97,7 +96,7 @@ class PaperReviewerData:
     def _create_paper_user_scores_from_default (self, paper_id, reviewer):
         score_rec = PaperUserScores(paper_id, reviewer)
         for score_edge_inv, spec in self._score_specification.items():
-            score_name = translate_score_inv_to_score_name(score_edge_inv)
+            score_name = PaperReviewerEdgeInvitationIds.get_score_name_from_invitation_id(score_edge_inv)
             weighted_score = spec[Configuration.SCORE_DEFAULT] * spec[Configuration.SCORE_WEIGHT]
             score_rec.set_score(score_name, weighted_score)
         return score_rec
