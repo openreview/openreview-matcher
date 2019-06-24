@@ -9,14 +9,13 @@ import matcher.cost_function
 
 class Encoder:
 
-    def __init__(self, paper_reviewer_data=None, cost_fn=matcher.cost_function.aggregate_score_to_cost, logger=logging.getLogger(__name__)):
+    def __init__(self, paper_reviewer_data, cost_fn=matcher.cost_function.aggregate_score_to_cost, logger=logging.getLogger(__name__)):
         self.logger = logger
         self.paper_reviewer_data = paper_reviewer_data #type: PaperReviewerData
         self._cost_matrix = np.zeros((0, 0))
         self._constraint_matrix = np.zeros((0, 0))
         self._cost_fn = cost_fn
-        if self.paper_reviewer_data and self.paper_reviewer_data.reviewers and self.paper_reviewer_data.paper_notes:
-            self.encode()
+        self.encode()
 
     @property
     def cost_matrix (self):

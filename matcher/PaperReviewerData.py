@@ -2,6 +2,7 @@ import openreview.tools
 import time
 import logging
 from matcher.PaperUserScores import PaperUserScores
+from matcher.EdgeFetcher import EdgeFetcher
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
 from util.PythonFunctionRunner import ORFunctionRunner
@@ -16,8 +17,9 @@ class PaperReviewerData:
     that then provides fast access to this info.
     '''
 
-    def __init__ (self, client, paper_notes, reviewers, edge_invitations, score_specification, logger=logging.getLogger(__name__)):
+    def __init__ (self, client, paper_notes, reviewers, edge_invitations, score_specification, edge_fetcher=None, logger=logging.getLogger(__name__)):
         self.logger = logger
+        self.edge_fetcher = edge_fetcher if edge_fetcher else EdgeFetcher(client) # type: EdgeFetcher
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
         # a map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
         self._score_map = {}
@@ -52,8 +54,7 @@ class PaperReviewerData:
         num_entries = 0
         for score_index, inv_id in enumerate(scores_invitation_ids):
             score_name = score_names[score_index]
-            edges = self._get_all_score_edges(or_client, inv_id)
-            for e in edges:
+            for e in self.edge_fetcher.get_all_edges(inv_id):
                 paper_user_scores = self._score_map[e.head][e.tail]
                 score_spec = self._score_specification[inv_id]
                 score = self._translate_edge_to_score(score_spec, e, or_client)
@@ -103,22 +104,15 @@ class PaperReviewerData:
 
     def _load_conflicts (self, or_client):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
-        edges = self._get_all_conflict_edges(or_client, conflicts_inv_id)
-        for e in edges:
-            paper_user_scores = self._score_map[e.head][e.tail]
-            paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
+        if conflicts_inv_id:
+            for e in self.edge_fetcher.get_all_edges(conflicts_inv_id):
+                paper_user_scores = self._score_map[e.head][e.tail]
+                paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
 
     def _load_score_map (self, or_client):
         self._load_score_map_with_default_scores() # fully populate the map with default info
         self._load_scores_from_edges(or_client) # overwrite scores when an edge is provided
         self._load_conflicts(or_client)
 
-    # This method gets overriden for purposes of mocking openreview-py in unit tests.
-    def _get_all_score_edges (self, or_client, inv_id):
-        return openreview.tools.iterget_edges(or_client, invitation=inv_id, limit=50000)
-
-    # This method gets overriden for purposes of mocking openreview-py in unit tests.
-    def _get_all_conflict_edges (self, or_client, conflicts_inv_id):
-        return  openreview.tools.iterget_edges(or_client, invitation=conflicts_inv_id, limit=50000)
 
 

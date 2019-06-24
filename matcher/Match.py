@@ -61,7 +61,7 @@ class Match:
         edge_invitations = PaperReviewerEdgeInvitationIds(score_spec.keys(),
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
-        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, score_spec, self.logger)
+        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, score_spec, edge_fetcher=None, logger=self.logger)
         self.demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
         self.minimums, self.maximums = self._get_reviewer_loads(custom_loads_inv_id)
 

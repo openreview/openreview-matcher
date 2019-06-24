@@ -1,45 +1,26 @@
 import pytest
-
-import logging
-
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.PaperReviewerData import PaperReviewerData
+from matcher.EdgeFetcher import EdgeFetcher
+from openreview import Edge, Note
 
 from matcher.PaperUserScores import PaperUserScores
 
-# Create a mock PaperReviewerData class which inherits the method (.load_score_map) that is tested by the unit tests.
-class MockPaperReviewerData(PaperReviewerData):
-    # override superclass with a noop so its easy to instantiate and test.
-    def __init__ (self, paper_notes=None, reviewers=None, edge_invitations=None, score_spec = {},
-                  inv_to_edge_map={}, conflict_edges=[], logger=logging.getLogger(__name__)):
-        self._paper_notes = paper_notes
-        self._reviewers = reviewers
-        self.edge_invitations = edge_invitations
-        self._score_specification =  score_spec
-        self._inv_to_edge_map = inv_to_edge_map # not an override of superclass property - used to help mocking of edge lookup from API
-        self._conflict_edges = conflict_edges # helps mocking so I don't have to call API to get these.
-        self.logger = logger
+class MockEdgeFetcher(EdgeFetcher):
+    def __init__ (self, inv_to_edge_map):
+        self.inv_to_edge_map = inv_to_edge_map
 
-    # Mocking the lookup of edges given an edge-invitation id.  This is done by passing in a map to the constructor
-    # which maps each invitation id to a list of edges so we can just get the list from the map.
-    def _get_all_score_edges (self, or_client, inv_id):
-        return self._inv_to_edge_map[inv_id]
-
-    def _get_all_conflict_edges (self, or_client, inv_id):
-        return self._conflict_edges
+    def get_all_edges (self,  inv_id):
+        return self.inv_to_edge_map[inv_id]
 
 
-class MockEdge:
-    def __init__ (self, head, tail, label, weight):
-        self.head = head
-        self.tail = tail
-        self.label = label
-        self.weight = weight
+def cr_edge (head, tail, label, weight):
+    e = Edge(head,tail,None,[],[],[],label=label, weight=weight)
+    return e
 
-class MockPaperNote:
-    def __init__ (self, id):
-        self.id = id
-
+def cr_paper (id):
+    n = Note(None,[],[],[],{},id=id)
+    return n
 
 class TestPaperReviewerData:
     '''Tests the PaperReviewerData._load_score_map method'''
@@ -55,8 +36,14 @@ class TestPaperReviewerData:
         'very high': 0.9,
     }
 
+    # requires that openreview be running because it needs an openreview client
+    def test_base_case (self, test_util):
+        or_client = test_util.client
+        pd = PaperReviewerData(or_client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        assert pd != None
 
-    def test_some_numeric_edges_given (self):
+
+    def test_some_numeric_edges_given (self, test_util):
         '''
         For 2 papers and 2 reviewers set up score edges that are numeric,  Paper1->Reviewer0 has no score edges and will
         get its scores from defaults.
@@ -68,23 +55,24 @@ class TestPaperReviewerData:
                       'conf/xscore': {'weight': 3, 'default': 0}
                       }
         score_edge_invitation_ids = score_spec.keys()
-        paper_notes = [MockPaperNote('PaperId0'), MockPaperNote('PaperId1')]
+        paper_notes = [cr_paper('PaperId0'), cr_paper('PaperId1')]
         reviewers = ['ReviewerId0', 'ReviewerId1']
 
         edge_invitations = PaperReviewerEdgeInvitationIds(score_edge_invitation_ids)
-        ae0 = MockEdge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
-        re0 = MockEdge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
-        xe0 = MockEdge(paper_notes[0].id,reviewers[0],label='xscore', weight=0.6)
-        ae1 = MockEdge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
-        re1 = MockEdge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
-        xe1 = MockEdge(paper_notes[1].id,reviewers[1],label='xscore', weight=0.7)
-        ae2 = MockEdge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
-        re2 = MockEdge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
-        xe2 = MockEdge(paper_notes[0].id,reviewers[1],label='xscore', weight=0.95)
+        ae0 = cr_edge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
+        re0 = cr_edge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
+        xe0 = cr_edge(paper_notes[0].id,reviewers[0],label='xscore', weight=0.6)
+        ae1 = cr_edge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
+        re1 = cr_edge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
+        xe1 = cr_edge(paper_notes[1].id,reviewers[1],label='xscore', weight=0.7)
+        ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
+        re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
+        xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='xscore', weight=0.95)
         inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
                            'conf/recommendation': [re0, re1, re2],
                            'conf/xscore': [xe0, xe1, xe2]}
-        prd = MockPaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_spec=score_spec, inv_to_edge_map=inv_to_edge_map, conflict_edges=[])
+        edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
+        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
         prd._load_score_map(None)
 
 
@@ -109,7 +97,7 @@ class TestPaperReviewerData:
         assert pair.conflicts == []
 
 
-    def test_some_symbolic_and_numeric_edges (self):
+    def test_some_symbolic_and_numeric_edges (self, test_util):
         '''
          For 2 papers and 2 reviewers set up score edges.  Bid edges involve translation.
            Paper1->Reviewer0 has no score edges and will get its scores from defaults.
@@ -121,23 +109,24 @@ class TestPaperReviewerData:
                       'conf/bid': {'weight': 3, 'default': .1, 'translate_map': self.bid_translate_map}
                       }
         score_edge_invitation_ids = score_spec.keys()
-        paper_notes = [MockPaperNote('PaperId0'), MockPaperNote('PaperId1')]
+        paper_notes = [cr_paper('PaperId0'), cr_paper('PaperId1')]
         reviewers = ['ReviewerId0', 'ReviewerId1']
 
         edge_invitations = PaperReviewerEdgeInvitationIds(score_edge_invitation_ids)
-        ae0 = MockEdge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
-        re0 = MockEdge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
-        xe0 = MockEdge(paper_notes[0].id,reviewers[0],label='low', weight=0.6)
-        ae1 = MockEdge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
-        re1 = MockEdge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
-        xe1 = MockEdge(paper_notes[1].id,reviewers[1],label='medium', weight=0.7)
-        ae2 = MockEdge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
-        re2 = MockEdge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
-        xe2 = MockEdge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
+        ae0 = cr_edge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
+        re0 = cr_edge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
+        xe0 = cr_edge(paper_notes[0].id,reviewers[0],label='low', weight=0.6)
+        ae1 = cr_edge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
+        re1 = cr_edge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
+        xe1 = cr_edge(paper_notes[1].id,reviewers[1],label='medium', weight=0.7)
+        ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
+        re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
+        xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
         inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
                            'conf/recommendation': [re0, re1, re2],
                            'conf/bid': [xe0, xe1, xe2]}
-        prd = MockPaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_spec=score_spec, inv_to_edge_map=inv_to_edge_map, conflict_edges=[])
+        edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
+        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
         prd._load_score_map(None)
 
 
@@ -162,7 +151,7 @@ class TestPaperReviewerData:
         assert pair.conflicts == []
 
 
-    def test_some_symbolic_and_numeric_edges_and_conflicts (self):
+    def test_some_symbolic_and_numeric_edges_and_conflicts (self, test_util):
         '''
          For 2 papers and 2 reviewers set up score edges.  Bid edges involve translation.
            Paper1->Reviewer0 has no score edges and will get its scores from defaults.
@@ -176,28 +165,30 @@ class TestPaperReviewerData:
                       }
         score_edge_invitation_ids = score_spec.keys()
         conflict_edge_invitation_id = 'conf/Conflicts'
-        paper_notes = [MockPaperNote('PaperId0'), MockPaperNote('PaperId1')]
+        paper_notes = [cr_paper('PaperId0'), cr_paper('PaperId1')]
         reviewers = ['ReviewerId0', 'ReviewerId1']
 
         edge_invitations = PaperReviewerEdgeInvitationIds(score_edge_invitation_ids, conflicts=conflict_edge_invitation_id)
-        ae0 = MockEdge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
-        re0 = MockEdge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
-        xe0 = MockEdge(paper_notes[0].id,reviewers[0],label='low', weight=0.6)
+        ae0 = cr_edge(paper_notes[0].id,reviewers[0],label='affinity', weight=0.2)
+        re0 = cr_edge(paper_notes[0].id,reviewers[0],label='recommendation', weight=0.4)
+        xe0 = cr_edge(paper_notes[0].id,reviewers[0],label='low', weight=0.6)
         # conflict between paper0 and reviewer 0
-        conf0 = MockEdge(paper_notes[0].id,reviewers[0], label=['umass.edu', 'google.com'], weight=0)
+        conf0 = cr_edge(paper_notes[0].id,reviewers[0], label=['umass.edu', 'google.com'], weight=0)
 
-        ae1 = MockEdge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
-        re1 = MockEdge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
-        xe1 = MockEdge(paper_notes[1].id,reviewers[1],label='medium', weight=0.7)
-        ae2 = MockEdge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
-        re2 = MockEdge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
-        xe2 = MockEdge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
+        ae1 = cr_edge(paper_notes[1].id,reviewers[1],label='affinity', weight=0.3)
+        re1 = cr_edge(paper_notes[1].id,reviewers[1],label='recommendation', weight=0.5)
+        xe1 = cr_edge(paper_notes[1].id,reviewers[1],label='medium', weight=0.7)
+        ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
+        re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
+        xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
         inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
                            'conf/recommendation': [re0, re1, re2],
                            'conf/bid': [xe0, xe1, xe2],
+                           conflict_edge_invitation_id: [conf0]
                            }
-        prd = MockPaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations,
-                                    score_spec=score_spec, inv_to_edge_map=inv_to_edge_map, conflict_edges=[conf0])
+        edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
+        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
+
         prd._load_score_map(None)
 
 
@@ -247,87 +238,87 @@ lambda edge:
 
 
 
-    def test_numeric (self):
+    def test_numeric (self, test_util):
         '''
         make sure numeric score on edge is returned correctly
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 1, 'default': 0.35}
         # fake edge holding a floating point weight
-        e = MockEdge('PaperId','ReviewerId', None, 0.8)
+        e = cr_edge('PaperId','ReviewerId', None, 0.8)
         ws = prd._translate_edge_to_score(score_spec, e, None)
         assert ws == pytest.approx(0.8)
 
-    def test_symbol_translate_map (self):
+    def test_symbol_translate_map (self, test_util):
         '''
         make sure symbolic score on edge is translated correctly
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
         # a fake bid edge where the label is holding the symbol
-        e = MockEdge('PaperId','ReviewerId','very high', None)
+        e = cr_edge('PaperId','ReviewerId','very high', None)
         ws = prd._translate_edge_to_score(score_spec, e, None)
         assert ws == pytest.approx(0.93)
 
-    def test_symbol_translate_fn (self):
+    def test_symbol_translate_fn (self, test_util):
         '''
         make sure symbolic score on edge is translated correctly
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': self.bid_function}
         # a fake bid edge where the label is holding the symbol
-        e = MockEdge('PaperId','ReviewerId','very high', None)
+        e = cr_edge('PaperId','ReviewerId','very high', None)
         ws = prd._translate_edge_to_score(score_spec, e, None)
         assert ws == pytest.approx(0.95)
 
 
 
-    def test_no_return_value (self):
+    def test_no_return_value (self, test_util):
         '''
         make sure translate function that does not return anything fails
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         # translate function returns None for "mystery"
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tpass'}
-        e = MockEdge('PaperId','ReviewerId','mystery', None)
+        e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(TypeError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
 
-    def test_syntax_error_fn (self):
+    def test_syntax_error_fn (self, test_util):
         '''
         make sure translate function with syntax error fails
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tif x == "high":\nreturn 0.3'} #indentation wrong
-        e = MockEdge('PaperId','ReviewerId','mystery', None)
+        e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(SyntaxError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
 
-    def test_non_float_value (self):
+    def test_non_float_value (self, test_util):
         '''
         make sure translate function that returns something that can't be turned into float fails
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         # translate function returns None for "mystery"
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\treturn "junk"'}
-        e = MockEdge('PaperId','ReviewerId','mystery', None)
+        e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(ValueError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
 
-    def test_fn_makes_illegal_call (self):
+    def test_fn_makes_illegal_call (self, test_util):
         '''
         make sure translate function which calls illegal function (open) fails
         :return:
         '''
-        prd = MockPaperReviewerData()
+        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': self.fn_with_open_stmt}
-        e = MockEdge('PaperId','ReviewerId','mystery', None)
+        e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(NameError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
 
