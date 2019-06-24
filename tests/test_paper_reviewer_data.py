@@ -37,13 +37,12 @@ class TestPaperReviewerData:
     }
 
     # requires that openreview be running because it needs an openreview client
-    def test_base_case (self, test_util):
-        or_client = test_util.client
-        pd = PaperReviewerData(or_client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
+    def test_base_case (self):
+        pd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
         assert pd != None
 
 
-    def test_some_numeric_edges_given (self, test_util):
+    def test_some_numeric_edges_given (self):
         '''
         For 2 papers and 2 reviewers set up score edges that are numeric,  Paper1->Reviewer0 has no score edges and will
         get its scores from defaults.
@@ -72,8 +71,9 @@ class TestPaperReviewerData:
                            'conf/recommendation': [re0, re1, re2],
                            'conf/xscore': [xe0, xe1, xe2]}
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
-        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
-        prd._load_score_map(None)
+        prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
+                                edge_fetcher=edge_fetcher)
+        prd._load_score_map()
 
 
         pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
@@ -97,7 +97,7 @@ class TestPaperReviewerData:
         assert pair.conflicts == []
 
 
-    def test_some_symbolic_and_numeric_edges (self, test_util):
+    def test_some_symbolic_and_numeric_edges (self):
         '''
          For 2 papers and 2 reviewers set up score edges.  Bid edges involve translation.
            Paper1->Reviewer0 has no score edges and will get its scores from defaults.
@@ -126,8 +126,9 @@ class TestPaperReviewerData:
                            'conf/recommendation': [re0, re1, re2],
                            'conf/bid': [xe0, xe1, xe2]}
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
-        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
-        prd._load_score_map(None)
+        prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
+                                edge_fetcher=edge_fetcher)
+        prd._load_score_map()
 
 
         pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
@@ -151,7 +152,7 @@ class TestPaperReviewerData:
         assert pair.conflicts == []
 
 
-    def test_some_symbolic_and_numeric_edges_and_conflicts (self, test_util):
+    def test_some_symbolic_and_numeric_edges_and_conflicts (self):
         '''
          For 2 papers and 2 reviewers set up score edges.  Bid edges involve translation.
            Paper1->Reviewer0 has no score edges and will get its scores from defaults.
@@ -187,9 +188,10 @@ class TestPaperReviewerData:
                            conflict_edge_invitation_id: [conf0]
                            }
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
-        prd = PaperReviewerData(test_util.client, paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec, edge_fetcher=edge_fetcher)
+        prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
+                                edge_fetcher=edge_fetcher)
 
-        prd._load_score_map(None)
+        prd._load_score_map()
 
 
         pair = prd.get_entry('PaperId0', 'ReviewerId0') #type: PaperUserScores
@@ -238,89 +240,43 @@ lambda edge:
 
 
 
-    def test_numeric (self, test_util):
+    def test_numeric (self):
         '''
         make sure numeric score on edge is returned correctly
         :return:
         '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 1, 'default': 0.35}
         # fake edge holding a floating point weight
         e = cr_edge('PaperId','ReviewerId', None, 0.8)
-        ws = prd._translate_edge_to_score(score_spec, e, None)
+        ws = prd._translate_edge_to_score(score_spec, e)
         assert ws == pytest.approx(0.8)
 
-    def test_symbol_translate_map (self, test_util):
+    def test_symbol_translate_map (self):
         '''
         make sure symbolic score on edge is translated correctly
         :return:
         '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
         score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
         # a fake bid edge where the label is holding the symbol
         e = cr_edge('PaperId','ReviewerId','very high', None)
-        ws = prd._translate_edge_to_score(score_spec, e, None)
+        ws = prd._translate_edge_to_score(score_spec, e)
         assert ws == pytest.approx(0.93)
 
-    def test_symbol_translate_fn (self, test_util):
-        '''
-        make sure symbolic score on edge is translated correctly
-        :return:
-        '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': self.bid_function}
-        # a fake bid edge where the label is holding the symbol
-        e = cr_edge('PaperId','ReviewerId','very high', None)
-        ws = prd._translate_edge_to_score(score_spec, e, None)
-        assert ws == pytest.approx(0.95)
-
-
-
-    def test_no_return_value (self, test_util):
+    def test_no_return_value (self):
         '''
         make sure translate function that does not return anything fails
         :return:
         '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
         # translate function returns None for "mystery"
         score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tpass'}
         e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(TypeError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
 
-    def test_syntax_error_fn (self, test_util):
-        '''
-        make sure translate function with syntax error fails
-        :return:
-        '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tif x == "high":\nreturn 0.3'} #indentation wrong
-        e = cr_edge('PaperId','ReviewerId','mystery', None)
-        with pytest.raises(SyntaxError):
-            ws = prd._translate_edge_to_score(score_spec, e, None)
 
-    def test_non_float_value (self, test_util):
-        '''
-        make sure translate function that returns something that can't be turned into float fails
-        :return:
-        '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        # translate function returns None for "mystery"
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\treturn "junk"'}
-        e = cr_edge('PaperId','ReviewerId','mystery', None)
-        with pytest.raises(ValueError):
-            ws = prd._translate_edge_to_score(score_spec, e, None)
-
-    def test_fn_makes_illegal_call (self, test_util):
-        '''
-        make sure translate function which calls illegal function (open) fails
-        :return:
-        '''
-        prd = PaperReviewerData(test_util.client,[],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': self.fn_with_open_stmt}
-        e = cr_edge('PaperId','ReviewerId','mystery', None)
-        with pytest.raises(NameError):
-            ws = prd._translate_edge_to_score(score_spec, e, None)
 
 
 

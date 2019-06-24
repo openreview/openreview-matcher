@@ -8,6 +8,7 @@ from matcher.fields import Configuration
 from matcher.PaperReviewerData import PaperReviewerData
 from matcher.PaperUserScores import PaperUserScores
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
+from matcher.EdgeFetcher import EdgeFetcher
 
 
 def time_ms ():
@@ -61,7 +62,7 @@ class Match:
         edge_invitations = PaperReviewerEdgeInvitationIds(score_spec.keys(),
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
-        self.paper_reviewer_data = PaperReviewerData(self.client, self.papers, self.reviewer_ids, edge_invitations, score_spec, edge_fetcher=None, logger=self.logger)
+        self.paper_reviewer_data = PaperReviewerData(self.papers, self.reviewer_ids, edge_invitations, score_spec, edge_fetcher=EdgeFetcher(self.client), logger=self.logger)
         self.demands = [int(self.config[Configuration.MAX_USERS])] * len(self.papers)
         self.minimums, self.maximums = self._get_reviewer_loads(custom_loads_inv_id)
 

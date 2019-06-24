@@ -17,16 +17,16 @@ class PaperReviewerData:
     that then provides fast access to this info.
     '''
 
-    def __init__ (self, client, paper_notes, reviewers, edge_invitations, score_specification, edge_fetcher=None, logger=logging.getLogger(__name__)):
+    def __init__ (self, paper_notes, reviewers, edge_invitations, score_specification, edge_fetcher, logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.edge_fetcher = edge_fetcher if edge_fetcher else EdgeFetcher(client) # type: EdgeFetcher
+        self.edge_fetcher = edge_fetcher
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
         # a map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
         self._score_map = {}
         self._paper_notes = paper_notes
         self._reviewers = reviewers
         self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
-        self._load_score_map(client)
+        self._load_score_map()
 
     @property
     def paper_notes (self):
@@ -46,7 +46,7 @@ class PaperReviewerData:
 
 
     # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
-    def _load_scores_from_edges (self, or_client):
+    def _load_scores_from_edges (self):
         now = time.time()
         scores_invitation_ids = self.edge_invitations.scores_invitation_id
         score_names = self.edge_invitations.get_score_names()
@@ -57,7 +57,7 @@ class PaperReviewerData:
             for e in self.edge_fetcher.get_all_edges(inv_id):
                 paper_user_scores = self._score_map[e.head][e.tail]
                 score_spec = self._score_specification[inv_id]
-                score = self._translate_edge_to_score(score_spec, e, or_client)
+                score = self._translate_edge_to_score(score_spec, e)
                 weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
                 paper_user_scores.set_score(score_name, weighted_score)
                 num_entries += 1
@@ -66,15 +66,10 @@ class PaperReviewerData:
 
 
     # The translate function for each score name does the job of converting a symbolic score to a number.
-    def _translate_edge_to_score (self, score_spec, edge, or_client):
-        translate_fn = score_spec.get(Configuration.SCORE_TRANSLATE_FN)
+    def _translate_edge_to_score (self, score_spec, edge):
         translate_map = score_spec.get(Configuration.SCORE_TRANSLATE_MAP)
-        # translate functions not in active use mostly because its hard to edit python within JSON displayed by OpenReview GUI
-        if translate_fn:
-            runner = ORFunctionRunner(translate_fn, or_client=or_client)
-            numeric_score = runner.run_function(edge)
         # if using a map, the assumption is that the edge label is holding a symbol that needs to be translated via the map
-        elif translate_map:
+        if translate_map:
             try:
                 numeric_score = translate_map[edge.label]
             except:
@@ -102,17 +97,17 @@ class PaperReviewerData:
             score_rec.set_score(score_name, weighted_score)
         return score_rec
 
-    def _load_conflicts (self, or_client):
+    def _load_conflicts (self):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
         if conflicts_inv_id:
             for e in self.edge_fetcher.get_all_edges(conflicts_inv_id):
                 paper_user_scores = self._score_map[e.head][e.tail]
                 paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
 
-    def _load_score_map (self, or_client):
+    def _load_score_map (self):
         self._load_score_map_with_default_scores() # fully populate the map with default info
-        self._load_scores_from_edges(or_client) # overwrite scores when an edge is provided
-        self._load_conflicts(or_client)
+        self._load_scores_from_edges() # overwrite scores when an edge is provided
+        self._load_conflicts()
 
 
 

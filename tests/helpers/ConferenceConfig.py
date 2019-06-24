@@ -95,7 +95,8 @@ class ConferenceConfig:
     def repair_metadata_notes (self):
         for md_note in self.get_metadata_notes():
             for entry in md_note.content['entries']:
-                del entry['conflicts']
+                if entry.get('conflicts'):
+                    del entry['conflicts']
             self.client.post_note(md_note)
 
     def build_paper_to_metadata_map (self):
