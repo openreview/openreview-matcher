@@ -58,9 +58,14 @@ class TestEndToEnd():
              }
         )
         test_util.set_test_params(params)
-        test_util.test_matcher()
+        try:
+            test_util.test_matcher()
+        except Exception as e:
+            print(e)
+
+
         conference = test_util.get_conference() # type: ConferenceConfigWithEdges
-        assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
+        assert Configuration.STATUS_COMPLETE == conference.get_config_note_status(), \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), \

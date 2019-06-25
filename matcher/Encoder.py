@@ -9,22 +9,13 @@ import matcher.cost_function
 
 class Encoder:
 
-    def __init__(self, paper_reviewer_info=None, config=None, cost_fn=matcher.cost_function.aggregate_score_to_cost, logger=logging.getLogger(__name__)):
+    def __init__(self, paper_reviewer_data, cost_fn=matcher.cost_function.aggregate_score_to_cost, logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.paper_reviewer_data = paper_reviewer_info #type: PaperReviewerData
-        self.config = config
+        self.paper_reviewer_data = paper_reviewer_data #type: PaperReviewerData
         self._cost_matrix = np.zeros((0, 0))
         self._constraint_matrix = np.zeros((0, 0))
-        # self._score_names = config[Configuration.SCORES_NAMES]
-        # self._score_weights = config[Configuration.SCORES_WEIGHTS]
-        self._score_spec = config[Configuration.SCORES_SPECIFICATION] # JSON that gives score names, weights, and other info
-        # self._weight_dict = {n: w for n, w in zip(self._score_names,  self._score_weights)}
-        # self._scorer = WeightedScorer(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS])
         self._cost_fn = cost_fn
-        self._constraints = config.get(Configuration.CONSTRAINTS, {})
-
-        if self.paper_reviewer_data and self.config and self.paper_reviewer_data.reviewers and self.paper_reviewer_data.paper_notes:
-            self.encode()
+        self.encode()
 
     @property
     def cost_matrix (self):
@@ -48,7 +39,6 @@ class Encoder:
 
     def _update_cost_matrix (self, paper_user_scores, reviewer_index, paper_index):
         coordinates = reviewer_index, paper_index
-        paper_user_scores.calculate_aggregrate_score(self._score_spec)
         cost = self._cost_fn(paper_user_scores.aggregate_score)
         self._cost_matrix[coordinates] = cost
 

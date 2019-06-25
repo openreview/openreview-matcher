@@ -8,6 +8,7 @@ from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuild
 from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 from matcher.Encoder import Encoder
 from matcher.PaperReviewerData import PaperReviewerData
+from matcher.EdgeFetcher import EdgeFetcher
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 import matcher.cost_function
 
@@ -74,9 +75,9 @@ lambda edge:
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+        pr_data = PaperReviewerData(conf.paper_notes, conf.reviewers, edge_invitations, scores_spec, edge_fetcher=EdgeFetcher(or_client))
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -84,107 +85,6 @@ lambda edge:
             for p in range(num_papers):
                 assert(cost_matrix[r,p] == -2)
 
-    # @pytest.mark.skip
-    def test_encode_with_bid_translation (self, test_util):
-        '''
-        Build a conference using edges for the two scores.
-        N.B.  The 0.01 fixed score sets all scores to 0.01 which results in a weighted sum (aggregate) score of 0.02 (weights are 1)
-        The 0.02 is then converted into a cost of -2 by the Encoder.
-        :param test_util:
-        :return:
-        '''
-        num_papers = 3
-        num_reviewers = 4
-
-        params = Params({Params.NUM_PAPERS: num_papers,
-                         Params.NUM_REVIEWERS: num_reviewers,
-                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
-                         Params.REVIEWER_MAX_PAPERS: 2,
-                         Params.SCORES_CONFIG: {
-                             Params.SCORES_SPEC: {'bid': {'weight': 1, 'default': 0, 'translate_fn': self.bid_translate_fn}},
-                             Params.SCORE_TYPE: Params.FIXED_SCORE,
-                             Params.FIXED_SCORE_VALUE: 'high'
-                         },
-                         Params.CUSTOM_LOAD_CONFIG: {Params.CUSTOM_LOAD_MAP: {0: 0, 1: 2}},
-                         })
-
-        or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
-        config = conf.get_config_note()
-        scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
-        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
-
-        enc = Encoder(pr_data, config.content)
-        cost_matrix = enc.cost_matrix
-        shape = cost_matrix.shape
-        assert shape == (num_reviewers,num_papers)
-        # all scores are set at bid:'high' which translates to 0.8 and then to a cost of -80
-        for r in range(num_reviewers):
-            for p in range(num_papers):
-                assert(cost_matrix[r,p] == -80)
-
-    # @pytest.mark.skip
-    def test_mixed_score_types (self, test_util):
-        '''
-        Uses two score types; Bids are translated via the function.  Also tests when scores are not given by an edge to verify that it uses the
-        default values.
-        :param test_util:
-        :return:
-        '''
-        num_papers = 4
-        num_reviewers = 4
-        aff_matrix = np.array([
-            [10, 0, 0, 0],
-            [0, 10, 0, 0],
-            [0, 0, 10, 0],
-            [0, 0, 0, 0]
-        ])
-        bid_matrix = np.array([
-            ['very high', 'low', 'low', 'low'],
-            ['low', 'very high', 'low', 'low'],
-            ['low', 'low', 'very high', 'low'],
-            [0, 0, 0, 0]
-        ])
-        params = Params({Params.NUM_PAPERS: num_papers,
-                         Params.NUM_REVIEWERS: num_reviewers,
-                         Params.NUM_REVIEWS_NEEDED_PER_PAPER: 1,
-                         Params.REVIEWER_MAX_PAPERS: 2,
-                         Params.SCORES_CONFIG: {
-                             Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0},
-                                                  'bid': {'weight': 1, 'default': 0, 'translate_fn': self.bid_translate_fn}},
-                             Params.SCORE_TYPE: Params.MATRIX_SCORE,
-                             Params.OMIT_ZERO_SCORE_EDGES: True,
-                             Params.SCORE_MATRIX: {'affinity': aff_matrix, 'bid': bid_matrix}
-                         }})
-
-        or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
-        config = conf.get_config_note()
-        scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
-        edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
-
-        enc = Encoder(pr_data, config.content)
-        cost_matrix = enc.cost_matrix
-        shape = cost_matrix.shape
-        assert shape == (num_reviewers,num_papers)
-        assert cost_matrix[0,0] == -1095
-        assert cost_matrix[1,1] == -1095
-        assert cost_matrix[2,2] == -1095
-        assert cost_matrix[0,1] == -20
-        assert cost_matrix[0,2] == -20
-        assert cost_matrix[0,3] == -20
-        assert cost_matrix[1,0] == -20
-        assert cost_matrix[1,2] == -20
-        assert cost_matrix[1,3] == -20
-        assert cost_matrix[2,0] == -20
-        assert cost_matrix[2,1] == -20
-        assert cost_matrix[2,3] == -20
-        assert cost_matrix[3,0] == 0
-        assert cost_matrix[3,1] == 0
-        assert cost_matrix[3,2] == 0
-        assert cost_matrix[3,3] == 0
 
     def test_encoder_weighting (self, test_util):
         '''
@@ -223,9 +123,9 @@ lambda edge:
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        pr_data = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+        pr_data = PaperReviewerData(conf.paper_notes, conf.reviewers, edge_invitations, scores_spec, edge_fetcher=EdgeFetcher(or_client))
 
-        enc = Encoder(pr_data, config.content)
+        enc = Encoder(pr_data)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -279,9 +179,9 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
                                                         conf.conf_ids.CONFLICTS_INV_ID,
                                                         conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+        prd = PaperReviewerData(conf.paper_notes, conf.reviewers, edge_invitations, scores_spec, edge_fetcher=EdgeFetcher(or_client))
 
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         constraint_matrix = enc._constraint_matrix
         shape = constraint_matrix.shape
         assert shape == (num_reviewers,num_papers)
@@ -339,10 +239,10 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
                                                           conf.conf_ids.CONFLICTS_INV_ID,
                                                           conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+        prd = PaperReviewerData(conf.paper_notes, conf.reviewers, edge_invitations, scores_spec, edge_fetcher=EdgeFetcher(or_client))
         print("Time to build metadata edges: ", time.time() - now)
         now = time.time()
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         print("Time to encode: ", time.time() - now)
         cost_matrix = enc.cost_matrix
         shape = cost_matrix.shape
@@ -396,9 +296,9 @@ lambda edge:
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
                                                           conf.conf_ids.CONFLICTS_INV_ID,
                                                           conf.conf_ids.CUSTOM_LOAD_INV_ID)
-        prd = PaperReviewerData(or_client, conf.paper_notes, conf.reviewers, edge_invitations, scores_spec)
+        prd = PaperReviewerData(conf.paper_notes, conf.reviewers, edge_invitations, scores_spec, edge_fetcher=EdgeFetcher(or_client))
 
-        enc = Encoder(prd, config.content)
+        enc = Encoder(prd)
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
         graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')

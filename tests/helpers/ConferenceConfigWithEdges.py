@@ -1,11 +1,10 @@
 import time
-import json
 from collections import defaultdict
 from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 import openreview
 from openreview import Edge, Invitation
-import util.names
+from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from helpers.Params import Params
 from itertools import cycle
 
@@ -104,7 +103,7 @@ class ConferenceConfigWithEdges (ConferenceConfig):
             reviewer_ix = 0
             for reviewer in reviewers:
                 for score_inv in self.score_invitations:
-                    score_name = util.names.translate_score_inv_to_score_name(score_inv.id)
+                    score_name = PaperReviewerEdgeInvitationIds.get_score_name_from_invitation_id(score_inv.id)
                     score = self.gen_score(score_name, reviewer_ix=reviewer_ix, paper_ix=paper_ix )
                     if (score == 0 or score == '0') and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
                         pass
