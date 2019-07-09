@@ -67,9 +67,14 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='xscore', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/xscore': [xe0, xe1, xe2]}
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/xscore': {paper_notes[0].id: [xe0, xe2],
+                                           paper_notes[1].id: [xe1]}
+                           }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)
@@ -122,9 +127,15 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/bid': [xe0, xe1, xe2]}
+
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/bid': {paper_notes[0].id: [xe0, xe2],
+                                           paper_notes[1].id: [xe1]}
+                           }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)
@@ -182,11 +193,15 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/bid': [xe0, xe1, xe2],
-                           conflict_edge_invitation_id: [conf0]
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/bid': {paper_notes[0].id: [xe0, xe2],
+                                        paper_notes[1].id: [xe1]},
+                           conflict_edge_invitation_id: {paper_notes[0].id: [conf0]}
                            }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)

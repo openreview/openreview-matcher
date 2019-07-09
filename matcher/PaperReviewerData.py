@@ -5,7 +5,6 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.EdgeFetcher import EdgeFetcher
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
-from util.PythonFunctionRunner import ORFunctionRunner
 from exc.exceptions import TranslateScoreError
 
 
@@ -19,12 +18,13 @@ class PaperReviewerData:
 
     def __init__ (self, paper_notes, reviewers, edge_invitations, score_specification, edge_fetcher, logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.edge_fetcher = edge_fetcher
+        self.edge_fetcher = edge_fetcher # type: EdgeFetcher
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
         # a map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
         self._score_map = {}
         self._paper_notes = paper_notes
         self._reviewers = reviewers
+        # self._aggregate_score_cutoff
         self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
         self._load_score_map()
 
@@ -46,7 +46,7 @@ class PaperReviewerData:
 
 
     # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
-    def _load_scores_from_edges (self):
+    def _load_scores_from_edges_slow (self):
         now = time.time()
         scores_invitation_ids = self.edge_invitations.scores_invitation_id
         score_names = self.edge_invitations.get_score_names()
@@ -62,6 +62,27 @@ class PaperReviewerData:
                 paper_user_scores.set_score(score_name, weighted_score)
                 num_entries += 1
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
+
+    # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
+    def _load_scores_from_edges (self):
+        now = time.time()
+        scores_invitation_ids = self.edge_invitations.scores_invitation_id
+        score_names = self.edge_invitations.get_score_names()
+        self.logger.debug("Loading score entries from edges")
+        num_entries = 0
+        for score_index, inv_id in enumerate(scores_invitation_ids):
+            score_name = score_names[score_index]
+            # edge_fetcher gives back a dict {forum_id -> [edge1, edge2 ....] }
+            for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(inv_id).items():
+                for score_edge in score_edge_list:
+                    paper_user_scores = self._score_map[forum_id][score_edge.tail]
+                    score_spec = self._score_specification[inv_id]
+                    score = self._translate_edge_to_score(score_spec, score_edge)
+                    weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
+                    paper_user_scores.set_score(score_name, weighted_score)
+                    num_entries += 1
+        self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
+
 
 
 
@@ -97,12 +118,20 @@ class PaperReviewerData:
             score_rec.set_score(score_name, weighted_score)
         return score_rec
 
-    def _load_conflicts (self):
+    def _load_conflicts_slow (self):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
         if conflicts_inv_id:
             for e in self.edge_fetcher.get_all_edges(conflicts_inv_id):
                 paper_user_scores = self._score_map[e.head][e.tail]
                 paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
+
+    def _load_conflicts (self):
+        conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
+        if conflicts_inv_id:
+            for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(conflicts_inv_id).items():
+                for score_edge in score_edge_list:
+                    paper_user_scores = self._score_map[forum_id][score_edge.tail]
+                    paper_user_scores.set_conflicts(score_edge.label) # will be a list of domains stored in the label
 
     def _load_score_map (self):
         self._load_score_map_with_default_scores() # fully populate the map with default info

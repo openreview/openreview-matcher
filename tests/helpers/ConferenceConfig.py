@@ -38,7 +38,7 @@ class ConferenceConfig:
         self._silence = True
         self.client = client
         self.config_title = 'Reviewers'
-        self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num) + ".cc", "2019")
+        self.conf_ids = ConfIds("FakeConferenceForTesting" + str(suffix_num), "2019")
         if not self._silence:
             print("URLS for this conference are like: " + self.conf_ids.CONF_ID)
         self.params = params

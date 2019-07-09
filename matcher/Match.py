@@ -59,6 +59,7 @@ class Match:
         score_spec = self.config[Configuration.SCORES_SPECIFICATION]
         conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
         custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
+        self.aggregate_threshold = self.config[Configuration.ALTERNATES] # specifies a percentage (e.g. 10) which is used for determining top N% of aggregate scores
         edge_invitations = PaperReviewerEdgeInvitationIds(score_spec.keys(),
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
