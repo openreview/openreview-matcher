@@ -13,6 +13,8 @@ class EdgeFetcher:
     def get_all_edges_slow (self,  inv_id):
         return openreview.tools.iterget_edges(self.or_client, invitation=inv_id, limit=50000)
 
+    # TODO This limit of 5000 allows the query to return a list of over 1000 groups.
+    # This may get changed in the future which will mean doing a bunch of queries with offset by 1000
     def get_all_edges (self, inv_id):
         json = self.or_client.get_edges_group(inv_id,groupby='head',project='tail,label,weight', limit=5000)
         return self.parse_json_to_edges(inv_id, json)
