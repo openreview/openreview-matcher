@@ -210,7 +210,7 @@ class ConferenceConfig:
                 'min_users': str(self.params.num_reviews_needed_per_paper), # min number of reviewers a paper can have
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review
                 'min_papers': '1', # min number of papers a reviewer can review
-                'alternates': '2',
+                'alternates': str(self.params.alternates), # top n% of scores for agg score edges
                 'constraints': {},
                 'custom_loads': {},
                 'config_invitation': self.conf_ids.CONFIG_ID,

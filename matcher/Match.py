@@ -59,7 +59,7 @@ class Match:
         score_spec = self.config[Configuration.SCORES_SPECIFICATION]
         conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
         custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
-        self.aggregate_threshold = self.config[Configuration.ALTERNATES] # specifies a percentage (e.g. 10) which is used for determining top N% of aggregate scores
+        self.aggregate_threshold = int(self.config[Configuration.ALTERNATES]) # specifies a percentage (e.g. 10) which is used for determining top N% of aggregate scores
         edge_invitations = PaperReviewerEdgeInvitationIds(score_spec.keys(),
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
@@ -123,18 +123,35 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
+    def _find_aggregate_threshold_score (self):
+        score_list = []
+        for forum_id, reviewers in self.paper_reviewer_data.items():
+            for reviewer, paper_user_scores in reviewers.items():
+                ag_score = paper_user_scores.aggregate_score
+                score_list.append(ag_score)
+        score_list.sort() # ascending order
+        percent_thresh = self.aggregate_threshold # a number like 10 meaning "generate top 10 percent as aggregate edges"
+        num_scores = len(score_list)
+        threshold_index = int(num_scores * (1 - percent_thresh * 0.01)) # index in score list of beginning of the top n percent
+        return score_list[threshold_index] # the threshold score below which we do not generate edges
+
+
     def _save_aggregate_scores (self):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
+        This will only save edges if the aggregate score of the paper-reviewer is above the threshold score (the score above which
+        defines the top N% where N is given in the configuration as Alternates = N)
         '''
         # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
         invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         label = self.config[Configuration.TITLE]
+        threshold_score = self._find_aggregate_threshold_score()
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
             for reviewer, paper_user_scores in reviewers.items():
                 ag_score = paper_user_scores.aggregate_score
-                edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
+                if ag_score >= threshold_score:
+                    edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
         self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
         openreview.tools.post_bulk_edges(self.client, edges)
 
@@ -156,13 +173,17 @@ class Match:
 
     def _save_suggested_assignment (self, assignment_inv, assignments_by_forum):
         self.logger.debug("Saving Edges for " + assignment_inv.id)
+        ag_invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         label = self.config[Configuration.TITLE]
         edges = []
+        agg_score_edges = []
         for forum, assignments in assignments_by_forum.items():
             for paper_user_scores in assignments: #type: PaperUserScores
                 score = paper_user_scores.aggregate_score
                 user = paper_user_scores.user
                 edges.append(self._build_edge(assignment_inv, forum, user, score, label))
+                agg_score_edges.append(self._build_edge(ag_invitation, forum, user, score, label))
         openreview.tools.post_bulk_edges(self.client, edges)
+        openreview.tools.post_bulk_edges(self.client, agg_score_edges)
         self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
 

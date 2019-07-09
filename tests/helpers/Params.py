@@ -25,11 +25,13 @@ class Params:
     OMIT_ZERO_SCORE_EDGES = 'omit_zero_score_edges'
     SCORE_NAMES_LIST = 'score_names'
     SCORES_SPEC = 'scores_spec'
+    ALTERNATES = 'alternates'
 
     def __init__ (self, params):
         self.params = params
         self.num_papers = self.params[Params.NUM_PAPERS]
         self.num_reviewers = self.params[Params.NUM_REVIEWERS]
+        self.alternates = self.params.get(Params.ALTERNATES, 10) # default to top 10%
         self.num_reviews_needed_per_paper = self.params[Params.NUM_REVIEWS_NEEDED_PER_PAPER]
         self.reviewer_max_papers = self.params[Params.REVIEWER_MAX_PAPERS]
         self.reviewer_min_papers = self.params.get(Params.REVIEWER_MIN_PAPERS, 1)

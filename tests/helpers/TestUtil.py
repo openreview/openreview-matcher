@@ -52,6 +52,10 @@ class TestUtil:
         matcher.app.logger.disabled = True
         matcher.app.logger.parent.disabled = True
 
+    def enable_logging (self):
+        matcher.app.logger.disabled = False
+        matcher.app.logger.parent.disabled = False
+
     def get_client (self, base_url):
         return openreview.Client(baseurl = base_url)
 

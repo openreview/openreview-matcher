@@ -36,6 +36,15 @@ class TestPaperReviewerData:
         'very high': 0.9,
     }
 
+
+    bid_translate_map2 = {
+        'low': 0.2,
+        'medium': 0.5,
+        'high': 0.8,
+        'very high': 0.93,
+    }
+
+
     # requires that openreview be running because it needs an openreview client
     def test_base_case (self):
         pd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
@@ -230,29 +239,6 @@ class TestPaperReviewerData:
         assert pair.conflicts == []
 
 
-    bid_translate_map2 = {
-        'low': 0.2,
-        'medium': 0.5,
-        'high': 0.8,
-        'very high': 0.93,
-    }
-
-    bid_function =  """
-lambda edge: 
-    if edge.label == 'low':
-        return 0.2
-    elif edge.label == 'moderate':
-        return 0.5
-    elif edge.label == 'high':
-        return 0.8
-    elif edge.label == 'very high':
-        return 0.95
-"""
-
-
-    fn_with_open_stmt = "lambda x:\n\topen('file.txt','w')\n\tif x == 'low':\n\t\treturn 0.3\n\telse:\n\t\treturn 0.5"
-
-
 
 
     def test_numeric (self):
@@ -285,8 +271,8 @@ lambda edge:
         :return:
         '''
         prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        # translate function returns None for "mystery"
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tpass'}
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
         e = cr_edge('PaperId','ReviewerId','mystery', None)
         with pytest.raises(TypeError):
             ws = prd._translate_edge_to_score(score_spec, e, None)
