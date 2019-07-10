@@ -95,7 +95,7 @@ class Match:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum = encoder.decode(solution)
                 self._save_suggested_assignment(self.assignment_inv, assignments_by_forum)
-                self._save_aggregate_scores()
+                self._save_aggregate_scores(assignments_by_forum)
                 self.set_status(Configuration.STATUS_COMPLETE)
             else:
                 self.logger.debug('Failure: Solver could not find a solution.')
@@ -123,12 +123,12 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
-    def _find_aggregate_threshold_score (self):
+    def _find_aggregate_threshold_score (self, forum_id):
         score_list = []
-        for forum_id, reviewers in self.paper_reviewer_data.items():
-            for reviewer, paper_user_scores in reviewers.items():
-                ag_score = paper_user_scores.aggregate_score
-                score_list.append(ag_score)
+        reviewers_data = self.paper_reviewer_data.get_paper_data(forum_id)
+        for reviewer, paper_user_scores in reviewers_data.items():
+            ag_score = paper_user_scores.aggregate_score
+            score_list.append(ag_score)
         score_list.sort() # ascending order
         percent_thresh = self.aggregate_threshold # a number like 10 meaning "generate top 10 percent as aggregate edges"
         num_scores = len(score_list)
@@ -136,24 +136,37 @@ class Match:
         return score_list[threshold_index] # the threshold score below which we do not generate edges
 
 
-    def _save_aggregate_scores (self):
+    def _save_aggregate_scores (self, assignments_by_forum):
         '''
         Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
         This will only save edges if the aggregate score of the paper-reviewer is above the threshold score (the score above which
         defines the top N% where N is given in the configuration as Alternates = N)
         '''
         # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
+        self.logger.debug("Saving aggregate score edges")
         invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         label = self.config[Configuration.TITLE]
-        threshold_score = self._find_aggregate_threshold_score()
+
         edges = []
         for forum_id, reviewers in self.paper_reviewer_data.items():
+            threshold_score = self._find_aggregate_threshold_score(forum_id) # find the threshold score for this paper
             for reviewer, paper_user_scores in reviewers.items():
+                # aggregate score edges were already produced for assignments
+                if self._is_assigned(forum_id, reviewer, assignments_by_forum):
+                    continue
                 ag_score = paper_user_scores.aggregate_score
-                if ag_score >= threshold_score:
+                # generate the aggregate edge only if its score is at or above the threshold score for the paper.
+                if ag_score >= threshold_score :
                     edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
-        self.logger.debug("Saving " + str(len(edges)) + " aggregate score edges")
+        self.logger.debug("Done saving " + str(len(edges)) + " aggregate score edges")
         openreview.tools.post_bulk_edges(self.client, edges)
+
+    def _is_assigned (self, forum_id, reviewer, assignments_by_forum):
+        paper_user_scores_list = assignments_by_forum[forum_id]
+        for paper_user_scores in paper_user_scores_list:
+            if paper_user_scores.user == reviewer:
+                return True
+        return False
 
     def _get_values(self, invitation, property):
         return invitation.reply.get(property, {}).get('values', [])

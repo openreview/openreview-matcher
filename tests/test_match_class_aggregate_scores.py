@@ -61,7 +61,7 @@ class TestMatchClassAggregateScores():
                 assert ag_sc_edge.weight == agg_score
 
     # verify aggregate score edges have values that are correct
-    def check_aggregate_score_edges (self, client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges):
+    def check_aggregate_score_edges (self, client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges):
         agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
         # first verify that there is an aggregate score edge for every assigned paper-reviewer
         for e in assignment_edges:
@@ -74,15 +74,45 @@ class TestMatchClassAggregateScores():
             for pix, p in enumerate(papers):
                 paper_user_scores = paper_reviewer_data.get_entry(p.id, r) #type: PaperUserScores
                 agg_score = paper_user_scores.aggregate_score
-                if agg_score >= score_threshold:
+                if agg_score >= agg_score_info[p.id]['threshold_score']:
                     ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
                     assert ag_sc_edge.weight == agg_score
 
-    def get_num_expected_aggregate_score_edges (self, num_papers, num_reviews_per_paper, score_list, threshold):
-        return num_papers * num_reviews_per_paper + self.num_scores_above_threshold(score_list, threshold)
+    # count the scores that fall at or above the top N% threshold score and return this number and the score which is at this threshold in a dictionary
+    # keyed by forum_id
+    def count_number_of_aggregate_scores_above_threshold (self, paper_reviewer_data, threshold_percent):
+        res = {}
+        for forum_id, reviewer_data in paper_reviewer_data.items():
+            score_list = []
+            res[forum_id] = {'count': 0, 'threshold_score': 0}
+            for reviewer, paper_user_scores in reviewer_data.items():
+                score_list.append(paper_user_scores.aggregate_score)
+            score_list.sort()
+            threshold_index = int(len(score_list) * (1 - threshold_percent*0.01))
+            threshold_score = score_list[threshold_index]
+            res[forum_id]['threshold_score'] = threshold_score
+            res[forum_id]['count'] += len(score_list[threshold_index:])
+            # there may be scores that are the same as score_list[threshold_index] that immediately precede it, count them too
+            for i in range(threshold_index-1,0,-1):
+                if score_list[i] == threshold_score:
+                    res[forum_id]['count'] += 1
+                else: break
+        return res
 
-    def num_scores_above_threshold (self, score_list, thresh):
-        return len(list(filter(lambda x: x >= thresh, score_list)))
+    # used to compute total count of the data structure returned in the above fn
+    def get_total_count (self, aggregate_score_info, assignment_edges):
+        total = 0
+        for forum_id, v in aggregate_score_info.items():
+            paper_threshold_score = v['threshold_score']
+            total += v['count']
+            # count the number of assignment edges for this paper that are below the threshold score because aggregate
+            # score edges will have been produced for them as well.
+            for e in assignment_edges:
+                if e.head == forum_id and e.weight < paper_threshold_score:
+                    total += 1
+        return total
+
+
 
     # @pytest.mark.skip
     def test1_10papers_7reviewers (self, test_util):
@@ -108,10 +138,6 @@ class TestMatchClassAggregateScores():
         test_util.build_conference()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-        score_list = test_util.get_conference().get_score_list()
-        # number of expected agg-score edges is 1 for every assigned paper-reviewer + number of scores in the top N%
-        expected_agg_edges = self.get_num_expected_aggregate_score_edges(num_papers, num_reviews_per_paper, score_list, score_threshold)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -119,8 +145,13 @@ class TestMatchClassAggregateScores():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info, assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold.
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
         # Verify for every paper P and reviewer R that there is an aggregate score edge with a weight set to
         # the matcher's cost_func applied to the score edges for P and R * the weights.
         # Its not safe to just compare the edges to the cost_matrix because that's what they were built from.  Going back to the
@@ -129,7 +160,7 @@ class TestMatchClassAggregateScores():
         papers = conference.get_paper_notes()
         # enc = Encoder(config=test_util.get_conference().get_config_note().content)
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)
 
 
 
@@ -167,24 +198,24 @@ class TestMatchClassAggregateScores():
         test_util.enable_logging()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-        score_list = test_util.get_conference().get_score_list()
-        # number of expected agg-score edges is 1 for every assigned paper-reviewer + number of scores in the top N%
-        expected_agg_edges = self.get_num_expected_aggregate_score_edges(num_papers, num_reviews_per_paper, score_list, score_threshold)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info,assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
@@ -230,10 +261,6 @@ class TestMatchClassAggregateScores():
         test_util.build_conference()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-        score_list = test_util.get_conference().get_score_list()
-        # number of expected agg-score edges is 1 for every assigned paper-reviewer + number of scores in the top N%
-        expected_agg_edges = self.get_num_expected_aggregate_score_edges(num_papers, num_reviews_per_paper, score_list, score_threshold)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -241,13 +268,18 @@ class TestMatchClassAggregateScores():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info, assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -299,10 +331,6 @@ class TestMatchClassAggregateScores():
         test_util.build_conference()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-        score_list = test_util.get_conference().get_score_list()
-        # number of expected agg-score edges is 1 for every assigned paper-reviewer + number of scores in the top N%
-        expected_agg_edges = self.get_num_expected_aggregate_score_edges(num_papers, num_reviews_per_paper, score_list, score_threshold)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -310,13 +338,18 @@ class TestMatchClassAggregateScores():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info, assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -363,10 +396,6 @@ class TestMatchClassAggregateScores():
         test_util.build_conference()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-        score_list = test_util.get_conference().get_score_list()
-        # number of expected agg-score edges is 1 for every assigned paper-reviewer + number of scores in the top N%
-        expected_agg_edges = self.get_num_expected_aggregate_score_edges(num_papers, num_reviews_per_paper, score_list, score_threshold)
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -374,13 +403,18 @@ class TestMatchClassAggregateScores():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info, assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -425,8 +459,6 @@ class TestMatchClassAggregateScores():
         test_util.build_conference()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
-        score_threshold = match._find_aggregate_threshold_score()
-
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -436,10 +468,15 @@ class TestMatchClassAggregateScores():
 
         # Can't easily check to see if the number of scores is above the threshold since some scores are symbolic and get translated to numbers
         # by the matcher requiring
+        agg_score_info = self.count_number_of_aggregate_scores_above_threshold(match.paper_reviewer_data, alternates)
+        expected_agg_edges = self.get_total_count(agg_score_info, assignment_edges)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        # assert len(aggregate_score_edges) == expected_agg_edges
+        # number of aggregate score edges must be at least the number of scores that are above the N% threshold
+        # but it could be more because the number of reviewers per paper may require selecting reviewers with scores below the threshold
+        # It can't be more than the number of papers*number_of_reviews_per_paper + count of the scores above threshold
+        assert expected_agg_edges <= len(aggregate_score_edges) <= expected_agg_edges + num_papers*num_reviews_per_paper
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, score_threshold, assignment_edges)
+        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data, agg_score_info, assignment_edges)

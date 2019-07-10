@@ -99,18 +99,17 @@ class ConferenceConfigWithEdges (ConferenceConfig):
         reviewers = reviewers_group.members
         edge_type_dict = defaultdict(list) # maps edge_inv_ids to a list of edges of that invitation / so that post_bulk won't complain
         paper_ix = 0
-        self.score_list = []
         for paper_note in paper_notes:
             reviewer_ix = 0
             for reviewer in reviewers:
                 for score_inv in self.score_invitations:
                     score_name = PaperReviewerEdgeInvitationIds.get_score_name_from_invitation_id(score_inv.id)
                     score = self.gen_score(score_name, reviewer_ix=reviewer_ix, paper_ix=paper_ix )
-                    if type(score) == str:
-                        numeric_score = self.params.scores_config[Params.SCORES_SPEC][score_inv.id]['translate_map'][score]
-                    else:
-                        numeric_score = score
-                    self.score_list.append(numeric_score)
+                    # if type(score) == str:
+                    #     numeric_score = self.params.scores_config[Params.SCORES_SPEC][score_inv.id]['translate_map'][score]
+                    # else:
+                    #     numeric_score = score
+                    # self.score_info[paper_note.id].append(numeric_score)
                     if (score == 0 or score == '0') and self.params.scores_config.get(Params.OMIT_ZERO_SCORE_EDGES, False):
                         pass
                     elif isinstance(score, str):
@@ -279,7 +278,6 @@ class ConferenceConfigWithEdges (ConferenceConfig):
                 edges.append(e)
         return edges
 
-    def get_score_list (self):
-        return self.score_list
+
 
 

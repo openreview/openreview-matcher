@@ -40,28 +40,13 @@ class PaperReviewerData:
     def items (self):
         return self._score_map.items()
 
+    def get_paper_data (self, paper_id):
+        return self._score_map[paper_id]
+
     # Will return an empty PaperUserScores object if none is mapped
     def get_entry (self, paper_id, reviewer):
         return self._score_map[paper_id][reviewer]
 
-
-    # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
-    def _load_scores_from_edges_slow (self):
-        now = time.time()
-        scores_invitation_ids = self.edge_invitations.scores_invitation_id
-        score_names = self.edge_invitations.get_score_names()
-        self.logger.debug("Loading score entries from edges")
-        num_entries = 0
-        for score_index, inv_id in enumerate(scores_invitation_ids):
-            score_name = score_names[score_index]
-            for e in self.edge_fetcher.get_all_edges(inv_id):
-                paper_user_scores = self._score_map[e.head][e.tail]
-                score_spec = self._score_specification[inv_id]
-                score = self._translate_edge_to_score(score_spec, e)
-                weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
-                paper_user_scores.set_score(score_name, weighted_score)
-                num_entries += 1
-        self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
 
     # Overwrite scores in the PaperUserScores stored in the scores_map with scores coming from edges.
     def _load_scores_from_edges (self):
@@ -75,6 +60,10 @@ class PaperReviewerData:
             # edge_fetcher gives back a dict {forum_id -> [edge1, edge2 ....] }
             for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(inv_id).items():
                 for score_edge in score_edge_list:
+                    # because conferences can have papers and users deleted it is possible that score edges refer to these deleted things and we must
+                    # ignore them
+                    if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
+                        continue
                     paper_user_scores = self._score_map[forum_id][score_edge.tail]
                     score_spec = self._score_specification[inv_id]
                     score = self._translate_edge_to_score(score_spec, score_edge)
@@ -118,18 +107,14 @@ class PaperReviewerData:
             score_rec.set_score(score_name, weighted_score)
         return score_rec
 
-    def _load_conflicts_slow (self):
-        conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
-        if conflicts_inv_id:
-            for e in self.edge_fetcher.get_all_edges(conflicts_inv_id):
-                paper_user_scores = self._score_map[e.head][e.tail]
-                paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
 
     def _load_conflicts (self):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
         if conflicts_inv_id:
             for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(conflicts_inv_id).items():
                 for score_edge in score_edge_list:
+                    if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
+                        continue
                     paper_user_scores = self._score_map[forum_id][score_edge.tail]
                     paper_user_scores.set_conflicts(score_edge.label) # will be a list of domains stored in the label
 
