@@ -1,17 +1,11 @@
 import openreview.tools
-import requests
-import os
 from collections import defaultdict
-from openreview import OpenReviewException, Edge
 import openreview
 
 class EdgeFetcher:
 
     def __init__ (self, or_client):
         self.or_client = or_client
-
-    def get_all_edges_slow (self,  inv_id):
-        return openreview.tools.iterget_edges(self.or_client, invitation=inv_id, limit=50000)
 
     def get_all_edges (self, inv_id):
         d = defaultdict(list)
