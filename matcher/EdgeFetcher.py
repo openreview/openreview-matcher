@@ -13,18 +13,21 @@ class EdgeFetcher:
     def get_all_edges_slow (self,  inv_id):
         return openreview.tools.iterget_edges(self.or_client, invitation=inv_id, limit=50000)
 
-    # TODO This limit of 5000 allows the query to return a list of over 1000 groups.
-    # This may get changed in the future which will mean doing a bunch of queries with offset by 1000
     def get_all_edges (self, inv_id):
-        json = self.or_client.get_edges_group(inv_id,groupby='head',project='tail,label,weight', limit=5000)
-        return self.parse_json_to_edges(inv_id, json)
-
-    # The json returned will be an array of objects where each object is like {id: {head: paper_id} values: [ {edge fields}, {edge fields} ]}
-    # Note: The edge fields included are the ones that mentioned in the "project" parameter to the request URL
-    # Returns a dict where keys are the forum_ids and the values are lists of Edges
-    def parse_json_to_edges (self, inv, json):
         d = defaultdict(list)
-        for group in json:
+        offset = 0
+        while True:
+            edges_grouped_by_paper = self.or_client.get_edges_group(inv_id,groupby='head',select='tail,label,weight', limit=1000, offset=offset)
+            offset += 1000
+            self.parse_json_to_edges(d, inv_id, edges_grouped_by_paper)
+            if len(edges_grouped_by_paper) < 1000:
+                break
+        return d
+
+    # Given an array of JSON objects where each object is like {id: {head: paper_id} values: [ {edge fields}, {edge fields} ]}
+    # load it into the dict d keyed by the forum_id of the edge
+    def parse_json_to_edges (self, d, inv, edges_grouped_by_paper):
+        for group in edges_grouped_by_paper:
             forum_id = group['id']['head']
             values = group['values']
             for v in values:
