@@ -38,36 +38,5 @@ class EdgeFetcher:
         return openreview.Edge(invitation=inv,head=head, tail=fields['tail'], weight=fields.get('weight'),
                                label=fields.get('label'), readers=[], writers=[], signatures=[])
 
-    def __handle_response(self,response):
-        try:
-            response.raise_for_status()
-
-            if("application/json" in response.headers['content-type']):
-                if 'errors' in response.json():
-                    raise OpenReviewException(response.json()['errors'])
-                if 'error' in response.json():
-                    raise OpenReviewException(response.json()['error'])
-
-            return response
-        except requests.exceptions.HTTPError as e:
-            if 'errors' in response.json():
-                raise OpenReviewException(response.json()['errors'])
-            else:
-                raise OpenReviewException(response.json())
-
-def test_iclr ():
-    password = 'acoldwindydayinamherst'
-    base_url = 'http://openreview.localhost'
-    client = openreview.Client(baseurl=base_url,
-                     username='OpenReview.net', password=password)
 
 
-    ef = EdgeFetcher(client)
-    inv = 'ICLR.cc/2019/Conference/-/TPMS'
-    edge_map = ef.get_all_edges2(inv)
-    keys = list(edge_map.keys())
-    k0 = keys[0]
-    score_edges = edge_map[k0]
-    print(len(score_edges))
-
-# test_iclr()
