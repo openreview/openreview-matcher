@@ -59,7 +59,7 @@ class Match:
         score_spec = self.config[Configuration.SCORES_SPECIFICATION]
         conflicts_inv_id = self.config[Configuration.CONFLICTS_INVITATION_ID]
         custom_loads_inv_id = self.config[Configuration.CUSTOM_LOAD_INVITATION_ID]
-        self.aggregate_threshold = int(self.config[Configuration.ALTERNATES]) # specifies a percentage (e.g. 10) which is used for determining top N% of aggregate scores
+        self.num_alternates = int(self.config[Configuration.ALTERNATES]) # The number of aggregate edges to create for each paper
         edge_invitations = PaperReviewerEdgeInvitationIds(score_spec.keys(),
                                                           conflicts=conflicts_inv_id,
                                                           custom_loads=custom_loads_inv_id)
@@ -123,24 +123,10 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
-    def _find_aggregate_threshold_score (self, forum_id):
-        score_list = []
-        reviewers_data = self.paper_reviewer_data.get_paper_data(forum_id)
-        for reviewer, paper_user_scores in reviewers_data.items():
-            ag_score = paper_user_scores.aggregate_score
-            score_list.append(ag_score)
-        score_list.sort() # ascending order
-        percent_thresh = self.aggregate_threshold # a number like 10 meaning "generate top 10 percent as aggregate edges"
-        num_scores = len(score_list)
-        threshold_index = int(num_scores * (1 - percent_thresh * 0.01)) # index in score list of beginning of the top n percent
-        return score_list[threshold_index] # the threshold score below which we do not generate edges
-
-
     def _save_aggregate_scores (self, assignments_by_forum):
         '''
-        Saves aggregate scores (weighted sum) for each paper-reviewer as an edge.
-        This will only save edges if the aggregate score of the paper-reviewer is above the threshold score (the score above which
-        defines the top N% where N is given in the configuration as Alternates = N)
+        Saves aggregate scores (weighted sum) for a paper-reviewer as an edge.
+        Will save the top N scoring reviewers for each paper where N comes from the config note alternates field.
         '''
         # Note:  If a paper recieved no scoring info for a particular user, there will be a default PaperUserScores object in the data.
         self.logger.debug("Saving aggregate score edges")
@@ -148,18 +134,22 @@ class Match:
         label = self.config[Configuration.TITLE]
 
         edges = []
+        total = 0
         for forum_id, reviewers in self.paper_reviewer_data.items():
-            threshold_score = self._find_aggregate_threshold_score(forum_id) # find the threshold score for this paper
-            for reviewer, paper_user_scores in reviewers.items():
-                # aggregate score edges were already produced for assignments
-                if self._is_assigned(forum_id, reviewer, assignments_by_forum):
-                    continue
-                ag_score = paper_user_scores.aggregate_score
-                # generate the aggregate edge only if its score is at or above the threshold score for the paper.
-                if ag_score >= threshold_score :
-                    edges.append(self._build_edge(invitation, forum_id, reviewer, ag_score, label))
-        self.logger.debug("Done saving " + str(len(edges)) + " aggregate score edges")
+            scores_records = list(reviewers.values())
+            scores_records.sort(reverse=True)
+            count = 0
+            for paper_user_scores in scores_records:
+                if count == self.num_alternates:
+                    break
+                # generate only non-assigned pairs
+                if not self._is_assigned(forum_id, paper_user_scores.user, assignments_by_forum):
+                    edges.append(self._build_edge(invitation, forum_id, paper_user_scores.user, paper_user_scores.aggregate_score, label))
+                    count += 1
+                    total += 1
         openreview.tools.post_bulk_edges(self.client, edges)
+        self.logger.debug("Done saving " + str(total) + " aggregate score edges")
+
 
     def _is_assigned (self, forum_id, reviewer, assignments_by_forum):
         paper_user_scores_list = assignments_by_forum[forum_id]
@@ -185,6 +175,12 @@ class Match:
 
 
     def _save_suggested_assignment (self, assignment_inv, assignments_by_forum):
+        '''
+        Save assignment and aggregate_score edges for pairs that are assigned.
+        :param assignment_inv:
+        :param assignments_by_forum:
+        :return:
+        '''
         self.logger.debug("Saving Edges for " + assignment_inv.id)
         ag_invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         label = self.config[Configuration.TITLE]
@@ -198,5 +194,5 @@ class Match:
                 agg_score_edges.append(self._build_edge(ag_invitation, forum, user, score, label))
         openreview.tools.post_bulk_edges(self.client, edges)
         openreview.tools.post_bulk_edges(self.client, agg_score_edges)
-        self.logger.debug("Done saving " + str(len(edges)) + " Edges for " + assignment_inv.id)
+        self.logger.debug("Done saving " + str(len(edges)) + "Assignment and Aggregate_Score Edges for " + assignment_inv.id)
 

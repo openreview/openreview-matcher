@@ -34,4 +34,7 @@ class PaperUserScores:
     def set_conflicts (self, conflicts):
         self._conflicts = conflicts
 
+    def __lt__ (self, other):
+        return self.aggregate_score < other.aggregate_score
+
 
