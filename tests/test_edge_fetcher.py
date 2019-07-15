@@ -1,7 +1,7 @@
 from matcher.EdgeFetcher import EdgeFetcher
 import openreview
 from helpers.Params import Params
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
+from helpers.ConferenceConfig import ConferenceConfig
 import numpy as np
 
 class TestEdgeFetcher:
@@ -41,7 +41,7 @@ class TestEdgeFetcher:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params) #type: ConferenceConfigWithEdges
+        conf = ConferenceConfig(or_client, test_util.next_conference_count(), params) #type: ConferenceConfigWithEdges
         inv = conf.conf_ids.CONF_ID + '/-/TPMS'
         print("Edge invitation is "+ inv)
         ef = EdgeFetcher(or_client)

@@ -2,8 +2,7 @@ import matcher
 import pytest
 import time
 
-from helpers.DisplayConf import DisplayConf
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
+from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 from helpers.Params import Params
 from helpers.AssignmentChecker import AssignmentChecker
@@ -64,7 +63,7 @@ class TestEndToEnd():
             print(e)
 
 
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert Configuration.STATUS_COMPLETE == conference.get_config_note_status(), \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
@@ -97,7 +96,7 @@ class TestEndToEnd():
         now = time.time()
         test_util.run_matcher()
         print("Time to run matcher", time.time() - now)
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
@@ -119,7 +118,7 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_ERROR, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_ERROR)
         assert len(conference.get_assignment_edges()) == 0, "Assignment edges should not be created if match fails"
@@ -140,7 +139,7 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assert num_papers*num_revs_per_paper == len(conference.get_assignment_edges())
@@ -166,7 +165,7 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assert num_papers*num_revs_per_paper == len(conference.get_assignment_edges())
@@ -198,7 +197,7 @@ class TestEndToEnd():
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
-        conflicts = conference.get_conflicts()
+        conflicts = conference.get_conflicts_from_edges()
         checker = AssignmentChecker(conference)
         for forum_id, reviewers in conflicts.items():
             for reviewer in reviewers:
@@ -228,7 +227,7 @@ class TestEndToEnd():
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
-        conflicts = conference.get_conflicts()
+        conflicts = conference.get_conflicts_from_edges()
         checker = AssignmentChecker(conference)
         for forum_id, reviewers in conflicts.items():
             for reviewer in reviewers:
