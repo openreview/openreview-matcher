@@ -11,7 +11,11 @@ class MockEdgeFetcher(EdgeFetcher):
         self.inv_to_edge_map = inv_to_edge_map
 
     def get_all_edges (self,  inv_id):
-        return self.inv_to_edge_map[inv_id]
+        edge_list = []
+
+        for v in self.inv_to_edge_map[inv_id].values():
+            edge_list = edge_list + v
+        return edge_list
 
 
 def cr_edge (head, tail, label, weight):

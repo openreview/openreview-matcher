@@ -46,8 +46,5 @@ class TestEdgeFetcher:
         print("Edge invitation is "+ inv)
         ef = EdgeFetcher(or_client)
 
-        edge_map = ef.get_all_edges(inv)
-        keys = list(edge_map.keys())
-        assert 3 == len(keys)
-        for k in keys:
-            assert 4 == len(edge_map[k])
+        edges = ef.get_all_edges(inv)
+        assert num_papers*num_reviewers == len(edges)

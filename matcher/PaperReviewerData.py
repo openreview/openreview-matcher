@@ -57,19 +57,19 @@ class PaperReviewerData:
         num_entries = 0
         for score_index, inv_id in enumerate(scores_invitation_ids):
             score_name = score_names[score_index]
-            # edge_fetcher gives back a dict {forum_id -> [edge1, edge2 ....] }
-            for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(inv_id).items():
-                for score_edge in score_edge_list:
-                    # because conferences can have papers and users deleted it is possible that score edges refer to these deleted things and we must
-                    # ignore them
-                    if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
-                        continue
-                    paper_user_scores = self._score_map[forum_id][score_edge.tail]
-                    score_spec = self._score_specification[inv_id]
-                    score = self._translate_edge_to_score(score_spec, score_edge)
-                    weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
-                    paper_user_scores.set_score(score_name, weighted_score)
-                    num_entries += 1
+            for score_edge in self.edge_fetcher.get_all_edges(inv_id):
+                forum_id = score_edge.head
+                reviewer = score_edge.tail
+                # because conferences can have papers and users deleted it is possible that score edges refer to these deleted things and we must
+                # ignore them
+                if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(reviewer):
+                    continue
+                paper_user_scores = self._score_map[forum_id][reviewer]
+                score_spec = self._score_specification[inv_id]
+                score = self._translate_edge_to_score(score_spec, score_edge)
+                weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
+                paper_user_scores.set_score(score_name, weighted_score)
+                num_entries += 1
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
 
 
@@ -111,12 +111,13 @@ class PaperReviewerData:
     def _load_conflicts (self):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
         if conflicts_inv_id:
-            for forum_id, score_edge_list in self.edge_fetcher.get_all_edges(conflicts_inv_id).items():
-                for score_edge in score_edge_list:
-                    if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
+            for score_edge in self.edge_fetcher.get_all_edges(conflicts_inv_id):
+                forum_id = score_edge.head
+                # skip edges that refer to missing papers or users
+                if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
                         continue
-                    paper_user_scores = self._score_map[forum_id][score_edge.tail]
-                    paper_user_scores.set_conflicts(score_edge.label) # will be a list of domains stored in the label
+                paper_user_scores = self._score_map[forum_id][score_edge.tail]
+                paper_user_scores.set_conflicts(score_edge.label) # will be a list of domains stored in the label
 
     def _load_score_map (self):
         self._load_score_map_with_default_scores() # fully populate the map with default info
