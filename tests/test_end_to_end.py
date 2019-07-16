@@ -72,11 +72,11 @@ class TestEndToEnd():
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
 
-    @pytest.mark.skip("Takes a LONG TIME!  Turn on and use for time benchmark only.")
+    # @pytest.mark.skip("Takes a LONG TIME!  Turn on and use for time benchmark only.")
     def test_5000papers_2000reviewers (self, test_util):
         '''
         Tests 5000 papers each requiring 2 reviews.  2000 users each capable of giving 6 reviews.
-        Expects:  produce an assignment
+        Expects:  produce an assignment in about 13 minutes (Dell Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor with 32 GB RAM)
         '''
         num_reviews_per_paper = 2
         num_papers = 5000
@@ -92,10 +92,10 @@ class TestEndToEnd():
         test_util.set_test_params(params)
         now = time.time()
         test_util.build_conference()
-        print("Time to build conference", time.time() - now)
+        print("Time to build conference", time.time() - now) # 3195 sec = 53 min typical
         now = time.time()
         test_util.run_matcher()
-        print("Time to run matcher", time.time() - now)
+        print("Time to run matcher", time.time() - now) # 788 sec = 13 min sec typ
         conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
@@ -103,6 +103,8 @@ class TestEndToEnd():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), \
             "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
+        agg_score_edges = conference.get_aggregate_score_edges()
+        assert num_papers*num_reviews_per_paper + num_papers*params.alternates == len(agg_score_edges)
 
 
     def test_10papers_7reviewers_5cust_load_5shortfall (self, test_util):
