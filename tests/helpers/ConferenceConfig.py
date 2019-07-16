@@ -21,13 +21,12 @@ class ConfIds:
         self.REVIEWERS_ID = self.CONF_ID + "/Reviewers"
         self.SUBMISSION_ID = self.CONF_ID + "/-/Submission"
         self.BLIND_SUBMISSION_ID = self.CONF_ID + "/-/Blind_Submission"
-        self.METADATA_INV_ID = self.CONF_ID + '/-/Paper_Metadata'
-        self.CONFIG_ID = self.CONF_ID + "/-/Assignment_Configuration"
-        self.ASSIGNMENT_ID = self.CONF_ID + "/-/Paper_Assignment"
-        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Aggregate_Score"
-        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Custom_Load"
+        self.CONFIG_ID = self.CONF_ID + "/-/Reviewing/Assignment_Configuration"
+        self.ASSIGNMENT_ID = self.CONF_ID + "/-/Reviewing/Paper_Assignment"
+        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Reviewing/Aggregate_Score"
+        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Reviewing/Custom_Load"
         # self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
-        self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Conflicts"
+        self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Reviewing/Conflict"
 
 
 
@@ -266,7 +265,7 @@ class ConferenceConfig:
         :return:
         '''
         self.config_note = openreview.Note(**{
-            'invitation': self.get_assignment_configuration_id(),
+            'invitation': self.conf_ids.CONFIG_ID,
             'readers': [self.conference.id],
             'writers': [self.conference.id,],
             'signatures': [self.conference.id],
@@ -282,7 +281,7 @@ class ConferenceConfig:
                 'custom_loads': {}, # leaving this around since there was some talk of not doing edge custom-loads
                 'config_invitation': self.conf_ids.CONFIG_ID,
                 'paper_invitation': self.conference.get_blind_submission_id(),
-                'assignment_invitation': self.get_paper_assignment_id(),
+                'assignment_invitation': self.conf_ids.ASSIGNMENT_ID,
                 'match_group': self.conference.get_reviewers_id(),
                 'status': 'Initialized'
             }
@@ -398,15 +397,6 @@ class ConferenceConfig:
         config_note = self.client.get_note(id=self.config_note_id)
         return config_note
 
-    def get_paper_assignment_id (self):
-        return self.conference.id + '/-/' + 'Paper_Assignment'
-
-    def get_assignment_configuration_id (self):
-        return self.conference.id + '/-/' + 'Assignment_Configuration'
-
-    def get_metadata_id (self):
-        return self.conference.id + '/-/' + 'Paper_Metadata'
-
     def get_paper_notes (self):
         return self.paper_notes
 
@@ -419,7 +409,7 @@ class ConferenceConfig:
 
     def get_assignment_notes (self):
         # return self.conference.get_assignment_notes()   # cannot call this until released
-        return self.client.get_notes(invitation=self.get_paper_assignment_id())
+        return self.client.get_notes(invitation=self.conf_ids.ASSIGNMENT_ID)
 
 
     def get_assignment_note_assigned_reviewers (self, assignment_note):

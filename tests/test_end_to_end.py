@@ -72,7 +72,7 @@ class TestEndToEnd():
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
 
-    @pytest.mark.skip("Takes a LONG TIME!")
+    @pytest.mark.skip("Takes a LONG TIME!  Turn on and use for time benchmark only.")
     def test_5000papers_2000reviewers (self, test_util):
         '''
         Tests 5000 papers each requiring 2 reviews.  2000 users each capable of giving 6 reviews.
