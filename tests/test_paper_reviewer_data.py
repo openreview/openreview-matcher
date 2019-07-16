@@ -3,7 +3,7 @@ from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationId
 from matcher.PaperReviewerData import PaperReviewerData
 from matcher.EdgeFetcher import EdgeFetcher
 from openreview import Edge, Note
-
+from exc.exceptions import ScoreEdgeMissingWeightError, TranslateScoreError
 from matcher.PaperUserScores import PaperUserScores
 
 class MockEdgeFetcher(EdgeFetcher):
@@ -42,6 +42,7 @@ class TestPaperReviewerData:
         'medium': 0.5,
         'high': 0.8,
         'very high': 0.93,
+        'garbage in': 'garbage out'
     }
 
 
@@ -267,15 +268,53 @@ class TestPaperReviewerData:
 
     def test_no_return_value (self):
         '''
-        make sure translate function that does not return anything fails
+        make sure translate function that doesn't map the score edge label fails
         :return:
         '''
         prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
         # translate map returns None for "mystery"
         score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
         e = cr_edge('PaperId','ReviewerId','mystery', None)
-        with pytest.raises(TypeError):
-            ws = prd._translate_edge_to_score(score_spec, e, None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_bad_return_value (self):
+        '''
+        make sure translate function that returns a non number for the score edge fails
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
+        e = cr_edge('PaperId','ReviewerId','garbage in', None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_symbol_no_map (self):
+        '''
+        a score edge with a label but no translate_fn gets the right error
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0}
+        e = cr_edge('PaperId','ReviewerId','blee', None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_no_label_no_numeric_weight (self):
+        '''
+        make sure score edge with no label and no weight fails.
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0}
+        e = cr_edge('PaperId','ReviewerId', None, None)
+        with pytest.raises(ScoreEdgeMissingWeightError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+
 
 
 
