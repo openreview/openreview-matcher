@@ -11,7 +11,7 @@ class EdgeFetcher:
         d = defaultdict(list)
         offset = 0
         while True:
-            edges_grouped_by_paper = self.or_client.get_edges_group(inv_id,groupby='head',select='tail,label,weight', limit=1000, offset=offset)
+            edges_grouped_by_paper = self.or_client.get_grouped_edges(inv_id,groupby='head',select='tail,label,weight', limit=1000, offset=offset)
             offset += 1000
             self.parse_json_to_edges(d, inv_id, edges_grouped_by_paper)
             if len(edges_grouped_by_paper) < 1000:
