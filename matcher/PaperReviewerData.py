@@ -5,7 +5,7 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.EdgeFetcher import EdgeFetcher
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
-from exc.exceptions import TranslateScoreError
+from exc.exceptions import TranslateScoreError, ScoreEdgeMissingWeightError
 
 
 class PaperReviewerData:
@@ -82,12 +82,19 @@ class PaperReviewerData:
         if translate_map:
             try:
                 numeric_score = translate_map[edge.label]
+                float(numeric_score)
+                return numeric_score
             except:
-                raise TranslateScoreError("Cannot translate score: {}.  Check the translate_map within scores_specification of the configuration note".format(edge.label) )
+                raise TranslateScoreError("Cannot translate score: {} of edge {}->{}.  Check the translate_map within scores_specification of the configuration note".format(edge.label, edge.head, edge.tail) )
+        elif edge.label and not edge.weight:
+            raise TranslateScoreError("No translate_map provided for this edge {}->{} ".format(edge.head, edge.tail))
         else:
             numeric_score = edge.weight
-        float(numeric_score) # convert to float here so it will throw ValueError if not a number
-        return numeric_score
+            try:
+                float(numeric_score) # convert to float here so it will throw ValueError if not a number
+                return numeric_score
+            except:
+                raise ScoreEdgeMissingWeightError("Score edge {}->{} is missing a label and its weight {} is non-numeric".format(edge.head, edge.tail, edge.weight))
 
     # fully populates the score map with PaperUserScores records that have scores based on defaults.
     def _load_score_map_with_default_scores (self):

@@ -2,10 +2,8 @@ import time
 import json
 import traceback
 
-from helpers.DisplayConf import DisplayConf
 from matcher.fields import Configuration
 from helpers.ConferenceConfig import ConferenceConfig
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
 import openreview
 import matcher
 
@@ -107,12 +105,7 @@ class TestUtil:
 
     def build_conference (self):
         self.next_conference_count()
-        if self.use_edge_conf_builder():
-            self.conf = ConferenceConfigWithEdges(self.client, self._test_count, self.params)
-        else:
-            self.conf = ConferenceConfig(self.client, self._test_count, self.params)
-        if not self.silent:
-            DisplayConf(self.conf).display_input_structures()
+        self.conf = ConferenceConfig(self.client, self._test_count, self.params)
 
 
     def run_matcher (self):

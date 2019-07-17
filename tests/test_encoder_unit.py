@@ -5,7 +5,7 @@ import numpy as np
 from matcher.fields import Configuration
 from helpers.Params import Params
 from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
+from helpers.ConferenceConfig import ConferenceConfig
 from matcher.Encoder import Encoder
 from matcher.PaperReviewerData import PaperReviewerData
 from matcher.EdgeFetcher import EdgeFetcher
@@ -71,7 +71,7 @@ lambda edge:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
+        conf = ConferenceConfig(or_client, test_util.next_conference_count() , params)
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
@@ -119,7 +119,7 @@ lambda edge:
                          }})
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count() , params)
+        conf = ConferenceConfig(or_client, test_util.next_conference_count() , params)
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids, conf.conf_ids.CONFLICTS_INV_ID, conf.conf_ids.CUSTOM_LOAD_INV_ID)
@@ -173,7 +173,7 @@ lambda edge:
                          })
 
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
+        conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
         edge_invitations = PaperReviewerEdgeInvitationIds(conf.score_invitation_ids,
@@ -231,7 +231,7 @@ lambda edge:
         correct_cost = matcher.cost_function.aggregate_score_to_cost(ag_cost)
         or_client = test_util.client
         now = time.time()
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
+        conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
         print("Time to build test conference: ", time.time() - now)
         config = conf.get_config_note()
         scores_spec = config.content[Configuration.SCORES_SPECIFICATION]
@@ -288,7 +288,7 @@ lambda edge:
                          
         '''
         or_client = test_util.client
-        conf = ConferenceConfigWithEdges(or_client, test_util.next_conference_count(), params)
+        conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
         papers = conf.get_paper_notes()
         reviewers = conf.reviewers
         config = conf.get_config_note()

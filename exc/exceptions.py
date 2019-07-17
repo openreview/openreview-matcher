@@ -15,3 +15,6 @@ class NotFoundError (Exception):
 
 class TranslateScoreError (Exception):
     pass
+
+class ScoreEdgeMissingWeightError (Exception):
+    pass
