@@ -41,12 +41,21 @@ class PythonFunctionRunner:
         prototype = lambda_def[:colon_loc] # e.g. 'lambda x, y, z'
         body = lambda_def[colon_loc+1:]
         args = prototype[7:].strip() # e.g. 'x, y, z'
-        return self.createFunction(body, args, self._additional_symbols_dict)
+        return self._createFunction(body, args, self._additional_symbols_dict)
 
     # from: http://code.activestate.com/recipes/550804-create-a-restricted-python-function-from-a-string/
-    def createFunction(self, sourceCode, args="", additional_symbols=dict()):
+    def _createFunction(self, sourceCode, args="", additional_symbols=dict()):
         """
-        Create a python function from the given source code
+        Create a python function from the given source code which is in the form:
+        lambda x,y:
+            statement
+            statement
+            ...
+        The above is not a legal Python lambda but it makes more sense than taking a named function defined with def because our calling context
+        is better with an anonymous function than a named one and this lambda formulation conveys that.  The really problematic issue with these
+        is that editing the lambda definitions within a text area that edits JSON (where the lambda is a field in the JSON) is a nightmare because
+        indentation is lost by the current UI which makes it impossible to edit python functions in a text area (which is what the rest of the configuration note
+        can be edited with).   So this is a feature that is not in use and will probably go away, but I leave here just in case.... DM 7/19
 
         :param sourceCode A python string containing the core of the
         function. Might include the return statement (or not), definition of

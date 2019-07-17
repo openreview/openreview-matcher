@@ -75,8 +75,6 @@ class TestMatchClassCustomLoads():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
-        aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
         paper_ids = conference.get_paper_note_ids()
         reviewers = conference.reviewers
         c = AssignmentChecker(conference)
@@ -133,8 +131,6 @@ class TestMatchClassCustomLoads():
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
-        aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
         paper_ids = conference.get_paper_note_ids()
         reviewers = conference.reviewers
         c = AssignmentChecker(conference)
@@ -233,9 +229,6 @@ class TestMatchClassCustomLoads():
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-
-        aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
 
         reviewers = conference.reviewers
 

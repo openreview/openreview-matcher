@@ -1,11 +1,11 @@
 from collections import defaultdict
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
+from helpers.ConferenceConfig import ConferenceConfig
 
 class AssignmentChecker:
 
 
     def __init__(self, conf):
-        self.conf = conf #type: ConferenceConfigWithEdges
+        self.conf = conf #type: ConferenceConfig
 
 
     def count_user_reviews(self):

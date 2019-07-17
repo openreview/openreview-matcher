@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 from exc.exceptions import NotFoundError
 from matcher.Match import Match
-from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.PaperUserScores import PaperUserScores
 from helpers.Params import Params
@@ -13,22 +12,14 @@ from helpers.Params import Params
 # and then verify that an aggregate_score edge was produced with that value.
 # N.B.:  To run this test you must be running OR with a clean db.  See README for details.
 class TestMatchClassAggregateScores():
+    bid_translate_map = {
+        'low': 0.2,
+        'medium': 0.5,
+        'high': 0.8,
+        'very high': 0.9,
+    }
 
-    bid_translate_fn = """
-lambda edge:
-    if edge.label == 'low':
-        return 0.2
-    elif edge.label == 'medium':
-        return 0.5
-    elif edge.label == 'high':
-        return 0.8
-    elif edge.label == 'very high':
-        return 0.95
-    elif edge.label == 'none':
-        return 0
-    else:
-        return 0.6
-"""
+
     # called once at beginning of suite
     # See conftest.py for other run-once setup that is part of the test_util fixture passed to each test.
     @classmethod
@@ -57,25 +48,37 @@ lambda edge:
         return entry
 
     # verify aggregate score edges have values that are correct
-    def check_aggregate_score_edges_old (self, client, reviewers, papers, conference, encoder):
+    def check_aggregate_score_edges(self, client, num_alternates, conference, paper_reviewer_data, assignment_edges):
         agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
-        for rix, r in enumerate(reviewers):
-            for pix, p in enumerate(papers):
-                score_edges = conference.get_score_edges(p, r)
-                entry = self.make_entry_from_edges(score_edges)
-                agg_score = encoder.cost_function.aggregate_score(entry, encoder.weights)
-                ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
-                assert ag_sc_edge.weight == agg_score
+        # first verify that there is an aggregate score edge for every assigned paper-reviewer
+        for e in assignment_edges:
+            paper_user_scores = paper_reviewer_data.get_entry(e.head, e.tail)
+            agg_score = paper_user_scores.aggregate_score
+            ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=e.head, tail=e.tail)[0]
+            assert ag_sc_edge.weight == agg_score
+        # verify that we get each paper's top N alternates that are not assigned
+        for forum_id, reviewers in paper_reviewer_data.items():
+            count = 0
+            scores = list(reviewers.values())
+            scores.sort(reverse=True)
+            for paper_user_scores in scores: #type: PaperUserScores
+                if count == num_alternates:
+                    break
+                if not self.in_assignment(forum_id, paper_user_scores.user, assignment_edges):
+                    count += 1
+                    ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=forum_id, tail=paper_user_scores.user)[0]
+                    assert ag_sc_edge.weight == paper_user_scores.aggregate_score
 
-    # verify aggregate score edges have values that are correct
-    def check_aggregate_score_edges (self, client, reviewers, papers, conference, paper_reviewer_data):
-        agg_score_inv_id = conference.conf_ids.AGGREGATE_SCORE_ID
-        for rix, r in enumerate(reviewers):
-            for pix, p in enumerate(papers):
-                paper_user_scores = paper_reviewer_data.get_entry(p.id, r) #type: PaperUserScores
-                agg_score = paper_user_scores.aggregate_score
-                ag_sc_edge = client.get_edges(invitation=agg_score_inv_id, head=p.id, tail=r)[0]
-                assert ag_sc_edge.weight == agg_score
+    def in_assignment (self, forum_id, user, assignment_edges):
+        for e in assignment_edges:
+            if e.head==forum_id and e.tail==user:
+                return True
+        return False
+
+
+    def expected_number_of_aggregate_score_edges (self, num_papers, num_reviewers, num_alternates, num_reviews_per_paper):
+        return num_papers*num_reviews_per_paper + num_papers*min(num_alternates,num_reviewers-num_reviews_per_paper)
+
 
     # @pytest.mark.skip
     def test1_10papers_7reviewers (self, test_util):
@@ -86,7 +89,10 @@ lambda edge:
         num_papers = 10
         num_reviewers = 7
         num_reviews_per_paper = 2
+        alternates = 10
+
         params = Params({Params.NUM_PAPERS: num_papers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: 3,
@@ -105,17 +111,12 @@ lambda edge:
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
-        # Verify for every paper P and reviewer R that there is an aggregate score edge with a weight set to
-        # the matcher's cost_func applied to the score edges for P and R * the weights.
-        # Its not safe to just compare the edges to the cost_matrix because that's what they were built from.  Going back to the
-        # score edges will be closer to the source of the data that forms the cost.
-        reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
-        # enc = Encoder(config=test_util.get_conference().get_config_note().content)
+        assert expected_agg_edges == len(aggregate_score_edges)
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client, reviewers, papers, conference, paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)
+
 
 
     # @pytest.mark.skip
@@ -135,8 +136,10 @@ lambda edge:
         num_reviewers = 4
         num_reviews_per_paper = 2
         reviewer_max_papers = 2
+        alternates = 3 # Will only be able to assign 2 because there are 4 reviewers, 2 of which will be assigned
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
@@ -147,6 +150,7 @@ lambda edge:
 
         test_util.set_test_params(params)
         test_util.build_conference()
+        test_util.enable_logging()
         match = Match(test_util.client, test_util.get_conference().get_config_note())
         match.compute_match()
         conference = test_util.get_conference()
@@ -155,14 +159,14 @@ lambda edge:
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assert expected_agg_edges == len(aggregate_score_edges)
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-0 -> paper-0
         assert conference.get_assignment_edge(papers[0].id, reviewers[0]) != None
@@ -190,8 +194,10 @@ lambda edge:
         num_reviewers = 4
         num_reviews_per_paper = 2
         reviewer_max_papers = 2
+        alternates = 1
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CONFLICTS_CONFIG: {0: [0]},
@@ -212,13 +218,14 @@ lambda edge:
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assert expected_agg_edges == len(aggregate_score_edges)
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -252,8 +259,10 @@ lambda edge:
         num_reviewers = 4
         num_reviews_per_paper = 2
         reviewer_max_papers = 2
+        alternates = 1
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.CONFLICTS_CONFIG: {0: [0]},
@@ -275,13 +284,14 @@ lambda edge:
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assert expected_agg_edges == len(aggregate_score_edges)
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -311,8 +321,10 @@ lambda edge:
         num_reviewers = 4
         num_reviews_per_paper = 2
         reviewer_max_papers = 2
+        alternates = 5 # can only assign 2 as alternates
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.SCORES_CONFIG: {Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}},
@@ -333,13 +345,14 @@ lambda edge:
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assert expected_agg_edges == len(aggregate_score_edges)
 
         reviewers = conference.reviewers
         papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)
         # Validate that the assignment edges are correct
         # reviewer-1 -> paper-1
         assert conference.get_assignment_edge(papers[1].id, reviewers[1]) != None
@@ -362,15 +375,17 @@ lambda edge:
         num_reviewers = 4
         num_reviews_per_paper = 2
         reviewer_max_papers = 2
+        alternates = 1
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
+                         Params.ALTERNATES: alternates,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
                          Params.REVIEWER_MAX_PAPERS: reviewer_max_papers,
                          Params.SCORES_CONFIG: {
                                                 Params.SCORES_SPEC: {
                                                     'affinity': {'weight': 1, 'default': 0},
                                                     'recommendation': {'weight': 1, 'default': 0},
-                                                    'bid': {'weight': 1, 'default': 0.3, 'translate_fn': self.bid_translate_fn}
+                                                    'bid': {'weight': 1, 'default': 0.3, 'translate_map': self.bid_translate_map}
                                                 },
                                                 Params.SCORE_TYPE: Params.FIXED_SCORE,
                                                 Params.OMIT_ZERO_SCORE_EDGES: True,
@@ -389,10 +404,9 @@ lambda edge:
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
 
+        expected_agg_edges = self.expected_number_of_aggregate_score_edges(num_papers,num_reviewers,alternates,num_reviews_per_paper)
         aggregate_score_edges = conference.get_aggregate_score_edges()
-        assert len(aggregate_score_edges) == num_reviewers * num_papers
+        assert expected_agg_edges == len(aggregate_score_edges)
 
-        reviewers = conference.reviewers
-        papers = conference.get_paper_notes()
         paper_reviewer_data = match.paper_reviewer_data
-        self.check_aggregate_score_edges(test_util.client,reviewers,papers,conference,paper_reviewer_data)
+        self.check_aggregate_score_edges(test_util.client, alternates, conference, paper_reviewer_data, assignment_edges)

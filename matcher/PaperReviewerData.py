@@ -5,8 +5,7 @@ from matcher.PaperUserScores import PaperUserScores
 from matcher.EdgeFetcher import EdgeFetcher
 from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationIds
 from matcher.fields import Configuration
-from util.PythonFunctionRunner import ORFunctionRunner
-from exc.exceptions import TranslateScoreError
+from exc.exceptions import TranslateScoreError, ScoreEdgeMissingWeightError
 
 
 class PaperReviewerData:
@@ -19,12 +18,13 @@ class PaperReviewerData:
 
     def __init__ (self, paper_notes, reviewers, edge_invitations, score_specification, edge_fetcher, logger=logging.getLogger(__name__)):
         self.logger = logger
-        self.edge_fetcher = edge_fetcher
+        self.edge_fetcher = edge_fetcher # type: EdgeFetcher
         self.edge_invitations = edge_invitations # type: PaperReviewerEdgeInvitationIds
         # a map like: {'forum_id-1' : {'reviewer-1' : PaperUserScores, ...}, ... } produces empty PaperUserScores objects by default
         self._score_map = {}
         self._paper_notes = paper_notes
         self._reviewers = reviewers
+        # self._aggregate_score_cutoff
         self._score_specification = score_specification # dict mapping score-invitation_ids to a dict of weight,default,translate_fn
         self._load_score_map()
 
@@ -40,6 +40,9 @@ class PaperReviewerData:
     def items (self):
         return self._score_map.items()
 
+    def get_paper_data (self, paper_id):
+        return self._score_map[paper_id]
+
     # Will return an empty PaperUserScores object if none is mapped
     def get_entry (self, paper_id, reviewer):
         return self._score_map[paper_id][reviewer]
@@ -54,14 +57,21 @@ class PaperReviewerData:
         num_entries = 0
         for score_index, inv_id in enumerate(scores_invitation_ids):
             score_name = score_names[score_index]
-            for e in self.edge_fetcher.get_all_edges(inv_id):
-                paper_user_scores = self._score_map[e.head][e.tail]
+            for score_edge in self.edge_fetcher.get_all_edges(inv_id):
+                forum_id = score_edge.head
+                reviewer = score_edge.tail
+                # because conferences can have papers and users deleted it is possible that score edges refer to these deleted things and we must
+                # ignore them
+                if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(reviewer):
+                    continue
+                paper_user_scores = self._score_map[forum_id][reviewer]
                 score_spec = self._score_specification[inv_id]
-                score = self._translate_edge_to_score(score_spec, e)
+                score = self._translate_edge_to_score(score_spec, score_edge)
                 weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
                 paper_user_scores.set_score(score_name, weighted_score)
                 num_entries += 1
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
+
 
 
 
@@ -72,12 +82,19 @@ class PaperReviewerData:
         if translate_map:
             try:
                 numeric_score = translate_map[edge.label]
+                float(numeric_score)
+                return numeric_score
             except:
-                raise TranslateScoreError("Cannot translate score: {}.  Check the translate_map within scores_specification of the configuration note".format(edge.label) )
+                raise TranslateScoreError("Cannot translate score: {} of edge {}->{}.  Check the translate_map within scores_specification of the configuration note".format(edge.label, edge.head, edge.tail) )
+        elif edge.label and not edge.weight:
+            raise TranslateScoreError("No translate_map provided for this edge {}->{} ".format(edge.head, edge.tail))
         else:
             numeric_score = edge.weight
-        float(numeric_score) # convert to float here so it will throw ValueError if not a number
-        return numeric_score
+            try:
+                float(numeric_score) # convert to float here so it will throw ValueError if not a number
+                return numeric_score
+            except:
+                raise ScoreEdgeMissingWeightError("Score edge {}->{} is missing a label and its weight {} is non-numeric".format(edge.head, edge.tail, edge.weight))
 
     # fully populates the score map with PaperUserScores records that have scores based on defaults.
     def _load_score_map_with_default_scores (self):
@@ -97,12 +114,17 @@ class PaperReviewerData:
             score_rec.set_score(score_name, weighted_score)
         return score_rec
 
+
     def _load_conflicts (self):
         conflicts_inv_id = self.edge_invitations.conflicts_invitation_id
         if conflicts_inv_id:
-            for e in self.edge_fetcher.get_all_edges(conflicts_inv_id):
-                paper_user_scores = self._score_map[e.head][e.tail]
-                paper_user_scores.set_conflicts(e.label) # will be a list of domains stored in the label
+            for score_edge in self.edge_fetcher.get_all_edges(conflicts_inv_id):
+                forum_id = score_edge.head
+                # skip edges that refer to missing papers or users
+                if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(score_edge.tail):
+                        continue
+                paper_user_scores = self._score_map[forum_id][score_edge.tail]
+                paper_user_scores.set_conflicts(score_edge.label) # will be a list of domains stored in the label
 
     def _load_score_map (self):
         self._load_score_map_with_default_scores() # fully populate the map with default info

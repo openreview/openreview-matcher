@@ -3,7 +3,7 @@ from matcher.PaperReviewerEdgeInvitationIds import PaperReviewerEdgeInvitationId
 from matcher.PaperReviewerData import PaperReviewerData
 from matcher.EdgeFetcher import EdgeFetcher
 from openreview import Edge, Note
-
+from exc.exceptions import ScoreEdgeMissingWeightError, TranslateScoreError
 from matcher.PaperUserScores import PaperUserScores
 
 class MockEdgeFetcher(EdgeFetcher):
@@ -11,7 +11,11 @@ class MockEdgeFetcher(EdgeFetcher):
         self.inv_to_edge_map = inv_to_edge_map
 
     def get_all_edges (self,  inv_id):
-        return self.inv_to_edge_map[inv_id]
+        edge_list = []
+
+        for v in self.inv_to_edge_map[inv_id].values():
+            edge_list = edge_list + v
+        return edge_list
 
 
 def cr_edge (head, tail, label, weight):
@@ -35,6 +39,16 @@ class TestPaperReviewerData:
         'high': 0.8,
         'very high': 0.9,
     }
+
+
+    bid_translate_map2 = {
+        'low': 0.2,
+        'medium': 0.5,
+        'high': 0.8,
+        'very high': 0.93,
+        'garbage in': 'garbage out'
+    }
+
 
     # requires that openreview be running because it needs an openreview client
     def test_base_case (self):
@@ -67,9 +81,14 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='xscore', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/xscore': [xe0, xe1, xe2]}
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/xscore': {paper_notes[0].id: [xe0, xe2],
+                                           paper_notes[1].id: [xe1]}
+                           }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)
@@ -122,9 +141,15 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/bid': [xe0, xe1, xe2]}
+
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/bid': {paper_notes[0].id: [xe0, xe2],
+                                           paper_notes[1].id: [xe1]}
+                           }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)
@@ -182,11 +207,15 @@ class TestPaperReviewerData:
         ae2 = cr_edge(paper_notes[0].id,reviewers[1],label='affinity', weight=0.75)
         re2 = cr_edge(paper_notes[0].id,reviewers[1],label='recommendation', weight=0.85)
         xe2 = cr_edge(paper_notes[0].id,reviewers[1],label='high', weight=0.95)
-        inv_to_edge_map = {'conf/affinity': [ae0, ae1, ae2],
-                           'conf/recommendation': [re0, re1, re2],
-                           'conf/bid': [xe0, xe1, xe2],
-                           conflict_edge_invitation_id: [conf0]
+        inv_to_edge_map = {'conf/affinity': {paper_notes[0].id: [ae0, ae2],
+                                             paper_notes[1].id: [ae1]},
+                           'conf/recommendation': {paper_notes[0].id: [re0, re2],
+                                                   paper_notes[1].id: [re1]},
+                           'conf/bid': {paper_notes[0].id: [xe0, xe2],
+                                        paper_notes[1].id: [xe1]},
+                           conflict_edge_invitation_id: {paper_notes[0].id: [conf0]}
                            }
+
         edge_fetcher = MockEdgeFetcher(inv_to_edge_map=inv_to_edge_map)
         prd = PaperReviewerData(paper_notes, reviewers, edge_invitations=edge_invitations, score_specification=score_spec,
                                 edge_fetcher=edge_fetcher)
@@ -213,29 +242,6 @@ class TestPaperReviewerData:
         # 1 * 0.35 + 2 * 0.66 + 3 * 0.1 = 1.97
         assert pair.aggregate_score == pytest.approx(1.97)
         assert pair.conflicts == []
-
-
-    bid_translate_map2 = {
-        'low': 0.2,
-        'medium': 0.5,
-        'high': 0.8,
-        'very high': 0.93,
-    }
-
-    bid_function =  """
-lambda edge: 
-    if edge.label == 'low':
-        return 0.2
-    elif edge.label == 'moderate':
-        return 0.5
-    elif edge.label == 'high':
-        return 0.8
-    elif edge.label == 'very high':
-        return 0.95
-"""
-
-
-    fn_with_open_stmt = "lambda x:\n\topen('file.txt','w')\n\tif x == 'low':\n\t\treturn 0.3\n\telse:\n\t\treturn 0.5"
 
 
 
@@ -266,15 +272,53 @@ lambda edge:
 
     def test_no_return_value (self):
         '''
-        make sure translate function that does not return anything fails
+        make sure translate function that doesn't map the score edge label fails
         :return:
         '''
         prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
-        # translate function returns None for "mystery"
-        score_spec = {'weight': 3, 'default': 0, 'translate_fn': 'lambda x:\n\tpass'}
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
         e = cr_edge('PaperId','ReviewerId','mystery', None)
-        with pytest.raises(TypeError):
-            ws = prd._translate_edge_to_score(score_spec, e, None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_bad_return_value (self):
+        '''
+        make sure translate function that returns a non number for the score edge fails
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0, 'translate_map': self.bid_translate_map2}
+        e = cr_edge('PaperId','ReviewerId','garbage in', None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_symbol_no_map (self):
+        '''
+        a score edge with a label but no translate_fn gets the right error
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0}
+        e = cr_edge('PaperId','ReviewerId','blee', None)
+        with pytest.raises(TranslateScoreError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+    def test_no_label_no_numeric_weight (self):
+        '''
+        make sure score edge with no label and no weight fails.
+        :return:
+        '''
+        prd = PaperReviewerData([],[],PaperReviewerEdgeInvitationIds([]),{},None)
+        # translate map returns None for "mystery"
+        score_spec = {'weight': 3, 'default': 0}
+        e = cr_edge('PaperId','ReviewerId', None, None)
+        with pytest.raises(ScoreEdgeMissingWeightError):
+            ws = prd._translate_edge_to_score(score_spec, e)
+
+
 
 
 

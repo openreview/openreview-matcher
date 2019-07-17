@@ -2,8 +2,7 @@ import matcher
 import pytest
 import time
 
-from helpers.DisplayConf import DisplayConf
-from helpers.ConferenceConfigWithEdges import ConferenceConfigWithEdges
+from helpers.ConferenceConfig import ConferenceConfig
 from matcher.fields import Configuration
 from helpers.Params import Params
 from helpers.AssignmentChecker import AssignmentChecker
@@ -64,23 +63,20 @@ class TestEndToEnd():
             print(e)
 
 
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert Configuration.STATUS_COMPLETE == conference.get_config_note_status(), \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), \
             "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-        aggregate_edges = conference.get_aggregate_edges()
-        assert len(aggregate_edges) == num_reviewers*num_papers, \
-            "Number of aggregate edges {} is incorrect.  Should be {}". \
-            format(len(aggregate_edges), num_reviewers*num_papers)
 
-    @pytest.mark.skip("Takes a LONG TIME!")
+
+    @pytest.mark.skip("Takes a LONG TIME!  Turn on and use for time benchmark only.")
     def test_5000papers_2000reviewers (self, test_util):
         '''
         Tests 5000 papers each requiring 2 reviews.  2000 users each capable of giving 6 reviews.
-        Expects:  produce an assignment
+        Expects:  produce an assignment in about 13 minutes (Dell Xeon E3-1200 v5/E3-1500 v5/6th Gen Core Processor with 32 GB RAM)
         '''
         num_reviews_per_paper = 2
         num_papers = 5000
@@ -88,26 +84,27 @@ class TestEndToEnd():
         params = Params({Params.NUM_PAPERS: num_papers,
                          Params.NUM_REVIEWERS: num_reviewers,
                          Params.NUM_REVIEWS_NEEDED_PER_PAPER: num_reviews_per_paper,
+                         Params.SCORES_CONFIG: { Params.SCORE_TYPE: Params.RANDOM_SCORE,
+                                                 Params.SCORE_INCREMENT: 0.01,
+                                                 Params.SCORES_SPEC: {'affinity': {'weight': 1, 'default': 0}}},
                          Params.REVIEWER_MAX_PAPERS: 6,
                          })
         test_util.set_test_params(params)
         now = time.time()
         test_util.build_conference()
-        print("Time to build conference", time.time() - now)
+        print("Time to build conference", time.time() - now) # 3195 sec = 53 min typical
         now = time.time()
         test_util.run_matcher()
-        print("Time to run matcher", time.time() - now)
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        print("Time to run matcher", time.time() - now) # 788 sec = 13 min sec typ
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assignment_edges = conference.get_assignment_edges()
         assert len(assignment_edges) == num_reviews_per_paper * len(conference.get_paper_notes()), \
             "Number of assignment edges {} is incorrect.  Should be". \
             format(len(assignment_edges), num_reviews_per_paper * len(conference.get_paper_notes()))
-        aggregate_edges = conference.get_aggregate_edges()
-        assert len(aggregate_edges) == num_reviewers*num_papers, \
-            "Number of aggregate edges {} is incorrect.  Should be {}". \
-            format(len(aggregate_edges), num_reviewers*num_papers)
+        agg_score_edges = conference.get_aggregate_score_edges()
+        assert num_papers*num_reviews_per_paper + num_papers*params.alternates == len(agg_score_edges)
 
 
     def test_10papers_7reviewers_5cust_load_5shortfall (self, test_util):
@@ -123,7 +120,7 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_ERROR, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_ERROR)
         assert len(conference.get_assignment_edges()) == 0, "Assignment edges should not be created if match fails"
@@ -144,14 +141,10 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assert num_papers*num_revs_per_paper == len(conference.get_assignment_edges())
-        aggregate_edges = conference.get_aggregate_edges()
-        assert len(aggregate_edges) == num_papers*num_reviewers,\
-            "Number of aggregate edges {} is incorrect.  Should be {}". \
-            format(len(aggregate_edges), num_papers*num_reviewers)
         custom_loads = conference.get_custom_loads()
         review_count_map = AssignmentChecker(conference).count_user_reviews()
         for reviewer, custom_load in custom_loads.items():
@@ -174,14 +167,10 @@ class TestEndToEnd():
             })
         test_util.set_test_params(params)
         test_util.test_matcher()
-        conference = test_util.get_conference() # type: ConferenceConfigWithEdges
+        conference = test_util.get_conference() # type: ConferenceConfig
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
         assert num_papers*num_revs_per_paper == len(conference.get_assignment_edges())
-        aggregate_edges = conference.get_aggregate_edges()
-        assert len(aggregate_edges) == num_papers*num_reviewers, \
-            "Number of aggregate edges {} is incorrect.  Should be {}". \
-            format(len(aggregate_edges), num_papers*num_reviewers)
         custom_loads = conference.get_custom_loads()
         review_count_map = AssignmentChecker(conference).count_user_reviews()
         for reviewer, custom_load in custom_loads.items():
@@ -210,7 +199,7 @@ class TestEndToEnd():
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
-        conflicts = conference.get_conflicts()
+        conflicts = conference.get_conflicts_from_edges()
         checker = AssignmentChecker(conference)
         for forum_id, reviewers in conflicts.items():
             for reviewer in reviewers:
@@ -240,10 +229,7 @@ class TestEndToEnd():
         conference = test_util.get_conference()
         assert conference.get_config_note_status() == Configuration.STATUS_COMPLETE, \
             "Failure: Config status is {} expected {}".format(conference.get_config_note_status(), Configuration.STATUS_COMPLETE)
-        aggregate_edges = conference.get_aggregate_edges()
-        assert len(aggregate_edges) == num_papers*num_reviewers, "Number of aggregate edges {} is incorrect.  Should be {}". \
-            format(len(aggregate_edges), num_papers*num_reviewers)
-        conflicts = conference.get_conflicts()
+        conflicts = conference.get_conflicts_from_edges()
         checker = AssignmentChecker(conference)
         for forum_id, reviewers in conflicts.items():
             for reviewer in reviewers:
