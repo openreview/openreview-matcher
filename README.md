@@ -38,24 +38,6 @@ flask run
 
 By default, the app will run on localhost:5000.
 
-## Integration with OpenReview
-
-The OpenReview Matcher does not have its own web GUI; instead, it is primarily accessed through the main OpenReview web application interface.
-
-OpenReview uses [NGINX](https://www.nginx.com/) as a reverse proxy to allow it to send HTTP requests to the Matcher.
-
-To enable access to the Matcher locally through the main OpenReview application interface, it is necessary to configure and run NGINX.
-
-**Configuring NGINX (OS X):**
-1. Ensure that the main OpenReview web application is running on ```http://localhost:3000```.
-2. Ensure that the OpenReview Matcher is running on ```http://localhost:5000``` (visiting ```/match/test``` should show a simple page indicating that Flask is running)
-3. Ensure that your NGINX configuration file (default OS X location: ```/usr/local/etc/nginx/nginx.conf```) contains the configuration found in ```/nginx.conf```
-4. Start (or reload, if already started) NGINX by running ```sudo nginx -s reload```
-
-If successful, you should be able to access the main OpenReview web application at http://openreview.localhost.
-
-For more details, visit the [NGINX beginner's guide](http://nginx.org/en/docs/beginners_guide.html#control).
-
 ## Testing
 
 http://localhost:5000/match/test should show a simple page indicating that Flask is running
