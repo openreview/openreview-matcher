@@ -40,9 +40,11 @@ By default, the app will run on localhost:5000.
 
 ## Integration with OpenReview
 
-The OpenReview Matcher uses [NGINX](https://www.nginx.com/) as a reverse proxy to enable integration with the main OpenReview web application.
+The OpenReview Matcher does not have its own web GUI; instead, it is primarily accessed through the main OpenReview web application interface.
 
-To set up the Matcher locally for development purposes, NGINX must be configured to allow OpenReview to send HTTP requests to the Matcher via the user interface.
+OpenReview uses [NGINX](https://www.nginx.com/) as a reverse proxy to allow it to send HTTP requests to the Matcher.
+
+To enable access to the Matcher locally through the main OpenReview application interface, it is necessary to configure and run NGINX.
 
 **Configuring NGINX (OS X):**
 1. Ensure that the main OpenReview web application is running on ```http://localhost:3000```.
