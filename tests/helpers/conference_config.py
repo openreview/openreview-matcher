@@ -23,8 +23,6 @@ class ConfIds:
 # To see UI for this: http://openreview.localhost/assignments?venue=FakeConferenceForTesting.cc/2019/Conference
 
 class ConferenceConfig:
-
-
     def __init__ (self, client, suffix_num, params):
 
         random.seed(10) # want a reproducible sequence of random numbers
@@ -38,15 +36,14 @@ class ConferenceConfig:
         self.config_note = None
         self.build_conference()
 
-
     def build_conference (self):
         builder = openreview.conference.ConferenceBuilder(self.client)
         builder.set_conference_id(self.conf_ids.CONF_ID)
         builder.set_conference_name('Conference for Integration Testing')
         builder.set_conference_short_name('Integration Test')
         self.conference = builder.get_result()
-        self.conference.open_submissions(due_date = datetime.datetime(2019, 3, 25, 23, 59),
-                                    remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
+        self.conference.set_submission_stage(openreview.SubmissionStage(due_date = datetime.datetime(2019, 3, 25, 23, 59),
+                                    remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR']))
         self.conf_ids.SUBMISSION_ID = self.conference.get_submission_id()
         self.conference.has_area_chairs(True)
         self.conference.set_program_chairs(emails=[])
@@ -64,14 +61,13 @@ class ConferenceConfig:
         # replace the default score_names that builder gave with the ones I want
         config_inv = self.client.get_invitation(id=self.get_assignment_configuration_id())
         if config_inv:
-            content = config_inv.reply['content']
-            del content['scores_names']
-            content["scores_names"] = {
-                "values-dropdown": self.params.scores_config[Params.SCORE_NAMES_LIST],
-                "required": True,
-                "description": "List of scores names",
-                "order": 3
-                }
+            config_inv.reply['content']['scores_names'] = {
+                'values-dropdown': self.params.scores_config[Params.SCORE_NAMES_LIST],
+                'required': True,
+                'description': 'List of scores names',
+                'order': 3
+            }
+
             self.client.post_invitation(config_inv)
 
     def gen_scores (self):
