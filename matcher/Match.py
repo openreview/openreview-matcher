@@ -134,21 +134,26 @@ class Match:
         label = self.config[Configuration.TITLE]
 
         edges = []
-        total = 0
         for forum_id, reviewers in self.paper_reviewer_data.items():
-            scores_records = list(reviewers.values())
-            scores_records.sort(reverse=True)
-            count = 0
-            for paper_user_scores in scores_records:
-                if count == self.num_alternates:
-                    break
-                # generate only non-assigned pairs
-                if not self._is_assigned(forum_id, paper_user_scores.user, assignments_by_forum):
-                    edges.append(self._build_edge(invitation, forum_id, paper_user_scores.user, paper_user_scores.aggregate_score, label))
-                    count += 1
-                    total += 1
+            scores_records = sorted(list(reviewers.values()), reverse=True)
+
+            # generate only unassigned pairs
+            alt_records = [p for p in scores_records if not self._is_assigned(
+                forum_id, p.user, assignments_by_forum)]
+
+            for paper_user_scores in alt_records[:self.num_alternates]:
+                edges.append(
+                    self._build_edge(
+                        invitation,
+                        forum_id,
+                        paper_user_scores.user,
+                        paper_user_scores.aggregate_score,
+                        label
+                    )
+                )
+
         openreview.tools.post_bulk_edges(self.client, edges)
-        self.logger.debug("Done saving " + str(total) + " aggregate score edges")
+        self.logger.debug('Done saving {} aggregate score edges'.format(len(edges)))
 
 
     def _is_assigned (self, forum_id, reviewer, assignments_by_forum):

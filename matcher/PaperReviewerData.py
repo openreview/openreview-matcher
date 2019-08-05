@@ -60,16 +60,17 @@ class PaperReviewerData:
             for score_edge in self.edge_fetcher.get_all_edges(inv_id):
                 forum_id = score_edge.head
                 reviewer = score_edge.tail
-                # because conferences can have papers and users deleted it is possible that score edges refer to these deleted things and we must
-                # ignore them
-                if not self._score_map.get(forum_id) or not self._score_map[forum_id].get(reviewer):
-                    continue
-                paper_user_scores = self._score_map[forum_id][reviewer]
-                score_spec = self._score_specification[inv_id]
-                score = self._translate_edge_to_score(score_spec, score_edge)
-                weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
-                paper_user_scores.set_score(score_name, weighted_score)
-                num_entries += 1
+
+                # skip edges whose nodes are not in the score map
+                # (e.g. deleted papers or removed reviewers)
+                if self._score_map.get(forum_id) and self._score_map[forum_id].get(reviewer):
+                    paper_user_scores = self._score_map[forum_id][reviewer]
+                    score_spec = self._score_specification[inv_id]
+                    score = self._translate_edge_to_score(score_spec, score_edge)
+                    weighted_score = score * score_spec[Configuration.SCORE_WEIGHT]
+                    paper_user_scores.set_score(score_name, weighted_score)
+                    num_entries += 1
+
         self.logger.debug("Done loading score entries from edges.  Number of score entries:" + str(num_entries) + "Took:" + str(time.time() - now))
 
 
