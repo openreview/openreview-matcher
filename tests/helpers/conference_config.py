@@ -67,6 +67,11 @@ class ConferenceConfig:
                 'description': 'List of scores names',
                 'order': 3
             }
+            config_inv.reply['content']['error_message'] = {
+                'required': False,
+                'description': 'Error message',
+                'order': 4
+            }
 
             self.client.post_invitation(config_inv)
 
