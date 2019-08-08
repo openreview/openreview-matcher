@@ -21,12 +21,12 @@ class ConfIds:
         self.REVIEWERS_ID = self.CONF_ID + "/Reviewers"
         self.SUBMISSION_ID = self.CONF_ID + "/-/Submission"
         self.BLIND_SUBMISSION_ID = self.CONF_ID + "/-/Blind_Submission"
-        self.CONFIG_ID = self.CONF_ID + "/-/Reviewing/Assignment_Configuration"
-        self.ASSIGNMENT_ID = self.CONF_ID + "/-/Reviewing/Paper_Assignment"
-        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/-/Reviewing/Aggregate_Score"
-        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/-/Reviewing/Custom_Load"
+        self.CONFIG_ID = self.CONF_ID + "/Reviewers/-/Reviewing/Assignment_Configuration"
+        self.ASSIGNMENT_ID = self.CONF_ID + "/Reviewers/-/Reviewing/Paper_Assignment"
+        self.AGGREGATE_SCORE_ID = self.CONF_ID + "/Reviewers/-/Reviewing/Aggregate_Score"
+        self.CUSTOM_LOAD_INV_ID = self.CONF_ID + "/Reviewers/-/Reviewing/Custom_Load"
         # self.CONSTRAINTS_INV_ID = self.CONF_ID + "/-/Constraints"
-        self.CONFLICTS_INV_ID = self.CONF_ID + "/-/Reviewing/Conflict"
+        self.CONFLICTS_INV_ID = self.CONF_ID + "/Reviewers/-/Reviewing/Conflict"
 
 
 
