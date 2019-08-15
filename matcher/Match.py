@@ -1,3 +1,4 @@
+import re
 import openreview
 import threading
 import logging
@@ -154,7 +155,7 @@ class Match:
         self.logger.debug('Done saving {} aggregate score edges'.format(len(edges)))
 
 
-    def _is_assigned (self, forum_id, reviewer, assignments_by_forum):
+    def _is_assigned(self, forum_id, reviewer, assignments_by_forum):
         paper_user_scores_list = assignments_by_forum[forum_id]
         for paper_user_scores in paper_user_scores_list:
             if paper_user_scores.user == reviewer:
@@ -162,9 +163,19 @@ class Match:
         return False
 
     def _get_values(self, invitation, property):
-        return invitation.reply.get(property, {}).get('values', [])
+        values = []
 
-    def _build_edge (self, invitation, forum_id, reviewer, score, label):
+        property_params = invitation.reply.get(property, {})
+        if 'values' in property_params:
+            values = property_params.get('values', [])
+        elif 'values-regex' in property_params:
+            regex_pattern = property_params['values-regex']
+            if re.match(regex_pattern, self.config_note.signatures[0]):
+                values = [self.config_note.signatures[0]]
+
+        return values
+
+    def _build_edge(self, invitation, forum_id, reviewer, score, label):
 
         return openreview.Edge(head = forum_id,
             tail = reviewer,
