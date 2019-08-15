@@ -25,38 +25,14 @@ Node = namedtuple('Node', ['number', 'index', 'supply'])
 class AssignmentGraphError(Exception):
     pass
 
-class GraphBuilder:
-    '''
-    Base class
-    '''
-
-    def __init__(self):
-        pass
-
-    def build(self, graph):
-        '''
-        Given an AssignmentGraph object `assignment_graph`,
-        adds edges (and/or nodes?) to it.
-        '''
-
-        raise AssignmentGraphError(
-            'GraphBuilder must implement `build()` function')
-
-    @staticmethod
-    def get_builder(class_name):
-        builder_module = importlib.import_module('matcher.assignment_graph', class_name)
-        builder_class = getattr(builder_module, class_name)
-        builder_instance = builder_class()
-        return builder_instance
-
 class AssignmentGraph:
     '''
     Implements a min-cost network flow graph for the worker-task assignment problem
         (see: https://developers.google.com/optimization/flow/mincostflow)
 
-    minimums/maximums: lists of length #reviewers. Each item in the lists is an
-        integer representing the minimum/maximum number of reviews a reviewer
-        should be assigned.
+    num_reviews: lists of length #reviewers. Each item in the lists is an
+        integer representing the number of reviews a reviewer
+        can be assigned.
 
     demands: a list of integers of length #papers representing the number of
         reviews the paper should be assigned.
@@ -70,6 +46,9 @@ class AssignmentGraph:
         0: no constraint
         1: strongly favor this pair
        -1: strongly avoid this pair
+
+    strict: True (default) or False. If True, throws an error when the sum of
+        the number of available reviews does not equal the sum of demands
     '''
 
     def __init__(
@@ -77,9 +56,10 @@ class AssignmentGraph:
         num_reviews,
         demands,
         cost_matrix,
-        constraint_matrix):
+        constraint_matrix,
+        strict=True):
 
-        self._check_inputs(num_reviews, demands, cost_matrix, constraint_matrix)
+        self._check_inputs(num_reviews, demands, cost_matrix, constraint_matrix, strict)
 
         self.solved = False
         self.cost_matrix = cost_matrix
@@ -96,6 +76,7 @@ class AssignmentGraph:
         self.capacities = []
         self.costs = []
         self.node_by_number = {}
+
 
         total_supply = min(sum(self.num_reviews), sum(self.demands))
 
@@ -154,7 +135,7 @@ class AssignmentGraph:
 
         self.construct_solver()
 
-    def _check_inputs(self, num_reviews, demands, cost_matrix, constraint_matrix):
+    def _check_inputs(self, num_reviews, demands, cost_matrix, constraint_matrix, strict):
         num_reviewers = np.size(cost_matrix, axis=0)
         num_papers = np.size(cost_matrix, axis=1)
 
@@ -177,12 +158,12 @@ class AssignmentGraph:
                 'demands array must be same length ({}) as number of papers ({})'.format(
                     len(demands), num_papers))
 
-        # supply = sum(num_reviews)
-        # demand = sum(demands)
-        # if supply < demand:
-        #     raise AssignmentGraphError(
-        #         'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
-        #             supply, demand))
+        supply = sum(num_reviews)
+        demand = sum(demands)
+        if strict and supply < demand:
+            raise AssignmentGraphError(
+                'the total supply of reviews ({}) must be greater than the total demand ({})'.format(
+                    supply, demand))
 
     def _check_graph_integrity(self):
         equal_lengths = len(self.start_nodes) \
