@@ -244,8 +244,16 @@ class ConferenceConfig:
             }
             paper_note = openreview.Note(**{
                 'signatures': ['~Super_User1'],
-                'writers': [self.conference.id],
-                'readers': [self.conference.id],
+                'writers': [self.conference.id,
+                'jimbob@test.com',
+                '~Super_User1',
+                ],
+                'readers': [self.conference.id,
+                'jimbob@test.com',
+                '~Super_User1',
+                 self.conference.get_reviewers_id(),
+                 self.conference.get_area_chairs_id(),
+                 self.conference.get_program_chairs_id()],
                 'content': content,
                 'invitation': self.conference.get_submission_id()
             })
@@ -277,8 +285,6 @@ class ConferenceConfig:
                 'max_papers': str(self.params.reviewer_max_papers), # max number of papers a reviewer can review
                 'min_papers': '1', # min number of papers a reviewer can review
                 'alternates': str(self.params.alternates), # the top n scorers for each paper are saved as alternates (aggregate_scores)
-                'constraints': {},  # leaving around just in case there is a need for constraints again
-                'custom_loads': {}, # leaving this around since there was some talk of not doing edge custom-loads
                 'config_invitation': self.conf_ids.CONFIG_ID,
                 'paper_invitation': self.conference.get_blind_submission_id(),
                 'assignment_invitation': self.conf_ids.ASSIGNMENT_ID,
