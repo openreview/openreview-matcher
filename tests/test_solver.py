@@ -1,5 +1,5 @@
 import numpy as np
-from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
+from matcher.solvers import MinMaxSolver
 
 
 class TestSolver:
@@ -26,8 +26,12 @@ class TestSolver:
             [2, 2, 0]
         ])
         constraint_matrix = np.zeros(np.shape(cost_matrix))
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([1,1,1,1], [2,2,2,2], [1,1,2], cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            [1,1,1,1],
+            [2,2,2,2],
+            [1,1,2],
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,3)
         self.print_header()
@@ -56,8 +60,13 @@ class TestSolver:
             [0, 0, -1, -1, 0],
             [0, 0, -1, -1, 0],
             [-1, -1, 0, 0, 0]])
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([1,1,1,1], [3,3,3,3], [2,2,2,2,2], cost_matrix, constraint_matrix, graph_builder)
+
+        solver = MinMaxSolver(
+            [1,1,1,1],
+            [3,3,3,3],
+            [2,2,2,2,2],
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,5)
         # make sure result does not violate constraints (i.e. no flow at i,j if there is a -1 constraint at i,j
@@ -66,7 +75,7 @@ class TestSolver:
             for j in range(ncols):
                 assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
         self.print_header()
-        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+        self.check_solution(solver, solver.optimal_cost)
 
 
     def test_solver_find_lowest_cost_and_respect_constraints (self):
@@ -90,8 +99,13 @@ class TestSolver:
             [-1, 0, 0, -1, 0],
             [0, 0 , 0, -1, -1],
             [0, -1,-1, 0, 0]])
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([1,1,1,1], [3,3,3,3], [2,2,2,2,2], cost_matrix, constraint_matrix, graph_builder)
+
+        solver = MinMaxSolver(
+            [1,1,1,1],
+            [3,3,3,3],
+            [2,2,2,2,2],
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,5)
         # make sure result does not violate constraints (i.e. no flow at i,j if there is a -1 constraint at i,j
@@ -102,7 +116,7 @@ class TestSolver:
                 assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
                 assert not (res[i,j] > 0 and cost_matrix[i,j] > -10), "Solution contains an arc that is not part of an lowest-cost solution"
         self.print_header()
-        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+        self.check_solution(solver,solver.optimal_cost)
 
     def test_solver4 (self):
         '''
@@ -124,8 +138,13 @@ class TestSolver:
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0]])
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([2,2,2,2,2,2], [3,3,3,3,3,3], [2,2,2,2,2,2], cost_matrix, constraint_matrix, graph_builder)
+
+        solver = MinMaxSolver(
+            [2,2,2,2,2,2],
+            [3,3,3,3,3,3],
+            [2,2,2,2,2,2],
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (6,6)
         # make sure every reviewer is reviewing 2 papers
@@ -136,7 +155,7 @@ class TestSolver:
                 if res[rix,pix] != 0:
                     reviewer_count_reviews += 1
             assert reviewer_count_reviews == 2
-        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+        self.check_solution(solver,solver.optimal_cost)
 
 
     def test_solver5 (self):
@@ -161,11 +180,16 @@ class TestSolver:
             [0, 0, 0],
             [0, 0, 0]])
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
+
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,3)
         # make sure every reviewer has at least 1 paper
@@ -177,7 +201,7 @@ class TestSolver:
                     reviewer_count_reviews += 1
             assert reviewer_count_reviews >= 1
         # TestSolver.silent = False
-        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+        self.check_solution(solver,solver.optimal_cost)
 
 
     def test_solver6 (self):
@@ -202,11 +226,15 @@ class TestSolver:
             [0, 0, 0],
             [0, 0, 0]])
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,3)
         # make sure every reviewer has at least 1 paper
@@ -218,7 +246,7 @@ class TestSolver:
                     reviewer_count_reviews += 1
             assert reviewer_count_reviews >= 1
         # TestSolver.silent = False
-        self.check_solution(solver,solver.min_cost_flow.OptimalCost())
+        self.check_solution(solver,solver.optimal_cost)
 
 
     def test_solver_respects_minimums_icml (self):
@@ -238,11 +266,15 @@ class TestSolver:
         cost_matrix = np.zeros((num_reviewers, num_papers))
         constraint_matrix = np.zeros((num_reviewers, num_papers))
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (27,44)
         # make sure every reviewer has >= minimum number of papers
@@ -268,14 +300,10 @@ class TestSolver:
         assert total == num4*4 + num6*6
         # print("Total reviews",total, "num 4", num4, "num 6", num6)
 
-    def check_solution (self, solver, expected_cost):
+    def check_solution(self, solver, expected_cost):
         self.print_header()
-        cost = 0
-        for i in range(solver.min_cost_flow.NumArcs()):
-            cost += solver.min_cost_flow.Flow(i) * solver.min_cost_flow.UnitCost(i)
-            self.print_arc(solver.min_cost_flow, i)
-        assert solver.min_cost_flow.OptimalCost() == cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
-        assert cost == expected_cost,  "Lowest cost solution should have cost = {}".format(expected_cost)
+        assert solver.optimal_cost == solver.cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
+        assert solver.cost == expected_cost,  "Lowest cost solution should have cost = {}".format(expected_cost)
 
     def test_solver_respects_one_minimum (self):
         '''
@@ -299,11 +327,15 @@ class TestSolver:
             [0, 0, 0],
             [0, 0, 0]])
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,3)
         # make sure every reviewer has at least 1 paper
@@ -344,11 +376,15 @@ class TestSolver:
             [0, 0, 0],
             [0, 0, 0]])
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (4,3)
         # make sure every reviewer has at least 1 paper
@@ -384,11 +420,15 @@ class TestSolver:
         cost_matrix = np.zeros((num_reviewers, num_papers))
         constraint_matrix = np.zeros((num_reviewers, num_papers))
 
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
         rev_mins = [min_papers_per_reviewer] * num_reviewers
         rev_maxs = [max_papers_per_reviewer] * num_reviewers
         papers_reqd = [paper_revs_reqd] * num_papers
-        solver = AssignmentGraph(rev_mins, rev_maxs, papers_reqd, cost_matrix, constraint_matrix, graph_builder)
+        solver = MinMaxSolver(
+            rev_mins,
+            rev_maxs,
+            papers_reqd,
+            cost_matrix,
+            constraint_matrix)
         res = solver.solve()
         assert res.shape == (27,44)
         # make sure every reviewer has >= minimum number of papers

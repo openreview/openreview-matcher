@@ -4,7 +4,7 @@ import numpy as np
 
 from matcher.fields import Configuration
 from helpers.Params import Params
-from matcher.assignment_graph.AssignmentGraph import AssignmentGraph, GraphBuilder
+from matcher.solvers import MinMaxSolver
 from helpers.ConferenceConfig import ConferenceConfig
 from matcher.Encoder import Encoder
 from matcher.PaperReviewerData import PaperReviewerData
@@ -284,8 +284,8 @@ lambda edge:
                          })
         '''
         Test that the decoder produces the expected assignment.   Its necessary to configure
-        the inputs to get a predictable solution.   
-                         
+        the inputs to get a predictable solution.
+
         '''
         or_client = test_util.client
         conf = ConferenceConfig(or_client, test_util.next_conference_count(), params)
@@ -301,9 +301,14 @@ lambda edge:
         enc = Encoder(prd)
         cost_matrix = enc.cost_matrix
         constraint_matrix = np.zeros(np.shape(cost_matrix))
-        graph_builder = GraphBuilder.get_builder('SimpleGraphBuilder')
-        solver = AssignmentGraph([reviewer_min_papers] * num_reviewers, [reviewer_max_papers] * num_reviewers,
-                                 paper_demands, cost_matrix, constraint_matrix, graph_builder)
+
+        solver = MinMaxSolver(
+            [reviewer_min_papers] * num_reviewers,
+            [reviewer_max_papers] * num_reviewers,
+            paper_demands,
+            cost_matrix,
+            constraint_matrix)
+
         solution = solver.solve()
         assignments_by_forum = enc.decode(solution)
         assert assignments_by_forum[papers[0].id][0].user == reviewers[0]

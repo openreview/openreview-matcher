@@ -2,7 +2,7 @@ import openreview
 import threading
 import logging
 import time
-from matcher.assignment_graph import AssignmentGraph, GraphBuilder
+from matcher.solvers.MinMaxSolver import MinMaxSolver
 from matcher.Encoder import Encoder
 from matcher.fields import Configuration
 from matcher.PaperReviewerData import PaperReviewerData
@@ -75,23 +75,21 @@ class Match:
             self.extract_conference_data()
             self.logger.debug("Encoding")
             encoder = Encoder(self.paper_reviewer_data, logger=self.logger)
-            graph_builder = GraphBuilder.get_builder(
-                self.config.get(Configuration.OBJECTIVE_TYPE, 'SimpleGraphBuilder'))
 
-            self.logger.debug("Preparing Graph")
-            graph = AssignmentGraph(
+            self.logger.debug("Preparing solver")
+
+            solver = MinMaxSolver(
                 self.minimums,
                 self.maximums,
                 self.demands,
                 encoder.cost_matrix,
-                encoder._constraint_matrix,
-                graph_builder = graph_builder
+                encoder._constraint_matrix
             )
 
-            self.logger.debug("Solving Graph")
-            solution = graph.solve()
+            self.logger.debug("Solving solver")
+            solution = solver.solve()
 
-            if graph.solved:
+            if solver.solved:
                 self.logger.debug("Decoding Solution")
                 assignments_by_forum = encoder.decode(solution)
                 self._save_suggested_assignment(self.assignment_inv, assignments_by_forum)
