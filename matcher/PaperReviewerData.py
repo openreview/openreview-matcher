@@ -29,18 +29,17 @@ class PaperReviewerData:
         self._load_score_map()
 
     @property
-    def paper_notes (self):
+    def paper_notes(self):
         return self._paper_notes
 
     @property
     def reviewers (self):
         return self._reviewers
 
-    # iterator through the map of PaperUserScores objects
-    def items (self):
+    def items(self):
         return self._score_map.items()
 
-    def get_paper_data (self, paper_id):
+    def get_paper_data(self, paper_id):
         return self._score_map[paper_id]
 
     # Will return an empty PaperUserScores object if none is mapped
