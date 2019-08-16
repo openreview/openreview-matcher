@@ -125,18 +125,18 @@ class TestUtil:
         done = self.wait_until_complete(config_id)
 
     def wait_until_complete(self, config_id):
-        iterations = 120
-        iteration_duration = 1
+        iterations = 360
+        iteration_duration = 0.5
         status = self.conf.get_config_note_status()
 
         for t in range(iterations):
-            if status == Configuration.STATUS_COMPLETE:
+            if status not in [Configuration.STATUS_RUNNING, Configuration.STATUS_INITIALIZED]:
                 return True
 
             time.sleep(iteration_duration)
             status = self.conf.get_config_note_status()
 
-        raise TimeoutError('Match did not complete within {} iterations'.format(max_checks))
+        raise TimeoutError('Match did not complete within {} iterations'.format(iterations))
 
     def post_json(self, url, json_dict, headers=None):
         config_note = json.dumps(json_dict)
