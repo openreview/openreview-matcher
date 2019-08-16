@@ -3,7 +3,6 @@ from ortools.graph import pywrapgraph
 from collections import namedtuple
 import numpy as np
 import importlib
-import ipdb
 
 Node = namedtuple('Node', ['number', 'index', 'supply'])
 '''
