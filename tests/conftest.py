@@ -1,27 +1,39 @@
-import pytest
+'''
+Defines pytest fixtures that maintain a persistent state
+(in relation to the test openreview server) between tests.
+'''
+
 import os
+
+import pytest
 import matcher
 import openreview
+
 from helpers.TestUtil import TestUtil
 
-
+# pylint:disable=unused-argument
 @pytest.fixture
-def test_util (scope="session"):
-    # or_baseurl = os.getenv('OPENREVIEW_BASEURL')
+def test_util(scope="session"):
+    '''
+    A pytest fixture that instantiates a TestUtil object.
+    This fixture is passed into each test and persists across
+    scopes according to the `scope` argument.
+    '''
     or_baseurl = 'http://localhost:3000'
     flask_app_test_client = matcher.app.test_client()
     flask_app_test_client.testing = True
-    silent = True
-    test_util = TestUtil.get_instance(or_baseurl, flask_app_test_client, silent=silent)
-    test_util.set_conf_builder(use_edge_builder=True)
-    yield test_util
+    return TestUtil.get_instance(or_baseurl, flask_app_test_client)
 
 
+# pylint:disable=unused-argument
 @pytest.fixture
-def or_client (scope="session"):
-    or_baseurl = 'http://localhost:3000'
-    or_user = os.getenv("OPENREVIEW_USERNAME")
-    or_password = os.getenv("OPENREVIEW_PASSWORD")
-    client = openreview.Client(baseurl = or_baseurl)
-    return client
+def or_client(scope="session"):
+    '''
+    A pytest fixture that instantiates an openreview.Client object.
+    '''
+    client = openreview.Client(
+        username=os.getenv('OPENREVIEW_USERNAME'),
+        password=os.getenv('OPENREVIEW_PASSWORD'),
+        baseurl='http://localhost:3000')
 
+    return client
