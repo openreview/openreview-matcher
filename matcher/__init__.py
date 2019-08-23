@@ -32,24 +32,22 @@ def configure_logger(app):
 
     return app.logger
 
-def create_app(config=None, config_file=None):
+def create_app(config=None):
     '''
     Builds the main app object.
 
     Implements the "app factory" pattern, recommended by Flask documentation.
     '''
 
-    app = flask.Flask(__name__, instance_relative_config=True)
+    app = flask.Flask(__name__)
 
     if config:
         print('configuration from mapping')
         app.config.from_mapping(config)
-    elif config_file:
+    else:
+        config_file = os.getenv('MATCHER_CONFIG')
         print('configuration from file', config_file)
         app.config.from_pyfile(config_file)
-    else:
-        print('configuration from config.cfg')
-        app.config.from_pyfile('config.cfg')
 
     try:
         os.makedirs(app.instance_path)

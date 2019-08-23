@@ -1,7 +1,7 @@
 '''
 Implements the Flask API endpoints.
 '''
-
+import json
 import flask
 import openreview
 
@@ -28,6 +28,8 @@ def test():
 def match():
     '''Main entry point into the app. Initiates a match run'''
 
+    flask.current_app.logger.debug('Match request received')
+
     result = {}
     matcher = None
 
@@ -45,11 +47,16 @@ def match():
             username=flask.current_app.config['OPENREVIEW_USERNAME'],
             password=flask.current_app.config['OPENREVIEW_PASSWORD'],
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL'],
-            config_id=config_note_id
+            config_id=config_note_id,
+            logger=flask.current_app.logger
         )
+        flask.current_app.logger.debug('Matcher client instantiated {}'.format(
+            client.config_note.id))
 
         if client.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
+        else:
+            client.set_status('Running')
 
         flask.current_app.logger.debug(
             'Request to assign reviewers for configId: {}'.format(config_note_id))
@@ -60,12 +67,15 @@ def match():
             logger=flask.current_app.logger
         )
 
+        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
+
         matcher.run_thread()
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))
 
         error_type = error_handle.args[0][0]['type']
+
         status = 500
 
         if error_type.lower() == 'not found':
@@ -90,6 +100,11 @@ def match():
             client.set_status('Error', str(error_handle))
 
         return flask.jsonify(result), 400
+
+    except Exception:
+        result['error'] = 'Internal server error'
+        client.set_status('Error', 'Internal server error')
+        return flask.jsonify(result), 500
 
     else:
         flask.current_app.logger.debug('POST returns ' + str(result))

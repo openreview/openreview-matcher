@@ -50,6 +50,7 @@ Node is a namedtuple that is used to represent nodes in the graph:
 
 from __future__ import print_function, division
 from collections import namedtuple
+import logging
 import numpy as np
 from ortools.graph import pywrapgraph
 
@@ -68,8 +69,11 @@ class SimpleSolver:
             demands,
             cost_matrix,
             constraint_matrix,
-            strict=True
+            logger=logging.getLogger(__name__),
+            strict=True,
         ):
+
+        self.logger = logger
 
         self.cost = 0
         self.solved = False
@@ -134,7 +138,7 @@ class SimpleSolver:
                 # TODO: this should be handled as a hard constraint
                 if arc_constraint == 1:
                     arc_cost = self._least_cost() - 1
-                    self.add_edge(r_node, p_node, 1, arc_cost)
+                    self.add_edge(r_node, p_node, 1, int(arc_cost))
 
         # connect paper nodes to the sink node.
         for p_node in self.paper_nodes:
@@ -145,6 +149,8 @@ class SimpleSolver:
 
     def _check_inputs(self, strict):
         '''Validate inputs (e.g. that matrix and array dimensions are correct)'''
+        self.logger.debug('Checking graph inputs')
+
         num_papers = np.size(self.cost_matrix, axis=0)
         num_reviewers = np.size(self.cost_matrix, axis=1)
 
@@ -177,6 +183,8 @@ class SimpleSolver:
 
     def _check_graph_integrity(self):
         '''Ensure that graph arrays are well-formed for use by OR-Tools.'''
+        self.logger.debug('Checking graph integrity')
+
         equal_lengths = len(self.start_nodes) \
             == len(self.end_nodes) \
             == len(self.capacities) \
@@ -191,9 +199,13 @@ class SimpleSolver:
                     len(self.capacities),
                     len(self.costs)))
 
-        if any([isinstance(i, np.int64) for i in self.capacities]):
+        if any([not isinstance(i, int) for i in self.capacities]):
             raise SimpleSolverError(
                 'capacities list may not contain integers of type numpy.int64')
+
+        if any([not isinstance(i, int) for i in self.costs]):
+            raise SimpleSolverError(
+                'costs list may not contain integers of type numpy.int64')
 
 
     def _boundary_cost(self, boundary_function):
@@ -262,7 +274,9 @@ class SimpleSolver:
         Constructs the OR-Tools MinCostFlow solver with this SimpleSolver's Nodes and edges.
         '''
         self._check_graph_integrity()
+
         self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+
         for arc_index in range(len(self.start_nodes)):
             self.min_cost_flow.AddArcWithCapacityAndUnitCost(
                 self.start_nodes[arc_index].number,

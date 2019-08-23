@@ -20,12 +20,12 @@ class MatcherClient(openreview.Client):
     '''
     def __init__(self, username='', password='', baseurl='', config_id='', logger=logging.getLogger(__name__)):
         super().__init__(username=username, password=password, baseurl=baseurl)
+
         self.logger = logger
-
         self.config_note = self.get_note(config_id)
-        self._get_match_data()
+        # self.set_status('Running') # TODO: change this to something more informative
 
-    def _get_match_data(self):
+    def load_match_data(self):
         '''Retrieve all the OpenReview objects necessary for the match'''
 
         self.papers = list(openreview.tools.iterget_notes(
@@ -37,7 +37,6 @@ class MatcherClient(openreview.Client):
         self.assignment_invitation = self.get_invitation(
             self.config_note.content['assignment_invitation'])
 
-        # scores_specification is a dict, keyed on score invitation ids.
         self.scores_specification = self.config_note.content['scores_specification']
 
         self.edges_by_invitation = defaultdict(list)
@@ -58,6 +57,7 @@ class MatcherClient(openreview.Client):
 
     def get_all_edges(self, edge_invitation_id):
         '''Helper function for retrieving and parsing all edges in bulk'''
+
         all_edges = []
         limit = 1000
         offset = 0
@@ -66,6 +66,10 @@ class MatcherClient(openreview.Client):
         edge_invitation = self.get_invitation(edge_invitation_id)
 
         while not done:
+            self.logger.debug(
+                'Getting edges {}-{} for invitation {}'.format(
+                    offset, offset+limit, edge_invitation_id))
+
             edges_grouped_by_paper = self.get_grouped_edges(
                 edge_invitation_id,
                 groupby='head',
@@ -105,7 +109,6 @@ class MatcherClient(openreview.Client):
 
         for forum, assignments in assignments_by_forum.items():
             paper = paper_by_forum[forum]
-
             for paper_user_entry in assignments:
                 score = paper_user_entry.aggregate_score
                 user = paper_user_entry.user
@@ -132,8 +135,6 @@ class MatcherClient(openreview.Client):
 
         paper_by_forum = {n.forum: n for n in self.papers}
 
-        self.logger.debug('Saving aggregate score edges for alternates')
-
         score_edges = []
         for forum, assignments in alternates_by_forum.items():
             paper = paper_by_forum[forum]
@@ -158,7 +159,7 @@ class MatcherClient(openreview.Client):
             self.config_note.content['error_message'] = message
 
         self.config_note = self.post_note(self.config_note)
-        self.logger.debug('status set to:' + self.config_note.content['status'])
+        self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
 
 def _get_values(invitation, number, property):
     '''Return values compatible with the field `property` in invitation.reply.content'''
@@ -225,6 +226,10 @@ class MatcherClientMock:
         pass
 
     def save_suggested_alternates(self, alternates_by_forum):
+        '''Mock version of the MatcherClient function with the same name.'''
+        pass
+
+    def load_match_data(self):
         '''Mock version of the MatcherClient function with the same name.'''
         pass
 

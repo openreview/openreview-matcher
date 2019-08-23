@@ -14,6 +14,7 @@ except that the "num_reviews" argument is replaced by "minimums" and "maximums".
 
 '''
 import numpy as np
+import logging
 from .simple_solver import SimpleSolver
 
 class MinMaxSolver:
@@ -24,7 +25,8 @@ class MinMaxSolver:
             maximums,
             demands,
             cost_matrix,
-            constraint_matrix
+            constraint_matrix,
+            logger=logging.getLogger(__name__)
         ):
 
         self.minimums = minimums
@@ -38,6 +40,8 @@ class MinMaxSolver:
         self.optimal_cost = None
         self.cost = None
 
+        self.logger = logger
+
     def solve(self):
         '''Computes combined solution of two SimpleSolvers'''
 
@@ -46,6 +50,7 @@ class MinMaxSolver:
             self.demands,
             self.cost_matrix,
             self.constraint_matrix,
+            logger=self.logger,
             strict=False)
             # strict=False prevents errors from being thrown for supply/demand mismatch
 
@@ -59,7 +64,8 @@ class MinMaxSolver:
             adjusted_maximums,
             adjusted_demands,
             self.cost_matrix,
-            adjusted_constraints)
+            adjusted_constraints,
+            logger=self.logger)
 
         maximum_result = maximum_solver.solve()
 

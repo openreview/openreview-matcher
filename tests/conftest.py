@@ -133,7 +133,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 reviewer = '~Test_Reviewer{}'.format(reviewer_number)
                 reviewers.append(reviewer)
                 score = random.random()
-                row = [posted_submission.forum, reviewer, '{:.3}'.format(score)]
+                row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
     conference.set_authors()
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     superuser_client = initialize_superuser(config)
 
     # TODO: Parameterize this
-    num_reviewers, num_papers, reviews_per_paper = 3, 3, 1
+    num_reviewers, num_papers, reviews_per_paper = 50, 50, 1
 
     conference_id = 'ICLR.cc/2019/Conference'
     conference = clean_start_conference(

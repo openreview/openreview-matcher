@@ -23,12 +23,6 @@ class Matcher:
         self.config = config
         self.logger = logger
 
-        self.client.set_status('Initialized')
-
-        self.num_alternates = int(self.config['alternates'])
-        self.demands = [int(self.config['max_users']) for paper in self.client.papers]
-        self.minimums, self.maximums = self._get_quota_arrays()
-
         self.solution = None
 
     def compute_match(self):
@@ -38,6 +32,12 @@ class Matcher:
         '''
         # try:
         self.client.set_status('Running')
+
+        self.client.load_match_data()
+
+        self.num_alternates = int(self.config['alternates'])
+        self.demands = [int(self.config['max_users']) for paper in self.client.papers]
+        self.minimums, self.maximums = self._get_quota_arrays()
 
         encoder = Encoder(
             self.client.reviewers,
@@ -53,7 +53,8 @@ class Matcher:
             self.maximums,
             self.demands,
             encoder.cost_matrix,
-            encoder.constraint_matrix
+            encoder.constraint_matrix,
+            logger=self.logger
         )
 
         self.logger.debug('Solving solver')
