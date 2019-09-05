@@ -1,3 +1,4 @@
+import re
 import openreview
 import threading
 import logging
@@ -123,7 +124,7 @@ class Match:
                 minimums[index] = custom_load
         return minimums, maximums
 
-    def _save_aggregate_scores (self, assignments_by_forum):
+    def _save_aggregate_scores(self, assignments_by_forum):
         '''
         Saves aggregate scores (weighted sum) for a paper-reviewer as an edge.
         Will save the top N scoring reviewers for each paper where N comes from the config note alternates field.
@@ -134,7 +135,9 @@ class Match:
         label = self.config[Configuration.TITLE]
 
         edges = []
+        paper_by_forum = {n.forum: n for n in self.paper_reviewer_data.paper_notes}
         for forum_id, reviewers in self.paper_reviewer_data.items():
+            paper = paper_by_forum[forum_id]
             scores_records = sorted(list(reviewers.values()), reverse=True)
 
             # generate only unassigned pairs
@@ -148,7 +151,8 @@ class Match:
                         forum_id,
                         paper_user_scores.user,
                         paper_user_scores.aggregate_score,
-                        label
+                        label,
+                        paper.number
                     )
                 )
 
@@ -156,30 +160,46 @@ class Match:
         self.logger.debug('Done saving {} aggregate score edges'.format(len(edges)))
 
 
-    def _is_assigned (self, forum_id, reviewer, assignments_by_forum):
+    def _is_assigned(self, forum_id, reviewer, assignments_by_forum):
         paper_user_scores_list = assignments_by_forum[forum_id]
         for paper_user_scores in paper_user_scores_list:
             if paper_user_scores.user == reviewer:
                 return True
         return False
 
-    def _get_values(self, invitation, property):
-        return invitation.reply.get(property, {}).get('values', [])
+    def _get_values(self, invitation, number, property):
+        values = []
 
-    def _build_edge (self, invitation, forum_id, reviewer, score, label):
+        property_params = invitation.reply.get(property, {})
+        if 'values' in property_params:
+            values = property_params.get('values', [])
+        elif 'values-regex' in property_params:
+            regex_pattern = property_params['values-regex']
+            values = []
+
+            for group_id in regex_pattern.split('|'):
+                if 'Paper.*' in group_id:
+                    group_id.replace('Paper.*', 'Paper{}'.format(number))
+
+                if re.match(regex_pattern, group_id):
+                    values.append(group_id)
+
+        return values
+
+    def _build_edge(self, invitation, forum_id, reviewer, score, label, number):
 
         return openreview.Edge(head = forum_id,
             tail = reviewer,
             weight = score,
             label = label,
             invitation = invitation.id,
-            readers = self._get_values(invitation, 'readers'),
-            nonreaders = self._get_values(invitation, 'nonreaders'),
-            writers = self._get_values(invitation, 'writers'),
-            signatures = self._get_values(invitation, 'signatures'))
+            readers = self._get_values(invitation, number, 'readers'),
+            nonreaders = self._get_values(invitation, number, 'nonreaders'),
+            writers = self._get_values(invitation, number, 'writers'),
+            signatures = self._get_values(invitation, number, 'signatures'))
 
 
-    def _save_suggested_assignment (self, assignment_inv, assignments_by_forum):
+    def _save_suggested_assignment(self, assignment_inv, assignments_by_forum):
         '''
         Save assignment and aggregate_score edges for pairs that are assigned.
         :param assignment_inv:
@@ -187,17 +207,21 @@ class Match:
         :return:
         '''
         self.logger.debug("Saving Edges for " + assignment_inv.id)
-        ag_invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
+        agg_invitation = self.client.get_invitation(self.config[Configuration.AGGREGATE_SCORE_INVITATION])
         label = self.config[Configuration.TITLE]
-        edges = []
+        assignment_edges = []
         agg_score_edges = []
+        paper_by_forum = {n.forum: n for n in self.paper_reviewer_data.paper_notes}
         for forum, assignments in assignments_by_forum.items():
+            paper = paper_by_forum[forum]
             for paper_user_scores in assignments: #type: PaperUserScores
                 score = paper_user_scores.aggregate_score
                 user = paper_user_scores.user
-                edges.append(self._build_edge(assignment_inv, forum, user, score, label))
-                agg_score_edges.append(self._build_edge(ag_invitation, forum, user, score, label))
-        openreview.tools.post_bulk_edges(self.client, edges)
+                assignment_edges.append(self._build_edge(
+                    assignment_inv, forum, user, score, label, paper.number))
+                agg_score_edges.append(self._build_edge(
+                    agg_invitation, forum, user, score, label, paper.number))
+        openreview.tools.post_bulk_edges(self.client, assignment_edges)
         openreview.tools.post_bulk_edges(self.client, agg_score_edges)
-        self.logger.debug("Done saving " + str(len(edges)) + "Assignment and Aggregate_Score Edges for " + assignment_inv.id)
+        self.logger.debug("Done saving " + str(len(assignment_edges)) + "Assignment and Aggregate_Score Edges for " + assignment_inv.id)
 
