@@ -10,8 +10,10 @@ import random
 import subprocess
 import requests
 import pytest
-import matcher
+
 import openreview
+
+import matcher.service
 
 AFFINITY_SCORE_FILE = './affinity_scores'
 
@@ -157,7 +159,7 @@ def openreview_context(scope='function'):
     `scope` argument is set to 'function', so each function will get a clean test instance.
     '''
 
-    app = matcher.create_app(config=default_config)
+    app = matcher.service.create_app(config=default_config)
     openreview_home = os.getenv('OPENREVIEW_HOME')
     os.chdir(openreview_home)
 

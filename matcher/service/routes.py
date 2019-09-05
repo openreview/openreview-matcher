@@ -1,12 +1,14 @@
 '''
 Implements the Flask API endpoints.
+
+TODO: could error handling be cleaner?
 '''
-import json
 import flask
+import threading
 import openreview
 
-from .matcher import Matcher
-from .matcher_client import MatcherClient
+from matcher import Matcher
+from matcher.openreview_interface import ConfigNoteInterface
 
 BLUEPRINT = flask.Blueprint('match', __name__)
 
@@ -31,64 +33,64 @@ def match():
     flask.current_app.logger.debug('Match request received')
 
     result = {}
-    matcher = None
 
     token = flask.request.headers.get('Authorization')
     if not token:
+        # TODO: login to the openreview client with this token
         flask.current_app.logger.error('No Authorization token in headers')
         result['error'] = 'No Authorization token in headers'
         return flask.jsonify(result), 400
-
     try:
-        params = flask.request.json
-        config_note_id = params['configNoteId']
+        config_note_id = flask.request.json['configNoteId']
 
-        client = MatcherClient(
+        openreview_client = openreview.Client(
             username=flask.current_app.config['OPENREVIEW_USERNAME'],
             password=flask.current_app.config['OPENREVIEW_PASSWORD'],
-            baseurl=flask.current_app.config['OPENREVIEW_BASEURL'],
-            config_id=config_note_id,
+            baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
+        )
+
+        interface = ConfigNoteInterface(
+            client=openreview_client,
+            config_note_id=config_note_id,
             logger=flask.current_app.logger
         )
-        flask.current_app.logger.debug('Matcher client instantiated {}'.format(
-            client.config_note.id))
 
-        if client.config_note.content['status'] == 'Running':
+        if interface.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
         else:
-            client.set_status('Running')
+            interface.set_status('Running')
 
         flask.current_app.logger.debug(
             'Request to assign reviewers for configId: {}'.format(config_note_id))
 
-        matcher = Matcher(
-            client,
-            client.config_note.content,
-            logger=flask.current_app.logger
-        )
-
         flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
 
-        matcher.run_thread()
+        thread = threading.Thread(
+            target=Matcher(
+                datasource=interface,
+                on_set_status=interface.set_status,
+                on_set_assignments=interface.set_assignments,
+                on_set_alternates=interface.set_alternates,
+                logger=flask.current_app.logger
+            ).run
+        )
+        thread.start()
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))
 
         error_type = error_handle.args[0][0]['type']
-
+        print('error type: ', error_type)
         status = 500
 
-        if error_type.lower() == 'not found':
+        if 'not found' in error_type.lower():
             status = 404
-        elif error_type.lower() == 'forbidden':
+        elif 'forbidden' in error_type.lower():
             status = 403
         else:
             error_type = str(error_handle)
 
         result['error'] = error_type
-
-        if matcher:
-            client.set_status('Error', str(error_handle))
 
         return flask.jsonify(result), status
 
@@ -96,12 +98,15 @@ def match():
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
 
-        if matcher:
-            client.set_status('Error', str(error_handle))
+
+        interface.set_status('Error', str(error_handle))
 
         return flask.jsonify(result), 400
 
+    # For now, it seems like we need this broad Exception. How can we get rid of it?
+    # pylint:disable=broad-except
     except Exception:
+        print('broad exception triggered')
         result['error'] = 'Internal server error'
         client.set_status('Error', 'Internal server error')
         return flask.jsonify(result), 500

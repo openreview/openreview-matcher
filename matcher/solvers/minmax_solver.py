@@ -51,8 +51,9 @@ class MinMaxSolver:
             self.cost_matrix,
             self.constraint_matrix,
             logger=self.logger,
-            strict=False)
-            # strict=False prevents errors from being thrown for supply/demand mismatch
+            strict=False
+        ) # strict=False prevents errors from being thrown for supply/demand mismatch
+
 
         minimum_result = minimum_solver.solve()
 
