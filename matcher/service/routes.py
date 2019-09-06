@@ -8,7 +8,7 @@ import threading
 import openreview
 
 from matcher import Matcher
-from matcher.openreview_interface import ConfigNoteInterface
+from .openreview_interface import ConfigNoteInterface
 
 BLUEPRINT = flask.Blueprint('match', __name__)
 

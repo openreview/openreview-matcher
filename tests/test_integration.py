@@ -8,7 +8,7 @@ import requests
 import pytest
 import openreview
 
-from matcher.openreview_interface import get_all_edges
+from matcher.service.openreview_interface import get_all_edges
 
 from conftest import clean_start_conference, wait_for_status
 

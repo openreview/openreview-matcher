@@ -8,8 +8,27 @@ import json
 from .core import Matcher
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--scores', nargs='+')
-parser.add_argument('--constraints', nargs='*')
+parser.add_argument(
+    '--scores',
+    nargs='+',
+    help='''
+        One or more score files,
+        with each row containing comma-separated paperID, userID, and score (in that order).
+        e.g. "paper1,reviewer1,0.5"
+        '''
+)
+
+parser.add_argument(
+    '--constraints',
+    nargs='*',
+    help='''
+        One or more constraint files,
+        with each row containing comma-separated paperId, userID, and constraint (in that order).
+        Constraint values must be -1 (conflict), 1 (forced assignment), or 0 (no effect).
+        e.g. "paper1,reviewer1,-1"
+        '''
+)
+
 parser.add_argument('--weights', nargs='+', type=int)
 parser.add_argument('--min_papers', default=0, type=int)
 parser.add_argument('--max_papers', type=int)

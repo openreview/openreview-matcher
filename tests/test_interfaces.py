@@ -2,7 +2,7 @@ import random
 from unittest import mock
 import pytest
 import openreview
-from matcher.openreview_interface import ConfigNoteInterface
+from matcher.service.openreview_interface import ConfigNoteInterface
 
 def mock_client(
             paper_ids,
