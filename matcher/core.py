@@ -2,7 +2,7 @@
 import logging
 import threading
 
-from .solvers import MinMaxSolver, PR4A
+from .solvers import MinMaxSolver
 from .encoder import Encoder
 
 class MatcherError(Exception):
