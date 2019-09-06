@@ -7,8 +7,6 @@ Responsible for:
 from collections import defaultdict, namedtuple
 import numpy as np
 
-PaperUserEntry = namedtuple('PaperUserEntry', ['aggregate_score', 'user'])
-
 def _score_to_cost(score, scaling_factor=100):
     '''
     Simple helper function for converting a score into a cost.
@@ -132,10 +130,8 @@ class Encoder:
 
     def decode_assignments(self, flow_matrix):
         '''
-        Return a dictionary, keyed on forum IDs, with lists containing PaperUserEntry objects
+        Return a dictionary, keyed on forum IDs, with lists containing dicts
         representing assigned users.
-
-        A `PaperUserEntry` is a simple namedtuple for holding reviewer ID and score(s).
         '''
         assignments_by_forum = defaultdict(list)
 
@@ -146,20 +142,19 @@ class Encoder:
 
                 if flow:
                     coordinates = (paper_index, reviewer_index)
-                    paper_user_entry = PaperUserEntry(
-                        aggregate_score=self.aggregate_score_matrix[coordinates],
-                        user=reviewer
-                    )
+                    paper_user_entry = {
+                        'aggregate_score': self.aggregate_score_matrix[coordinates],
+                        'user': reviewer
+                    }
                     assignments_by_forum[paper_id].append(paper_user_entry)
 
         return dict(assignments_by_forum)
 
     def decode_alternates(self, flow_matrix, num_alternates):
         '''
-        Return a dictionary, keyed on forum IDs, with lists containing PaperUserEntry objects
+        Return a dictionary, keyed on forum IDs, with lists containing dicts
         representing alternate suggested users.
 
-        A `PaperUserEntry` is a simple namedtuple for holding reviewer ID and score(s).
         '''
         alternates_by_forum = {}
 
@@ -172,13 +167,13 @@ class Encoder:
                 # alternates must not be assigned
                 if not flow:
                     coordinates = (paper_index, reviewer_index)
-                    paper_user_entry = PaperUserEntry(
-                        aggregate_score=self.aggregate_score_matrix[coordinates],
-                        user=reviewer
-                    )
+                    paper_user_entry = {
+                        'aggregate_score': self.aggregate_score_matrix[coordinates],
+                        'user': reviewer
+                    }
                     unassigned.append(paper_user_entry)
 
-            unassigned.sort(key=lambda entry: entry.aggregate_score, reverse=True)
+            unassigned.sort(key=lambda entry: entry['aggregate_score'], reverse=True)
 
             alternates_by_forum[paper_id] = unassigned[:num_alternates]
 

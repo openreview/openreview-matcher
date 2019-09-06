@@ -75,9 +75,9 @@ def test_encoder_basic(encoder_context):
 
     assignments_by_forum = encoder.decode_assignments(mock_solution)
 
-    paper0_assigned = [entry.user for entry in assignments_by_forum['paper0']]
-    paper1_assigned = [entry.user for entry in assignments_by_forum['paper1']]
-    paper2_assigned = [entry.user for entry in assignments_by_forum['paper2']]
+    paper0_assigned = [entry['user'] for entry in assignments_by_forum['paper0']]
+    paper1_assigned = [entry['user'] for entry in assignments_by_forum['paper1']]
+    paper2_assigned = [entry['user'] for entry in assignments_by_forum['paper2']]
 
     assert len(paper0_assigned) == 1
     assert len(paper1_assigned) == 2
@@ -91,9 +91,9 @@ def test_encoder_basic(encoder_context):
 
     alternates_by_forum = encoder.decode_alternates(mock_solution, 3)
 
-    paper0_alternates = [entry.user for entry in alternates_by_forum['paper0']]
-    paper1_alternates = [entry.user for entry in alternates_by_forum['paper1']]
-    paper2_alternates = [entry.user for entry in alternates_by_forum['paper2']]
+    paper0_alternates = [entry['user'] for entry in alternates_by_forum['paper0']]
+    paper1_alternates = [entry['user'] for entry in alternates_by_forum['paper1']]
+    paper2_alternates = [entry['user'] for entry in alternates_by_forum['paper2']]
 
     assert len(paper0_alternates) == 3
     assert len(paper1_alternates) == 2

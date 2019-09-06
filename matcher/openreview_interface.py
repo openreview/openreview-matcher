@@ -249,8 +249,8 @@ class ConfigNoteInterface:
         for forum, assignments in assignments_by_forum.items():
             paper = paper_by_forum[forum]
             for paper_user_entry in assignments:
-                score = paper_user_entry.aggregate_score
-                user = paper_user_entry.user
+                score = paper_user_entry['aggregate_score']
+                user = paper_user_entry['user']
 
                 assignment_edges.append(
                     build_edge(
@@ -291,8 +291,8 @@ class ConfigNoteInterface:
             paper = paper_by_forum[forum]
 
             for paper_user_entry in assignments:
-                score = paper_user_entry.aggregate_score
-                user = paper_user_entry.user
+                score = paper_user_entry['aggregate_score']
+                user = paper_user_entry['user']
 
                 score_edges.append(
                     build_edge(
