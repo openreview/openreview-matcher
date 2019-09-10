@@ -18,8 +18,7 @@ class PR4A:
             minimums,
             maximums,
             demands,
-            cost_matrix,
-            constraint_matrix,
+            encoder,
             logger=logging.getLogger(__name__)
         ):
 
@@ -29,12 +28,12 @@ class PR4A:
         demand = statistics.median(demands)
         ability = demand = statistics.median(maximums)
 
-        self.simmatrix = -cost_matrix.transpose()
+        self.simmatrix = -encoder.cost_matrix.transpose()
 
         np.copyto(
             self.simmatrix,
-            constraint_matrix.transpose(),
-            where=constraint_matrix.transpose()==-1)
+            encoder.constraint_matrix.transpose(),
+            where=encoder.constraint_matrix.transpose()==-1)
 
         self.auto_assigner = auto_assigner(self.simmatrix.astype(int), demand=int(demand), ability=int(ability))
 

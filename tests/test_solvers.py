@@ -1,8 +1,10 @@
 # TODO: This is a leftover module from the days of David. Clean this up / make it readable!
-
+from collections import namedtuple
 import pytest
 import numpy as np
 from matcher.solvers import MinMaxSolver
+
+encoder = namedtuple('Encoder', ['cost_matrix', 'constraint_matrix'])
 
 def check_solution(solver, expected_cost):
     assert solver.optimal_cost == solver.cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
@@ -29,8 +31,8 @@ def test_solver_finds_lowest_cost_soln():
         [1,1,1,1],
         [2,2,2,2],
         [1,1,2],
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (3,4)
 
@@ -63,8 +65,8 @@ def test_solver_respects_constraints():
         [1,1,1,1],
         [3,3,3,3],
         [2,2,2,2,2],
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
 
     res = solver.solve()
     assert res.shape == (5, 4)
@@ -102,8 +104,8 @@ def test_solver_find_lowest_cost_and_respect_constraints():
         [1,1,1,1],
         [3,3,3,3],
         [2,2,2,2,2],
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (5, 4)
     # make sure result does not violate constraints (i.e. no flow at i,j if there is a -1 constraint at i,j
@@ -140,8 +142,8 @@ def test_solver4():
         [2,2,2,2,2,2],
         [3,3,3,3,3,3],
         [2,2,2,2,2,2],
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (6,6)
     # make sure every reviewer is reviewing 2 papers
@@ -184,8 +186,8 @@ def test_solver5():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (3, 4)
     # make sure every reviewer has at least 1 paper
@@ -228,8 +230,8 @@ def test_solver6():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (3, 4)
     # make sure every reviewer has at least 1 paper
@@ -273,8 +275,8 @@ def test_solver_respects_one_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (3, 4)
     # make sure every reviewer has at least 1 paper
@@ -315,8 +317,8 @@ def test_solver_respects_two_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        cost_matrix,
-        constraint_matrix)
+        encoder(cost_matrix, constraint_matrix)
+    )
     res = solver.solve()
     assert res.shape == (3, 4)
     # make sure every reviewer has at least 1 paper

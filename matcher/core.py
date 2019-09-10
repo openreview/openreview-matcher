@@ -41,6 +41,7 @@ class Matcher:
                 on_set_status=None,
                 on_set_assignments=None,
                 on_set_alternates=None,
+                solver_class=MinMaxSolver,
                 logger=logging.getLogger(__name__)
             ):
 
@@ -50,6 +51,7 @@ class Matcher:
             self.datasource = datasource
 
         self.logger = logger
+        self.solver_class = solver_class
 
         self.on_set_status = on_set_status if on_set_status else logger.info
         self.on_set_assignments = on_set_assignments if on_set_assignments else logger.info
@@ -88,12 +90,11 @@ class Matcher:
 
         self.logger.debug('Preparing solver')
 
-        solver = MinMaxSolver(
+        solver = self.solver_class(
             self.datasource.minimums,
             self.datasource.maximums,
             self.datasource.demands,
-            encoder.cost_matrix,
-            encoder.constraint_matrix,
+            encoder,
             logger=self.logger
         )
 

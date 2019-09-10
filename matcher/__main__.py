@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 from .core import Matcher
+from .solvers import MinMaxSolver, PR4A, FairFlow, FairIR
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -35,7 +36,31 @@ parser.add_argument('--max_papers', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
 parser.add_argument('--num_alternates', default=3, type=int)
 
+# TODO: dynamically populate solvers list
+# TODO: can argparse throw an error if the solver isn't in the list?
+parser.add_argument(
+    '--solver',
+    help='Choose from: {}'.format(['MinMaxSolver', 'PR4A', 'FairFlow']),
+    default='MinMaxSolver'
+)
+
 args = parser.parse_args()
+
+
+# Main Logic
+
+solver_class = None
+if args.solver == 'MinMaxSolver':
+    solver_class = MinMaxSolver
+if args.solver == 'PR4A':
+    solver_class = PR4A
+if args.solver == 'FairFlow':
+    solver_class = FairFlow
+if args.solver == 'FairIR':
+    solver_class = FairIR
+
+if not solver_class:
+    raise ValueError('Invalid solver class {}'.format(args.solver))
 
 reviewer_set = set()
 paper_set = set()
@@ -107,9 +132,8 @@ matcher = Matcher(
     datasource=match_data,
     on_set_status=print,
     on_set_assignments=write_assignments,
-    on_set_alternates=write_alternates
+    on_set_alternates=write_alternates,
+    solver_class=solver_class
 )
 
 matcher.run()
-
-

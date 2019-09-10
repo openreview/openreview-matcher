@@ -2,7 +2,7 @@ import numpy as np
 import time
 import uuid
 
-from models.Basic import Basic
+from .basic import Basic
 from gurobipy import *
 
 
@@ -11,15 +11,15 @@ class FairIR(Basic):
 
     """
 
-    def __init__(self, loads, loads_lb, coverages, weights, thresh=0.0):
+    def __init__(self, maximums, minimums, demands, encoder, thresh=0.0, logger=None):
         """Initialize.
 
         Args:
-            loads - a list of integers specifying the maximum number of papers
+            maximums - a list of integers specifying the maximum number of papers
                   for each reviewer.
-            loads_lb - a list of ints specifying the minimum number of papers
+            minimums - a list of ints specifying the minimum number of papers
                   for each reviewer.
-            coverages - a list of integers specifying the number of reviews per
+            demands - a list of integers specifying the number of reviews per
                  paper.
             weights - the affinity matrix (np.array) of papers to reviewers.
                    Rows correspond to reviewers and columns correspond to
@@ -28,11 +28,14 @@ class FairIR(Basic):
             Returns:
                 initialized makespan matcher.
         """
+        weights = encoder.aggregate_score_matrix.transpose()
+        constraints = encoder.constraint_matrix.transpose()
+
         self.n_rev = np.size(weights, axis=0)
         self.n_pap = np.size(weights, axis=1)
-        self.loads = loads
-        self.loads_lb = loads_lb
-        self.coverages = coverages
+        self.maximums = maximums
+        self.minimums = minimums
+        self.demands = demands
         self.weights = weights
         self.id = uuid.uuid4()
         self.m = Model("%s : FairIR" % str(self.id))
@@ -69,18 +72,18 @@ class FairIR(Basic):
 
         start = time.time()
         # load upper bound constraints.
-        for r, load in enumerate(self.loads):
+        for r, load in enumerate(self.maximums):
             self.m.addConstr(sum(self.lp_vars[r]) <= load,
                              self.lub_constr_name(r))
 
         # load load bound constraints.
-        if self.loads_lb is not None:
-            for r, load in enumerate(self.loads_lb):
+        if self.minimums is not None:
+            for r, load in enumerate(self.minimums):
                 self.m.addConstr(sum(self.lp_vars[r]) >= load,
                                  self.llb_constr_name(r))
 
         # coverage constraints.
-        for p, cov in enumerate(self.coverages):
+        for p, cov in enumerate(self.demands):
             self.m.addConstr(sum([self.lp_vars[i][p]
                                   for i in range(self.n_rev)]) == cov,
                              self.cov_constr_name(p))
@@ -169,7 +172,7 @@ class FairIR(Basic):
             Highest feasible makespan value found.
         """
         mn = 0.0
-        mx = np.max(self.weights) * np.max(self.coverages)
+        mx = np.max(self.weights) * np.max(self.demands)
         ms = mx
         best = None
         self.change_makespan(ms)

@@ -24,16 +24,15 @@ class MinMaxSolver:
             minimums,
             maximums,
             demands,
-            cost_matrix,
-            constraint_matrix,
+            encoder,
             logger=logging.getLogger(__name__)
         ):
 
         self.minimums = minimums
         self.maximums = maximums
         self.demands = demands
-        self.cost_matrix = cost_matrix
-        self.constraint_matrix = constraint_matrix
+        self.cost_matrix = encoder.cost_matrix
+        self.constraint_matrix = encoder.constraint_matrix
 
         self.solved = False
         self.flow_matrix = None
