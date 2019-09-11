@@ -40,7 +40,7 @@ parser.add_argument('--num_alternates', default=3, type=int)
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
     '--solver',
-    help='Choose from: {}'.format(['MinMaxSolver', 'PR4A', 'FairFlow']),
+    help='Choose from: {}'.format(['MinMaxSolver', 'PR4A', 'FairFlow', 'FairIR']),
     default='MinMaxSolver'
 )
 
