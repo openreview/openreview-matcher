@@ -45,12 +45,12 @@ def test_integration_basic(openreview_context):
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
-        'config_invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
-        'aggregate_score_invitation': '{}/-/Reviewing/Aggregate_Score'.format(reviewers_id),
+        'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Reviewing/Custom_Load'.format(reviewers_id),
+        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -62,7 +62,7 @@ def test_integration_basic(openreview_context):
     }
 
     config_note = openreview.Note(**{
-        'invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'readers': [conference.get_id()],
         'writers': [conference.get_id()],
         'signatures': [conference.get_id()],
@@ -123,12 +123,12 @@ def test_routes_missing_header(openreview_context):
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
-        'config_invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
-        'aggregate_score_invitation': '{}/-/Reviewing/Aggregate_Score'.format(reviewers_id),
+        'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Reviewing/Custom_Load'.format(reviewers_id),
+        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -140,7 +140,7 @@ def test_routes_missing_header(openreview_context):
     }
 
     config_note = openreview.Note(**{
-        'invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'readers': [conference.get_id()],
         'writers': [conference.get_id()],
         'signatures': [conference.get_id()],
@@ -220,12 +220,12 @@ def test_routes_forbidden_config(openreview_context):
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
-        'config_invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
-        'aggregate_score_invitation': '{}/-/Reviewing/Aggregate_Score'.format(reviewers_id),
+        'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Reviewing/Custom_Load'.format(reviewers_id),
+        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -237,7 +237,7 @@ def test_routes_forbidden_config(openreview_context):
     }
 
     config_note = openreview.Note(**{
-        'invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'readers': [conference.get_id()],
         'writers': [conference.get_id()],
         'signatures': [conference.get_id()],
@@ -293,12 +293,12 @@ def test_routes_already_running(openreview_context):
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
-        'config_invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
-        'aggregate_score_invitation': '{}/-/Reviewing/Aggregate_Score'.format(reviewers_id),
+        'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Reviewing/Custom_Load'.format(reviewers_id),
+        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -310,7 +310,7 @@ def test_routes_already_running(openreview_context):
     }
 
     config_note = openreview.Note(**{
-        'invitation': '{}/-/Reviewing/Assignment_Configuration'.format(reviewers_id),
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'readers': [conference.get_id()],
         'writers': [conference.get_id()],
         'signatures': [conference.get_id()],

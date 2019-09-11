@@ -105,10 +105,11 @@ def match():
 
     # For now, it seems like we need this broad Exception. How can we get rid of it?
     # pylint:disable=broad-except
-    except Exception:
+    except Exception as error_handle:
         print('broad exception triggered')
-        result['error'] = 'Internal server error'
-        client.set_status('Error', 'Internal server error')
+        print(error_handle)
+        result['error'] = 'Internal server error: {}'.format(error_handle)
+        interface.set_status('Error', 'Internal server error')
         return flask.jsonify(result), 500
 
     else:

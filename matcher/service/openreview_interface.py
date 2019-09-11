@@ -305,7 +305,7 @@ class ConfigNoteInterface:
                     )
                 )
 
-        openreview.tools.post_bulk_edges(self, score_edges)
+        openreview.tools.post_bulk_edges(self.client, score_edges)
         self.logger.debug('posted {} aggregate score edges for alternates'.format(len(score_edges)))
 
     def _get_quota_arrays(self):

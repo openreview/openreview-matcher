@@ -2,6 +2,4 @@
 
 from .minmax_solver import MinMaxSolver
 from .simple_solver import SimpleSolver
-from .pr4a import PR4A
 from .fairflow import FairFlow
-from .fairir import FairIR

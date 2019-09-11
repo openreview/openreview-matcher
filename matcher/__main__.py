@@ -6,7 +6,7 @@ import argparse
 import csv
 import json
 from .core import Matcher
-from .solvers import MinMaxSolver, PR4A, FairFlow, FairIR
+from .solvers import MinMaxSolver, FairFlow
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -40,7 +40,7 @@ parser.add_argument('--num_alternates', default=3, type=int)
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
     '--solver',
-    help='Choose from: {}'.format(['MinMaxSolver', 'PR4A', 'FairFlow', 'FairIR']),
+    help='Choose from: {}'.format(['MinMaxSolver', 'FairFlow']),
     default='MinMaxSolver'
 )
 
@@ -52,12 +52,8 @@ args = parser.parse_args()
 solver_class = None
 if args.solver == 'MinMaxSolver':
     solver_class = MinMaxSolver
-if args.solver == 'PR4A':
-    solver_class = PR4A
 if args.solver == 'FairFlow':
     solver_class = FairFlow
-if args.solver == 'FairIR':
-    solver_class = FairIR
 
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))
