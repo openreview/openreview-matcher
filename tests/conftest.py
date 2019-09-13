@@ -17,17 +17,6 @@ import matcher.service
 
 AFFINITY_SCORE_FILE = './affinity_scores'
 
-default_config = {
-    'OPENREVIEW_USERNAME':'openreview.net',
-    'OPENREVIEW_PASSWORD': '1234',
-    'OPENREVIEW_BASEURL': 'http://localhost:3000',
-    'SUPERUSER_FIRSTNAME': 'Super',
-    'SUPERUSER_LASTNAME': 'User',
-    'SUPERUSER_TILDE_ID': '~Super_User1',
-    'SUPERUSER_EMAIL': 'info@openreview.net',
-    'LOG_FILE': 'test.log'
-}
-
 def ping_url(url):
     iterations = 300
     iteration_duration = 0.1
@@ -63,7 +52,10 @@ def initialize_superuser(config):
 
     # need to create a guest client before we can login with the supser user
     guest_client = openreview.Client(
+        username='',
+        password='',
         baseurl=config['OPENREVIEW_BASEURL']
+
     )
 
     register_result = guest_client.register_user(
@@ -159,7 +151,18 @@ def openreview_context(scope='function'):
     `scope` argument is set to 'function', so each function will get a clean test instance.
     '''
 
-    app = matcher.service.create_app(config=default_config)
+
+    app = matcher.service.create_app(config={
+            'LOG_FILE': 'pytest.log',
+            'OPENREVIEW_USERNAME': 'openreview.net',
+            'OPENREVIEW_PASSWORD': '1234',
+            'OPENREVIEW_BASEURL': 'http://localhost:3000',
+            'SUPERUSER_FIRSTNAME': 'Super',
+            'SUPERUSER_LASTNAME': 'User',
+            'SUPERUSER_TILDE_ID': '~Super_User1',
+            'SUPERUSER_EMAIL': 'info@openreview.net',
+        })
+
     openreview_home = os.getenv('OPENREVIEW_HOME')
     os.chdir(openreview_home)
 
