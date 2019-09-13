@@ -10,13 +10,11 @@ jobs:
     - image: elastic/elasticsearch:6.2.2
     steps:
     - checkout
-#    temporarily using the feature/edges branch
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-#      Temporarily clone the feature/edges branch of openreview-py
     - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
-        name: run openreview
+        name: install openreview
         command: |
           cd ~/openreview
           npm install
@@ -24,16 +22,6 @@ jobs:
           grunt regen
           mkdir pdfs
           NODE_ENV=circleci node scripts/setup.js
-    - run:
-        name: run openreview node app with clean db
-        command: |
-          cd ~/openreview
-          NODE_ENV=circleci node scripts/clean_start_app
-        background: true
-    - run:
-        shell: /bin/sh
-        command: |
-          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
     - run: sudo apt-get install python3
     - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
     - run: sudo python3 get-pip.py
@@ -45,15 +33,8 @@ jobs:
           cd ~/openreview-matcher-repo
           python3 -m venv venv
           . venv/bin/activate
-          pip install -r requirements.txt
+          pip install -e .
           deactivate
-#    - run:
-#        name: install openreview-py
-#        command: |
-#          cd ~/openreview-matcher-repo
-#          . venv/bin/activate
-#          pip install openreview-py
-#          deactivate
     - run:
         name: install the local openreview-py as a dependency
         command: |
@@ -67,6 +48,7 @@ jobs:
           mkdir reports
           mkdir reports/pytest
           . venv/bin/activate
+          export OPENREVIEW_HOME=~/openreview
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
     - store_test_results:
         path: reports
