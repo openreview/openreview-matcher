@@ -4,7 +4,7 @@
 A simple Flask web service for finding optimal paper-reviewer assignments for peer review, subject to constraints and affinity scores, and designed for integration with the OpenReview server application.
 
 ## Installation
-Comming soon.
+Coming soon.
 
 ## Configuration of the app
 
