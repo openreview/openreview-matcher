@@ -44,8 +44,7 @@ def match():
         config_note_id = flask.request.json['configNoteId']
 
         openreview_client = openreview.Client(
-            username=flask.current_app.config['OPENREVIEW_USERNAME'],
-            password=flask.current_app.config['OPENREVIEW_PASSWORD'],
+            token=token,
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
         )
 

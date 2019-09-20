@@ -45,7 +45,7 @@ def create_app(config=None):
         print('configuration from mapping')
         app.config.from_mapping(config)
     else:
-        config_file = os.getenv('MATCHER_CONFIG')
+        config_file = os.getenv('MATCHER_CONFIG', '../../config.cfg')
         print('configuration from file', config_file)
         app.config.from_pyfile(config_file)
 

@@ -4,17 +4,22 @@
 A simple Flask web service for finding optimal paper-reviewer assignments for peer review, subject to constraints and affinity scores, and designed for integration with the OpenReview server application.
 
 ## Installation
-Coming soon.
+Comming soon.
 
 ## Configuration of the app
-Coming soon.
+
+The default configuration is placed in config.cfg inside of the root folder, if you want to use a different configuration you need to set an environment variable with the path to the file
+
+```
+export MATCHER_CONFIG=[path_to_config_file]
+```
 
 
 ## Starting the Flask server
 From the top level project directory, run the following:
 
 ```
-export FLASK_APP=matcher
+export FLASK_APP=matcher/service
 flask run
 ```
 
@@ -29,14 +34,6 @@ The `/tests` directory contains unit tests and integration tests (i.e. tests tha
 Running the tests requires MongDB and Redis to support the OpenReview server instance used in the integration tests.
 
 Before running integration tests, ensure that `mongod` and `redis-server` are running, and that no existing OpenReview instances are active.
-
-Also ensure that OpenReview environment variables are unset:
-
-```
-unset OPENREVIEW_USERNAME
-unset OPENREVIEW_PASSWORD
-unset OPENREVIEW_BASEURL
-```
 
 Integration tests use the `test_context` [pytest fixture](https://docs.pytest.org/en/latest/fixture.html), which starts a clean, empty OpenReview instance and creates a mock conference.
 
