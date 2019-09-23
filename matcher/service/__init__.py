@@ -34,25 +34,22 @@ def configure_logger(app):
 
 def create_app(config=None):
     '''
-    Builds the main app object.
-
     Implements the "app factory" pattern, recommended by Flask documentation.
     '''
 
-    app = flask.Flask(__name__)
+    app = flask.Flask(
+        __name__,
+        instance_path=os.path.join(os.path.dirname(__file__), 'config'),
+        instance_relative_config=True
+    )
 
-    if config:
-        print('configuration from mapping')
+    # app.config['ENV'] is automatically set by the FLASK_ENV environment variable.
+    # by default, app.config['ENV'] == 'production'
+    app.config.from_pyfile('default.cfg')
+    app.config.from_pyfile('{}.cfg'.format(app.config.get('ENV')), silent=True)
+
+    if config and isinstance(config, dict):
         app.config.from_mapping(config)
-    else:
-        config_file = os.getenv('MATCHER_CONFIG')
-        print('configuration from file', config_file)
-        app.config.from_pyfile(config_file)
-
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
 
     configure_logger(app)
 

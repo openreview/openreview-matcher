@@ -1,24 +1,60 @@
 [![CircleCI](https://circleci.com/gh/iesl/openreview-matcher.svg?style=svg&circle-token=d20a11c2cb9e46d2a244638d1646ebdf3aa56b39)](https://circleci.com/gh/iesl/openreview-matcher)
 
 # OpenReview Matcher
-A simple Flask web service for finding optimal paper-reviewer assignments for peer review, subject to constraints and affinity scores, and designed for integration with the OpenReview server application.
+A tool for computing optimal paper-reviewer matches for peer review, subject to constraints and affinity scores. Comes with a simple web server designed for integration with the OpenReview server application.
 
 ## Installation
-Coming soon.
-
-## Configuration of the app
-Coming soon.
-
-
-## Starting the Flask server
-From the top level project directory, run the following:
+Clone the [GitHub repository](https://github.com/iesl/openreview-matcher.git) and install with `pip`:
 
 ```
-export FLASK_APP=matcher
-flask run
+git clone https://github.com/iesl/openreview-matcher.git
+pip install ./openreview-matcher
+```
+
+## Example Usage
+
+The matcher can be run from the command line. For example:
+```
+python -m matcher \
+	--scores affinity_scores.txt \
+	--weights 1 \
+	--min_papers 1 \
+	--max_papers 10 \
+	--num_reviewers 3 \
+	--num_alternates 3
+```
+
+Run the module with the `--help` flag to learn about the arguments:
+```
+python -m matcher --help
+```
+
+## Running the Server
+The server is implemented in Flask and can be started from the command line:
+```
+python -m matcher.service --host localhost --port 5000
 ```
 
 By default, the app will run on `http://localhost:5000`. The endpoint `/match/test` should show a simple page indicating that Flask is running.
+
+### Configuration
+Configuration files are located in `/matcher/service/config`. When started, the server will search for a `.cfg` file in `/matcher/service/config` that matches the environment variable `FLASK_ENV`, and will default to the values in `default.cfg`.
+
+For example, with file `/matcher/service/config/development.cfg`:
+```
+# development.cfg
+LOG_FILE='development.log'
+
+OPENREVIEW_USERNAME='OpenReview.net'
+OPENREVIEW_PASSWORD='1234'
+OPENREVIEW_BASEURL='http://localhost:3000'
+```
+
+Start the server with `development.cfg`:
+```
+FLASK_ENV=development python -m matcher.service
+```
+
 
 ## Unit & Integration Tests (with pytest)
 
