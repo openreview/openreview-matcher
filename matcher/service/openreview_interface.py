@@ -30,9 +30,8 @@ def _get_values(invitation, number, property):
         values = []
 
         for group_id in regex_pattern.split('|'):
-            group_id = group_id.replace('^', '').replace('$', '')
             if 'Paper.*' in group_id:
-                group_id = group_id.replace('Paper.*', 'Paper{}'.format(number))
+                group_id.replace('Paper.*', 'Paper{}'.format(number))
 
             if re.match(regex_pattern, group_id):
                 values.append(group_id)
