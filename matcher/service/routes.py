@@ -24,7 +24,7 @@ class MatcherStatusException(Exception):
 def test():
     '''Test endpoint.'''
     flask.current_app.logger.info('In test')
-    return 'Flask is running'
+    return 'OpenReview Matcher (edges implementation)'
 
 @BLUEPRINT.route('/match', methods=['POST', 'OPTIONS'])
 def match():
@@ -44,8 +44,7 @@ def match():
         config_note_id = flask.request.json['configNoteId']
 
         openreview_client = openreview.Client(
-            username=flask.current_app.config['OPENREVIEW_USERNAME'],
-            password=flask.current_app.config['OPENREVIEW_PASSWORD'],
+            token=token,
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
         )
 
