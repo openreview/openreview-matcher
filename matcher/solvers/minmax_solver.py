@@ -32,6 +32,10 @@ class MinMaxSolver:
         self.maximums = maximums
         self.demands = demands
         self.cost_matrix = encoder.cost_matrix
+
+        if not self.cost_matrix.any():
+            self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
+
         self.constraint_matrix = encoder.constraint_matrix
 
         self.solved = False

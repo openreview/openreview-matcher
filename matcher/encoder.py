@@ -65,6 +65,8 @@ class Encoder:
             len(self.reviewers)
         )
 
+        self.default_scores = np.full(self.matrix_shape, 0, dtype=float)
+
         self.score_matrices = {
             score_type: self._encode_scores(scores) \
             for score_type, scores in scores_by_type.items()
@@ -75,7 +77,7 @@ class Encoder:
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
         self.aggregate_score_matrix = sum([
             scores * weight_by_type[score_type] for score_type, scores in self.score_matrices.items()
-        ])
+        ]) if self.score_matrices else self.default_scores
 
         self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
 
