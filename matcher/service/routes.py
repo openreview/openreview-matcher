@@ -96,13 +96,6 @@ def match():
         result['error'] = error_type
         return flask.jsonify(result), status
 
-    except InterfaceException as error_handle:
-        print('interfaceException triggered', error_handle)
-        flask.current_app.logger.error(str(error_handle))
-        result['error'] = str(error_handle)
-        interface.set_status('Error')
-        return flask.jsonify(result), 400
-
     except MatcherStatusException as error_handle:
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
