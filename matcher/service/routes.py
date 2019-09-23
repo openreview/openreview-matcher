@@ -54,10 +54,13 @@ def match():
             logger=flask.current_app.logger
         )
 
+        print('current status:', interface.config_note.content['status'])
         if interface.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
-        else:
-            interface.set_status('Running')
+        if interface.config_note.content['status'] == 'Complete':
+            raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
+
+        interface.set_status('Running')
 
         flask.current_app.logger.debug(
             'Request to assign reviewers for configId: {}'.format(config_note_id))
@@ -96,7 +99,6 @@ def match():
     except (BadTokenException, MatcherStatusException) as error_handle:
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
-
 
         interface.set_status('Error', str(error_handle))
 
