@@ -54,7 +54,6 @@ def match():
             logger=flask.current_app.logger
         )
 
-        print('current status:', interface.config_note.content['status'])
         if interface.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
         if interface.config_note.content['status'] == 'Complete':
@@ -96,11 +95,17 @@ def match():
 
         return flask.jsonify(result), status
 
-    except (BadTokenException, MatcherStatusException) as error_handle:
+    except MatcherStatusException as error_handle:
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
 
-        interface.set_status('Error', str(error_handle))
+        return flask.jsonify(result), 400
+
+    except BadTokenException as error_handle:
+        flask.current_app.logger.error(str(error_handle))
+        result['error'] = str(error_handle)
+
+        interface.set_status('Error', 'Bad token')
 
         return flask.jsonify(result), 400
 
