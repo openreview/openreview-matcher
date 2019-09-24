@@ -10,6 +10,44 @@ def check_solution(solver, expected_cost):
     assert solver.optimal_cost == solver.cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
     assert solver.cost == expected_cost,  "Lowest cost solution should have cost = {}".format(expected_cost)
 
+def test_solvers_minmax_random():
+    '''When costs are all zero, compute random assignments'''
+    cost_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(cost_matrix_A))
+    solver_A = MinMaxSolver(
+        [1,1,1,1],
+        [2,2,2,2],
+        [1,1,2],
+        encoder(cost_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+
+    cost_matrix_B = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(cost_matrix_B))
+    solver_B = MinMaxSolver(
+        [1,1,1,1],
+        [2,2,2,2],
+        [1,1,2],
+        encoder(cost_matrix_B, constraint_matrix)
+    )
+    res_B = solver_B.solve()
+    assert res_B.shape == (3,4)
+
+    # ensure that the cost matrices are random
+    # (i.e. overwhelmingly likely to be different)
+    assert not np.array_equal(solver_A.cost_matrix, solver_B.cost_matrix)
+
 def test_solver_finds_lowest_cost_soln():
     '''
     4 reviewers 3 papers.   Papers 0,1 need 1 review; Paper 2 needs 2 reviews.  Reviewers can do max of 2 reviews

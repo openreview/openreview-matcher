@@ -105,6 +105,62 @@ def test_encoder_basic(encoder_context):
     assert 'reviewer2' not in paper2_alternates
     assert 'reviewer3' not in paper1_alternates
 
+def test_encoder_no_scores(encoder_context):
+    '''Basic test of Encoder functionality, without scores.'''
+    papers, reviewers, matrix_shape = encoder_context
+
+    scores_by_type = {}
+
+    weight_by_type = {}
+
+    constraints = []
+
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type
+    )
+
+    mock_solution = np.asarray([
+        [1, 0, 0, 0],
+        [0, 1, 0, 1],
+        [0, 0, 1, 0]
+    ])
+
+    assignments_by_forum = encoder.decode_assignments(mock_solution)
+
+    paper0_assigned = [entry['user'] for entry in assignments_by_forum['paper0']]
+    paper1_assigned = [entry['user'] for entry in assignments_by_forum['paper1']]
+    paper2_assigned = [entry['user'] for entry in assignments_by_forum['paper2']]
+
+    assert len(paper0_assigned) == 1
+    assert len(paper1_assigned) == 2
+    assert len(paper2_assigned) == 1
+
+    # only test that a reviewer is in the list of assigned, not the order.
+    assert 'reviewer0' in paper0_assigned
+    assert 'reviewer1' in paper1_assigned
+    assert 'reviewer2' in paper2_assigned
+    assert 'reviewer3' in paper1_assigned
+
+    alternates_by_forum = encoder.decode_alternates(mock_solution, 3)
+
+    paper0_alternates = [entry['user'] for entry in alternates_by_forum['paper0']]
+    paper1_alternates = [entry['user'] for entry in alternates_by_forum['paper1']]
+    paper2_alternates = [entry['user'] for entry in alternates_by_forum['paper2']]
+
+    assert len(paper0_alternates) == 3
+    assert len(paper1_alternates) == 2
+    assert len(paper2_alternates) == 3
+
+    # only test that the assigned reviewer is *not* in the list of alternates.
+    assert 'reviewer0' not in paper0_alternates
+    assert 'reviewer1' not in paper1_alternates
+    assert 'reviewer2' not in paper2_alternates
+    assert 'reviewer3' not in paper1_alternates
+
 def test_encoder_weighting(encoder_context):
     '''Ensure that matrix weights are applied properly'''
     papers, reviewers, matrix_shape = encoder_context

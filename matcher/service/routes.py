@@ -12,10 +12,6 @@ from .openreview_interface import ConfigNoteInterface
 
 BLUEPRINT = flask.Blueprint('match', __name__)
 
-class BadTokenException(Exception):
-    '''Exception wrapper class for errors related to the user token'''
-    pass
-
 class MatcherStatusException(Exception):
     '''Exception wrapper class for errors related to the status of the Matcher'''
     pass
@@ -24,7 +20,7 @@ class MatcherStatusException(Exception):
 def test():
     '''Test endpoint.'''
     flask.current_app.logger.info('In test')
-    return 'OpenReview Matcher (edges implementation)'
+    return 'OpenReview Matcher (random assignments)'
 
 @BLUEPRINT.route('/match', methods=['POST', 'OPTIONS'])
 def match():
@@ -36,7 +32,6 @@ def match():
 
     token = flask.request.headers.get('Authorization')
     if not token:
-        # TODO: login to the openreview client with this token
         flask.current_app.logger.error('No Authorization token in headers')
         result['error'] = 'No Authorization token in headers'
         return flask.jsonify(result), 400
@@ -61,19 +56,6 @@ def match():
             raise MatcherStatusException('Matcher is already running')
         if interface.config_note.content['status'] == 'Complete':
             raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
-            
-        interface.set_status('Running')
-
-        for invitation_id in interface.config_note.content['scores_specification']:
-            try:
-                openreview_client.get_invitation(invitation_id)
-            except openreview.OpenReviewException as error_handle:
-                interface.set_status('Error')
-                raise error_handle
-
-        interface.set_status('Running')
-
-        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
 
         thread = threading.Thread(
             target=Matcher(
@@ -85,6 +67,9 @@ def match():
             ).run
         )
         thread.start()
+
+        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
+        interface.set_status('Running')
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))
@@ -105,21 +90,10 @@ def match():
         result['error'] = str(error_handle)
         return flask.jsonify(result), 400
 
-    except BadTokenException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
-        result['error'] = str(error_handle)
-        interface.set_status('Error', str(error_handle))
-
-
-        return flask.jsonify(result), 400
-
     # For now, it seems like we need this broad Exception. How can we get rid of it?
     # pylint:disable=broad-except
     except Exception as error_handle:
-        print('broad exception triggered')
-        print(error_handle)
         result['error'] = 'Internal server error: {}'.format(error_handle)
-        interface.set_status('Error', 'Internal server error')
         return flask.jsonify(result), 500
 
     else:
