@@ -2,6 +2,9 @@ import re
 import openreview
 import logging
 
+class InterfaceException(Exception):
+    pass
+
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
     Helper function for constructing an openreview.Edge object.
@@ -30,11 +33,9 @@ def _get_values(invitation, number, property):
         values = []
 
         for group_id in regex_pattern.split('|'):
+            group_id = group_id.replace('^', '').replace('$', '')
             if 'Paper.*' in group_id:
-                group_id.replace('Paper.*', 'Paper{}'.format(number))
-
-            if re.match(regex_pattern, group_id):
-                values.append(group_id)
+                group_id = group_id.replace('Paper.*', 'Paper{}'.format(number))
 
     return values
 
@@ -68,7 +69,6 @@ def get_all_edges(client, edge_invitation_id, logger=None):
     '''Helper function for retrieving and parsing all edges in bulk'''
 
     all_edges = []
-
     edge_invitation = client.get_invitation(edge_invitation_id)
 
     edges_grouped_by_paper = openreview.tools.iterget(
@@ -89,7 +89,6 @@ def get_all_edges(client, edge_invitation_id, logger=None):
                 group_value.get('label'),
                 None
             ))
-
     return all_edges
 
 class ConfigNoteInterface:
@@ -98,6 +97,14 @@ class ConfigNoteInterface:
         self.config_note_id = config_note_id
         self.logger = logger
         self._cache = {} if not cache else cache
+
+        for invitation_id in self.config_note.content.get('scores_specification', {}):
+            try:
+                self.client.get_invitation(invitation_id)
+            except openreview.OpenReviewException as error_handle:
+                self.set_status('Error')
+                raise error_handle
+
 
     @property
     def match_group(self):
@@ -170,10 +177,11 @@ class ConfigNoteInterface:
 
     @property
     def scores_by_type(self):
+        scores_specification = self.config_note.content.get('scores_specification', {})
+
         if not 'edges_by_invitation' in self._cache:
             edges_by_invitation = {}
-
-            for invitation_id in self.config_note.content['scores_specification'].keys():
+            for invitation_id in scores_specification.keys():
                 edges_by_invitation[invitation_id] = get_all_edges(
                     self.client, invitation_id, logger=self.logger)
 
@@ -181,7 +189,7 @@ class ConfigNoteInterface:
 
         translate_maps = {
             inv_id: score_spec['translate_map'] \
-            for inv_id, score_spec in self.config_note.content['scores_specification'].items() \
+            for inv_id, score_spec in scores_specification.items() \
             if 'translate_map' in score_spec
         }
 
@@ -197,9 +205,10 @@ class ConfigNoteInterface:
 
     @property
     def weight_by_type(self):
+        scores_specification = self.config_note.content.get('scores_specification', {})
         return {
             inv_id: entry['weight'] \
-            for inv_id, entry in self.config_note.content['scores_specification'].items()
+            for inv_id, entry in scores_specification.items()
         }
 
     @property

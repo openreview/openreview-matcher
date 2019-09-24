@@ -92,9 +92,6 @@ def test_integration_basic(openreview_context):
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
-# TODO: update the builder (and possibly the backend)
-# to allow scores_specification to be empty
-@pytest.mark.skip
 def test_integration_no_scores(openreview_context):
     '''
     Basic integration test. Makes use of the OpenReview Builder
@@ -135,7 +132,6 @@ def test_integration_no_scores(openreview_context):
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
-        'scores_specification': {},
         'status': 'Initialized'
     }
 

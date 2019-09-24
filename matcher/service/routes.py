@@ -61,19 +61,6 @@ def match():
         if interface.config_note.content['status'] == 'Complete':
             raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
 
-        interface.set_status('Running')
-
-        for invitation_id in interface.config_note.content['scores_specification']:
-            try:
-                openreview_client.get_invitation(invitation_id)
-            except openreview.OpenReviewException as error_handle:
-                interface.set_status('Error')
-                raise error_handle
-
-        interface.set_status('Running')
-
-        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
-
         thread = threading.Thread(
             target=Matcher(
                 datasource=interface,
@@ -84,6 +71,9 @@ def match():
             ).run
         )
         thread.start()
+
+        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
+        interface.set_status('Running')
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))
@@ -107,10 +97,7 @@ def match():
     # For now, it seems like we need this broad Exception. How can we get rid of it?
     # pylint:disable=broad-except
     except Exception as error_handle:
-        print('broad exception triggered')
-        print(error_handle)
         result['error'] = 'Internal server error: {}'.format(error_handle)
-        interface.set_status('Error', 'Internal server error')
         return flask.jsonify(result), 500
 
     else:
