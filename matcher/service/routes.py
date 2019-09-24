@@ -24,7 +24,7 @@ class MatcherStatusException(Exception):
 def test():
     '''Test endpoint.'''
     flask.current_app.logger.info('In test')
-    return 'OpenReview Matcher (edges implementation)'
+    return 'OpenReview Matcher (random assignments)'
 
 @BLUEPRINT.route('/match', methods=['POST', 'OPTIONS'])
 def match():
