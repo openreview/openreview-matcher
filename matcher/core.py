@@ -2,7 +2,7 @@
 import logging
 import threading
 
-from .solvers import MinMaxSolver
+from .solvers import SolverException, MinMaxSolver
 from .encoder import Encoder
 
 class MatcherError(Exception):
@@ -61,9 +61,9 @@ class Matcher:
         self.assignments = None
         self.alternates = None
 
-    def set_status(self, status):
+    def set_status(self, status, message=None):
         self.status = status
-        self.on_set_status(status)
+        self.on_set_status(status, message=message)
 
     def set_assignments(self, assignments):
         self.assignments = assignments
@@ -97,9 +97,11 @@ class Matcher:
             encoder,
             logger=self.logger
         )
-
-        self.logger.debug('Solving solver')
-        solution = solver.solve()
+        try:
+            self.logger.debug('Solving solver')
+            solution = solver.solve()
+        except SolverException as error_handle:
+            self.set_status('No Solution', message=str(error_handle))
 
         if solver.solved:
             self.solution = solution
@@ -110,6 +112,6 @@ class Matcher:
 
         else:
             self.set_status(
-                'No solution',
-                'Solver could not find a solution. Adjust your parameters')
+                'No Solution',
+                message='Solver could not find a solution. Adjust your parameters')
 

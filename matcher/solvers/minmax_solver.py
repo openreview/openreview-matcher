@@ -57,7 +57,6 @@ class MinMaxSolver:
             strict=False
         ) # strict=False prevents errors from being thrown for supply/demand mismatch
 
-
         minimum_result = minimum_solver.solve()
 
         adjusted_constraints = self.constraint_matrix - minimum_solver.flow_matrix
