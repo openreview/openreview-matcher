@@ -1,139 +1,182 @@
-from collections import defaultdict
+'''
+Responsible for:
+1) encoding OpenReview objects into a compatible format for the matcher.
+2) decoding the result of the matcher and translating into OpenReview objects.
+'''
+
+from collections import defaultdict, namedtuple
 import numpy as np
 
-from . import utils
-from matcher.fields import Configuration
-from matcher.fields import PaperReviewerScore
-from matcher.fields import Assignment
+def _score_to_cost(score, scaling_factor=100):
+    '''
+    Simple helper function for converting a score into a cost.
+
+    Scaling factor is arbitrary and usually shouldn't be changed.
+    '''
+    return score * -scaling_factor
+
+class EncoderError(Exception):
+    '''Exception wrapper class for errors related to Encoder'''
+    pass
+
+class Encoder:
+    '''
+    Responsible for keeping track of paper and reviewer indexes.
+
+    Arguments:
+    - `reviewers`:
+        a list of IDs, each representing a reviewer.
+
+    - `papers`:
+        a list of IDs, each representing a paper.
+
+    - `constraints`:
+        a list of triples, formatted as follows:
+        (<str paper_ID>, <str reviewer_ID>, <int [-1, 0, or 1]>)
+
+    - `scores_by_type`:
+        a dict, keyed on string IDs representing score 'types',
+        where each value is a list of triples, formatted as follows:
+        (<str paper_ID>, <str reviewer_ID>, <float score>)
+
+   - `weight_by_type`:
+        a dict, keyed on string IDs that match those in `scores_by_type`,
+        where each value is a float, indicating the relative weight of the corresponding
+        score type.
+
+    '''
+    def __init__(
+            self,
+            reviewers,
+            papers,
+            constraints,
+            scores_by_type,
+            weight_by_type
+        ):
+
+        self.reviewers = reviewers
+        self.papers = papers
+
+        self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
+        self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
+
+        self.matrix_shape = (
+            len(self.papers),
+            len(self.reviewers)
+        )
+
+        self.default_scores = np.full(self.matrix_shape, 0, dtype=float)
+
+        self.score_matrices = {
+            score_type: self._encode_scores(scores) \
+            for score_type, scores in scores_by_type.items()
+        }
+
+        self.constraint_matrix = self._encode_constraints(constraints)
+
+        # don't use numpy.sum() here. it will collapse the matrices into a single value.
+        self.aggregate_score_matrix = sum([
+            scores * weight_by_type[score_type] for score_type, scores in self.score_matrices.items()
+        ]) if self.score_matrices else self.default_scores
+
+        self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
 
 
-class Encoder(object):
+    def _encode_scores(self, scores, default=0):
+        '''return a matrix containing unweighted scores.'''
+        score_matrix = np.full(self.matrix_shape, default, dtype=float)
 
+        for forum, user, score in scores:
+            if not isinstance(score, float) and not isinstance(score, int):
+                try:
+                    score = float(score)
+                except ValueError:
+                    raise EncoderError(
+                        'could not convert score {} of type {} to float ({}, {})'.format(
+                            score, type(score), forum, user))
 
-    def __init__(self, metadata=None, config=None, reviewer_ids=None, cost_func=utils.cost):
+            # sometimes papers or reviewers get deleted after edges are created,
+            # so we need to check that the head/tail are still valid
+            if forum in self.papers and user in self.reviewers:
+                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+                score_matrix[coordinates] = score
 
-        self.metadata = []
-        self.config = config
-        self.reviewer_ids = []
-        self.cost = cost_func
+        return score_matrix
 
-        self.cost_matrix = np.zeros((0, 0))
-        self.constraint_matrix = np.zeros((0, 0))
-        self.entries_by_forum = {}
-        self.index_by_forum = {}
-        self.index_by_reviewer = {}
-        self.forum_by_index = {}
-        self.reviewer_by_index = {}
-        self.score_names = config[Configuration.SCORES_NAMES] # a list of score names
-        self.weights = self._get_weight_dict(config[Configuration.SCORES_NAMES], config[Configuration.SCORES_WEIGHTS] )
-        self.constraints = config.get(Configuration.CONSTRAINTS,{})
-
-        if metadata and config and reviewer_ids:
-            self.encode(metadata, config, reviewer_ids, cost_func)
-
-    def _get_weight_dict (self, names, weights):
-        return dict(zip(names, [ float(w) for w in weights]))
-
-    def _error_check_scores (self, entry, prs_note_id, valid_score_names):
-        for k in entry['scores']:
-            assert k in valid_score_names, \
-            "The entry in the note id={} has a score name ({}) that isn't in the config".format(prs_note_id, k)
-
-    def encode(self, metadata, config, reviewer_ids, cost_func):
+    def _encode_constraints(self, constraints):
         '''
-        Encodes the cost and constraint matrices to be used by the solver.
-
-        metadata    = a list of metadata Notes
-        weights     = a dict of weights keyed on score type
-          e.g. { 'tpms': 0.5, 'bid': 1.0, 'recommendation': 2.0 }
-        reviewers   = a list of reviewer IDs (to lookup in metadata entries)
-
+        return a matrix containing constraint values. label should have no bearing on the outcome.
         '''
-        self.metadata = metadata
-        self.config = config
-        self.reviewer_ids = reviewer_ids
-        self.cost_func = cost_func
+        constraint_matrix = np.full(self.matrix_shape, 0, dtype=int)
+        for forum, user, constraint in constraints:
+            if not isinstance(constraint, float) and not isinstance(constraint, int):
+                try:
+                    constraint = int(constraint)
+                except ValueError:
+                    raise EncoderError(
+                        'could not convert constraint {} of type {} to int ({}, {})'.format(
+                            constraint, type(constraint), forum, user))
 
-        self.cost_matrix = np.zeros((len(self.reviewer_ids), len(self.metadata)))
-        self.constraint_matrix = np.zeros(np.shape(self.cost_matrix))
+            if not constraint in [-1, 0, 1]:
+                raise ValueError(
+                    'constraint {} ({}, {}) must be an int of value -1, 0, or 1'.format(
+                        constraint, forum, user, type(constraint)))
 
-        self.entries_by_forum = {m.forum: {entry[PaperReviewerScore.USERID]: entry
-                                           for entry in m.content[PaperReviewerScore.ENTRIES]}
-                                 for m in self.metadata}
+            # sometimes papers or reviewers get deleted after constraint_edges are created,
+            # so we need to check that the head/tail are still valid
+            if forum in self.papers and user in self.reviewers:
+                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+                constraint_matrix[coordinates] = constraint
 
-        self.index_by_forum = {m.forum: index
-                               for index, m in enumerate(self.metadata)}
+        return constraint_matrix
 
-        self.index_by_reviewer = {r: index
-                                  for index, r in enumerate(self.reviewer_ids)}
-
-        self.forum_by_index = {index: forum
-                               for forum, index in self.index_by_forum.items()}
-
-        self.reviewer_by_index = {index: id
-                                  for id, index in self.index_by_reviewer.items()}
-
-        self.constraints = config.get(Configuration.CONSTRAINTS,{})
-
-        for forum, entry_by_id in self.entries_by_forum.items():
-            paper_index = self.index_by_forum[forum]
-
-            for id, reviewer_index in self.index_by_reviewer.items():
-                # first check the metadata entry for scores and conflicts
-                coordinates = reviewer_index, paper_index
-                entry = entry_by_id.get(id)
-                if entry:
-                    # Check that the scores in the entry have same names as those in the config note
-                    self._error_check_scores(entry, self.metadata[paper_index], self.score_names)
-                    self.cost_matrix[coordinates] = self.cost_func(entry[PaperReviewerScore.SCORES], self.weights)
-                    if entry.get(PaperReviewerScore.CONFLICTS):
-                        self.constraint_matrix[coordinates] = -1
-                    else:
-                        self.constraint_matrix[coordinates] = 0
-
-                # overwrite constraints with user-added constraints found in config
-                user_constraint = self.constraints.get(forum, {}).get(id)
-                if user_constraint:
-                    if Configuration.VETO in user_constraint:
-                        self.constraint_matrix[coordinates] = -1
-                    if Configuration.LOCK in user_constraint:
-                        self.constraint_matrix[coordinates] = 1
-
-
-    def decode(self, solution):
+    def decode_assignments(self, flow_matrix):
         '''
-        Decodes a solution into assignments
+        Return a dictionary, keyed on forum IDs, with lists containing dicts
+        representing assigned users.
         '''
-        flow_matrix = solution
-
         assignments_by_forum = defaultdict(list)
-        alternates_by_forum = defaultdict(list)
-        for reviewer_index, reviewer_flows in enumerate(flow_matrix):
-            user_id = self.reviewer_by_index[reviewer_index]
 
-            for paper_index, flow in enumerate(reviewer_flows):
-                forum = self.forum_by_index[paper_index]
-
-                assignment = {
-                    Assignment.USERID: user_id,
-                    Assignment.SCORES: {},
-                    Assignment.CONFLICTS: [],
-                    Assignment.FINAL_SCORE: None
-                }
-                entry = self.entries_by_forum[forum].get(user_id)
-
-                if entry:
-                    assignment[Assignment.SCORES] = utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights)
-                    assignment[Assignment.CONFLICTS] = entry.get(PaperReviewerScore.CONFLICTS)
-                    assignment[Assignment.FINAL_SCORE] = utils.safe_sum(
-                        utils.weight_scores(entry.get(PaperReviewerScore.SCORES), self.weights).values())
+        for paper_index, paper_flows in enumerate(flow_matrix):
+            paper_id = self.papers[paper_index]
+            for reviewer_index, flow in enumerate(paper_flows):
+                reviewer = self.reviewers[reviewer_index]
 
                 if flow:
-                    assignments_by_forum[forum].append(assignment)
-                elif not assignment[Assignment.CONFLICTS]:
-                    alternates_by_forum[forum].append(assignment)
-        num_alternates = int(self.config[Configuration.ALTERNATES]) if self.config[Configuration.ALTERNATES] else 10
-        for forum, alternates in alternates_by_forum.items():
-            alternates_by_forum[forum] = sorted(alternates, key=lambda a: a[Assignment.FINAL_SCORE], reverse=True)[0:num_alternates]
+                    coordinates = (paper_index, reviewer_index)
+                    paper_user_entry = {
+                        'aggregate_score': self.aggregate_score_matrix[coordinates],
+                        'user': reviewer
+                    }
+                    assignments_by_forum[paper_id].append(paper_user_entry)
 
-        return dict(assignments_by_forum), dict(alternates_by_forum)
+        return dict(assignments_by_forum)
+
+    def decode_alternates(self, flow_matrix, num_alternates):
+        '''
+        Return a dictionary, keyed on forum IDs, with lists containing dicts
+        representing alternate suggested users.
+
+        '''
+        alternates_by_forum = {}
+
+        for paper_index, paper_flows in enumerate(flow_matrix):
+            paper_id = self.papers[paper_index]
+            unassigned = []
+            for reviewer_index, flow in enumerate(paper_flows):
+                reviewer = self.reviewers[reviewer_index]
+
+                # alternates must not be assigned
+                if not flow:
+                    coordinates = (paper_index, reviewer_index)
+                    paper_user_entry = {
+                        'aggregate_score': self.aggregate_score_matrix[coordinates],
+                        'user': reviewer
+                    }
+                    unassigned.append(paper_user_entry)
+
+            unassigned.sort(key=lambda entry: entry['aggregate_score'], reverse=True)
+
+            alternates_by_forum[paper_id] = unassigned[:num_alternates]
+
+        return alternates_by_forum
