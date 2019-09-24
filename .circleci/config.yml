@@ -11,7 +11,7 @@ jobs:
     steps:
     - checkout
     - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-    - run: git clone -b feature/edges https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
     - run:
         name: install openreview
