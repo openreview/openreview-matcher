@@ -335,8 +335,8 @@ def test_routes_forbidden_config(openreview_context):
     )
     assert forbidden_response.status_code == 403
 
-def test_routes_already_running(openreview_context):
-    '''should return 400 if the match is already running'''
+def test_routes_already_running_or_complete(openreview_context):
+    '''should return 400 if the match is already running or complete'''
 
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
@@ -401,3 +401,22 @@ def test_routes_already_running(openreview_context):
         headers=openreview_client.headers
     )
     assert already_running_response.status_code == 400
+
+    config_note = openreview_client.get_note(config_note.id)
+    assert config_note.content['status'] == 'Running'
+
+    config_note.content['status'] = 'Complete'
+    config_note = openreview_client.post_note(config_note)
+    assert config_note
+    print('config note set to: ', config_note.content['status'])
+
+    already_complete_response = test_client.post(
+        '/match',
+        data=json.dumps({'configNoteId': config_note.id}),
+        content_type='application/json',
+        headers=openreview_client.headers
+    )
+    assert already_complete_response.status_code == 400
+    config_note = openreview_client.get_note(config_note.id)
+    assert config_note.content['status'] == 'Complete'
+
