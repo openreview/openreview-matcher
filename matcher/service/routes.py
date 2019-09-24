@@ -59,6 +59,10 @@ def match():
 
         if interface.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
+        if interface.config_note.content['status'] == 'Complete':
+            raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
+
+        interface.set_status('Running')
 
         for invitation_id in interface.config_note.content['scores_specification']:
             try:
@@ -104,8 +108,8 @@ def match():
     except BadTokenException as error_handle:
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
-        interface.set_status('Error', str(error_handle))
 
+        interface.set_status('Error', 'Bad token')
         return flask.jsonify(result), 400
 
     # For now, it seems like we need this broad Exception. How can we get rid of it?
