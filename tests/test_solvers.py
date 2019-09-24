@@ -43,8 +43,9 @@ def test_solvers_minmax_random():
     )
     res_B = solver_B.solve()
     assert res_B.shape == (3,4)
-    print(res_A)
-    print(res_B)
+
+    # ensure that the cost matrices are random
+    # (i.e. overwhelmingly likely to be different)
     assert not np.array_equal(solver_A.cost_matrix, solver_B.cost_matrix)
 
 def test_solver_finds_lowest_cost_soln():
