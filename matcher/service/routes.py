@@ -36,7 +36,6 @@ def match():
 
     token = flask.request.headers.get('Authorization')
     if not token:
-        # TODO: login to the openreview client with this token
         flask.current_app.logger.error('No Authorization token in headers')
         result['error'] = 'No Authorization token in headers'
         return flask.jsonify(result), 400
@@ -103,13 +102,6 @@ def match():
     except MatcherStatusException as error_handle:
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
-        return flask.jsonify(result), 400
-
-    except BadTokenException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
-        result['error'] = str(error_handle)
-
-        interface.set_status('Error', 'Bad token')
         return flask.jsonify(result), 400
 
     # For now, it seems like we need this broad Exception. How can we get rid of it?
