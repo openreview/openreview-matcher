@@ -2,9 +2,6 @@ import re
 import openreview
 import logging
 
-class InterfaceException(Exception):
-    pass
-
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
     Helper function for constructing an openreview.Edge object.
