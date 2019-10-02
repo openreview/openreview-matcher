@@ -66,6 +66,7 @@ def get_all_edges(client, edge_invitation_id, logger=None):
     '''Helper function for retrieving and parsing all edges in bulk'''
 
     all_edges = []
+    logger.debug('GET invitation id={}'.format(edge_invitation_id))
     edge_invitation = client.get_invitation(edge_invitation_id)
 
     edges_grouped_by_paper = openreview.tools.iterget(
@@ -75,6 +76,7 @@ def get_all_edges(client, edge_invitation_id, logger=None):
         select='tail,label,weight'
     )
 
+    logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
     for group in edges_grouped_by_paper:
         forum_id = group['id']['head']
         for group_value in group['values']:
@@ -97,6 +99,7 @@ class ConfigNoteInterface:
 
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
+                self.logger.debug('GET invitation id={}'.format(invitation_id))
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
                 self.set_status('Error')
@@ -106,6 +109,7 @@ class ConfigNoteInterface:
     @property
     def match_group(self):
         if not 'match_group' in self._cache:
+            self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
             self._cache['match_group'] = self.client.get_group(
                 self.config_note.content['match_group'])
 
@@ -118,8 +122,8 @@ class ConfigNoteInterface:
     @property
     def config_note(self):
         if not 'config_note' in self._cache:
+            self.logger.debug('GET note id={}'.format(self.config_note_id))
             self._cache['config_note'] = self.client.get_note(self.config_note_id)
-
         return self._cache['config_note']
 
     @property
@@ -211,6 +215,7 @@ class ConfigNoteInterface:
     @property
     def assignment_invitation(self):
         if 'assignment_invitation' not in self._cache:
+            self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
             self._cache['assignment_invitation'] = self.client.get_invitation(
                 self.config_note.content['assignment_invitation'])
 
@@ -219,6 +224,7 @@ class ConfigNoteInterface:
     @property
     def aggregate_score_invitation(self):
         if 'aggregate_score_invitation' not in self._cache:
+            self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
             self._cache['aggregate_score_invitation'] = self.client.get_invitation(
                 self.config_note.content['aggregate_score_invitation'])
 
