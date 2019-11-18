@@ -55,6 +55,7 @@ Start the server with `development.cfg`:
 FLASK_ENV=development python -m matcher.service
 ```
 
+Note that Flask will set `FLASK_ENV` to "production" by default, so if a file `production.cfg` exists, and the `FLASK_ENV` variable is unset, then the app will overwrite default values with those in `production.cfg`.
 
 ## Unit & Integration Tests (with pytest)
 
