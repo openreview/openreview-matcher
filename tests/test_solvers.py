@@ -79,7 +79,8 @@ def test_solver_finds_lowest_cost_soln():
 
 def test_solver_impossible_constraints():
     '''
-
+    Test to ensure that the MinMaxSolver's 'solved' attribute is correctly set
+    when no solution is possible due to constraints.
     '''
 
     # 20 papers, 5 reviewers
