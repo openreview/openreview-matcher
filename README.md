@@ -3,6 +3,10 @@
 # OpenReview Matcher
 A tool for computing optimal paper-reviewer matches for peer review, subject to constraints and affinity scores. Comes with a simple web server designed for integration with the OpenReview server application.
 
+Brief explanatation how the matching system works:
+
+https://docs.google.com/presentation/d/1AljO7he87Hn9wnffDYvuk-BT-WPJvv-7-3Ems8O-VG4/edit?usp=sharing
+
 ## Installation
 Clone the [GitHub repository](https://github.com/openreview/openreview-matcher.git) and install with `pip`:
 
