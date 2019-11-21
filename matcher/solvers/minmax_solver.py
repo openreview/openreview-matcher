@@ -72,7 +72,7 @@ class MinMaxSolver:
 
         maximum_result = maximum_solver.solve()
 
-        self.solved = True if minimum_solver.solved and maximum_solver.solved else False
+        self.solved = minimum_solver.solved and maximum_solver.solved
 
         self.optimal_cost = minimum_solver.min_cost_flow.OptimalCost() + \
             maximum_solver.min_cost_flow.OptimalCost()
