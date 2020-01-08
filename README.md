@@ -1,13 +1,17 @@
-[![CircleCI](https://circleci.com/gh/iesl/openreview-matcher.svg?style=svg&circle-token=d20a11c2cb9e46d2a244638d1646ebdf3aa56b39)](https://circleci.com/gh/iesl/openreview-matcher)
+[![CircleCI](https://circleci.com/gh/openreview/openreview-matcher.svg?style=svg&circle-token=d20a11c2cb9e46d2a244638d1646ebdf3aa56b39)](https://circleci.com/gh/openreview/openreview-matcher)
 
 # OpenReview Matcher
 A tool for computing optimal paper-reviewer matches for peer review, subject to constraints and affinity scores. Comes with a simple web server designed for integration with the OpenReview server application.
 
+Brief explanatation how the matching system works:
+
+https://docs.google.com/presentation/d/1AljO7he87Hn9wnffDYvuk-BT-WPJvv-7-3Ems8O-VG4/edit?usp=sharing
+
 ## Installation
-Clone the [GitHub repository](https://github.com/iesl/openreview-matcher.git) and install with `pip`:
+Clone the [GitHub repository](https://github.com/openreview/openreview-matcher.git) and install with `pip`:
 
 ```
-git clone https://github.com/iesl/openreview-matcher.git
+git clone https://github.com/openreview/openreview-matcher.git
 pip install ./openreview-matcher
 ```
 
@@ -55,6 +59,7 @@ Start the server with `development.cfg`:
 FLASK_ENV=development python -m matcher.service
 ```
 
+Note that Flask will set `FLASK_ENV` to "production" by default, so if a file `production.cfg` exists, and the `FLASK_ENV` variable is unset, then the app will overwrite default values with those in `production.cfg`.
 
 ## Unit & Integration Tests (with pytest)
 

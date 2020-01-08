@@ -20,8 +20,13 @@ jobs:
           npm install
           sudo npm install -g grunt-cli
           grunt regen
-          mkdir pdfs
-          NODE_ENV=circleci node scripts/setup.js
+          mkdir files
+    - run:
+        name: run app
+        command: |
+          cd ~/openreview
+          NODE_ENV=circleci node scripts/clean_start_app.js
+        background: true
     - run: sudo apt-get install python3
     - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
     - run: sudo python3 get-pip.py
@@ -48,7 +53,6 @@ jobs:
           mkdir reports
           mkdir reports/pytest
           . venv/bin/activate
-          export OPENREVIEW_HOME=~/openreview
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
     - store_test_results:
         path: reports
