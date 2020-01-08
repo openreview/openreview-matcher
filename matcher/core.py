@@ -2,7 +2,7 @@
 import logging
 import threading
 
-from .solvers import MinMaxSolver
+from .solvers import SolverException, MinMaxSolver
 from .encoder import Encoder
 
 class MatcherError(Exception):
@@ -61,9 +61,9 @@ class Matcher:
         self.assignments = None
         self.alternates = None
 
-    def set_status(self, status, message=''):
+    def set_status(self, status, message=None):
         self.status = status
-        self.on_set_status(status, message)
+        self.on_set_status(status, message=message)
 
     def set_assignments(self, assignments):
         self.assignments = assignments
@@ -90,29 +90,28 @@ class Matcher:
 
         self.logger.debug('Preparing solver')
 
+        solver = self.solver_class(
+            self.datasource.minimums,
+            self.datasource.maximums,
+            self.datasource.demands,
+            encoder,
+            logger=self.logger
+        )
         try:
-            solver = self.solver_class(
-                self.datasource.minimums,
-                self.datasource.maximums,
-                self.datasource.demands,
-                encoder,
-                logger=self.logger
-            )
-
             self.logger.debug('Solving solver')
             solution = solver.solve()
+        except SolverException as error_handle:
+            self.set_status('No Solution', message=str(error_handle))
 
-            if solver.solved:
-                self.solution = solution
-                self.set_assignments(encoder.decode_assignments(solution))
-                self.set_alternates(
-                    encoder.decode_alternates(solution, self.datasource.num_alternates))
-                self.set_status('Complete')
+        if solver.solved:
+            self.solution = solution
+            self.set_assignments(encoder.decode_assignments(solution))
+            self.set_alternates(
+                encoder.decode_alternates(solution, self.datasource.num_alternates))
+            self.set_status('Complete')
 
-            else:
-                self.set_status(
-                    'No solution',
-                    'Solver could not find a solution. Adjust your parameters')
-        except Exception as e:
-            self.set_status('Error', str(e))
+        else:
+            self.set_status(
+                'No Solution',
+                message='Solver could not find a solution. Adjust your parameters')
 
