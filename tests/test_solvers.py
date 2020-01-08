@@ -77,6 +77,33 @@ def test_solver_finds_lowest_cost_soln():
     expected_cost = 0
     check_solution(solver, expected_cost)
 
+def test_solver_impossible_constraints():
+    '''
+    Test to ensure that the MinMaxSolver's 'solved' attribute is correctly set
+    when no solution is possible due to constraints.
+    '''
+
+    # 20 papers, 5 reviewers
+    num_papers = 20
+    num_reviewers = 5
+    cost_matrix = np.zeros((num_papers, num_reviewers))
+    constraint_matrix = -1 * np.ones((num_papers, num_reviewers)) # all pairs are constrained! should be impossible
+
+    minimums = [5] * 5
+    maximums = [20] * 5
+    demands = [3] * 20
+
+    solver = MinMaxSolver(
+        minimums,
+        maximums,
+        demands,
+        encoder(cost_matrix, constraint_matrix)
+    )
+
+    solution = solver.solve()
+
+    assert not solver.solved
+
 def test_solver_respects_constraints():
     '''
     Tests 5 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.

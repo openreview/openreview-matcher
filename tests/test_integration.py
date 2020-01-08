@@ -100,7 +100,7 @@ def test_integration_no_scores(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'ICLR.cc/2020/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -155,6 +155,9 @@ def test_integration_no_scores(openreview_context):
     assert response.status_code == 200
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
+
+    config_note = openreview_client.get_note(config_note.id)
+    print (config_note.content)
     assert matcher_status == 'Complete'
 
     openreview_client.get_edges()

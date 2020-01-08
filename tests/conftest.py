@@ -47,44 +47,12 @@ def wait_for_status(client, config_note_id):
 
     raise TimeoutError('matcher did not finish')
 
-def initialize_superuser(config):
+def initialize_superuser():
     '''register and activate the superuser account'''
 
-    # need to create a guest client before we can login with the supser user
-    guest_client = openreview.Client(
-        username='',
-        password='',
-        baseurl=config['OPENREVIEW_BASEURL']
-
-    )
-
-    register_result = guest_client.register_user(
-        email=config['OPENREVIEW_USERNAME'],
-        first=config['SUPERUSER_FIRSTNAME'],
-        last=config['SUPERUSER_LASTNAME'],
-        password=config['OPENREVIEW_PASSWORD']
-    )
-
-    activation_result = guest_client.activate_user(
-        config['OPENREVIEW_USERNAME'],
-        {
-            'names': [{
-                'first': config['SUPERUSER_FIRSTNAME'],
-                'last': config['SUPERUSER_LASTNAME'],
-                'username': config['SUPERUSER_TILDE_ID']
-            }],
-            'emails': [config['OPENREVIEW_USERNAME']],
-            'preferredEmail': config['SUPERUSER_EMAIL']
-        }
-    )
-
-    superuser_client = openreview.Client(
-        username=config['OPENREVIEW_USERNAME'],
-        password=config['OPENREVIEW_PASSWORD'],
-        baseurl=config['OPENREVIEW_BASEURL']
-    )
-
-    return superuser_client
+    requests.put('http://localhost:3000/reset/openreview.net', json = {'password': '1234'})
+    client = openreview.Client(baseurl = 'http://localhost:3000', username='openreview.net', password='1234')
+    return client
 
 def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
@@ -163,33 +131,14 @@ def openreview_context(scope='function'):
             'SUPERUSER_EMAIL': 'info@openreview.net',
         })
 
-    openreview_home = os.getenv('OPENREVIEW_HOME')
-    os.chdir(openreview_home)
+    superuser_client = initialize_superuser()
 
-    try:
-        # this calls the clean_start_app.js script, and silences its output
-        # (this makes reading test errors easier)
-
-        os.environ['NODE_ENV'] = 'circleci'
-        openreview_process = subprocess.Popen(
-            ['node', os.path.join(openreview_home, 'scripts', 'clean_start_app.js')],
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL
-        )
-
-        process_ready = ping_url(app.config['OPENREVIEW_BASEURL'])
-
-        superuser_client = initialize_superuser(app.config)
-
-        with app.app_context():
-            yield {
-                'app': app,
-                'test_client': app.test_client(),
-                'openreview_client': superuser_client
-            }
-
-    finally:
-        openreview_process.kill()
+    with app.app_context():
+        yield {
+            'app': app,
+            'test_client': app.test_client(),
+            'openreview_client': superuser_client
+        }
 
 if __name__ == '__main__':
 
