@@ -69,7 +69,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     }
     submission_invitation = client.post_invitation(submission_invitation)
 
-    reviewers = []
+    reviewers = set()
 
     # TODO: is there a better way to handle affinity scores?
     # Maybe conference.setup_matching() should allow a score matrix as input
@@ -93,13 +93,13 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
             for reviewer_number in range(num_reviewers):
                 reviewer = '~Test_Reviewer{}'.format(reviewer_number)
-                reviewers.append(reviewer)
+                reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
     conference.set_authors()
-    conference.set_reviewers(emails=reviewers)
+    conference.set_reviewers(emails=list(reviewers))
 
     conference.setup_matching(
         affinity_score_file=AFFINITY_SCORE_FILE
