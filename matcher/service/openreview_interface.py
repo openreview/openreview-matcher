@@ -69,8 +69,7 @@ def get_all_edges(client, edge_invitation_id, logger=None):
     logger.debug('GET invitation id={}'.format(edge_invitation_id))
     edge_invitation = client.get_invitation(edge_invitation_id)
 
-    edges_grouped_by_paper = openreview.tools.iterget(
-        client.get_grouped_edges,
+    edges_grouped_by_paper = client.get_grouped_edges(
         invitation=edge_invitation_id,
         groupby='head',
         select='tail,label,weight'

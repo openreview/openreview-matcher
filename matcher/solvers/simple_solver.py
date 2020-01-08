@@ -53,12 +53,9 @@ from collections import namedtuple
 import logging
 import numpy as np
 from ortools.graph import pywrapgraph
+from .core import SolverException
 
 Node = namedtuple('Node', ['number', 'index', 'supply'])
-
-class SimpleSolverError(Exception):
-    '''Exception wrapper class for errors related to the SimpleSolver'''
-    pass
 
 class SimpleSolver:
     '''Main class that represents the graph'''
@@ -156,28 +153,28 @@ class SimpleSolver:
 
         for matrix in [self.cost_matrix, self.constraint_matrix]:
             if not isinstance(matrix, np.ndarray):
-                raise SimpleSolverError(
+                raise SolverException(
                     'cost and constraint matrices must be of type numpy.ndarray')
 
         if not np.shape(self.cost_matrix) == np.shape(self.constraint_matrix):
-            raise SimpleSolverError(
+            raise SolverException(
                 'cost {} and constraint {} matrices must be the same shape'.format(
                     np.shape(self.cost_matrix), np.shape(self.constraint_matrix)))
 
         if not len(self.num_reviews) == num_reviewers:
-            raise SimpleSolverError(
+            raise SolverException(
                 'num_reviews must be same length ({}) as number of reviewers ({})'.format(
                     len(self.num_reviews), num_reviewers))
 
         if not len(self.demands) == num_papers:
-            raise SimpleSolverError(
+            raise SolverException(
                 'self.demands array must be same length ({}) as number of papers ({})'.format(
                     len(self.demands), num_papers))
 
         supply = sum(self.num_reviews)
         demand = sum(self.demands)
         if strict and supply < demand:
-            raise SimpleSolverError(
+            raise SolverException(
                 'total supply of reviews ({}) must be greater than total demand ({})'.format(
                     supply, demand))
 
@@ -191,7 +188,7 @@ class SimpleSolver:
             == len(self.costs)
 
         if not equal_lengths:
-            raise SimpleSolverError(
+            raise SolverException(
                 '''start_nodes({}), end_nodes({}), capacities({}), and costs({})
                 must all be equal'''.format(
                     len(self.start_nodes),
@@ -200,11 +197,11 @@ class SimpleSolver:
                     len(self.costs)))
 
         if any([not isinstance(i, int) for i in self.capacities]):
-            raise SimpleSolverError(
+            raise SolverException(
                 'capacities list may not contain integers of type numpy.int64')
 
         if any([not isinstance(i, int) for i in self.costs]):
-            raise SimpleSolverError(
+            raise SolverException(
                 'costs list may not contain integers of type numpy.int64')
 
 
@@ -246,7 +243,7 @@ class SimpleSolver:
         new_node = Node(number=self.current_offset, index=index, supply=int(supply))
 
         if new_node.number in self.node_by_number:
-            raise SimpleSolverError(
+            raise SolverException(
                 'Node {} already exists in assignment graph.'.format(new_node.number))
         else:
             self.node_by_number[new_node.number] = new_node
