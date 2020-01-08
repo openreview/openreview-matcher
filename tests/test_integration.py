@@ -7,6 +7,7 @@ import time
 import requests
 import pytest
 import openreview
+import logging
 
 from matcher.service.openreview_interface import get_all_edges
 from matcher.solvers import SolverException
@@ -88,7 +89,8 @@ def test_integration_basic(openreview_context):
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
+        conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        logger=logging.getLogger(__name__)
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
@@ -168,7 +170,8 @@ def test_integration_supply_mismatch_error(openreview_context):
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
+        conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        logger=logging.getLogger(__name__)
     )
 
     assert len(paper_assignment_edges) == 0
@@ -245,7 +248,8 @@ def test_integration_no_scores(openreview_context):
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
+        conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        logger=logging.getLogger(__name__)
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper

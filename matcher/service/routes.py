@@ -68,8 +68,7 @@ def match():
         )
         thread.start()
 
-        flask.current_app.logger.debug('Running thread: {}'.format(config_note_id))
-        interface.set_status('Running')
+        flask.current_app.logger.debug('Match for configuration has started: {}'.format(config_note_id))
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))
