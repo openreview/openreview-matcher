@@ -61,8 +61,6 @@ class Matcher:
         self.assignments = None
         self.alternates = None
 
-        self.solver_class = solver_class
-
     def set_solver_class(self):
         if self.datasource.config_note.content['solver'] == 'FairFlow':
             return FairFlow
