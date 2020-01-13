@@ -51,8 +51,6 @@ class Matcher:
             self.datasource = datasource
 
         self.logger = logger
-        self.solver_class = solver_class
-
         self.on_set_status = on_set_status if on_set_status else logger.info
         self.on_set_assignments = on_set_assignments if on_set_assignments else logger.info
         self.on_set_alternates = on_set_alternates if on_set_alternates else logger.info
@@ -60,6 +58,12 @@ class Matcher:
         self.solution = None
         self.assignments = None
         self.alternates = None
+
+        self.set_solver_class()
+
+    def set_solver_class():
+        if 'solver' in interface.config_note.content and interface.config_note.content['solver'] == 'FairFlow':
+            self.solver_class = FairFlow
 
     def set_status(self, status, message=None):
         self.status = status
