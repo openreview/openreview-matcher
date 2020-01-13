@@ -22,7 +22,7 @@ def test_integration_basic(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -60,7 +60,8 @@ def test_integration_basic(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -103,7 +104,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10 #impossible!
@@ -186,7 +187,7 @@ def test_integration_no_scores(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2020/Conference'
+    conference_id = 'AKBC.ws/2020/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -218,7 +219,8 @@ def test_integration_no_scores(openreview_context):
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -261,7 +263,7 @@ def test_routes_invalid_invitation(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -303,7 +305,8 @@ def test_routes_invalid_invitation(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -334,7 +337,7 @@ def test_routes_missing_header(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -372,7 +375,8 @@ def test_routes_missing_header(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -431,7 +435,7 @@ def test_routes_forbidden_config(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -469,7 +473,8 @@ def test_routes_forbidden_config(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -504,7 +509,7 @@ def test_routes_already_running_or_complete(openreview_context):
     test_client = openreview_context['test_client']
     app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2019/Conference'
+    conference_id = 'AKBC.ws/2019/Conference'
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -542,7 +547,8 @@ def test_routes_already_running_or_complete(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Running'
+        'status': 'Running',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{

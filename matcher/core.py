@@ -47,8 +47,10 @@ class Matcher:
 
         if isinstance(datasource, dict):
             self.datasource = KeywordDatasource(**datasource)
+            self.solver_class = solver_class
         else:
             self.datasource = datasource
+            self.solver_class = self.set_solver_class()
 
         self.logger = logger
         self.on_set_status = on_set_status if on_set_status else logger.info
@@ -59,11 +61,14 @@ class Matcher:
         self.assignments = None
         self.alternates = None
 
-        self.set_solver_class()
+        self.solver_class = solver_class
 
-    def set_solver_class():
-        if 'solver' in interface.config_note.content and interface.config_note.content['solver'] == 'FairFlow':
-            self.solver_class = FairFlow
+    def set_solver_class(self):
+        if self.datasource.config_note.content['solver'] == 'FairFlow':
+            return FairFlow
+        else:
+            return MinMaxSolver
+        self.logger.debug('Solver class set to {}.'.format(self.datasource.config_note.content['solver']))
 
     def set_status(self, status, message=None):
         self.status = status
