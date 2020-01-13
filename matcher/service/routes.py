@@ -57,18 +57,21 @@ def match():
         if interface.config_note.content['status'] == 'Complete':
             raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
 
+        solver_class = 'FairFlow' if 'solver' in interface.config_note.content and interface.config_note.content['solver'] == 'FairFlow' else 'MinMaxSolver'
+
         thread = threading.Thread(
             target=Matcher(
                 datasource=interface,
                 on_set_status=interface.set_status,
                 on_set_assignments=interface.set_assignments,
                 on_set_alternates=interface.set_alternates,
-                logger=flask.current_app.logger
+                logger=flask.current_app.logger,
+                solver_class=solver_class
             ).run
         )
         thread.start()
 
-        flask.current_app.logger.debug('Match for configuration has started: {}'.format(config_note_id))
+        flask.current_app.logger.debug('Match for configuration has started: {} with solver class {}'.format(config_note_id, solver_class))
 
     except openreview.OpenReviewException as error_handle:
         flask.current_app.logger.error(str(error_handle))

@@ -2,7 +2,7 @@
 import logging
 import threading
 
-from .solvers import SolverException, MinMaxSolver
+from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
 
 class MatcherError(Exception):

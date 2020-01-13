@@ -83,7 +83,7 @@ def test_integration_basic(openreview_context):
     assert response.status_code == 200
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status == 'Complete'
+    assert matcher_status.content['status'] == 'Complete'
 
     openreview_client.get_edges()
 
@@ -141,7 +141,8 @@ def test_integration_supply_mismatch_error(openreview_context):
                 'default': 0.0
             }
         },
-        'status': 'Initialized'
+        'status': 'Initialized',
+        'solver': 'FairFlow'
     }
 
     config_note = openreview.Note(**{
@@ -164,7 +165,8 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert response.status_code == 200
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status == 'No Solution'
+    assert matcher_status.content['status'] == 'No Solution'
+    assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
 
     openreview_client.get_edges()
 
@@ -241,8 +243,7 @@ def test_integration_no_scores(openreview_context):
     matcher_status = wait_for_status(openreview_client, config_note.id)
 
     config_note = openreview_client.get_note(config_note.id)
-    print (config_note.content)
-    assert matcher_status == 'Complete'
+    assert matcher_status.content['status'] == 'Complete'
 
     openreview_client.get_edges()
 

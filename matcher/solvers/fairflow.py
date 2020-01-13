@@ -1,10 +1,9 @@
 from collections import defaultdict
-
 from ortools.graph import pywrapgraph
-
 import numpy as np
 import uuid
 import time
+from .core import SolverException
 
 
 class FairFlow(object):
@@ -30,25 +29,21 @@ class FairFlow(object):
     the matching.
     """
     def __init__(self, minimums, maximums, demands, encoder, sol=None, logger=None):
-        """Initialize a makespan flow matcher
+        """
+        Initialize a makespan flow matcher
 
-        Args:
-            maximums - a list of integers specifying the maximum number of papers
-                  for each reviewer.
-            minimums - list of integers specifying min number of papers per rev.
-            demands - a list of integers specifying the number of reviews per
-                 paper.
-            weights - the affinity matrix (np.array) of papers to reviewers.
-                   Rows correspond to reviewers and columns correspond to
-                   papers.
-            solution - a matrix of assignments (same shape as weights).
+        :param minimums: list of integers specifying min number of papers per rev.
+        :param maximums: a list of integers specifying the maximum number of papers for each reviewer.
+        :param demands: a list of integers specifying the number of reviews per paper.
+        :param weights: the affinity matrix (np.array) of papers to reviewers. Rows correspond to reviewers and columns correspond to papers.
+        :param solution: a matrix of assignments (same shape as weights)
 
-        Returns:
-            initialized makespan matcher.
+        :return: initialized makespan matcher.
         """
 
         # TODO: incorporate constraints
         self.constraint_matrix = encoder.constraint_matrix
+        self.cost_matrix = encoder.cost_matrix
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
 
         self.n_rev = np.size(affinity_matrix, axis=0)
@@ -78,6 +73,8 @@ class FairFlow(object):
         self.costs = []
         self.source = self.n_rev + self.n_pap
         self.sink = self.n_rev + self.n_pap + 1
+        self.logger = logger
+        self.solved = False
 
     def objective_val(self):
         """Get the objective value of the RAP."""
@@ -335,33 +332,31 @@ class FairFlow(object):
                             self.solution[rev, pap] = 0.0
             self.valid = False
         else:
-            raise Exception('There was an issue with the min cost flow input.')
+            raise SolverException('There was an issue with the min cost flow input.')
 
     def solve_validifier(self):
         """Reassign reviewers to make the matching valid."""
         if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
             for arc in range(self.min_cost_flow.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
-                if self.min_cost_flow.Tail(arc) != self.source and \
-                                self.min_cost_flow.Head(arc) != self.sink:
+                if self.min_cost_flow.Tail(arc) != self.source and self.min_cost_flow.Head(arc) != self.sink:
                     if self.min_cost_flow.Flow(arc) > 0:
                         rev = self.min_cost_flow.Tail(arc)
                         pap = self.min_cost_flow.Head(arc) - self.n_rev
                         assert(self.solution[rev, pap] == 0.0)
-                        assert(np.sum(self.solution[:, pap], axis=0) ==
-                               self.demands[pap] - 1)
+                        assert(np.sum(self.solution[:, pap], axis=0) == self.demands[pap] - 1)
                         self.solution[rev, pap] = 1.0
             assert np.all(np.sum(self.solution, axis=1) <= self.maximums)
             assert (np.sum(self.solution) == np.sum(self.demands))
             self.valid = True
         else:
-            raise Exception('There was an issue with the min cost flow input.')
+            raise SolverException('There was an issue with the min cost flow input.')
 
     def sol_as_mat(self):
         if self.valid:
             return self.solution
         else:
-            raise Exception(
+            raise SolverException(
                 'You must have solved the model optimally or suboptimally '
                 'before calling this function.')
 
@@ -449,8 +444,7 @@ class FairFlow(object):
                     caps.append(0)
                 else:
                     caps.append(1)
-                # Costs must be integers. Also, we have affinities so make
-                # the "costs" negative affinities.
+                # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
                 costs.append(int(-1.0 - self.big_c * ws[i, j]))
 
         # edges from pap to sink.
@@ -485,10 +479,10 @@ class FairFlow(object):
                         self.solution[rev, pap] = 1.0
             self.solved = True
         else:
-            raise Exception('There was an issue with the min cost flow input.')
+            raise SolverException('Solver could not find a solution. Adjust your parameters')
 
     def find_ms(self):
-        """Find an the highest possible makespan.
+        """Find the highest possible makespan.
 
         Perform a binary search on the makespan value. Solve the RAP with each
         makespan value and return the solution corresponding to the makespan
@@ -558,6 +552,7 @@ class FairFlow(object):
         Returns:
             The solution as a matrix.
         """
+
         ms = self.find_ms()
         self.makespan = ms
         s1, s3 = self.try_improve_ms()
@@ -568,4 +563,5 @@ class FairFlow(object):
             s1, s3 = self.try_improve_ms()
             can_improve = s3 > 0
 
+        # self.solved = True
         return self.sol_as_mat().transpose()
