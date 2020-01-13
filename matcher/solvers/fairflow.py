@@ -563,5 +563,4 @@ class FairFlow(object):
             s1, s3 = self.try_improve_ms()
             can_improve = s3 > 0
 
-        # self.solved = True
         return self.sol_as_mat().transpose()
