@@ -25,8 +25,7 @@ class MinMaxSolver:
             maximums,
             demands,
             encoder,
-            logger=logging.getLogger(__name__),
-            strict=True
+            logger=logging.getLogger(__name__)
         ):
 
         self.minimums = minimums
@@ -45,8 +44,6 @@ class MinMaxSolver:
         self.cost = None
 
         self.logger = logger
-
-        self.strict = strict
 
     def solve(self):
         '''Computes combined solution of two SimpleSolvers'''
