@@ -33,7 +33,8 @@ def test_matcher_basic():
             'maximums': maximums,
             'demands': demands,
             'num_alternates': 1
-        }
+        },
+        solver_class = 'MinMax'
     )
 
     test_matcher.run()

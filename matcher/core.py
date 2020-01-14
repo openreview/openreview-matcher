@@ -5,6 +5,11 @@ import threading
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
 
+SOLVER_MAP = {
+    'MinMax' : MinMaxSolver,
+    'FairFlow' : FairFlow
+}
+
 class MatcherError(Exception):
     '''Exception wrapper class for errors related to Matcher.'''
     pass
@@ -38,19 +43,17 @@ class Matcher:
     def __init__(
                 self,
                 datasource,
+                solver_class,
                 on_set_status=None,
                 on_set_assignments=None,
                 on_set_alternates=None,
-                solver_class=MinMaxSolver,
                 logger=logging.getLogger(__name__)
             ):
 
         if isinstance(datasource, dict):
             self.datasource = KeywordDatasource(**datasource)
-            self.solver_class = solver_class
         else:
             self.datasource = datasource
-            self.solver_class = self.set_solver_class()
 
         self.logger = logger
         self.on_set_status = on_set_status if on_set_status else logger.info
@@ -61,12 +64,10 @@ class Matcher:
         self.assignments = None
         self.alternates = None
 
-    def set_solver_class(self):
-        if self.datasource.config_note.content['solver'] == 'FairFlow':
-            return FairFlow
-        else:
-            return MinMaxSolver
-        self.logger.debug('Solver class set to {}.'.format(self.datasource.config_note.content['solver']))
+        self.solver_class = self.__set_solver_class(solver_class)
+
+    def __set_solver_class(self, solver_class):
+        return SOLVER_MAP.get(solver_class, MinMaxSolver)
 
     def set_status(self, status, message=None):
         self.status = status
@@ -97,6 +98,7 @@ class Matcher:
 
         self.logger.debug('Preparing solver')
 
+        # solver
         solver = self.solver_class(
             self.datasource.minimums,
             self.datasource.maximums,

@@ -57,9 +57,14 @@ def match():
         if interface.config_note.content['status'] == 'Complete':
             raise MatcherStatusException('Match configured by {} is already complete'.format(config_note_id))
 
+        solver_class = interface.config_note.content.get('solver', 'MinMax')
+
+        flask.current_app.logger.debug('Solver class {} selected for configuration id {}'.format(solver_class, config_note_id))
+
         thread = threading.Thread(
             target=Matcher(
                 datasource=interface,
+                solver_class=solver_class,
                 on_set_status=interface.set_status,
                 on_set_assignments=interface.set_assignments,
                 on_set_alternates=interface.set_alternates,
