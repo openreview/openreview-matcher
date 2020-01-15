@@ -13,12 +13,12 @@ def build_edge(invitation, forum_id, reviewer, score, label, number):
         weight = score,
         label = label,
         invitation = invitation.id,
-        readers = _get_values(invitation, number, 'readers'),
+        readers = _get_values(invitation, number, 'readers', forum_id, reviewer),
         nonreaders = _get_values(invitation, number, 'nonreaders'),
         writers = _get_values(invitation, number, 'writers'),
         signatures = _get_values(invitation, number, 'signatures'))
 
-def _get_values(invitation, number, property):
+def _get_values(invitation, number, property, head=None, tail=None):
     '''Return values compatible with the field `property` in invitation.reply.content'''
     values = []
 
@@ -33,6 +33,16 @@ def _get_values(invitation, number, property):
             group_id = group_id.replace('^', '').replace('$', '')
             if 'Paper.*' in group_id:
                 group_id = group_id.replace('Paper.*', 'Paper{}'.format(number))
+                values.append(group_id)
+    elif 'values-copied' in property_params:
+        values_copied = property_params['values-copied']
+
+        for value in values_copied:
+            if value == '{tail}' :
+                values.append(tail)
+            else:
+                values.append(value)
+
 
     return values
 
