@@ -67,7 +67,7 @@ class SimpleSolver:
             cost_matrix,
             constraint_matrix,
             logger=logging.getLogger(__name__),
-            strict=True,
+            strict=True
         ):
 
         self.logger = logger
@@ -177,6 +177,8 @@ class SimpleSolver:
             raise SolverException(
                 'total supply of reviews ({}) must be greater than total demand ({})'.format(
                     supply, demand))
+
+        self.logger.debug('Finished checking graph inputs')
 
     def _check_graph_integrity(self):
         '''Ensure that graph arrays are well-formed for use by OR-Tools.'''
