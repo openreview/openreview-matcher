@@ -43,7 +43,7 @@ def wait_for_status(client, config_note_id):
         if config_note.content['status'] in ['Initialized', 'Running']:
             time.sleep(interval_duration)
         else:
-            return config_note.content['status']
+            return config_note
 
     raise TimeoutError('matcher did not finish')
 
