@@ -40,6 +40,8 @@ def _get_values(invitation, number, property, head=None, tail=None):
         for value in values_copied:
             if value == '{tail}' :
                 values.append(tail)
+            elif value == '{head}' :
+                values.append(head)
             else:
                 values.append(value)
 
