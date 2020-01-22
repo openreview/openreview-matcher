@@ -545,9 +545,7 @@ class FairFlow(object):
         solution.
 
         Args:
-            mn - the minimum feasible makespan (optional).
-            mx - the maximum possible makespan( optional).
-            itr - the number of iterations of binary search for the makespan.
+            None
 
         Returns:
             The solution as a matrix.
