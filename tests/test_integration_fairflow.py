@@ -43,7 +43,6 @@ def test_integration_basic(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -125,7 +124,6 @@ def test_integration_supply_mismatch_error(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -208,7 +206,6 @@ def test_integration_no_scores(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -284,7 +281,6 @@ def test_routes_invalid_invitation(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -358,7 +354,6 @@ def test_routes_missing_header(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -456,7 +451,6 @@ def test_routes_forbidden_config(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
@@ -530,7 +524,6 @@ def test_routes_already_running_or_complete(openreview_context):
     config = {
         'title': 'integration-test',
         'max_users': str(reviews_per_paper),
-        'min_users': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
         'alternates': str(alternates),
