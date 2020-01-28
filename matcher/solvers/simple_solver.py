@@ -137,6 +137,8 @@ class SimpleSolver:
                     arc_cost = self._least_cost() - 1
                     self.add_edge(r_node, p_node, 1, int(arc_cost))
 
+                # arc_constraint of anything other that 0 or 1 essentially indicates a conflict, so do not create an arc
+
         # connect paper nodes to the sink node.
         for p_node in self.paper_nodes:
             capacity = self.demands[p_node.index]
