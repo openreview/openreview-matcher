@@ -314,21 +314,15 @@ class FairFlow(object):
                             assert(tail <= self.num_reviewers)
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
-                            if self.constraint_matrix[pap, rev] == 0.0:
-                                self.solution[rev, pap] = 1.0
-                            else:
-                                print ('brick wall1')
+                            self.solution[rev, pap] = 1.0
                         elif tail >= self.num_reviewers + self.num_papers + 2:
                             continue
                         elif head >= self.num_reviewers:
                             pap = head - self.num_reviewers
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
-                            if self.constraint_matrix[pap, rev] == 0.0:
-                                self.solution[rev, pap] = 1.0
-                                num_un += 1
-                            else:
-                                print ('brick wall2')
+                            self.solution[rev, pap] = 1.0
+                            num_un += 1
                         else:
                             rev = head
                             pap = tail - self.num_reviewers
@@ -349,10 +343,7 @@ class FairFlow(object):
                         pap = self.min_cost_flow.Head(arc) - self.num_reviewers
                         assert(self.solution[rev, pap] == 0.0)
                         assert(np.sum(self.solution[:, pap], axis=0) == self.demands[pap] - 1)
-                        if self.constraint_matrix[pap, rev] != -1:
-                            self.solution[rev, pap] = 1.0
-                        else:
-                            print ('brick wall')
+                        self.solution[rev, pap] = 1.0
             assert np.all(np.sum(self.solution, axis=1) <= self.maximums)
             assert (np.sum(self.solution) == np.sum(self.demands))
             self.valid = True
