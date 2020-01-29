@@ -43,9 +43,6 @@ def test_solvers_minmax_random():
     )
     res_B = solver_B.solve()
     assert res_B.shape == (3,4)
-    print (solver_A.cost_matrix)
-    print (solver_B.cost_matrix)
-    assert 1==0
 
     # ensure that the cost matrices are random
     # (i.e. overwhelmingly likely to be different)
