@@ -106,19 +106,19 @@ class Matcher:
             encoder,
             logger=self.logger
         )
+        solution = None
         try:
             self.logger.debug('Solving solver')
             solution = solver.solve()
         except SolverException as error_handle:
             self.set_status('No Solution', message=str(error_handle))
 
-        if solver.solved:
+        if solver.solved and solution:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
             self.set_alternates(
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
-
         else:
             self.set_status(
                 'No Solution',
