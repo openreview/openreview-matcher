@@ -166,7 +166,7 @@ class FairFlow(object):
         return self.solution
 
     def _construct_ms_improvement_network(self, g1, g2, g3):
-        """Construct the network the reassigns reviewers to improve makespan.
+        """Construct the network that reassigns reviewers to improve makespan.
 
         We allow for each paper in G1 to have 1 reviewer removed. This
         guarantees that papers in G1 can only fall to G2. Then, we may assign
@@ -233,7 +233,7 @@ class FairFlow(object):
             # a paper in g2 if that rev not already been assigned to that paper.
             if rev not in added:
                 for pap2 in g2:
-                    if self.solution[rev, pap2] == 0.0:
+                    if self.solution[rev, pap2] == 0.0 and self.constraint_matrix[pap2, rev] == 0.0:
                         rp_aff = self.affinity_matrix[rev, pap2]
                         self.start_inds.append(rev)
                         self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
@@ -265,7 +265,7 @@ class FairFlow(object):
         # For each reviewer, connect them to a paper in g3 if not assigned.
         for rev in assignment_to_give:
             for pap3 in g3:
-                if self.solution[rev, pap3] == 0.0:
+                if self.solution[rev, pap3] == 0.0 and self.constraint_matrix[pap3, rev] == 0.0:
                     self.start_inds.append(rev)
                     self.end_inds.append(self.num_reviewers + pap3)
                     self.caps.append(1)

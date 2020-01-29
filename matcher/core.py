@@ -113,7 +113,7 @@ class Matcher:
         except SolverException as error_handle:
             self.set_status('No Solution', message=str(error_handle))
 
-        if solver.solved and solution:
+        if solver.solved:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
             self.set_alternates(
