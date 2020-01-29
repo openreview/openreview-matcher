@@ -50,8 +50,11 @@ class FairFlow(object):
         self.minimums = minimums
         self.demands = demands
         # make sure that all weights are positive:
-        self.orig_affinities = affinity_matrix.copy()
         self.affinity_matrix = affinity_matrix.copy()
+        if not self.affinity_matrix.any():
+            self.affinity_matrix = np.random.rand(*affinity_matrix.shape)
+
+        self.orig_affinities = self.affinity_matrix.copy()
 
         self.num_reviewers = np.size(self.affinity_matrix, axis=0)
         self.num_papers = np.size(self.affinity_matrix, axis=1)
