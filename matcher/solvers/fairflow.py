@@ -36,7 +36,7 @@ class FairFlow(object):
         :param minimums: a list of integers specifying the minimum number of papers for each reviewer.
         :param maximums: a list of integers specifying the maximum number of papers for each reviewer.
         :param demands: a list of integers specifying the number of reviews required per paper.
-        :param encoder: an Encoder class object that provides the affinity matrix. Rows and columns in the affinity matrix correspond to reviewers and papers, respectively.
+        :param encoder: an Encoder class object used to get affinity and constraint matrices.
         :param solution: a matrix of assignments (same shape as encoder.affinity_matrix)
 
         :return: initialized makespan matcher.
@@ -303,8 +303,7 @@ class FairFlow(object):
             num_un = 0
             for arc in range(self.min_cost_flow.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
-                if self.min_cost_flow.Tail(arc) != self.source and \
-                                self.min_cost_flow.Head(arc) != self.sink:
+                if self.min_cost_flow.Tail(arc) != self.source and self.min_cost_flow.Head(arc) != self.sink:
                     if self.min_cost_flow.Flow(arc) > 0:
                         # flow goes from tail to head
                         head = self.min_cost_flow.Head(arc)
@@ -315,15 +314,21 @@ class FairFlow(object):
                             assert(tail <= self.num_reviewers)
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
-                            self.solution[rev, pap] = 1.0
+                            if self.constraint_matrix[pap, rev] == 0.0:
+                                self.solution[rev, pap] = 1.0
+                            else:
+                                print ('brick wall1')
                         elif tail >= self.num_reviewers + self.num_papers + 2:
                             continue
                         elif head >= self.num_reviewers:
                             pap = head - self.num_reviewers
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
-                            self.solution[rev, pap] = 1.0
-                            num_un += 1
+                            if self.constraint_matrix[pap, rev] == 0.0:
+                                self.solution[rev, pap] = 1.0
+                                num_un += 1
+                            else:
+                                print ('brick wall2')
                         else:
                             rev = head
                             pap = tail - self.num_reviewers
@@ -344,7 +349,10 @@ class FairFlow(object):
                         pap = self.min_cost_flow.Head(arc) - self.num_reviewers
                         assert(self.solution[rev, pap] == 0.0)
                         assert(np.sum(self.solution[:, pap], axis=0) == self.demands[pap] - 1)
-                        self.solution[rev, pap] = 1.0
+                        if self.constraint_matrix[pap, rev] != -1:
+                            self.solution[rev, pap] = 1.0
+                        else:
+                            print ('brick wall')
             assert np.all(np.sum(self.solution, axis=1) <= self.maximums)
             assert (np.sum(self.solution) == np.sum(self.demands))
             self.valid = True
@@ -420,49 +428,40 @@ class FairFlow(object):
             None -- but sets self.solution to be a binary matrix containing the
             assignment of reviewers to papers.
         """
-        start_inds = []
-        end_inds = []
-        caps = []
-        costs = []
         source = n_rev + n_pap
         sink = n_rev + n_pap + 1
 
-        # edges from source to revs.
-        for i in range(n_rev):
-            start_inds.append(source)
-            end_inds.append(i)
-            caps.append(int(_caps[i]))
-            costs.append(0)
+        mcf = pywrapgraph.SimpleMinCostFlow()
 
-        # edges from rev to pap.
+        # edges from source to reviewers.
+        for i in range(n_rev):
+            mcf.AddArcWithCapacityAndUnitCost(source, i, int(_caps[i]), 0)
+
+        # edges from reviewers to papers.
         for i in range(n_rev):
             for j in range(n_pap):
-                start_inds.append(i)
-                end_inds.append(n_rev + j)
+                arc_cap = 1
                 if self.solution[i, j] == 1:
-                    caps.append(0)
-                else:
-                    caps.append(1)
-                # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
-                costs.append(int(-1.0 - self.big_c * ws[i, j]))
+                    arc_cap = 0
 
-        # edges from pap to sink.
+                edge_constraint = self.constraint_matrix[(j,i)]
+
+                # a constraint of 0 means there's no constraint, so apply the cost as normal, so add an arc normally
+                # a constraint of 1 means that this user was explicitly assigned to this paper. We do not support positive constraints right now, so, do not add an arc
+                # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
+                if edge_constraint == 0:
+                    # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
+                    mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), int(-1.0 - self.big_c * ws[i, j]))
+
+        # edges from papers to sink.
         for j in range(n_pap):
-            start_inds.append(n_rev + j)
-            end_inds.append(sink)
-            caps.append(int(_covs[j]))
-            costs.append(0)
+            mcf.AddArcWithCapacityAndUnitCost(n_rev + j, sink, int(_covs[j]), 0)
 
         supplies = np.zeros(n_rev + n_pap + 2)
         supplies[source] = int(flow)
         supplies[sink] = int(-flow)
 
-        # Add arcs.
-        mcf = pywrapgraph.SimpleMinCostFlow()
-        for i in range(len(start_inds)):
-            mcf.AddArcWithCapacityAndUnitCost(
-                start_inds[i], end_inds[i], caps[i],
-                costs[i])
+        # set Node supply for this MCF.
         for i in range(len(supplies)):
             mcf.SetNodeSupply(i, int(supplies[i]))
 
