@@ -106,6 +106,7 @@ class Matcher:
             encoder,
             logger=self.logger
         )
+        solution = None
         try:
             self.logger.debug('Solving solver')
             solution = solver.solve()
@@ -118,7 +119,6 @@ class Matcher:
             self.set_alternates(
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
-
         else:
             self.set_status(
                 'No Solution',
