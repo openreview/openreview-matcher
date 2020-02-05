@@ -92,7 +92,7 @@ if args.constraints:
             constraint = row[2]
 
             reviewer_set.update([profile_id])
-            paper_set.append([paper_id])
+            paper_set.update([paper_id])
 
             constraints.append((paper_id, profile_id, constraint))
 
