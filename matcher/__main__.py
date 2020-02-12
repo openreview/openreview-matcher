@@ -144,8 +144,8 @@ match_data = {
     'num_alternates': num_alternates
 }
 
-print ('Count of reviewers: ', reviewers)
-print ('Count of papers: ', papers)
+print ('Count of reviewers: ', len(reviewers))
+print ('Count of papers: ', len(papers))
 
 def write_assignments(assignments):
     with open('./assignments.json', 'w') as f:
