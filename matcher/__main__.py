@@ -21,7 +21,6 @@ parser.add_argument(
 
 parser.add_argument(
     '--constraints',
-    nargs='*',
     help='''
         One or more constraint files,
         with each row containing comma-separated paperId, userID, and constraint (in that order).
@@ -30,9 +29,17 @@ parser.add_argument(
         '''
 )
 
+parser.add_argument(
+    '--max_papers',
+    help='''
+        max paper files,
+        with each row containing comma-separated userID, and max_paper (in that order).
+        e.g. "reviewer1,2''')
+    
+
 parser.add_argument('--weights', nargs='+', type=int)
-parser.add_argument('--min_papers', default=0, type=int)
-parser.add_argument('--max_papers', type=int)
+parser.add_argument('--min_papers_default', default=0, type=int)
+parser.add_argument('--max_papers_default', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
 parser.add_argument('--num_alternates', default=3, type=int)
 
@@ -45,7 +52,6 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-
 
 # Main Logic
 
@@ -60,21 +66,22 @@ if not solver_class:
 
 reviewer_set = set()
 paper_set = set()
-
+print ('Using weights:', args.weights)
 weight_by_type = {
     score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)}
 
 scores_by_type = {score_file: [] for score_file in args.scores}
 for score_file in args.scores:
+    print ('processing ', score_file)
     file_reviewers = []
     file_papers = []
 
     with open(score_file) as file_handle:
 
         for row in csv.reader(file_handle):
-            paper_id = row[0]
-            profile_id = row[1]
-            score = row[2]
+            paper_id = row[0].strip()
+            profile_id = row[1].strip()
+            score = row[2].strip()
 
             file_reviewers.append(profile_id)
             file_papers.append(paper_id)
@@ -82,6 +89,9 @@ for score_file in args.scores:
 
     reviewer_set.update(file_reviewers)
     paper_set.update(file_papers)
+
+for key in scores_by_type:
+    print (key, ' : ', len(scores_by_type[key]))
 
 constraints = []
 if args.constraints:
@@ -96,11 +106,29 @@ if args.constraints:
 
             constraints.append((paper_id, profile_id, constraint))
 
+print (args.constrains +  ' : ', len(constraints))
+
 reviewers = sorted(list(reviewer_set))
 papers = sorted(list(paper_set))
 
-minimums = [args.min_papers] * len(reviewers)
-maximums = [args.max_papers] * len(reviewers)
+minimums = [args.min_papers_default] * len(reviewers)
+maximums = [args.max_papers_default] * len(reviewers)
+
+if args.max_papers:
+    with open(args.max_papers) as file_handle:
+        for idx, row in enumerate(csv.reader(file_handle)):
+            profile_id = row[0]
+            max_assignment = int(row[1])
+
+            if profile_id in reviewers:
+                reviewer_idx = reviewers.index(profile_id)
+
+                maximums[reviewer_idx] = max_assignment
+            else:
+                print ('Reviewer missing in scores: ', profile_id)
+
+print (args.max_papers +  ' : ', idx+1)
+
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
 
@@ -116,6 +144,9 @@ match_data = {
     'num_alternates': num_alternates
 }
 
+print ('Count of reviewers: ', reviewers)
+print ('Count of papers: ', papers)
+
 def write_assignments(assignments):
     with open('./assignments.json', 'w') as f:
         f.write(json.dumps(assignments, indent=2))
@@ -124,9 +155,12 @@ def write_alternates(alternates):
     with open('./alternates.json', 'w') as f:
         f.write(json.dumps(alternates, indent=2))
 
+def on_set_status(status, message):
+    print (status, message)
+
 matcher = Matcher(
     datasource=match_data,
-    on_set_status=print,
+    on_set_status=on_set_status,
     on_set_assignments=write_assignments,
     on_set_alternates=write_alternates,
     solver_class=solver_class
