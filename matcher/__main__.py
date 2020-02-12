@@ -106,7 +106,7 @@ if args.constraints:
 
             constraints.append((paper_id, profile_id, constraint))
 
-print (args.constrains +  ' : ', len(constraints))
+print (args.constraints +  ' : ', len(constraints))
 
 reviewers = sorted(list(reviewer_set))
 papers = sorted(list(paper_set))
