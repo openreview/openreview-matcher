@@ -88,6 +88,8 @@ class Matcher:
         '''
         self.set_status('Running')
 
+        print('Start encoding')
+
         encoder = Encoder(
             reviewers=self.datasource.reviewers,
             papers=self.datasource.papers,
@@ -95,6 +97,8 @@ class Matcher:
             scores_by_type=self.datasource.scores_by_type,
             weight_by_type=self.datasource.weight_by_type
         )
+
+        print('Preparing Solver')
 
         self.logger.debug('Preparing solver')
 
