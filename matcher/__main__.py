@@ -7,6 +7,7 @@ import csv
 import json
 from .core import Matcher
 from .solvers import MinMaxSolver, FairFlow
+import logging
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -35,7 +36,7 @@ parser.add_argument(
         max paper files,
         with each row containing comma-separated userID, and max_paper (in that order).
         e.g. "reviewer1,2''')
-    
+
 
 parser.add_argument('--weights', nargs='+', type=int)
 parser.add_argument('--min_papers_default', default=0, type=int)
@@ -106,7 +107,7 @@ if args.constraints:
 
             constraints.append((paper_id, profile_id, constraint))
 
-print (args.constrains +  ' : ', len(constraints))
+print (args.constraints +  ' : ', len(constraints))
 
 reviewers = sorted(list(reviewer_set))
 papers = sorted(list(paper_set))
@@ -144,8 +145,8 @@ match_data = {
     'num_alternates': num_alternates
 }
 
-print ('Count of reviewers: ', reviewers)
-print ('Count of papers: ', papers)
+print ('Count of reviewers: ', len(reviewers))
+print ('Count of papers: ', len(papers))
 
 def write_assignments(assignments):
     with open('./assignments.json', 'w') as f:
@@ -158,12 +159,18 @@ def write_alternates(alternates):
 def on_set_status(status, message):
     print (status, message)
 
+
+ch = logging.StreamHandler()
+logger = logging.getLogger('__main__.py')
+logger.addHandler(ch)
+
 matcher = Matcher(
     datasource=match_data,
     on_set_status=on_set_status,
     on_set_assignments=write_assignments,
     on_set_alternates=write_alternates,
-    solver_class=solver_class
+    solver_class=solver_class,
+    logger=logger
 )
 
 matcher.run()
