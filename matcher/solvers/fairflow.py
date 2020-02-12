@@ -42,6 +42,7 @@ class FairFlow(object):
         """
 
         # TODO: incorporate constraints
+        print('Init FairFlow')
         self.constraint_matrix = encoder.constraint_matrix
         self.cost_matrix = encoder.cost_matrix
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
@@ -75,6 +76,7 @@ class FairFlow(object):
         self.sink = self.n_rev + self.n_pap + 1
         self.logger = logger
         self.solved = False
+        print('End Init FairFlow')
 
     def objective_val(self):
         """Get the objective value of the RAP."""

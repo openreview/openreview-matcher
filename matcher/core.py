@@ -111,6 +111,7 @@ class Matcher:
             logger=self.logger
         )
         try:
+            print('Solving Solver')
             self.logger.debug('Solving solver')
             solution = solver.solve()
         except SolverException as error_handle:

@@ -58,9 +58,9 @@ args = parser.parse_args()
 
 solver_class = None
 if args.solver == 'MinMax':
-    solver_class = MinMaxSolver
+    solver_class = 'MinMax'
 if args.solver == 'FairFlow':
-    solver_class = FairFlow
+    solver_class = 'FairFlow'
 
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))
@@ -163,6 +163,8 @@ def on_set_status(status, message):
 ch = logging.StreamHandler()
 logger = logging.getLogger('__main__.py')
 logger.addHandler(ch)
+
+print('Solver class: ', solver_class)
 
 matcher = Matcher(
     datasource=match_data,
