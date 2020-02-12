@@ -8,6 +8,7 @@ import json
 from .core import Matcher
 from .solvers import MinMaxSolver, FairFlow
 import logging
+from collections import defaultdict
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -43,6 +44,12 @@ parser.add_argument('--min_papers_default', default=0, type=int)
 parser.add_argument('--max_papers_default', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
 parser.add_argument('--num_alternates', default=3, type=int)
+parser.add_argument('--user_group', type=str)
+
+parser.add_argument(
+    '--user_group_file',
+    help='''Pass a csv file with each line in the form: "Group1, reviewer_email"'''
+)
 
 # TODO: dynamically populate solvers list
 # TODO: can argparse throw an error if the solver isn't in the list?
@@ -112,10 +119,27 @@ print (args.constraints +  ' : ', len(constraints))
 reviewers = sorted(list(reviewer_set))
 papers = sorted(list(paper_set))
 
+user_group_map = defaultdict(list)
+if args.user_group_file:
+    with open(args.user_group_file) as file_handle:
+        for row in csv.reader(file_handle):
+            group_id = row[0]
+            reviewer_email = row[1]
+            user_group_map[group_id].append(reviewer_email)
+
+reviewers_copy = [reviewer for reviewer in reviewers]
+if args.user_group:
+    selected_reviewers = user_group_map.get(args.user_group)
+    for reviewer in reviewers:
+        if reviewer not in selected_reviewers:
+            reviewers_copy.remove(reviewer)
+    reviewers = reviewers_copy
+
 minimums = [args.min_papers_default] * len(reviewers)
 maximums = [args.max_papers_default] * len(reviewers)
 
 if args.max_papers:
+    missing_reviewers = []
     with open(args.max_papers) as file_handle:
         for idx, row in enumerate(csv.reader(file_handle)):
             profile_id = row[0]
@@ -126,7 +150,9 @@ if args.max_papers:
 
                 maximums[reviewer_idx] = max_assignment
             else:
-                print ('Reviewer missing in scores: ', profile_id)
+                missing_reviewers.append(profile_id)
+    if missing_reviewers:
+        print ('Reviewers missing in all score files: ', ', '.join(profile_id))
 
 print (args.max_papers +  ' : ', idx+1)
 
