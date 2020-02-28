@@ -4,6 +4,7 @@ import numpy as np
 import uuid
 import time
 from .core import SolverException
+import logging
 
 
 class FairFlow(object):
@@ -28,15 +29,15 @@ class FairFlow(object):
     third group, or running the procedure does not change the sum total score of
     the matching.
     """
-    def __init__(self, minimums, maximums, demands, encoder, sol=None, logger=None):
+    def __init__(self, minimums, maximums, demands, encoder, solution=None, logger=logging.getLogger(__name__)):
         """
         Initialize a makespan flow matcher
 
-        :param minimums: list of integers specifying min number of papers per rev.
+        :param minimums: a list of integers specifying the minimum number of papers for each reviewer.
         :param maximums: a list of integers specifying the maximum number of papers for each reviewer.
-        :param demands: a list of integers specifying the number of reviews per paper.
-        :param weights: the affinity matrix (np.array) of papers to reviewers. Rows correspond to reviewers and columns correspond to papers.
-        :param solution: a matrix of assignments (same shape as weights)
+        :param demands: a list of integers specifying the number of reviews required per paper.
+        :param encoder: an Encoder class object used to get affinity and constraint matrices.
+        :param solution: a matrix of assignments (same shape as encoder.affinity_matrix)
 
         :return: initialized makespan matcher.
         """
@@ -44,26 +45,30 @@ class FairFlow(object):
         # TODO: incorporate constraints
         print('Init FairFlow')
         self.constraint_matrix = encoder.constraint_matrix
-        self.cost_matrix = encoder.cost_matrix
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
 
-        self.n_rev = np.size(affinity_matrix, axis=0)
-        self.n_pap = np.size(affinity_matrix, axis=1)
         self.maximums = maximums
         self.minimums = minimums
         self.demands = demands
         # make sure that all weights are positive:
-        self.orig_affs = affinity_matrix.copy()
         self.affinity_matrix = affinity_matrix.copy()
-        min_aff = np.min(affinity_matrix)
-        if min_aff < 0:
-            self.affinity_matrix -= min_aff
+        if not self.affinity_matrix.any():
+            self.affinity_matrix = np.random.rand(*affinity_matrix.shape)
+
+        self.orig_affinities = self.affinity_matrix.copy()
+
+        self.num_reviewers = np.size(self.affinity_matrix, axis=0)
+        self.num_papers = np.size(self.affinity_matrix, axis=1)
+
+        min_affinities = np.min(affinity_matrix)
+        if min_affinities < 0:
+            self.affinity_matrix -= min_affinities
         self.id = uuid.uuid4()
         self.makespan = 0.0     # the minimum allowable paper score.
-        self.solution = sol if sol else np.zeros((self.n_rev, self.n_pap))
-        self.valid = True if sol else False
+        self.solution = solution if solution else np.zeros((self.num_reviewers, self.num_papers))
+        self.valid = True if solution else False
         assert(self.affinity_matrix.shape == self.solution.shape)
-        self.maxaff = np.max(self.affinity_matrix)
+        self.max_affinities = np.max(self.affinity_matrix)
         self.big_c = 10000
         self.bigger_c = self.big_c ** 2
 
@@ -72,15 +77,15 @@ class FairFlow(object):
         self.end_inds = []
         self.caps = []
         self.costs = []
-        self.source = self.n_rev + self.n_pap
-        self.sink = self.n_rev + self.n_pap + 1
+        self.source = self.num_reviewers + self.num_papers
+        self.sink = self.num_reviewers + self.num_papers + 1
         self.logger = logger
         self.solved = False
         print('End Init FairFlow')
 
     def objective_val(self):
         """Get the objective value of the RAP."""
-        return np.sum(self.sol_as_mat() * self.orig_affs)
+        return np.sum(self.sol_as_mat() * self.orig_affinities)
 
     def _refresh_internal_vars(self):
         """Set start, end, caps, costs to be empty."""
@@ -111,9 +116,9 @@ class FairFlow(object):
         g1 = np.where(paper_scores >= self.makespan)[0]
         g2 = np.intersect1d(
             np.where(self.makespan > paper_scores),
-            np.where(paper_scores >= self.makespan - self.maxaff))
-        g3 = np.where(self.makespan - self.maxaff > paper_scores)[0]
-        assert(np.size(g1) + np.size(g2) + np.size(g3) == self.n_pap)
+            np.where(paper_scores >= self.makespan - self.max_affinities))
+        g3 = np.where(self.makespan - self.max_affinities > paper_scores)[0]
+        assert(np.size(g1) + np.size(g2) + np.size(g3) == self.num_papers)
         return g1, g2, g3
 
     def _worst_reviewer(self, papers):
@@ -143,23 +148,20 @@ class FairFlow(object):
         # First solve flow with lower bounds as caps.
         # Construct edges between the source and each reviewer that must review.
         if self.minimums is not None:
-            rev_caps = np.maximum(self.minimums - np.sum(self.solution, axis=1),
-                                  0)
-            assert (np.size(rev_caps) == self.n_rev)
+            rev_caps = np.maximum(self.minimums - np.sum(self.solution, axis=1), 0)
+            assert (np.size(rev_caps) == self.num_reviewers)
             flow = np.sum(rev_caps)
-            pap_caps = np.maximum(self.demands - np.sum(
-                self.solution, axis=0), 0)
-            self._construct_graph_and_solve(self.n_rev, self.n_pap, rev_caps,
-                                            pap_caps, self.affinity_matrix, flow)
+            pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
+            self._construct_graph_and_solve(self.num_reviewers, self.num_papers, rev_caps, pap_caps, self.affinity_matrix, flow)
 
         # Now compute the residual flow that must be routed so that each paper
         # is sufficiently reviewed. Also compute residual maximums and demands.
         rev_caps = self.maximums - np.sum(self.solution, axis=1)
-        assert (np.size(rev_caps) == self.n_rev)
+        assert (np.size(rev_caps) == self.num_reviewers)
         pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
         flow = np.sum(pap_caps)
-        self._construct_graph_and_solve(self.n_rev, self.n_pap, rev_caps,
-                                        pap_caps, self.affinity_matrix, flow)
+        self._construct_graph_and_solve(self.num_reviewers, self.num_papers, rev_caps, pap_caps, self.affinity_matrix, flow)
+
         # Finally, return.
         assert (np.all(np.sum(self.solution, axis=0) == self.demands))
         assert (np.all(np.sum(self.solution, axis=1) <= self.maximums))
@@ -169,7 +171,7 @@ class FairFlow(object):
         return self.solution
 
     def _construct_ms_improvement_network(self, g1, g2, g3):
-        """Construct the network the reassigns reviewers to improve makespan.
+        """Construct the network that reassigns reviewers to improve makespan.
 
         We allow for each paper in G1 to have 1 reviewer removed. This
         guarantees that papers in G1 can only fall to G2. Then, we may assign
@@ -198,13 +200,13 @@ class FairFlow(object):
         self._refresh_internal_vars()
         for i in range(np.size(g1)):
             self.start_inds.append(self.source)
-            self.end_inds.append(self.n_rev + g1[i])
+            self.end_inds.append(self.num_reviewers + g1[i])
             self.caps.append(1)
             self.costs.append(0)
 
         # Next construct the sink node and edges to each paper in g3.
         for i in range(np.size(g3)):
-            self.start_inds.append(self.n_rev + g3[i])
+            self.start_inds.append(self.num_reviewers + g3[i])
             self.end_inds.append(self.sink)
             self.caps.append(1)
             self.costs.append(0)
@@ -212,8 +214,8 @@ class FairFlow(object):
         # For each paper in g2, create a dummy node the restricts the flow to
         # that paper to 1.
         for pap2 in g2:
-            self.start_inds.append(self.n_rev + self.n_pap + 2 + pap2)
-            self.end_inds.append(self.n_rev + pap2)
+            self.start_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
+            self.end_inds.append(self.num_reviewers + pap2)
             self.caps.append(1)
             self.costs.append(0)
 
@@ -226,7 +228,7 @@ class FairFlow(object):
             rev = int(revs[i])
             pap = g1[paps1[i]]
             assert(self.solution[rev, pap] == 1.0)
-            self.start_inds.append(self.n_rev + pap)
+            self.start_inds.append(self.num_reviewers + pap)
             self.end_inds.append(rev)
             self.caps.append(1)
             self.costs.append(0)
@@ -236,10 +238,10 @@ class FairFlow(object):
             # a paper in g2 if that rev not already been assigned to that paper.
             if rev not in added:
                 for pap2 in g2:
-                    if self.solution[rev, pap2] == 0.0:
+                    if self.solution[rev, pap2] == 0.0 and self.constraint_matrix[pap2, rev] == 0.0:
                         rp_aff = self.affinity_matrix[rev, pap2]
                         self.start_inds.append(rev)
-                        self.end_inds.append(self.n_rev + self.n_pap + 2 + pap2)
+                        self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
                         pg2_to_minaff[pap2] = min(pg2_to_minaff[pap2], rp_aff)
 
                         self.caps.append(1)
@@ -257,9 +259,9 @@ class FairFlow(object):
             rp_aff = self.affinity_matrix[rev, pap]
             # lower bound on new paper score.
             lower_bound = (pap_score + min_in - rp_aff)
-            ms_satisfied = (self.makespan - self.maxaff) <= lower_bound
+            ms_satisfied = (self.makespan - self.max_affinities) <= lower_bound
             if min_in < np.inf and ms_satisfied:
-                self.start_inds.append(self.n_rev + pap)
+                self.start_inds.append(self.num_reviewers + pap)
                 self.end_inds.append(rev)
                 self.caps.append(1)
                 self.costs.append(0)
@@ -268,11 +270,11 @@ class FairFlow(object):
         # For each reviewer, connect them to a paper in g3 if not assigned.
         for rev in assignment_to_give:
             for pap3 in g3:
-                if self.solution[rev, pap3] == 0.0:
+                if self.solution[rev, pap3] == 0.0 and self.constraint_matrix[pap3, rev] == 0.0:
                     self.start_inds.append(rev)
-                    self.end_inds.append(self.n_rev + pap3)
+                    self.end_inds.append(self.num_reviewers + pap3)
                     self.caps.append(1)
-                    lb = self.makespan - self.maxaff
+                    lb = self.makespan - self.max_affinities
                     pap_score = pap_scores[pap3]
                     rp_aff = self.affinity_matrix[rev, pap3]
                     # give a bigger reward if assignment would improve group.
@@ -282,7 +284,7 @@ class FairFlow(object):
                         self.costs.append(int(-1.0 - self.big_c * rp_aff))
 
         flow = int(min(np.size(g3), np.size(g1)))
-        self.supplies = np.zeros(self.n_rev + self.n_pap + 2)
+        self.supplies = np.zeros(self.num_reviewers + self.num_papers + 2)
         self.supplies[self.source] = flow
         self.supplies[self.sink] = -flow
 
@@ -306,30 +308,29 @@ class FairFlow(object):
             num_un = 0
             for arc in range(self.min_cost_flow.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
-                if self.min_cost_flow.Tail(arc) != self.source and \
-                                self.min_cost_flow.Head(arc) != self.sink:
+                if self.min_cost_flow.Tail(arc) != self.source and self.min_cost_flow.Head(arc) != self.sink:
                     if self.min_cost_flow.Flow(arc) > 0:
                         # flow goes from tail to head
                         head = self.min_cost_flow.Head(arc)
                         tail = self.min_cost_flow.Tail(arc)
-                        if head >= self.n_rev + self.n_pap + 2:
+                        if head >= self.num_reviewers + self.num_papers + 2:
                             # this is an edge that restricts flow to a paper
-                            pap = head - (self.n_rev + self.n_pap + 2)
-                            assert(tail <= self.n_rev)
+                            pap = head - (self.num_reviewers + self.num_papers + 2)
+                            assert(tail <= self.num_reviewers)
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
                             self.solution[rev, pap] = 1.0
-                        elif tail >= self.n_rev + self.n_pap + 2:
+                        elif tail >= self.num_reviewers + self.num_papers + 2:
                             continue
-                        elif head >= self.n_rev:
-                            pap = head - self.n_rev
+                        elif head >= self.num_reviewers:
+                            pap = head - self.num_reviewers
                             rev = tail
                             assert(self.solution[rev, pap] == 0.0)
                             self.solution[rev, pap] = 1.0
                             num_un += 1
                         else:
                             rev = head
-                            pap = tail - self.n_rev
+                            pap = tail - self.num_reviewers
                             assert(self.solution[rev, pap] == 1.0)
                             self.solution[rev, pap] = 0.0
             self.valid = False
@@ -344,7 +345,7 @@ class FairFlow(object):
                 if self.min_cost_flow.Tail(arc) != self.source and self.min_cost_flow.Head(arc) != self.sink:
                     if self.min_cost_flow.Flow(arc) > 0:
                         rev = self.min_cost_flow.Tail(arc)
-                        pap = self.min_cost_flow.Head(arc) - self.n_rev
+                        pap = self.min_cost_flow.Head(arc) - self.num_reviewers
                         assert(self.solution[rev, pap] == 0.0)
                         assert(np.sum(self.solution[:, pap], axis=0) == self.demands[pap] - 1)
                         self.solution[rev, pap] = 1.0
@@ -423,49 +424,40 @@ class FairFlow(object):
             None -- but sets self.solution to be a binary matrix containing the
             assignment of reviewers to papers.
         """
-        start_inds = []
-        end_inds = []
-        caps = []
-        costs = []
         source = n_rev + n_pap
         sink = n_rev + n_pap + 1
 
-        # edges from source to revs.
-        for i in range(n_rev):
-            start_inds.append(source)
-            end_inds.append(i)
-            caps.append(int(_caps[i]))
-            costs.append(0)
+        mcf = pywrapgraph.SimpleMinCostFlow()
 
-        # edges from rev to pap.
+        # edges from source to reviewers.
+        for i in range(n_rev):
+            mcf.AddArcWithCapacityAndUnitCost(source, i, int(_caps[i]), 0)
+
+        # edges from reviewers to papers.
         for i in range(n_rev):
             for j in range(n_pap):
-                start_inds.append(i)
-                end_inds.append(n_rev + j)
+                arc_cap = 1
                 if self.solution[i, j] == 1:
-                    caps.append(0)
-                else:
-                    caps.append(1)
-                # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
-                costs.append(int(-1.0 - self.big_c * ws[i, j]))
+                    arc_cap = 0
 
-        # edges from pap to sink.
+                edge_constraint = self.constraint_matrix[(j,i)]
+
+                # a constraint of 0 means there's no constraint, so apply the cost as normal, so add an arc normally
+                # a constraint of 1 means that this user was explicitly assigned to this paper. We do not support positive constraints right now, so, do not add an arc
+                # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
+                if edge_constraint == 0:
+                    # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
+                    mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), int(-1.0 - self.big_c * ws[i, j]))
+
+        # edges from papers to sink.
         for j in range(n_pap):
-            start_inds.append(n_rev + j)
-            end_inds.append(sink)
-            caps.append(int(_covs[j]))
-            costs.append(0)
+            mcf.AddArcWithCapacityAndUnitCost(n_rev + j, sink, int(_covs[j]), 0)
 
         supplies = np.zeros(n_rev + n_pap + 2)
         supplies[source] = int(flow)
         supplies[sink] = int(-flow)
 
-        # Add arcs.
-        mcf = pywrapgraph.SimpleMinCostFlow()
-        for i in range(len(start_inds)):
-            mcf.AddArcWithCapacityAndUnitCost(
-                start_inds[i], end_inds[i], caps[i],
-                costs[i])
+        # set Node supply for this MCF.
         for i in range(len(supplies)):
             mcf.SetNodeSupply(i, int(supplies[i]))
 
@@ -505,6 +497,7 @@ class FairFlow(object):
 
         for i in range(10):
             print('#info FairFlow:ITERATION %s ms %s' % (i, ms))
+            self.logger.debug('#info FairFlow:ITERATION %s ms %s' % (i, ms))
             s1, s3 = self.try_improve_ms()
             can_improve = s3 > 0
             prev_s1, prev_s3 = -1, -1
@@ -513,15 +506,17 @@ class FairFlow(object):
                 start = time.time()
                 s1, s3 = self.try_improve_ms()
                 can_improve = s3 > 0
-                print('#info FairFlow:try_improve takes: %s s' % (
-                        time.time() - start))
+                print('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
+                self.logger.debug('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
 
             worst_pap_score = np.min(np.sum(self.solution * self.affinity_matrix, axis=0))
-            print('#info FairFlow:best worst paper score %s worst score %s' % (
-                best_worst_pap_score, worst_pap_score))
+            print('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
+            self.logger.debug('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
 
             success = s3 == 0
             print('#info FairFlow:success = %s' % success)
+            self.logger.debug('#info FairFlow:success = %s' % success)
+
             if success and worst_pap_score >= best_worst_pap_score:
                 best = ms
                 best_worst_pap_score = worst_pap_score
@@ -533,8 +528,9 @@ class FairFlow(object):
                 ms -= (ms - mn) / 2.0
             self.makespan = ms
         print('#info FairFlow:Best found %s' % best)
-        print('#info FairFlow:Best Worst Paper Score found %s' %
-              best_worst_pap_score)
+        self.logger.debug('#info FairFlow:Best found %s' % best)
+        print('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
+        self.logger.debug('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
         if best is None:
             return 0.0
         else:
