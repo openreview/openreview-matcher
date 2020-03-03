@@ -54,11 +54,29 @@ def initialize_superuser():
     client = openreview.Client(baseurl = 'http://localhost:3000', username='openreview.net', password='1234')
     return client
 
+def create_user(client, email, first, last):
+        res = client.register_user(email = email, first = first, last = last, password = '1234')
+        assert res, "Res i none"
+        res = client.activate_user(email, {
+            'names': [
+                    {
+                        'first': first,
+                        'last': last,
+                        'username': '~' + first + '_' + last + '1'
+                    }
+                ],
+            'emails': [email],
+            'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email
+            })
+        assert res, "Res i none"
+        return client
+
 def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
     builder.set_conference_id(conference_id)
+    now = datetime.datetime.utcnow()
     builder.set_submission_stage(
-        due_date=datetime.datetime(2019, 3, 25, 23, 59),
+        due_date = now + datetime.timedelta(minutes = 10),
         remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
 
     conference = builder.get_result()
@@ -93,6 +111,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
             for reviewer_number in range(num_reviewers):
                 reviewer = '~Test_Reviewer{}'.format(reviewer_number)
+                create_user(client, 'test_reviewer{}@mail.com'.format(reviewer_number), 'Test', 'Reviewer')
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
@@ -152,7 +171,7 @@ if __name__ == '__main__':
         'SUPERUSER_EMAIL': 'info@openreview.net'
     }
 
-    superuser_client = initialize_superuser(config)
+    superuser_client = initialize_superuser()
 
     # TODO: Parameterize this
     num_reviewers, num_papers, reviews_per_paper = 50, 50, 1
