@@ -99,9 +99,6 @@ for score_file in args.scores:
     reviewer_set.update(file_reviewers)
     paper_set.update(file_papers)
 
-for key in scores_by_type:
-    print (key, ' : ', len(scores_by_type[key]))
-
 constraints = []
 if args.constraints:
     with open(args.constraints) as file_handle:
@@ -114,8 +111,6 @@ if args.constraints:
             paper_set.update([paper_id])
 
             constraints.append((paper_id, profile_id, constraint))
-
-print (args.constraints +  ' : ', len(constraints))
 
 reviewers = sorted(list(reviewer_set))
 papers = sorted(list(paper_set))
@@ -154,8 +149,6 @@ if args.max_papers:
                 missing_reviewers.append(profile_id)
     if missing_reviewers:
         print ('Reviewers missing in all score files: ', ', '.join(profile_id))
-
-print (args.max_papers +  ' : ', idx+1)
 
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
