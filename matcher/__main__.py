@@ -9,6 +9,7 @@ from .core import Matcher
 from .solvers import MinMaxSolver, FairFlow
 import logging
 from collections import defaultdict
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -58,7 +59,7 @@ parser.add_argument(
     help='Choose from: {}'.format(['MinMax', 'FairFlow']),
     default='MinMax'
 )
-
+t0 = time.time()
 args = parser.parse_args()
 
 # Main Logic
@@ -202,3 +203,5 @@ matcher = Matcher(
 )
 
 matcher.run()
+t1 = time.time()
+print ('Overall execution time: {0} seconds'.format(t1-t0))
