@@ -126,14 +126,13 @@ class SimpleSolver:
                 arc_cost = int(self.cost_matrix[coordinates])
                 arc_constraint = self.constraint_matrix[coordinates]
 
-                # arc_constraint of 0 means there's no constraint;
-                # apply the cost as normal.
+                # a constraint of 0 means there's no constraint, so apply the cost as normal
+                # a constraint of 1 means that this user was explicitly assigned to this paper
+                # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
                 if arc_constraint == 0:
                     self.add_edge(r_node, p_node, 1, arc_cost)
-
-                # arc_constraint of 1 means that this user was explicitly assigned to this paper
-                # TODO: this should be handled as a hard constraint
-                if arc_constraint == 1:
+                elif arc_constraint == 1:
+                    # TODO: this should be handled as a hard constraint
                     arc_cost = self._least_cost() - 1
                     self.add_edge(r_node, p_node, 1, int(arc_cost))
 

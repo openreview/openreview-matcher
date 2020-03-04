@@ -140,8 +140,24 @@ class ConfigNoteInterface:
     @property
     def paper_notes(self):
         if not 'paper_notes' in self._cache:
+            content_dict = {}
+            paper_invitation = self.config_note.content['paper_invitation']
+            self.logger.debug('Getting notes for invitation: {}'.format(paper_invitation))
+            if '&' in paper_invitation:
+                elements = paper_invitation.split('&')
+                paper_invitation = elements[0]
+                for element in elements[1:]:
+                    if element:
+                        if element.startswith('content.') and '=' in element:
+                            key, value = element.split('.')[1].split('=')
+                            content_dict[key] = value
+                        else:
+                            self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
             self._cache['paper_notes'] = list(openreview.tools.iterget_notes(
-                self.client, invitation=self.config_note.content['paper_invitation']))
+                self.client,
+                invitation=paper_invitation,
+                content = content_dict))
+            self.logger.debug('Count of notes found: {}'.format(len(self._cache['paper_notes'])))
 
         return self._cache['paper_notes']
 

@@ -120,7 +120,7 @@ class Encoder:
             if not constraint in [-1, 0, 1]:
                 raise ValueError(
                     'constraint {} ({}, {}) must be an int of value -1, 0, or 1'.format(
-                        constraint, forum, user, type(constraint)))
+                        constraint, forum, user))
 
             # sometimes papers or reviewers get deleted after constraint_edges are created,
             # so we need to check that the head/tail are still valid
