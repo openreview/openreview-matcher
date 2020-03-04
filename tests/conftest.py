@@ -21,12 +21,12 @@ def ping_url(url):
     iterations = 300
     iteration_duration = 0.1
 
-    for t in range(iterations):
+    for _ in range(iterations):
         try:
             response = requests.get(url)
             if response.status_code == 200:
                 return True
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             time.sleep(iteration_duration)
 
     raise TimeoutError('no response within {} iterations'.format(iterations))
@@ -38,7 +38,7 @@ def wait_for_status(client, config_note_id):
     '''
     max_iterations = 100
     interval_duration = 0.5
-    for iteration in range(max_iterations):
+    for _ in range(max_iterations):
         config_note = client.get_note(config_note_id)
         if config_note.content['status'] in ['Initialized', 'Running']:
             time.sleep(interval_duration)
@@ -55,21 +55,21 @@ def initialize_superuser():
     return client
 
 def create_user(client, email, first, last):
-        res = client.register_user(email = email, first = first, last = last, password = '1234')
-        assert res, "Res i none"
-        res = client.activate_user(email, {
-            'names': [
-                    {
-                        'first': first,
-                        'last': last,
-                        'username': '~' + first + '_' + last + '1'
-                    }
-                ],
-            'emails': [email],
-            'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email
-            })
-        assert res, "Res i none"
-        return client
+    res = client.register_user(email = email, first = first, last = last, password = '1234')
+    assert res, "Res i none"
+    res = client.activate_user(email, {
+        'names': [
+                {
+                    'first': first,
+                    'last': last,
+                    'username': '~' + first + '_' + last + '1'
+                }
+            ],
+        'emails': [email],
+        'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email
+        })
+    assert res, "Res i none"
+    return client
 
 def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
@@ -96,28 +96,33 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
             content = {
                 'title': 'Test_Paper_{}'.format(paper_number),
                 'authorids': [
-                    'testauthor{}{}@test.com'.format(paper_number, author_code) \
+                    'testauthor{0}{1}@test.com'.format(paper_number, author_code) \
                     for author_code in ['A', 'B', 'C']
                 ]
             }
-            submission = openreview.Note(**{
-                'signatures': ['~Super_User1'],
-                'writers': [conference.id],
-                'readers': [conference.id],
-                'content': content,
-                'invitation': conference.get_submission_id()
-            })
+            submission = openreview.Note(
+                signatures = ['~Super_User1'],
+                writers = [conference.id],
+                readers = [conference.id],
+                content = content,
+                invitation = conference.get_submission_id()
+            )
             posted_submission = client.post_note(submission)
-
-            for reviewer_number in range(num_reviewers):
-                reviewer = '~Test_Reviewer{}'.format(reviewer_number)
-                create_user(client, 'test_reviewer{}@mail.com'.format(reviewer_number), 'Test', 'Reviewer')
+            
+            for index in range(1, num_reviewers+1):
+                reviewer = '~Test_Reviewer{0}'.format(index)
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
+    print ('Setting conference author group')
     conference.set_authors()
+
+    for index, reviewer in enumerate(reviewers):
+        create_user(client, 'test_reviewer{0}@mail.com'.format(index+1), 'Test', 'Reviewer')
+        
+    print ('Setting conference reviewer group')
     conference.set_reviewers(emails=list(reviewers))
 
     conference.setup_matching(
