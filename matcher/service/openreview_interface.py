@@ -74,7 +74,7 @@ def _edge_to_score(edge, translate_map=None):
 
     return score
 
-def get_all_edges(client, edge_invitation_id, all_papers=[], logger=None):
+def get_all_edges(client, edge_invitation_id, all_papers, all_reviewers, logger=None):
     '''Helper function for retrieving and parsing all edges in bulk'''
 
     all_edges = []
@@ -90,16 +90,17 @@ def get_all_edges(client, edge_invitation_id, all_papers=[], logger=None):
     logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
     for group in edges_grouped_by_paper:
         forum_id = group['id']['head']
-        if (all_papers and (forum_id in all_papers)) or not all_papers:
+        if forum_id in all_papers:
             for group_value in group['values']:
-                all_edges.append(build_edge(
-                    edge_invitation,
-                    forum_id,
-                    group_value['tail'],
-                    group_value.get('weight'),
-                    group_value.get('label'),
-                    None
-                ))
+                if group_value['tail'] in all_reviewers:
+                    all_edges.append(build_edge(
+                        edge_invitation,
+                        forum_id,
+                        group_value['tail'],
+                        group_value.get('weight'),
+                        group_value.get('label'),
+                        None
+                    ))
     return all_edges
 
 class ConfigNoteInterface:
@@ -202,6 +203,7 @@ class ConfigNoteInterface:
                 self.client, 
                 self.config_note.content['conflicts_invitation'], 
                 all_papers=self.papers,
+                all_reviewers=self.reviewers,
                 logger=self.logger)
 
         for edge in self._cache['constraint_edges']:
@@ -215,9 +217,10 @@ class ConfigNoteInterface:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
                 edges_by_invitation[invitation_id] = get_all_edges(
-                    self.client, 
+                    self.client,
                     invitation_id,
-                    all_papers=self.papers, 
+                    all_papers=self.papers,
+                    all_reviewers=self.reviewers,
                     logger=self.logger)
 
             self._cache['edges_by_invitation'] = edges_by_invitation
@@ -268,7 +271,11 @@ class ConfigNoteInterface:
     def custom_load_edges(self):
         if 'custom_load_edges' not in self._cache:
             self._cache['custom_load_edges'] = get_all_edges(
-                self.client, self.config_note.content['custom_load_invitation'], logger=self.logger)
+                self.client,
+                self.config_note.content['custom_load_invitation'],
+                all_papers=self.papers,
+                all_reviewers=self.reviewers,
+                logger=self.logger)
 
         return self._cache['custom_load_edges']
 
