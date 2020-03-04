@@ -21,12 +21,12 @@ def ping_url(url):
     iterations = 300
     iteration_duration = 0.1
 
-    for t in range(iterations):
+    for _ in range(iterations):
         try:
             response = requests.get(url)
             if response.status_code == 200:
                 return True
-        except requests.exceptions.ConnectionError as e:
+        except requests.exceptions.ConnectionError:
             time.sleep(iteration_duration)
 
     raise TimeoutError('no response within {} iterations'.format(iterations))
@@ -38,7 +38,7 @@ def wait_for_status(client, config_note_id):
     '''
     max_iterations = 100
     interval_duration = 0.5
-    for iteration in range(max_iterations):
+    for _ in range(max_iterations):
         config_note = client.get_note(config_note_id)
         if config_note.content['status'] in ['Initialized', 'Running']:
             time.sleep(interval_duration)
@@ -57,8 +57,9 @@ def initialize_superuser():
 def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
     builder.set_conference_id(conference_id)
+    now = datetime.datetime.utcnow()
     builder.set_submission_stage(
-        due_date=datetime.datetime(2019, 3, 25, 23, 59),
+        due_date = now + datetime.timedelta(minutes = 10),
         remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
 
     conference = builder.get_result()
@@ -75,36 +76,34 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     # Maybe conference.setup_matching() should allow a score matrix as input
     with open(AFFINITY_SCORE_FILE, 'w') as file_handle:
         for paper_number in range(num_papers):
-            authorids = ['testauthor{}{}@test.com'.format(paper_number, author_code) for author_code in ['A', 'B', 'C']]
-            signatures = ['~Super_User1']
-            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]
-            writers = [conference.id] + authorids + signatures
+            authorids = ['testauthor{0}{1}@test.com'.format(paper_number, author_code) for author_code in ['A', 'B', 'C']]
             content = {
                 'title': 'Test_Paper_{}'.format(paper_number),
                 'authorids': authorids
             }
-            submission = openreview.Note(**{
-                'signatures': signatures,
-                'writers': writers,
-                'readers': readers,
-                'content': content,
-                'invitation': conference.get_submission_id()
-            })
-            posted_submission = client.post_note(submission)
+            signatures = ['~Super_User1']	
+            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]	
+            writers = [conference.id] + authorids + signatures
+            submission = openreview.Note(
+                signatures = signatures,
+                writers = writers,
+                readers = readers,
+                content = content,
+                invitation = conference.get_submission_id()
+            )
 
-            for reviewer_number in range(num_reviewers):
-                reviewer = '~Test_Reviewer{}'.format(reviewer_number)
+            posted_submission = client.post_note(submission)
+            
+            for index in range(1, num_reviewers+1):
+                reviewer = 'test_reviewer{0}@mail.com'.format(index)
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
     conference.set_authors()
-    conference.set_reviewers(emails=list(reviewers))
-
-    conference.setup_matching(
-        affinity_score_file=AFFINITY_SCORE_FILE
-    )
+    conference.set_reviewers(emails = list(reviewers))
+    conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE)
 
     return conference
 
@@ -153,7 +152,7 @@ if __name__ == '__main__':
         'SUPERUSER_EMAIL': 'info@openreview.net'
     }
 
-    superuser_client = initialize_superuser(config)
+    superuser_client = initialize_superuser()
 
     # TODO: Parameterize this
     num_reviewers, num_papers, reviews_per_paper = 50, 50, 1
