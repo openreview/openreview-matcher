@@ -74,7 +74,7 @@ def _edge_to_score(edge, translate_map=None):
 
     return score
 
-def get_all_edges(client, edge_invitation_id, logger=None):
+def get_all_edges(client, edge_invitation_id, all_papers=[], logger=None):
     '''Helper function for retrieving and parsing all edges in bulk'''
 
     all_edges = []
@@ -90,15 +90,16 @@ def get_all_edges(client, edge_invitation_id, logger=None):
     logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
     for group in edges_grouped_by_paper:
         forum_id = group['id']['head']
-        for group_value in group['values']:
-            all_edges.append(build_edge(
-                edge_invitation,
-                forum_id,
-                group_value['tail'],
-                group_value.get('weight'),
-                group_value.get('label'),
-                None
-            ))
+        if (all_papers and (forum_id in all_papers)) or not all_papers:
+            for group_value in group['values']:
+                all_edges.append(build_edge(
+                    edge_invitation,
+                    forum_id,
+                    group_value['tail'],
+                    group_value.get('weight'),
+                    group_value.get('label'),
+                    None
+                ))
     return all_edges
 
 class ConfigNoteInterface:
@@ -198,7 +199,10 @@ class ConfigNoteInterface:
     def constraints(self):
         if not 'constraint_edges' in self._cache:
             self._cache['constraint_edges'] = get_all_edges(
-                self.client, self.config_note.content['conflicts_invitation'], logger=self.logger)
+                self.client, 
+                self.config_note.content['conflicts_invitation'], 
+                all_papers=self.papers,
+                logger=self.logger)
 
         for edge in self._cache['constraint_edges']:
             yield edge.head, edge.tail, edge.weight
@@ -211,7 +215,10 @@ class ConfigNoteInterface:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
                 edges_by_invitation[invitation_id] = get_all_edges(
-                    self.client, invitation_id, logger=self.logger)
+                    self.client, 
+                    invitation_id,
+                    all_papers=self.papers, 
+                    logger=self.logger)
 
             self._cache['edges_by_invitation'] = edges_by_invitation
 
