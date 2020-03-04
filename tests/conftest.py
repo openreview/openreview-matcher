@@ -81,10 +81,13 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 'title': 'Test_Paper_{}'.format(paper_number),
                 'authorids': authorids
             }
+            signatures = ['~Super_User1']	
+            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]	
+            writers = [conference.id] + authorids + signatures
             submission = openreview.Note(
-                signatures = ['~Super_User1'],
-                writers = [conference.id],
-                readers = [conference.id],
+                signatures = signatures,
+                writers = writers,
+                readers = readers,
                 content = content,
                 invitation = conference.get_submission_id()
             )
