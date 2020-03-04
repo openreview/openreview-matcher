@@ -110,21 +110,14 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
             posted_submission = client.post_note(submission)
             
             for index in range(1, num_reviewers+1):
-                reviewer = '~Test_Reviewer{0}'.format(index)
+                reviewer = 'test_reviewer{0}@mail.com'.format(index)
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
-    print ('Setting conference author group')
     conference.set_authors()
-
-    for index, reviewer in enumerate(reviewers):
-        create_user(client, 'test_reviewer{0}@mail.com'.format(index+1), 'Test', 'Reviewer')
-        
-    print ('Setting conference reviewer group')
-    conference.set_reviewers(emails=list(reviewers))
-
+    conference.set_reviewers(emails = list(reviewers))
     conference.setup_matching(
         affinity_score_file=AFFINITY_SCORE_FILE
     )
