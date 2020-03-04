@@ -54,23 +54,6 @@ def initialize_superuser():
     client = openreview.Client(baseurl = 'http://localhost:3000', username='openreview.net', password='1234')
     return client
 
-def create_user(client, email, first, last):
-    res = client.register_user(email = email, first = first, last = last, password = '1234')
-    assert res, "Res i none"
-    res = client.activate_user(email, {
-        'names': [
-                {
-                    'first': first,
-                    'last': last,
-                    'username': '~' + first + '_' + last + '1'
-                }
-            ],
-        'emails': [email],
-        'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email
-        })
-    assert res, "Res i none"
-    return client
-
 def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
     builder.set_conference_id(conference_id)
@@ -118,7 +101,8 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
     conference.set_authors()
     conference.set_reviewers(emails = list(reviewers))
-    conference.setup_matching(
+# for index, reviewer in enumerate(reviewers):
+    #     create_user(client, 'test_reviewer{0}@mail.com'.format(index+1), 'Test', 'Reviewer')    conference.setup_matching(
         affinity_score_file=AFFINITY_SCORE_FILE
     )
 
