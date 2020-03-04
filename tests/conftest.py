@@ -93,7 +93,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
             posted_submission = client.post_note(submission)
 
             for reviewer_number in range(num_reviewers):
-                reviewer = '~Test_Reviewer{}'.format(reviewer_number)
+                reviewer = 'test_reviewer{0}@mail.com'.format(reviewer_number)
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
