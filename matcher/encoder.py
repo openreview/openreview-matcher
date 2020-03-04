@@ -101,19 +101,7 @@ class Encoder:
             if user in self.index_by_user:
                 coordinates = (self.index_by_forum[forum], self.index_by_user[user])
                 score_matrix[coordinates] = score
-            # if not isinstance(score, float) and not isinstance(score, int):
-            #     try:
-            #         score = float(score)
-            #     except ValueError:
-            #         raise EncoderError(
-            #             'could not convert score {} of type {} to float ({}, {})'.format(
-            #                 score, type(score), forum, user))
 
-            # # sometimes papers or reviewers get deleted after edges are created,
-            # # so we need to check that the head/tail are still valid
-            # if forum in self.papers and user in self.reviewers:
-            #     coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-            #     score_matrix[coordinates] = score
 
         return score_matrix
 
@@ -126,24 +114,6 @@ class Encoder:
             if user in self.index_by_user:
                 coordinates = (self.index_by_forum[forum], self.index_by_user[user])
                 constraint_matrix[coordinates] = constraint
-            # if not isinstance(constraint, float) and not isinstance(constraint, int):
-            #     try:
-            #         constraint = int(constraint)
-            #     except ValueError:
-            #         raise EncoderError(
-            #             'could not convert constraint {} of type {} to int ({}, {})'.format(
-            #                 constraint, type(constraint), forum, user))
-
-            # if not constraint in [-1, 0, 1]:
-            #     raise ValueError(
-            #         'constraint {} ({}, {}) must be an int of value -1, 0, or 1'.format(
-            #             constraint, forum, user))
-
-            # # sometimes papers or reviewers get deleted after constraint_edges are created,
-            # # so we need to check that the head/tail are still valid
-            # if forum in self.papers and user in self.reviewers:
-            #     coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-            #     constraint_matrix[coordinates] = constraint
 
         return constraint_matrix
 
