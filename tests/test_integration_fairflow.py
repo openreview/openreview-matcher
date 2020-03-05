@@ -86,10 +86,14 @@ def test_integration_basic(openreview_context):
     assert matcher_status.content['status'] == 'Complete'
 
     openreview_client.get_edges()
+    all_papers = [note.id for note in conference.get_submissions()]
+    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
         conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        all_papers=all_papers,
+        all_reviewers=all_reviewers,
         logger=logging.getLogger(__name__)
     )
 
@@ -168,10 +172,14 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
 
     openreview_client.get_edges()
+    all_papers = [note.id for note in conference.get_submissions()]
+    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
         conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        all_papers=all_papers,
+        all_reviewers=all_reviewers,
         logger=logging.getLogger(__name__)
     )
 
@@ -245,10 +253,14 @@ def test_integration_no_scores(openreview_context):
     assert matcher_status.content['status'] == 'Complete'
 
     openreview_client.get_edges()
+    all_papers = [note.id for note in conference.get_submissions()]
+    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
 
     paper_assignment_edges = get_all_edges(
         openreview_client,
         conference.get_paper_assignment_id(conference.get_reviewers_id()),
+        all_papers=all_papers,
+        all_reviewers=all_reviewers,
         logger=logging.getLogger(__name__)
     )
 

@@ -252,7 +252,7 @@ def test_confignote_interface():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': 1}
                     ]
@@ -411,7 +411,7 @@ def test_confignote_interface_no_scores_spec():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': 1}
                     ]
@@ -655,7 +655,7 @@ def test_confignote_interface_custom_load_negative():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': -9.4}
                     ]
@@ -888,7 +888,7 @@ def test_confignote_interface_custom_overload():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {
                             'tail': 'reviewer3',
