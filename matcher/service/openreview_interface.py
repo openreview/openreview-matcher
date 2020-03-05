@@ -158,7 +158,7 @@ class ConfigNoteInterface:
             self._cache['paper_notes'] = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content = content_dict))
+                content=content_dict))
             self.logger.debug('Count of notes found: {}'.format(len(self._cache['paper_notes'])))
 
         return self._cache['paper_notes']
