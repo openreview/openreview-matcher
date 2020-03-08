@@ -200,8 +200,8 @@ class ConfigNoteInterface:
     def constraints(self):
         if not 'constraint_edges' in self._cache:
             self._cache['constraint_edges'] = get_all_edges(
-                self.client, 
-                self.config_note.content['conflicts_invitation'], 
+                self.client,
+                self.config_note.content['conflicts_invitation'],
                 all_papers=self.papers,
                 all_reviewers=self.reviewers,
                 logger=self.logger)
@@ -270,13 +270,11 @@ class ConfigNoteInterface:
     @property
     def custom_load_edges(self):
         if 'custom_load_edges' not in self._cache:
-            self._cache['custom_load_edges'] = get_all_edges(
-                self.client,
-                self.config_note.content['custom_load_invitation'],
-                all_papers=self.papers,
-                all_reviewers=self.reviewers,
-                logger=self.logger)
-
+            edges = []
+            custom_load_edges = self.client.get_grouped_edges(head = self.config_note.content['match_group'], invitation = self.config_note.content['custom_load_invitation'])
+            if custom_load_edges:
+               edges = custom_load_edges[0]['values']
+            self._cache['custom_load_edges'] = edges
         return self._cache['custom_load_edges']
 
     def set_status(self, status, message=''):
@@ -368,14 +366,14 @@ class ConfigNoteInterface:
 
         for edge in self.custom_load_edges:
             try:
-                custom_load = int(edge.weight)
+                custom_load = int(edge['weight'])
             except ValueError:
                 raise MatcherError('invalid custom load weight')
 
             if custom_load < 0:
                 custom_load = 0
 
-            index = self.reviewers.index(edge.tail)
+            index = self.reviewers.index(edge['tail'])
             maximums[index] = custom_load
 
             if custom_load < minimums[index]:
