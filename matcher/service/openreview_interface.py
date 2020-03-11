@@ -1,6 +1,7 @@
 import re
 import openreview
 import logging
+from tqdm import tqdm
 
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
@@ -266,9 +267,12 @@ class ConfigNoteInterface:
     def custom_load_edges(self):
         if 'custom_load_edges' not in self._cache:
             edges = []
-            custom_load_edges = self.client.get_grouped_edges(head = self.config_note.content['match_group'], invitation = self.config_note.content['custom_load_invitation'])
+            custom_load_edges = self.client.get_grouped_edges(
+                invitation = self.config_note.content['custom_load_invitation'],
+                head = self.config_note.content['match_group'], 
+                select='tail,label,weight')
             if custom_load_edges:
-               edges = custom_load_edges[0]['values']
+                edges = custom_load_edges[0]['values']
             self._cache['custom_load_edges'] = edges
         return self._cache['custom_load_edges']
 
@@ -359,19 +363,23 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
+        all_reviewers = {r:i for i,r in enumerate(self.reviewers)}
         for edge in self.custom_load_edges:
-            try:
-                custom_load = int(edge['weight'])
-            except ValueError:
-                raise MatcherError('invalid custom load weight')
+            if edge['tail'] in all_reviewers:
+                try:
+                    custom_load = int(edge['weight'])
+                except ValueError:
+                    raise MatcherError('invalid custom load weight')
 
-            if custom_load < 0:
-                custom_load = 0
+                if custom_load < 0:
+                    custom_load = 0
 
-            index = self.reviewers.index(edge['tail'])
-            maximums[index] = custom_load
+                index = self.reviewers.index(edge['tail'])
+                maximums[index] = custom_load
 
-            if custom_load < minimums[index]:
-                minimums[index] = custom_load
+                if custom_load < minimums[index]:
+                    minimums[index] = custom_load
+            else:
+                print('Reviewer {} not found in pool'.format(edge['tail']))
 
         return minimums, maximums
