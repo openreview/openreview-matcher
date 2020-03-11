@@ -98,10 +98,8 @@ class Encoder:
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
 
         for forum, user, score in scores:
-            if user in self.index_by_user:
-                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-                score_matrix[coordinates] = score
-
+            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            score_matrix[coordinates] = score
 
         return score_matrix
 
@@ -111,9 +109,8 @@ class Encoder:
         '''
         constraint_matrix = np.full(self.matrix_shape, 0, dtype=int)
         for forum, user, constraint in constraints:
-            if user in self.index_by_user:
-                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-                constraint_matrix[coordinates] = constraint
+            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            constraint_matrix[coordinates] = constraint
 
         return constraint_matrix
 
