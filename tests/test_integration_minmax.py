@@ -9,7 +9,7 @@ import pytest
 import openreview
 import logging
 
-from matcher.service.openreview_interface import get_all_edges
+from matcher.service.openreview_interface import ConfigNoteInterface
 from matcher.solvers import SolverException
 
 from conftest import clean_start_conference, wait_for_status
@@ -20,7 +20,6 @@ def test_integration_basic(openreview_context):
     '''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2019/Conference'
     num_reviewers = 10
@@ -85,16 +84,10 @@ def test_integration_basic(openreview_context):
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'Complete'
 
-    openreview_client.get_edges()
-    all_papers = [note.id for note in conference.get_submissions()]
-    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
-
-    paper_assignment_edges = get_all_edges(
+    datasource = ConfigNoteInterface(openreview_client, config_note.id)
+    paper_assignment_edges = datasource.get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id()),
-        all_papers=all_papers,
-        all_reviewers=all_reviewers,
-        logger=logging.getLogger(__name__)
+        conference.get_paper_assignment_id(conference.get_reviewers_id())
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
@@ -105,7 +98,6 @@ def test_integration_supply_mismatch_error(openreview_context):
     '''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2020/Conference'
     num_reviewers = 10
@@ -171,16 +163,10 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert matcher_status.content['status'] == 'No Solution'
     assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
 
-    openreview_client.get_edges()
-    all_papers = [note.id for note in conference.get_submissions()]
-    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
-
-    paper_assignment_edges = get_all_edges(
+    datasource = ConfigNoteInterface(openreview_client, config_note.id)
+    paper_assignment_edges = datasource.get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id()),
-        all_papers=all_papers,
-        all_reviewers=all_reviewers,
-        logger=logging.getLogger(__name__)
+        conference.get_paper_assignment_id(conference.get_reviewers_id())
     )
 
     assert len(paper_assignment_edges) == 0
@@ -191,7 +177,6 @@ def test_integration_no_scores(openreview_context):
     '''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2021/Conference'
     num_reviewers = 10
@@ -252,16 +237,10 @@ def test_integration_no_scores(openreview_context):
     config_note = openreview_client.get_note(config_note.id)
     assert matcher_status.content['status'] == 'Complete'
 
-    openreview_client.get_edges()
-    all_papers = [note.id for note in conference.get_submissions()]
-    all_reviewers = openreview_client.get_group(conference.get_reviewers_id()).members
-
-    paper_assignment_edges = get_all_edges(
+    datasource = ConfigNoteInterface(openreview_client, config_note.id)
+    paper_assignment_edges = datasource.get_all_edges(
         openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id()),
-        all_papers=all_papers,
-        all_reviewers=all_reviewers,
-        logger=logging.getLogger(__name__)
+        conference.get_paper_assignment_id(conference.get_reviewers_id())
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
@@ -270,7 +249,6 @@ def test_routes_invalid_invitation(openreview_context):
     ''''''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2022/Conference'
     num_reviewers = 10
@@ -343,7 +321,6 @@ def test_routes_missing_header(openreview_context):
     '''request with missing header should response with 400'''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2023/Conference'
     num_reviewers = 10
@@ -513,7 +490,6 @@ def test_routes_already_running_or_complete(openreview_context):
 
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
     conference_id = 'ICLR.cc/2024/Conference'
     num_reviewers = 1
