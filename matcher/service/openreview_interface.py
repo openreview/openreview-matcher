@@ -109,15 +109,15 @@ class ConfigNoteInterface:
 
         for group in filtered_edges_groups:
             forum_id = group['id']['head']
-            for group_value in group['values']:
-                if group_value['tail'] in all_reviewers:
-                    all_edges.append({
-                        'invitation': edge_invitation,
-                        'head': forum_id,
-                        'tail': group_value['tail'],
-                        'weight': group_value.get('weight'),
-                        'label': group_value.get('label')
-                    })
+            filtered_edges = list(filter(lambda group_value: group_value['tail'] in all_reviewers, group['values']))
+            for edge in filtered_edges:
+                all_edges.append({
+                    'invitation': edge_invitation,
+                    'head': forum_id,
+                    'tail': edge['tail'],
+                    'weight': edge.get('weight'),
+                    'label': edge.get('label')
+                })
         return all_edges
 
     @property
