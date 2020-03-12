@@ -120,7 +120,7 @@ class Matcher:
             print('No Solution', error_handle)
             self.logger.debug('No Solution. ' + str(error_handle))
             self.set_status('No Solution', message=str(error_handle))
-        print ('Complete solver run took {} seconds'.format(time.time() - start_time))
+        self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
@@ -128,7 +128,6 @@ class Matcher:
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
         else:
-            print('No Solution. Solver could not find a solution. Adjust your parameters')
             self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
             self.set_status(
                 'No Solution',
