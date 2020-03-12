@@ -1,7 +1,7 @@
 '''Contains core matcher functions and classes.'''
 import logging
 import threading
-
+import time
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
 
@@ -111,6 +111,7 @@ class Matcher:
             logger=self.logger
         )
         solution = None
+        start_time = time.time()
         try:
             print('Solving Solver')
             self.logger.debug('Solving solver')
@@ -119,7 +120,7 @@ class Matcher:
             print('No Solution', error_handle)
             self.logger.debug('No Solution. ' + str(error_handle))
             self.set_status('No Solution', message=str(error_handle))
-
+        print ('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
