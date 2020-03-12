@@ -6,9 +6,10 @@ TODO: could error handling be cleaner?
 import flask
 import threading
 import openreview
+import redis
 
 from matcher import Matcher
-from .openreview_interface import ConfigNoteInterface
+from .openreview_interface import ConfigNoteInterface, CacheHandler
 
 BLUEPRINT = flask.Blueprint('match', __name__)
 
@@ -46,9 +47,16 @@ def match():
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
         )
 
+        cache_handler = CacheHandler(
+            host=flask.current_app.config['REDIS_HOST'],
+            port=flask.current_app.config['REDIS_PORT'],
+            cache_expiration=flask.current_app.config['REDIS_CACHE_EXPIRATION']
+        )
+
         interface = ConfigNoteInterface(
             client=openreview_client,
             config_note_id=config_note_id,
+            cache_handler=cache_handler,
             logger=flask.current_app.logger
         )
 

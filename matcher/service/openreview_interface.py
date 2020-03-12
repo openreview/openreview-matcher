@@ -104,19 +104,38 @@ def get_all_edges(client, edge_invitation_id, logger=None):
             ))
     return all_edges
 
+class CacheHandler:
+    def __init__(self, host, port, cache_expiration):
+        self.redis_client = redis.Redis(host=host, port=port)
+        self.cache_expiration = cache_expiration
+        self.key_prefix = ''
+
+    def set_key_prefix(self, key_prefix):
+        self.key_prefix = key_prefix
+
+    def get_value(self, key):
+        serialized_value = self.redis_client.get(self.key_prefix + key)
+        if serialized_value:
+            return pickle.loads(serialized_value)
+        return False
+
+    def set_value(self, key, value):
+        serialized_value = pickle.dumps(value)
+        self.redis_client.setex(self.key_prefix + key, self.cache_expiration, serialized_value)
+
 class ConfigNoteInterface:
-    def __init__(self, client, config_note_id, logger=logging.getLogger(__name__), cache=None):
+    def __init__(self, client, config_note_id, cache_handler, logger=logging.getLogger(__name__)):
         self.client = client
         self.config_note_id = config_note_id
         self.logger = logger
-        self._cache = {} if not cache else cache
-        self.redisClient = redis.Redis(host='localhost', port=6379)
+        self._cache = {}
         # Expire the cache in one day
-        self.cache_expiration = 60 * 60 * 24
         if hasattr(client, 'profile'):
             self.profile_id = client.profile.id
         else:
             self.profile_id = 'guest_' + str(time.time())
+        self.cache_handler = cache_handler
+        self.cache_handler.set_key_prefix(self.profile_id + self.config_note_id)
 
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
@@ -126,24 +145,14 @@ class ConfigNoteInterface:
                 self.set_status('Error')
                 raise error_handle
 
-    def get_cache(self, key):
-        serialized_value = self.redisClient.get(self.profile_id + self.config_note_id + key)
-        if serialized_value:
-            return pickle.loads(serialized_value)
-        return False
-
-    def set_cache(self, key, value):
-        serialized_value = pickle.dumps(value)
-        self.redisClient.setex(self.profile_id + self.config_note_id + key, self.cache_expiration, serialized_value)
-
     @property
     def match_group(self):
-        match_group = self.get_cache('match_group')
+        match_group = self.cache_handler.get_value('match_group')
         if not match_group:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
             match_group = self.client.get_group(
                 self.config_note.content['match_group'])
-            self.set_cache('match_group', match_group)
+            self.cache_handler.set_value('match_group', match_group)
 
         return match_group
 
@@ -160,7 +169,7 @@ class ConfigNoteInterface:
 
     @property
     def paper_notes(self):
-        paper_notes = self.get_cache('paper_notes')
+        paper_notes = self.cache_handler.get_value('paper_notes')
         if not paper_notes:
             content_dict = {}
             paper_invitation = self.config_note.content['paper_invitation']
@@ -180,7 +189,7 @@ class ConfigNoteInterface:
                 invitation=paper_invitation,
                 content = content_dict))
             self.logger.debug('Count of notes found: {}'.format(len(paper_notes)))
-            self.set_cache('paper_notes', paper_notes)
+            self.cache_handler.set_value('paper_notes', paper_notes)
 
         return paper_notes
 
@@ -190,30 +199,30 @@ class ConfigNoteInterface:
 
     @property
     def minimums(self):
-        minimums = self.get_cache('minimums')
+        minimums = self.cache_handler.get_value('minimums')
         if not minimums:
             minimums, maximums = self._get_quota_arrays()
-            self.set_cache('minimums', minimums)
-            self.set_cache('maximums', maximums)
+            self.cache_handler.set_value('minimums', minimums)
+            self.cache_handler.set_value('maximums', maximums)
 
         return minimums
 
     @property
     def maximums(self):
-        maximums = self.get_cache('maximums')
+        maximums = self.cache_handler.get_value('maximums')
         if not maximums:
             minimums, maximums = self._get_quota_arrays()
-            self.set_cache('minimums', minimums)
-            self.set_cache('maximums', maximums)
+            self.cache_handler.set_value('minimums', minimums)
+            self.cache_handler.set_value('maximums', maximums)
 
         return maximums
 
     @property
     def demands(self):
-        demands = self.get_cache('demands')
+        demands = self.cache_handler.get_value('demands')
         if not demands:
             demands = [int(self.config_note.content['max_users']) for paper in self.papers]
-            self.set_cache('demands', demands)
+            self.cache_handler.set_value('demands', demands)
 
         return demands
 
@@ -223,25 +232,25 @@ class ConfigNoteInterface:
 
     @property
     def constraints(self):
-        constraint_edges = self.get_cache('constraint_edges')
+        constraint_edges = self.cache_handler.get_value('constraint_edges')
         if not constraint_edges:
             constraint_edges = get_all_edges(
                 self.client, self.config_note.content['conflicts_invitation'], logger=self.logger)
-            self.set_cache('constraint_edges', constraint_edges)
+            self.cache_handler.set_value('constraint_edges', constraint_edges)
         for edge in constraint_edges:
             yield edge.head, edge.tail, edge.weight
 
     @property
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
-        edges_by_invitation = self.get_cache('edges_by_invitation')
+        edges_by_invitation = self.cache_handler.get_value('edges_by_invitation')
         if not edges_by_invitation:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
                 edges_by_invitation[invitation_id] = get_all_edges(
                     self.client, invitation_id, logger=self.logger)
 
-            self.set_cache('edges_by_invitation', edges_by_invitation)
+            self.cache_handler.set_value('edges_by_invitation', edges_by_invitation)
 
         translate_maps = {
             inv_id: score_spec['translate_map'] \
@@ -269,33 +278,33 @@ class ConfigNoteInterface:
 
     @property
     def assignment_invitation(self):
-        assignment_invitation = self.get_cache('assignment_invitation')
+        assignment_invitation = self.cache_handler.get_value('assignment_invitation')
         if not assignment_invitation:
             self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
             assignment_invitation = self.client.get_invitation(
                 self.config_note.content['assignment_invitation'])
-            self.set_cache('assignment_invitation', assignment_invitation)
+            self.cache_handler.set_value('assignment_invitation', assignment_invitation)
 
         return assignment_invitation
 
     @property
     def aggregate_score_invitation(self):
-        aggregate_score_invitation = self.get_cache('aggregate_score_invitation')
+        aggregate_score_invitation = self.cache_handler.get_value('aggregate_score_invitation')
         if not aggregate_score_invitation:
             self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
             aggregate_score_invitation = self.client.get_invitation(
                 self.config_note.content['aggregate_score_invitation'])
-            self.set_cache('aggregate_score_invitation', aggregate_score_invitation)
+            self.cache_handler.set_value('aggregate_score_invitation', aggregate_score_invitation)
 
         return aggregate_score_invitation
 
     @property
     def custom_load_edges(self):
-        custom_load_edges = self.get_cache('custom_load_edges')
+        custom_load_edges = self.cache_handler.get_value('custom_load_edges')
         if not custom_load_edges:
             custom_load_edges = get_all_edges(
                 self.client, self.config_note.content['custom_load_invitation'], logger=self.logger)
-            self.set_cache('custom_load_edges', custom_load_edges)
+            self.cache_handler.set_value('custom_load_edges', custom_load_edges)
 
         return custom_load_edges
 
