@@ -2,7 +2,7 @@ import random
 from unittest import mock
 import pytest
 import openreview
-from matcher.service.openreview_interface import ConfigNoteInterface
+from matcher.service.openreview_interface import ConfigNoteInterface, CacheHandler
 
 def mock_client(
             paper_ids,
@@ -42,6 +42,24 @@ def mock_client(
     client.get_grouped_edges = mock.MagicMock(side_effect=get_grouped_edges)
 
     return client
+
+def mock_cache_handler():
+    cache_handler = mock.MagicMock(CacheHandler)
+
+    def set_key_prefix(key_prefix):
+        return ''
+
+    def get_value(key):
+        return False
+
+    def set_value(key, value):
+        pass
+
+    cache_handler.set_key_prefix = mock.MagicMock(side_effect=set_key_prefix)
+    cache_handler.get_value = mock.MagicMock(side_effect=get_value)
+    cache_handler.set_value = mock.MagicMock(side_effect=set_value)
+
+    return cache_handler
 
 def test_confignote_interface():
     '''Test of basic ConfigNoteInterface functionality.'''
@@ -263,7 +281,8 @@ def test_confignote_interface():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    cache_handler = mock_cache_handler()
+    interface = ConfigNoteInterface(client, '<config_note_id>', cache_handler)
 
     assert interface.match_group.id
     assert interface.reviewers
@@ -422,7 +441,8 @@ def test_confignote_interface_no_scores_spec():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    cache_handler = mock_cache_handler()
+    interface = ConfigNoteInterface(client, '<config_note_id>', cache_handler)
 
     assert interface.match_group.id
     assert interface.reviewers
@@ -666,7 +686,8 @@ def test_confignote_interface_custom_load_negative():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    cache_handler = mock_cache_handler()
+    interface = ConfigNoteInterface(client, '<config_note_id>', cache_handler)
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
         if reviewer == 'reviewer0':
@@ -902,7 +923,8 @@ def test_confignote_interface_custom_overload():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    cache_handler = mock_cache_handler()
+    interface = ConfigNoteInterface(client, '<config_note_id>', cache_handler)
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
         if reviewer == 'reviewer3':
