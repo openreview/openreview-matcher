@@ -13,6 +13,7 @@ setup(name='openreview-matcher',
           'openreview-py',
           'ortools',
           'pytest',
+          'redis',
           'Flask'
       ],
       zip_safe=False)

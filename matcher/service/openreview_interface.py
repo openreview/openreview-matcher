@@ -1,6 +1,8 @@
 import re
 import openreview
 import logging
+import redis
+import json
 
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
@@ -106,7 +108,10 @@ class ConfigNoteInterface:
         self.client = client
         self.config_note_id = config_note_id
         self.logger = logger
-        self._cache = {} if not cache else cache
+        self.redisClient = redis.Redis(host='localhost', port=6379)
+        # Expire the cache in one day
+        self.cache_expiration = 60 * 60 * 24
+        self.profile_id = client.profile.id
 
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
@@ -116,15 +121,26 @@ class ConfigNoteInterface:
                 self.set_status('Error')
                 raise error_handle
 
+    def get_cache(self, key):
+        serialized_value = self.redisClient.get(self.profile_id + key)
+        if serialized_value:
+            return json.loads(serialized_value)
+        return False
+
+    def set_cache(self, key, value):
+        serialized_value = json.dumps(value)
+        self.redisClient.setex(self.profile_id + key, self.cache_expiration, serialized_value)
 
     @property
     def match_group(self):
-        if not 'match_group' in self._cache:
+        match_group = self.get_cache('match_group')
+        if not match_group:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
-            self._cache['match_group'] = self.client.get_group(
+            match_group = self.client.get_group(
                 self.config_note.content['match_group'])
+            self.set_cache('match_group', match_group)
 
-        return self._cache['match_group']
+        return match_group
 
     @property
     def reviewers(self):
@@ -132,14 +148,17 @@ class ConfigNoteInterface:
 
     @property
     def config_note(self):
-        if not 'config_note' in self._cache:
+        config_note = self.get_cache('config_note')
+        if not config_note:
             self.logger.debug('GET note id={}'.format(self.config_note_id))
-            self._cache['config_note'] = self.client.get_note(self.config_note_id)
-        return self._cache['config_note']
+            config_note = self.client.get_note(self.config_note_id)
+            self.set_cache('config_note', config_note)
+        return config_note
 
     @property
     def paper_notes(self):
-        if not 'paper_notes' in self._cache:
+        paper_notes = self.get_cache('paper_notes')
+        if not paper_notes:
             content_dict = {}
             paper_invitation = self.config_note.content['paper_invitation']
             self.logger.debug('Getting notes for invitation: {}'.format(paper_invitation))
@@ -153,13 +172,14 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self._cache['paper_notes'] = list(openreview.tools.iterget_notes(
+            paper_notes = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
                 content = content_dict))
-            self.logger.debug('Count of notes found: {}'.format(len(self._cache['paper_notes'])))
+            self.logger.debug('Count of notes found: {}'.format(len(paper_notes)))
+            self.set_cache('paper_notes', paper_notes)
 
-        return self._cache['paper_notes']
+        return paper_notes
 
     @property
     def papers(self):
@@ -167,28 +187,32 @@ class ConfigNoteInterface:
 
     @property
     def minimums(self):
-        if not 'minimums' in self._cache:
+        minimums = self.get_cache('minimums')
+        if not minimums:
             minimums, maximums = self._get_quota_arrays()
-            self._cache['minimums'] = minimums
-            self._cache['maximums'] = maximums
+            self.set_cache('minimums', minimums)
+            self.set_cache('maximums', maximums)
 
-        return self._cache['minimums']
+        return minimums
 
     @property
     def maximums(self):
-        if not 'maximums' in self._cache:
+        maximums = self.get_cache('maximums')
+        if not maximums:
             minimums, maximums = self._get_quota_arrays()
-            self._cache['minimums'] = minimums
-            self._cache['maximums'] = maximums
+            self.set_cache('minimums', minimums)
+            self.set_cache('maximums', maximums)
 
-        return self._cache['maximums']
+        return maximums
 
     @property
     def demands(self):
-        if not 'demands' in self._cache:
-            self._cache['demands'] = [int(self.config_note.content['max_users']) for paper in self.papers]
+        demands = self.get_cache('demands')
+        if not demands:
+            demands = [int(self.config_note.content['max_users']) for paper in self.papers]
+            self.set_cache('demands', demands)
 
-        return self._cache['demands']
+        return demands
 
     @property
     def num_alternates(self):
@@ -196,24 +220,25 @@ class ConfigNoteInterface:
 
     @property
     def constraints(self):
-        if not 'constraint_edges' in self._cache:
-            self._cache['constraint_edges'] = get_all_edges(
+        constraint_edges = self.get_cache('constraint_edges')
+        if not constraint_edges:
+            constraint_edges = get_all_edges(
                 self.client, self.config_note.content['conflicts_invitation'], logger=self.logger)
-
-        for edge in self._cache['constraint_edges']:
+            self.set_cache('constraint_edges', constraint_edges)
+        for edge in constraint_edges:
             yield edge.head, edge.tail, edge.weight
 
     @property
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
-
-        if not 'edges_by_invitation' in self._cache:
+        edges_by_invitation = self.get_cache('edges_by_invitation')
+        if not edges_by_invitation:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
                 edges_by_invitation[invitation_id] = get_all_edges(
                     self.client, invitation_id, logger=self.logger)
 
-            self._cache['edges_by_invitation'] = edges_by_invitation
+            self.set_cache('edges_by_invitation', edges_by_invitation)
 
         translate_maps = {
             inv_id: score_spec['translate_map'] \
@@ -228,7 +253,7 @@ class ConfigNoteInterface:
                     edge.tail,
                     _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
                 ) for edge in edges] \
-            for inv_id, edges in self._cache['edges_by_invitation'].items() \
+            for inv_id, edges in sedges_by_invitation.items() \
         }
 
     @property
@@ -241,29 +266,35 @@ class ConfigNoteInterface:
 
     @property
     def assignment_invitation(self):
-        if 'assignment_invitation' not in self._cache:
+        assignment_invitation = self.get_cache('assignment_invitation')
+        if not assignment_invitation:
             self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-            self._cache['assignment_invitation'] = self.client.get_invitation(
+            assignment_invitation = self.client.get_invitation(
                 self.config_note.content['assignment_invitation'])
+            self.set_cache('assignment_invitation', assignment_invitation)
 
-        return self._cache['assignment_invitation']
+        return assignment_invitation
 
     @property
     def aggregate_score_invitation(self):
-        if 'aggregate_score_invitation' not in self._cache:
+        aggregate_score_invitation = self.get_cache('aggregate_score_invitation')
+        if not aggregate_score_invitation:
             self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
-            self._cache['aggregate_score_invitation'] = self.client.get_invitation(
+            aggregate_score_invitation = self.client.get_invitation(
                 self.config_note.content['aggregate_score_invitation'])
+            self.set_cache('aggregate_score_invitation', aggregate_score_invitation)
 
-        return self._cache['aggregate_score_invitation']
+        return aggregate_score_invitation
 
     @property
     def custom_load_edges(self):
-        if 'custom_load_edges' not in self._cache:
-            self._cache['custom_load_edges'] = get_all_edges(
+        custom_load_edges = self.get_cache('custom_load_edges')
+        if not custom_load_edges:
+            custom_load_edges = get_all_edges(
                 self.client, self.config_note.content['custom_load_invitation'], logger=self.logger)
+            self.set_cache('custom_load_edges', custom_load_edges)
 
-        return self._cache['custom_load_edges']
+        return custom_load_edges
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
@@ -272,7 +303,8 @@ class ConfigNoteInterface:
         if message:
             self.config_note.content['error_message'] = message
 
-        self._cache['config_note'] = self.client.post_note(self.config_note)
+        config_note = self.client.post_note(self.config_note)
+        self.set_cache('config_note', config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
 
     def set_assignments(self, assignments_by_forum):
