@@ -103,7 +103,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
     conference.set_authors()
     conference.set_reviewers(emails = list(reviewers))
-    conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE)
+    conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE, build_conflicts=True)
 
     return conference
 
