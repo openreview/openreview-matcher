@@ -96,8 +96,7 @@ class ConfigNoteInterface:
         all_papers = {p:i for i,p in enumerate(self.papers)}
         all_reviewers = {r:i for i,r in enumerate(self.reviewers)}
         self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
-        edge_invitation = client.get_invitation(edge_invitation_id)
-
+        
         edges_grouped_by_paper = client.get_grouped_edges(
             invitation=edge_invitation_id,
             groupby='head',
@@ -112,7 +111,7 @@ class ConfigNoteInterface:
             filtered_edges = list(filter(lambda group_value: group_value['tail'] in all_reviewers, group['values']))
             for edge in filtered_edges:
                 all_edges.append({
-                    'invitation': edge_invitation,
+                    'invitation': edge_invitation_id,
                     'head': forum_id,
                     'tail': edge['tail'],
                     'weight': edge.get('weight'),
