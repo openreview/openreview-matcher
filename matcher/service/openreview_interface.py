@@ -2,7 +2,7 @@ import re
 import openreview
 import logging
 import redis
-import json
+import pickle
 
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
@@ -124,11 +124,13 @@ class ConfigNoteInterface:
     def get_cache(self, key):
         serialized_value = self.redisClient.get(self.profile_id + key)
         if serialized_value:
-            return json.loads(serialized_value)
+            print('GET', self.profile_id + key)
+            return pickle.loads(serialized_value)
         return False
 
     def set_cache(self, key, value):
-        serialized_value = json.dumps(value)
+        print('SET', self.profile_id + key)
+        serialized_value = pickle.dumps(value)
         self.redisClient.setex(self.profile_id + key, self.cache_expiration, serialized_value)
 
     @property
@@ -253,7 +255,7 @@ class ConfigNoteInterface:
                     edge.tail,
                     _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
                 ) for edge in edges] \
-            for inv_id, edges in sedges_by_invitation.items() \
+            for inv_id, edges in edges_by_invitation.items() \
         }
 
     @property
