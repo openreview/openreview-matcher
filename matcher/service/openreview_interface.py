@@ -3,6 +3,7 @@ import openreview
 import logging
 import redis
 import pickle
+import time
 
 def build_edge(invitation, forum_id, reviewer, score, label, number):
     '''
@@ -108,10 +109,14 @@ class ConfigNoteInterface:
         self.client = client
         self.config_note_id = config_note_id
         self.logger = logger
+        self._cache = {} if not cache else cache
         self.redisClient = redis.Redis(host='localhost', port=6379)
         # Expire the cache in one day
         self.cache_expiration = 60 * 60 * 24
-        self.profile_id = client.profile.id
+        if hasattr(client, 'profile'):
+            self.profile_id = client.profile.id
+        else:
+            self.profile_id = 'guest_' + str(time.time())
 
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
@@ -122,16 +127,14 @@ class ConfigNoteInterface:
                 raise error_handle
 
     def get_cache(self, key):
-        serialized_value = self.redisClient.get(self.profile_id + key)
+        serialized_value = self.redisClient.get(self.profile_id + self.config_note_id + key)
         if serialized_value:
-            print('GET', self.profile_id + key)
             return pickle.loads(serialized_value)
         return False
 
     def set_cache(self, key, value):
-        print('SET', self.profile_id + key)
         serialized_value = pickle.dumps(value)
-        self.redisClient.setex(self.profile_id + key, self.cache_expiration, serialized_value)
+        self.redisClient.setex(self.profile_id + self.config_note_id + key, self.cache_expiration, serialized_value)
 
     @property
     def match_group(self):
@@ -150,12 +153,10 @@ class ConfigNoteInterface:
 
     @property
     def config_note(self):
-        config_note = self.get_cache('config_note')
-        if not config_note:
+        if not 'config_note' in self._cache:
             self.logger.debug('GET note id={}'.format(self.config_note_id))
-            config_note = self.client.get_note(self.config_note_id)
-            self.set_cache('config_note', config_note)
-        return config_note
+            self._cache['config_note'] = self.client.get_note(self.config_note_id)
+        return self._cache['config_note']
 
     @property
     def paper_notes(self):
@@ -305,8 +306,7 @@ class ConfigNoteInterface:
         if message:
             self.config_note.content['error_message'] = message
 
-        config_note = self.client.post_note(self.config_note)
-        self.set_cache('config_note', config_note)
+        self._cache['config_note'] = self.client.post_note(self.config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
 
     def set_assignments(self, assignments_by_forum):
