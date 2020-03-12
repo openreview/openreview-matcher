@@ -116,6 +116,8 @@ class Matcher:
             self.logger.debug('Solving solver')
             solution = solver.solve()
         except SolverException as error_handle:
+            print('No Solution', error_handle)
+            self.logger.debug('No Solution. ' + str(error_handle))
             self.set_status('No Solution', message=str(error_handle))
 
         if solver.solved:
@@ -125,6 +127,8 @@ class Matcher:
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
         else:
+            print('No Solution. Solver could not find a solution. Adjust your parameters')
+            self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
             self.set_status(
                 'No Solution',
                 message='Solver could not find a solution. Adjust your parameters')
