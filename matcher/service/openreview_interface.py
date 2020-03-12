@@ -93,8 +93,8 @@ class ConfigNoteInterface:
         '''Helper function for retrieving and parsing all edges in bulk'''
 
         all_edges = []
-        all_papers = {p:i for i,p in enumerate(self.papers)}
-        all_reviewers = {r:i for i,r in enumerate(self.reviewers)}
+        all_papers = self.map_papers_to_indexes
+        all_reviewers = self.map_reviewers_to_indexes
         self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
         
         edges_grouped_by_paper = client.get_grouped_edges(
@@ -133,6 +133,10 @@ class ConfigNoteInterface:
         return self.match_group.members
 
     @property
+    def map_reviewers_to_indexes(self):
+        return self.match_group.members    
+
+    @property
     def config_note(self):
         if not 'config_note' in self._cache:
             self.logger.debug('GET note id={}'.format(self.config_note_id))
@@ -166,6 +170,10 @@ class ConfigNoteInterface:
     @property
     def papers(self):
         return [note.id for note in self.paper_notes]
+
+    @property
+    def map_papers_to_indexes(self):
+        return {p:i for i,p in enumerate(self.papers)}
 
     @property
     def minimums(self):
@@ -361,7 +369,7 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
-        all_reviewers = {r:i for i,r in enumerate(self.reviewers)}
+        all_reviewers = self.map_reviewers_to_indexes
         for edge in self.custom_load_edges:
             if edge['tail'] in all_reviewers:
                 try:
