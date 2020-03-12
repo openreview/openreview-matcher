@@ -54,23 +54,23 @@ def _edge_to_score(edge, translate_map=None):
     return a numeric score, given an Edge.
     '''
 
-    score = edge.weight
+    score = edge['weight']
 
     if translate_map:
         try:
-            score = translate_map[edge.label]
+            score = translate_map[edge['label']]
         except KeyError:
             raise EncoderError(
                 'Cannot translate label {} to score. Valid labels are: {}'.format(
-                    edge.label, translate_map.keys()))
+                    edge['label'], translate_map.keys()))
 
     if not isinstance(score, float) and not isinstance(score, int):
         try:
             score = float(score)
         except ValueError:
             raise EncoderError(
-                'Edge {} has weight that is neither float nor int: {}, type {}'.format(
-                    edge.id, edge.weight, type(edge.weight)))
+                'Edge has weight that is neither float nor int: {}, type {}'.format(
+                    edge['weight'], type(edge['weight'])))
 
     return score
 
@@ -111,14 +111,13 @@ class ConfigNoteInterface:
             forum_id = group['id']['head']
             for group_value in group['values']:
                 if group_value['tail'] in all_reviewers:
-                    all_edges.append(build_edge(
-                        edge_invitation,
-                        forum_id,
-                        group_value['tail'],
-                        group_value.get('weight'),
-                        group_value.get('label'),
-                        None
-                    ))
+                    all_edges.append({
+                        'invitation': edge_invitation,
+                        'head': forum_id,
+                        'tail': group_value['tail'],
+                        'weight': group_value.get('weight'),
+                        'label': group_value.get('label')
+                    })
         return all_edges
 
     @property
@@ -206,7 +205,7 @@ class ConfigNoteInterface:
                 self.config_note.content['conflicts_invitation'])
 
         for edge in self._cache['constraint_edges']:
-            yield edge.head, edge.tail, edge.weight
+            yield edge['head'], edge['tail'], edge['weight']
 
     @property
     def scores_by_type(self):
@@ -230,8 +229,8 @@ class ConfigNoteInterface:
         return {
             inv_id: [
                 (
-                    edge.head,
-                    edge.tail,
+                    edge['head'],
+                    edge['tail'],
                     _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
                 ) for edge in edges] \
             for inv_id, edges in self._cache['edges_by_invitation'].items() \
