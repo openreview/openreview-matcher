@@ -256,3 +256,66 @@ def test_encoder_constraints(encoder_context):
     encoded_constraint_matrix = encoder.constraint_matrix
     assert encoded_constraint_matrix.shape == correct_constraint_matrix.shape
     assert (encoded_constraint_matrix == correct_constraint_matrix).all()
+
+def test_encoder_average_weighting(encoder_context):
+
+    reviewers = [1, 2, 3, 4]
+    papers = [1, 2, 3]
+
+    scores_by_type = {
+        'TPMS': [
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 3, 1),
+            (1, 4, 1),
+            (2, 1, 0.7),
+            (2, 2, 1),
+            (2, 3, 0),
+            (2, 4, 1),
+            (3, 1, 0.6),
+            (3, 2, 0),
+            (3, 3, 1),
+            (3, 4, 0.3)
+        ],
+        'Affinity': [
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 3, 1),
+            (1, 4, 1),
+            (2, 1, 0),
+            (2, 2, 1),
+            (2, 3, 1),
+            (2, 4, 1),
+            (3, 1, 0),
+            (3, 2, 1),
+            (3, 3, 0.5),
+            (3, 4, 0.8)
+        ]
+    }
+
+    weight_by_type = {
+        'TPMS': 0.8,
+        'Affinity': 0.2
+    }
+
+    constraints = []
+
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        use_normalization=True
+    )
+
+    def assert_arrays(array_A, array_B):
+        assert all([a == b for a, b in zip(array_A, array_B)]), array_A + array_B
+
+    encoded_aggregate_matrix = encoder.aggregate_score_matrix
+    print(encoded_aggregate_matrix)
+    expected_matrix = [[0, 1, 1, 1], [0.7, 1, 1, 1], [0.6, 1, 0.9, 0.4]]
+
+    for a, b in zip(encoded_aggregate_matrix, expected_matrix):
+        assert_arrays(a, b)
+
