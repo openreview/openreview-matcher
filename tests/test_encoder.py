@@ -305,7 +305,8 @@ def test_encoder_average_weighting(encoder_context):
         papers,
         constraints,
         scores_by_type,
-        weight_by_type
+        weight_by_type,
+        use_normalization=True
     )
 
     def assert_arrays(array_A, array_B):

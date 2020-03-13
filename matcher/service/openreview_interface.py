@@ -116,6 +116,9 @@ class ConfigNoteInterface:
                 self.set_status('Error')
                 raise error_handle
 
+    @property
+    def should_normalize(self):
+        return self.config_note.content.get('score_normalize', False)
 
     @property
     def match_group(self):

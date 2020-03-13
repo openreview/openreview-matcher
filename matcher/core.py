@@ -37,6 +37,7 @@ class KeywordDatasource:
         self.maximums = maximums
         self.demands = demands
         self.num_alternates = num_alternates
+        self.should_normalize = False
 
 class Matcher:
     '''Main class that coordinates an Encoder and a Solver.'''
@@ -93,7 +94,8 @@ class Matcher:
             papers=self.datasource.papers,
             constraints=self.datasource.constraints,
             scores_by_type=self.datasource.scores_by_type,
-            weight_by_type=self.datasource.weight_by_type
+            weight_by_type=self.datasource.weight_by_type,
+            use_normalization=self.datasource.should_normalize
         )
 
         self.logger.debug('Preparing solver')
