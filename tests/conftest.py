@@ -81,8 +81,8 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 'title': 'Test_Paper_{}'.format(paper_number),
                 'authorids': authorids
             }
-            signatures = ['~Super_User1']	
-            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]	
+            signatures = ['~Super_User1']
+            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]
             writers = [conference.id] + authorids + signatures
             submission = openreview.Note(
                 signatures = signatures,
@@ -93,7 +93,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
             )
 
             posted_submission = client.post_note(submission)
-            
+
             for index in range(1, num_reviewers+1):
                 reviewer = 'test_reviewer{0}@mail.com'.format(index)
                 reviewers.add(reviewer)
@@ -103,7 +103,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
     conference.set_authors()
     conference.set_reviewers(emails = list(reviewers))
-    conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE)
+    conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE, build_conflicts=True)
 
     return conference
 
