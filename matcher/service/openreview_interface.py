@@ -80,6 +80,8 @@ class ConfigNoteInterface:
         self.config_note_id = config_note_id
         self.logger = logger
         self._cache = {} if not cache else cache
+        self._reviewers = None
+        self._papers = None
 
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
@@ -130,7 +132,9 @@ class ConfigNoteInterface:
 
     @property
     def reviewers(self):
-        return self.match_group.members
+        if self._reviewers is None:
+            self._reviewers = self.match_group.members
+        return self._reviewers
 
     @property
     def map_reviewers_to_indexes(self):
@@ -171,7 +175,9 @@ class ConfigNoteInterface:
 
     @property
     def papers(self):
-        return [note.id for note in self.paper_notes]
+        if self._papers is None:
+            self._papers = [note.id for note in self.paper_notes]
+        return self._papers
 
     @property
     def map_papers_to_indexes(self):
