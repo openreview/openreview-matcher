@@ -134,7 +134,9 @@ class ConfigNoteInterface:
 
     @property
     def map_reviewers_to_indexes(self):
-        return self.match_group.members    
+        if not 'map_reviewers_to_indexes' in self._cache:
+            self._cache['map_reviewers_to_indexes'] = {r:i for i,r in enumerate(self.reviewers)}
+        return self._cache['map_reviewers_to_indexes']
 
     @property
     def config_note(self):
@@ -173,7 +175,9 @@ class ConfigNoteInterface:
 
     @property
     def map_papers_to_indexes(self):
-        return {p:i for i,p in enumerate(self.papers)}
+        if not 'map_papers_to_indexes' in self._cache:
+            self._cache['map_papers_to_indexes'] = {p:i for i,p in enumerate(self.papers)}
+        return self._cache['map_papers_to_indexes']
 
     @property
     def minimums(self):
