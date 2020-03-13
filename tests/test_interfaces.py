@@ -265,7 +265,6 @@ def test_confignote_interface():
 
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
-    assert interface.match_group.id
     assert interface.reviewers
     assert interface.config_note
     assert interface.paper_notes
@@ -424,7 +423,6 @@ def test_confignote_interface_no_scores_spec():
 
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
-    assert interface.match_group.id
     assert interface.reviewers
     assert interface.config_note
     assert interface.paper_notes

@@ -77,24 +77,30 @@ def _edge_to_score(edge, translate_map=None):
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
         self.client = client
-        self.config_note_id = config_note_id
         self.logger = logger
-        self._reviewers = None
-        self._papers = None
-        self._match_group = None
-        self._config_note = None
+        self.logger.debug('GET note id={}'.format(config_note_id))
+        self.config_note = self.client.get_note(config_note_id)
+        self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
+        self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
+        self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
+        self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
+        self.num_alternates = int(self.config_note.content['alternates'])
+
+
         self._map_reviewers_to_indexes = None
         self._map_papers_to_indexes = None
-        self._paper_notes = None
+        self._reviewers = None
+        self._papers = None
+        self._scores_by_type = None
         self._minimums = None
         self._maximums = None
         self._demands = None
-        self._constraint_edges = None
-        self._edges_by_invitation = None
-        self._assignment_invitation = None
-        self._aggregate_score_invitation = None
-        self._custom_load_edges = None
+        self._constraints = None
 
+        validate_score_spec()
+
+
+    def validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
                 self.logger.debug('GET invitation id={}'.format(invitation_id))
@@ -103,47 +109,12 @@ class ConfigNoteInterface:
                 self.set_status('Error')
                 raise error_handle
 
-    def get_all_edges(self, client, edge_invitation_id):
-        '''Helper function for retrieving and parsing all edges in bulk'''
-
-        all_edges = []
-        all_papers = self.map_papers_to_indexes
-        all_reviewers = self.map_reviewers_to_indexes
-        self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
-        
-        edges_grouped_by_paper = client.get_grouped_edges(
-            invitation=edge_invitation_id,
-            groupby='head',
-            select='tail,label,weight'
-        )
-
-        self.logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
-        filtered_edges_groups = list(filter(lambda edge_group: edge_group['id']['head'] in all_papers, edges_grouped_by_paper))
-
-        for group in filtered_edges_groups:
-            forum_id = group['id']['head']
-            filtered_edges = list(filter(lambda group_value: group_value['tail'] in all_reviewers, group['values']))
-            for edge in filtered_edges:
-                all_edges.append({
-                    'invitation': edge_invitation_id,
-                    'head': forum_id,
-                    'tail': edge['tail'],
-                    'weight': edge.get('weight'),
-                    'label': edge.get('label')
-                })
-        return all_edges
-
-    @property
-    def match_group(self):
-        if self._match_group is None:
-            self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
-            self._match_group = self.client.get_group(self.config_note.content['match_group'])
-        return self._match_group
-
     @property
     def reviewers(self):
         if self._reviewers is None:
-            self._reviewers = self.match_group.members
+            self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
+            match_group = self.client.get_group(self.config_note.content['match_group'])
+            self._reviewers = match_group.members
         return self._reviewers
 
     @property
@@ -153,15 +124,8 @@ class ConfigNoteInterface:
         return self._map_reviewers_to_indexes
 
     @property
-    def config_note(self):
-        if self._config_note is None:
-            self.logger.debug('GET note id={}'.format(self.config_note_id))
-            self._config_note = self.client.get_note(self.config_note_id)
-        return self._config_note
-
-    @property
-    def paper_notes(self):
-        if self._paper_notes is None:
+    def papers(self):
+        if self._papers is None:
             content_dict = {}
             paper_invitation = self.config_note.content['paper_invitation']
             self.logger.debug('Getting notes for invitation: {}'.format(paper_invitation))
@@ -175,18 +139,12 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self._paper_notes = list(openreview.tools.iterget_notes(
+            self._papers = [note.id for note in list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content=content_dict))
-            self.logger.debug('Count of notes found: {}'.format(len(self._paper_notes)))
+                content=content_dict))]
+            self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
-        return self._paper_notes
-
-    @property
-    def papers(self):
-        if self._papers is None:
-            self._papers = [note.id for note in self.paper_notes]
         return self._papers
 
     @property
@@ -198,18 +156,14 @@ class ConfigNoteInterface:
     @property
     def minimums(self):
         if self._minimums is None:
-            minimums, maximums = self._get_quota_arrays()
-            self._minimums = minimums
-            self._maximums = maximums
+            self._get_quota_arrays()
 
         return self._minimums
 
     @property
     def maximums(self):
         if self._maximums is None:
-            minimums, maximums = self._get_quota_arrays()
-            self._minimums = minimums
-            self._maximums = maximums
+            self._get_quota_arrays()
 
         return self._maximums
 
@@ -221,47 +175,41 @@ class ConfigNoteInterface:
         return self._demands
 
     @property
-    def num_alternates(self):
-        return int(self.config_note.content['alternates'])
-
-    @property
     def constraints(self):
-        if self._constraint_edges is None:
-            self._constraint_edges = self.get_all_edges(
+        if self._constraints is None:
+            self._constraints = [(edge['head'], edge['tail'], edge['weight']) for edge in self._get_all_edges(
                 self.client,
-                self.config_note.content['conflicts_invitation'])
-
-        for edge in self._constraint_edges:
-            yield edge['head'], edge['tail'], edge['weight']
+                self.config_note.content['conflicts_invitation'])]
+        return self._constraints
 
     @property
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
 
-        if self._edges_by_invitation is None:
+        if self._scores_by_type is None:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
-                edges_by_invitation[invitation_id] = self.get_all_edges(
+                edges_by_invitation[invitation_id] = self._get_all_edges(
                     self.client,
                     invitation_id)
 
-            self._edges_by_invitation = edges_by_invitation
 
-        translate_maps = {
-            inv_id: score_spec['translate_map'] \
-            for inv_id, score_spec in scores_specification.items() \
-            if 'translate_map' in score_spec
-        }
+            translate_maps = {
+                inv_id: score_spec['translate_map'] \
+                for inv_id, score_spec in scores_specification.items() \
+                if 'translate_map' in score_spec
+            }
 
-        return {
-            inv_id: [
-                (
-                    edge['head'],
-                    edge['tail'],
-                    _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
-                ) for edge in edges] \
-            for inv_id, edges in self._edges_by_invitation.items() \
-        }
+            self._scores_by_type = {
+                inv_id: [
+                    (
+                        edge['head'],
+                        edge['tail'],
+                        _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                    ) for edge in edges] \
+                for inv_id, edges in self._edges_by_invitation.items() \
+            }
+        return self._scores_by_type
 
     @property
     def weight_by_type(self):
@@ -270,37 +218,6 @@ class ConfigNoteInterface:
             inv_id: entry['weight'] \
             for inv_id, entry in scores_specification.items()
         }
-
-    @property
-    def assignment_invitation(self):
-        if self._assignment_invitation is None:
-            self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-            self._assignment_invitation = self.client.get_invitation(
-                self.config_note.content['assignment_invitation'])
-
-        return self._assignment_invitation
-
-    @property
-    def aggregate_score_invitation(self):
-        if self._aggregate_score_invitation is None:
-            self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
-            self._aggregate_score_invitation = self.client.get_invitation(
-                self.config_note.content['aggregate_score_invitation'])
-
-        return self._aggregate_score_invitation
-
-    @property
-    def custom_load_edges(self):
-        if self._custom_load_edges is None:
-            edges = []
-            custom_load_edges = self.client.get_grouped_edges(
-                invitation = self.config_note.content['custom_load_invitation'],
-                head = self.config_note.content['match_group'], 
-                select='tail,label,weight')
-            if custom_load_edges:
-                edges = custom_load_edges[0]['values']
-            self._custom_load_edges = edges
-        return self._custom_load_edges
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
@@ -386,10 +303,18 @@ class ConfigNoteInterface:
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
-        minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
-        maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
+        self._minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
+        self._maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
         all_reviewers = self.map_reviewers_to_indexes
+        edges = []
+        edges = self.client.get_grouped_edges(
+                invitation = self.config_note.content['custom_load_invitation'],
+                head = self.config_note.content['match_group'],
+                select='tail,label,weight')
+        if edges:
+            custom_load_edges = edges[0]['values']
+
         for edge in self.custom_load_edges:
             if edge['tail'] in all_reviewers:
                 try:
@@ -401,11 +326,41 @@ class ConfigNoteInterface:
                     custom_load = 0
 
                 index = self.reviewers.index(edge['tail'])
-                maximums[index] = custom_load
+                self._maximums[index] = custom_load
 
                 if custom_load < minimums[index]:
-                    minimums[index] = custom_load
+                    self._minimums[index] = custom_load
             else:
                 print('Reviewer {} not found in pool'.format(edge['tail']))
 
         return minimums, maximums
+
+    def _get_all_edges(self, client, edge_invitation_id):
+        '''Helper function for retrieving and parsing all edges in bulk'''
+
+        all_edges = []
+        all_papers = self.map_papers_to_indexes
+        all_reviewers = self.map_reviewers_to_indexes
+        self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
+
+        edges_grouped_by_paper = client.get_grouped_edges(
+            invitation=edge_invitation_id,
+            groupby='head',
+            select='tail,label,weight'
+        )
+
+        self.logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
+        filtered_edges_groups = list(filter(lambda edge_group: edge_group['id']['head'] in all_papers, edges_grouped_by_paper))
+
+        for group in filtered_edges_groups:
+            forum_id = group['id']['head']
+            filtered_edges = list(filter(lambda group_value: group_value['tail'] in all_reviewers, group['values']))
+            for edge in filtered_edges:
+                all_edges.append({
+                    'invitation': edge_invitation_id,
+                    'head': forum_id,
+                    'tail': edge['tail'],
+                    'weight': edge.get('weight'),
+                    'label': edge.get('label')
+                })
+        return all_edges
