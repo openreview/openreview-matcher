@@ -54,6 +54,7 @@ class Encoder:
             weight_by_type,
             use_normalization=False
         ):
+        print('Use normalization', use_normalization)
 
         self.reviewers = reviewers
         self.papers = papers
