@@ -75,7 +75,13 @@ class Encoder:
         self.constraint_matrix = self._encode_constraints(constraints)
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
-        self.aggregate_score_matrix = sum([
+        indicator = { score_type: scores != 0.0  for score_type, scores in self.score_matrices.items() }
+        sum_of_weights = sum([
+            indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
+        ])
+        normalizer = np.where(sum_of_weights == 0, 0, 1/sum_of_weights)
+
+        self.aggregate_score_matrix = normalizer * sum([
             scores * weight_by_type[score_type] for score_type, scores in self.score_matrices.items()
         ]) if self.score_matrices else self.default_scores
 
