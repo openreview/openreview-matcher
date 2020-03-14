@@ -89,7 +89,7 @@ class Matcher:
         '''
         self.set_status('Running')
 
-        print('Start encoding')
+        self.logger.debug('Start encoding')
 
         encoder = Encoder(
             reviewers=self.datasource.reviewers,
@@ -97,10 +97,9 @@ class Matcher:
             constraints=self.datasource.constraints,
             scores_by_type=self.datasource.scores_by_type,
             weight_by_type=self.datasource.weight_by_type,
-            use_normalization=self.datasource.should_normalize
+            use_normalization=self.datasource.should_normalize,
+            logger=self.logger
         )
-
-        print('Preparing Solver')
 
         self.logger.debug('Preparing solver')
 
@@ -115,12 +114,10 @@ class Matcher:
         solution = None
         start_time = time.time()
         try:
-            print('Solving Solver')
             self.logger.debug('Solving solver')
             solution = solver.solve()
         except SolverException as error_handle:
-            print('No Solution', error_handle)
-            self.logger.debug('No Solution. ' + str(error_handle))
+            self.logger.debug('No Solution={}'.format(error_handle))
             self.set_status('No Solution', message=str(error_handle))
         self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:

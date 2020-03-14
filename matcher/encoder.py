@@ -6,6 +6,7 @@ Responsible for:
 
 from collections import defaultdict, namedtuple
 import numpy as np
+import logging
 
 def _score_to_cost(score, scaling_factor=100):
     '''
@@ -52,37 +53,31 @@ class Encoder:
             constraints,
             scores_by_type,
             weight_by_type,
-            use_normalization=False
+            use_normalization=False,
+            logger=logging.getLogger(__name__)
         ):
-        print('Init encoding')
-        print('Use normalization', use_normalization)
-
+        self.logger = logger
         self.reviewers = reviewers
         self.papers = papers
 
         self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
         self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
 
-        print('matrix_shape')
+        self.logger.debug('Init encoding')
+        self.logger.info('Use normalization={}'.format(use_normalization))
 
         self.matrix_shape = (
             len(self.papers),
             len(self.reviewers)
         )
 
-        print('default_scores')
-
         self.default_scores = np.full(self.matrix_shape, 0, dtype=float)
-
-
-        print('score_matrices')
 
         self.score_matrices = {
             score_type: self._encode_scores(scores) \
             for score_type, scores in scores_by_type.items()
         }
 
-        print('constraint_matrix')
         self.constraint_matrix = self._encode_constraints(constraints)
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.

@@ -11,6 +11,8 @@ import logging
 from collections import defaultdict
 import time
 
+logging.basicConfig(filename='main.log', level=logging.DEBUG)
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--scores',
@@ -75,13 +77,13 @@ if not solver_class:
 
 reviewer_set = set()
 paper_set = set()
-print ('Using weights:', args.weights)
+logging.info('Using weights={}'.format(args.weights))
 weight_by_type = {
     score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)}
 
 scores_by_type = {score_file: [] for score_file in args.scores}
 for score_file in args.scores:
-    print ('processing ', score_file)
+    logging.info('processing file={}'.format(score_file))
     file_reviewers = []
     file_papers = []
 
@@ -148,7 +150,7 @@ if args.max_papers:
             else:
                 missing_reviewers.append(profile_id)
     if missing_reviewers:
-        print ('Reviewers missing in all score files: ', ', '.join(profile_id))
+        logging.info('Reviewers missing in all score files: ', ', '.join(profile_id))
 
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
@@ -165,8 +167,8 @@ match_data = {
     'num_alternates': num_alternates
 }
 
-print ('Count of reviewers: ', len(reviewers))
-print ('Count of papers: ', len(papers))
+logging.info('Count of reviewers={} '.format(len(reviewers)))
+logging.info('Count of papers={}'.format(len(papers)))
 
 def write_assignments(assignments):
     with open('./assignments.json', 'w') as f:
@@ -177,14 +179,10 @@ def write_alternates(alternates):
         f.write(json.dumps(alternates, indent=2))
 
 def on_set_status(status, message):
-    print (status, message)
+    logging.info('status={0}, message={1}'.format(status, message))
 
 
-ch = logging.StreamHandler()
-logger = logging.getLogger('__main__.py')
-logger.addHandler(ch)
-
-print('Solver class: ', solver_class)
+logging.info('Solver class={}'.format(solver_class))
 
 matcher = Matcher(
     datasource=match_data,
@@ -192,9 +190,9 @@ matcher = Matcher(
     on_set_assignments=write_assignments,
     on_set_alternates=write_alternates,
     solver_class=solver_class,
-    logger=logger
+    logger=logging
 )
 
 matcher.run()
 t1 = time.time()
-print ('Overall execution time: {0} seconds'.format(t1-t0))
+logging.info('Overall execution time: {0} seconds'.format(t1-t0))

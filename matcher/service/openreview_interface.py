@@ -260,7 +260,7 @@ class ConfigNoteInterface:
                 if custom_load < minimums[index]:
                     minimums[index] = custom_load
             else:
-                print('Reviewer {} not found in pool'.format(edge['tail']))
+                self.logger.warn('Reviewer {} not found in pool'.format(edge['tail']))
 
         return minimums, maximums
 

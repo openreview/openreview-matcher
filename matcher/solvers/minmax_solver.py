@@ -69,7 +69,7 @@ class MinMaxSolver:
         self._validate_input_range()
 
         start_time = time.time()
-        print ('Min Solver started at', start_time)
+        self.logger.debug('Min Solver started at={}'.format(start_time))
         minimum_solver = SimpleSolver(
             self.minimums,
             self.demands,
@@ -80,14 +80,14 @@ class MinMaxSolver:
         ) # strict=False prevents errors from being thrown for supply/demand mismatch
         minimum_result = minimum_solver.solve()
         stop_time = time.time()
-        print ('Min Solver finished at {} and took {} seconds'.format(stop_time, stop_time - start_time))
+        self.logger.debug('Min Solver finished at {} and took {} seconds'.format(stop_time, stop_time - start_time))
 
         adjusted_constraints = self.constraint_matrix - minimum_solver.flow_matrix
         adjusted_maximums = self.maximums - np.sum(minimum_solver.flow_matrix, axis=0)
         adjusted_demands = self.demands - np.sum(minimum_solver.flow_matrix, axis=1)
 
         start_time = time.time()
-        print ('Max Solver started at', start_time)
+        self.logger.debug('Max Solver started at={}'.format(start_time))
         maximum_solver = SimpleSolver(
             adjusted_maximums,
             adjusted_demands,
@@ -97,7 +97,7 @@ class MinMaxSolver:
 
         maximum_result = maximum_solver.solve()
         stop_time = time.time()
-        print ('Max Solver finished at {} and took {} seconds'.format(stop_time, stop_time - start_time))
+        self.logger.debug('Max Solver finished at {} and took {} seconds'.format(stop_time, stop_time - start_time))
 
         self.solved = minimum_solver.solved and maximum_solver.solved
 
