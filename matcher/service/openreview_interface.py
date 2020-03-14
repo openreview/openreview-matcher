@@ -38,6 +38,10 @@ class ConfigNoteInterface:
                 raise error_handle
 
     @property
+    def should_normalize(self):
+        return self.config_note.content.get('scores_normalization', 'No') == 'Yes'
+
+    @property
     def reviewers(self):
         if self._reviewers is None:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
