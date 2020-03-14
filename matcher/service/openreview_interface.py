@@ -3,77 +3,6 @@ import openreview
 import logging
 from tqdm import tqdm
 
-def build_edge(invitation, forum_id, reviewer, score, label, number):
-    '''
-    Helper function for constructing an openreview.Edge object.
-    Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
-    '''
-    return openreview.Edge(
-        head = forum_id,
-        tail = reviewer,
-        weight = score,
-        label = label,
-        invitation = invitation.id,
-        readers = _get_values(invitation, number, 'readers', forum_id, reviewer),
-        nonreaders = _get_values(invitation, number, 'nonreaders'),
-        writers = _get_values(invitation, number, 'writers'),
-        signatures = _get_values(invitation, number, 'signatures'))
-
-def _get_values(invitation, number, property, head=None, tail=None):
-    '''Return values compatible with the field `property` in invitation.reply.content'''
-    values = []
-
-    property_params = invitation.reply.get(property, {})
-    if 'values' in property_params:
-        values = property_params.get('values', [])
-    elif 'values-regex' in property_params:
-        regex_pattern = property_params['values-regex']
-        values = []
-
-        for group_id in regex_pattern.split('|'):
-            group_id = group_id.replace('^', '').replace('$', '')
-            if 'Paper.*' in group_id:
-                group_id = group_id.replace('Paper.*', 'Paper{}'.format(number))
-                values.append(group_id)
-    elif 'values-copied' in property_params:
-        values_copied = property_params['values-copied']
-
-        for value in values_copied:
-            if value == '{tail}' :
-                values.append(tail)
-            elif value == '{head}' :
-                values.append(head)
-            else:
-                values.append(value)
-
-    return values
-
-def _edge_to_score(edge, translate_map=None):
-    '''
-    Given an openreview.Edge, and a mapping defined by `translate_map`,
-    return a numeric score, given an Edge.
-    '''
-
-    score = edge['weight']
-
-    if translate_map:
-        try:
-            score = translate_map[edge['label']]
-        except KeyError:
-            raise EncoderError(
-                'Cannot translate label {} to score. Valid labels are: {}'.format(
-                    edge['label'], translate_map.keys()))
-
-    if not isinstance(score, float) and not isinstance(score, int):
-        try:
-            score = float(score)
-        except ValueError:
-            raise EncoderError(
-                'Edge has weight that is neither float nor int: {}, type {}'.format(
-                    edge['weight'], type(edge['weight'])))
-
-    return score
-
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
         self.client = client
@@ -87,9 +16,7 @@ class ConfigNoteInterface:
         self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_notes = []
 
-
-        self._map_reviewers_to_indexes = None
-        self._map_papers_to_indexes = None
+        # Lazy variables
         self._reviewers = None
         self._papers = None
         self._scores_by_type = None
@@ -150,12 +77,6 @@ class ConfigNoteInterface:
         return self._papers
 
     @property
-    def map_papers_to_indexes(self):
-        if self._map_papers_to_indexes is None:
-            self._map_papers_to_indexes = {p:i for i,p in enumerate(self.papers)}
-        return self._map_papers_to_indexes
-
-    @property
     def minimums(self):
         if self._minimums is None:
             minimums, maximums = self._get_quota_arrays()
@@ -184,7 +105,6 @@ class ConfigNoteInterface:
     def constraints(self):
         if self._constraints is None:
             self._constraints = [(edge['head'], edge['tail'], edge['weight']) for edge in self._get_all_edges(
-                self.client,
                 self.config_note.content['conflicts_invitation'])]
         return self._constraints
 
@@ -195,9 +115,7 @@ class ConfigNoteInterface:
         if self._scores_by_type is None:
             edges_by_invitation = {}
             for invitation_id in scores_specification.keys():
-                edges_by_invitation[invitation_id] = self._get_all_edges(
-                    self.client,
-                    invitation_id)
+                edges_by_invitation[invitation_id] = self._get_all_edges(invitation_id)
 
 
             translate_maps = {
@@ -211,7 +129,7 @@ class ConfigNoteInterface:
                     (
                         edge['head'],
                         edge['tail'],
-                        _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
                     ) for edge in edges] \
                 for inv_id, edges in edges_by_invitation.items() \
             }
@@ -252,7 +170,7 @@ class ConfigNoteInterface:
                 user = paper_user_entry['user']
 
                 assignment_edges.append(
-                    build_edge(
+                    self._build_edge(
                         self.assignment_invitation,
                         forum,
                         user,
@@ -263,7 +181,7 @@ class ConfigNoteInterface:
                 )
 
                 score_edges.append(
-                    build_edge(
+                    self._build_edge(
                         self.aggregate_score_invitation,
                         forum,
                         user,
@@ -294,7 +212,7 @@ class ConfigNoteInterface:
                 user = paper_user_entry['user']
 
                 score_edges.append(
-                    build_edge(
+                    self._build_edge(
                         self.aggregate_score_invitation,
                         forum,
                         user,
@@ -312,7 +230,7 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
-        all_reviewers = self.map_reviewers_to_indexes
+        all_reviewers = { r: r for r in self.reviewers }
         custom_load_edges = []
         edges = []
         edges = self.client.get_grouped_edges(
@@ -342,15 +260,15 @@ class ConfigNoteInterface:
 
         return minimums, maximums
 
-    def _get_all_edges(self, client, edge_invitation_id):
+    def _get_all_edges(self, edge_invitation_id):
         '''Helper function for retrieving and parsing all edges in bulk'''
 
         all_edges = []
-        all_papers = self.map_papers_to_indexes
-        all_reviewers = self.map_reviewers_to_indexes
+        all_papers = { p: p for p in self.papers }
+        all_reviewers = { r: r for r in self.reviewers }
         self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
 
-        edges_grouped_by_paper = client.get_grouped_edges(
+        edges_grouped_by_paper = self.client.get_grouped_edges(
             invitation=edge_invitation_id,
             groupby='head',
             select='tail,label,weight'
@@ -371,3 +289,74 @@ class ConfigNoteInterface:
                     'label': edge.get('label')
                 })
         return all_edges
+
+    def _build_edge(self, invitation, forum_id, reviewer, score, label, number):
+        '''
+        Helper function for constructing an openreview.Edge object.
+        Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
+        '''
+        return openreview.Edge(
+            head = forum_id,
+            tail = reviewer,
+            weight = score,
+            label = label,
+            invitation = invitation.id,
+            readers = self._get_values(invitation, number, 'readers', forum_id, reviewer),
+            nonreaders = self._get_values(invitation, number, 'nonreaders'),
+            writers = self._get_values(invitation, number, 'writers'),
+            signatures = self._get_values(invitation, number, 'signatures'))
+
+    def _get_values(self, invitation, number, property, head=None, tail=None):
+        '''Return values compatible with the field `property` in invitation.reply.content'''
+        values = []
+
+        property_params = invitation.reply.get(property, {})
+        if 'values' in property_params:
+            values = property_params.get('values', [])
+        elif 'values-regex' in property_params:
+            regex_pattern = property_params['values-regex']
+            values = []
+
+            for group_id in regex_pattern.split('|'):
+                group_id = group_id.replace('^', '').replace('$', '')
+                if 'Paper.*' in group_id:
+                    group_id = group_id.replace('Paper.*', 'Paper{}'.format(number))
+                    values.append(group_id)
+        elif 'values-copied' in property_params:
+            values_copied = property_params['values-copied']
+
+            for value in values_copied:
+                if value == '{tail}' :
+                    values.append(tail)
+                elif value == '{head}' :
+                    values.append(head)
+                else:
+                    values.append(value)
+
+        return values
+
+    def _edge_to_score(self, edge, translate_map=None):
+        '''
+        Given an openreview.Edge, and a mapping defined by `translate_map`,
+        return a numeric score, given an Edge.
+        '''
+
+        score = edge['weight']
+
+        if translate_map:
+            try:
+                score = translate_map[edge['label']]
+            except KeyError:
+                raise EncoderError(
+                    'Cannot translate label {} to score. Valid labels are: {}'.format(
+                        edge['label'], translate_map.keys()))
+
+        if not isinstance(score, float) and not isinstance(score, int):
+            try:
+                score = float(score)
+            except ValueError:
+                raise EncoderError(
+                    'Edge has weight that is neither float nor int: {}, type {}'.format(
+                        edge['weight'], type(edge['weight'])))
+
+        return score
