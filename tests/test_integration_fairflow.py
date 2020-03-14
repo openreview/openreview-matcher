@@ -84,11 +84,7 @@ def test_integration_basic(openreview_context):
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'Complete'
 
-    datasource = ConfigNoteInterface(openreview_client, config_note.id)
-    paper_assignment_edges = datasource.get_all_edges(
-        openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
-    )
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
@@ -163,11 +159,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert matcher_status.content['status'] == 'No Solution'
     assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
 
-    datasource = ConfigNoteInterface(openreview_client, config_note.id)
-    paper_assignment_edges = datasource.get_all_edges(
-        openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
-    )
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == 0
 
@@ -242,11 +234,7 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
     assert matcher_status.content['status'] == 'No Solution'
     assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
 
-    datasource = ConfigNoteInterface(openreview_client, config_note.id)
-    paper_assignment_edges = datasource.get_all_edges(
-        openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
-    )
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == 0
 
@@ -316,11 +304,7 @@ def test_integration_no_scores(openreview_context):
     config_note = openreview_client.get_note(config_note.id)
     assert matcher_status.content['status'] == 'Complete'
 
-    datasource = ConfigNoteInterface(openreview_client, config_note.id)
-    paper_assignment_edges = datasource.get_all_edges(
-        openreview_client,
-        conference.get_paper_assignment_id(conference.get_reviewers_id())
-    )
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 

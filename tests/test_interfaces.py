@@ -267,7 +267,6 @@ def test_confignote_interface():
 
     assert interface.reviewers
     assert interface.config_note
-    assert interface.paper_notes
     assert interface.papers
     assert interface.minimums
     assert interface.maximums
@@ -277,7 +276,6 @@ def test_confignote_interface():
     assert interface.weight_by_type
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
-    assert interface.custom_load_edges
 
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
@@ -425,7 +423,6 @@ def test_confignote_interface_no_scores_spec():
 
     assert interface.reviewers
     assert interface.config_note
-    assert interface.paper_notes
     assert interface.papers
     assert interface.minimums
     assert interface.maximums
@@ -435,7 +432,6 @@ def test_confignote_interface_no_scores_spec():
     assert not interface.weight_by_type
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
-    assert interface.custom_load_edges
 
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'

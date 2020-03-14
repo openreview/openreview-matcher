@@ -85,6 +85,7 @@ class ConfigNoteInterface:
         self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
         self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
         self.num_alternates = int(self.config_note.content['alternates'])
+        self.paper_notes = []
 
 
         self._map_reviewers_to_indexes = None
@@ -97,7 +98,7 @@ class ConfigNoteInterface:
         self._demands = None
         self._constraints = None
 
-        validate_score_spec()
+        self.validate_score_spec()
 
 
     def validate_score_spec(self):
@@ -139,10 +140,11 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self._papers = [note.id for note in list(openreview.tools.iterget_notes(
+            self.paper_notes = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content=content_dict))]
+                content=content_dict))
+            self._papers = [n.id for n in self.paper_notes]
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
         return self._papers
@@ -156,14 +158,18 @@ class ConfigNoteInterface:
     @property
     def minimums(self):
         if self._minimums is None:
-            self._get_quota_arrays()
+            minimums, maximums = self._get_quota_arrays()
+            self._minimums = minimums
+            self._maximums = maximums
 
         return self._minimums
 
     @property
     def maximums(self):
         if self._maximums is None:
-            self._get_quota_arrays()
+            minimums, maximums = self._get_quota_arrays()
+            self._minimums = minimums
+            self._maximums = maximums
 
         return self._maximums
 
@@ -207,7 +213,7 @@ class ConfigNoteInterface:
                         edge['tail'],
                         _edge_to_score(edge, translate_map=translate_maps.get(inv_id))
                     ) for edge in edges] \
-                for inv_id, edges in self._edges_by_invitation.items() \
+                for inv_id, edges in edges_by_invitation.items() \
             }
         return self._scores_by_type
 
@@ -226,7 +232,7 @@ class ConfigNoteInterface:
         if message:
             self.config_note.content['error_message'] = message
 
-        self._config_note = self.client.post_note(self.config_note)
+        self.config_note = self.client.post_note(self.config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
 
     def set_assignments(self, assignments_by_forum):
@@ -303,10 +309,11 @@ class ConfigNoteInterface:
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
-        self._minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
-        self._maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
+        minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
+        maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
         all_reviewers = self.map_reviewers_to_indexes
+        custom_load_edges = []
         edges = []
         edges = self.client.get_grouped_edges(
                 invitation = self.config_note.content['custom_load_invitation'],
@@ -315,7 +322,7 @@ class ConfigNoteInterface:
         if edges:
             custom_load_edges = edges[0]['values']
 
-        for edge in self.custom_load_edges:
+        for edge in custom_load_edges:
             if edge['tail'] in all_reviewers:
                 try:
                     custom_load = int(edge['weight'])
@@ -326,10 +333,10 @@ class ConfigNoteInterface:
                     custom_load = 0
 
                 index = self.reviewers.index(edge['tail'])
-                self._maximums[index] = custom_load
+                maximums[index] = custom_load
 
                 if custom_load < minimums[index]:
-                    self._minimums[index] = custom_load
+                    minimums[index] = custom_load
             else:
                 print('Reviewer {} not found in pool'.format(edge['tail']))
 
