@@ -87,14 +87,16 @@ class Encoder:
         self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
 
     def _normalize(self, weight_by_type, score_matrices):
-        indicator = { score_type: scores != 0.0  for score_type, scores in score_matrices.items() }
+        indicator = { score_type: scores != 0.0  for score_type, scores in score_matrices.items() if not score_type.endswith('Bid')}
         sum_of_weights = sum([
             indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
         ])
         normalizer = np.where(sum_of_weights == 0, 0, 1/sum_of_weights)
 
-        return normalizer * sum([
-            scores * weight_by_type[score_type] for score_type, scores in score_matrices.items()
+        return (normalizer * sum([
+            scores * weight_by_type[score_type] for score_type, scores in score_matrices.items() if not score_type.endswith('Bid')
+        ])) + sum([
+            scores * weight_by_type[score_type] for score_type, scores in score_matrices.items() if score_type.endswith('Bid')
         ])
 
 
