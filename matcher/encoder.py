@@ -44,6 +44,9 @@ class Encoder:
         where each value is a float, indicating the relative weight of the corresponding
         score type.
 
+    - `normalization_types`:
+        an array of score types where we need to apply normalization.
+
     '''
     def __init__(
             self,
@@ -52,9 +55,9 @@ class Encoder:
             constraints,
             scores_by_type,
             weight_by_type,
-            use_normalization=False
+            normalization_types=[]
         ):
-        print('Use normalization', use_normalization)
+        print('Use normalization', normalization_types)
 
         self.reviewers = reviewers
         self.papers = papers
@@ -67,37 +70,45 @@ class Encoder:
             len(self.reviewers)
         )
 
-        self.default_scores = np.full(self.matrix_shape, 0, dtype=float)
-
         self.score_matrices = {
-            score_type: self._encode_scores(scores) \
-            for score_type, scores in scores_by_type.items()
+            score_type: self._encode_scores(scores) for score_type, scores in scores_by_type.items()
         }
+
+        with_normalization_matrices = {}
+        without_normalization_matrices = {}
+
+        for score_type, scores in self.score_matrices.items():
+            if score_type in normalization_types:
+                with_normalization_matrices[score_type] = scores
+            else:
+                without_normalization_matrices[score_type] = scores
 
         self.constraint_matrix = self._encode_constraints(constraints)
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
-        if use_normalization:
-            self.aggregate_score_matrix = self._normalize(weight_by_type, self.score_matrices)
-        else:
+        self.aggregate_score_matrix = np.full(self.matrix_shape, 0, dtype=float)
+
+        if without_normalization_matrices:
             self.aggregate_score_matrix = sum([
-                scores * weight_by_type[score_type] for score_type, scores in self.score_matrices.items()
-            ]) if self.score_matrices else self.default_scores
+                scores * weight_by_type[score_type] for score_type, scores in without_normalization_matrices.items()
+            ])
+
+        if with_normalization_matrices:
+            self.aggregate_score_matrix += self._normalize(weight_by_type, with_normalization_matrices)
 
         self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
 
-    def _normalize(self, weight_by_type, score_matrices):
-        indicator = { score_type: scores != 0.0  for score_type, scores in score_matrices.items() if not score_type.endswith('Bid')}
+    def _normalize(self, weight_by_type, with_normalization_matrices):
+
+        indicator = { score_type: scores != 0.0  for score_type, scores in with_normalization_matrices.items() }
         sum_of_weights = sum([
             indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
         ])
         normalizer = np.where(sum_of_weights == 0, 0, 1/sum_of_weights)
 
         return (normalizer * sum([
-            scores * weight_by_type[score_type] for score_type, scores in score_matrices.items() if not score_type.endswith('Bid')
-        ])) + sum([
-            scores * weight_by_type[score_type] for score_type, scores in score_matrices.items() if score_type.endswith('Bid')
-        ])
+            scores * weight_by_type[score_type] for score_type, scores in with_normalization_matrices.items()
+        ]))
 
 
     def _encode_scores(self, scores, default=0):
