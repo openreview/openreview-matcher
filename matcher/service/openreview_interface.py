@@ -38,8 +38,10 @@ class ConfigNoteInterface:
                 raise error_handle
 
     @property
-    def should_normalize(self):
-        return self.config_note.content.get('scores_normalization', 'No') == 'Yes'
+    def normalization_types(self):
+        scores_specification = self.config_note.content.get('scores_specification', {})
+        normalization_types = [invitation for invitation, spec in scores_specification.items() if spec.get('normalize', False)]
+        return normalization_types
 
     @property
     def reviewers(self):
