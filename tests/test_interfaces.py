@@ -252,7 +252,7 @@ def test_confignote_interface():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': 1}
                     ]
@@ -265,10 +265,8 @@ def test_confignote_interface():
 
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
-    assert interface.match_group.id
     assert interface.reviewers
     assert interface.config_note
-    assert interface.paper_notes
     assert interface.papers
     assert interface.minimums
     assert interface.maximums
@@ -278,7 +276,6 @@ def test_confignote_interface():
     assert interface.weight_by_type
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
-    assert interface.custom_load_edges
 
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
@@ -411,7 +408,7 @@ def test_confignote_interface_no_scores_spec():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': 1}
                     ]
@@ -424,10 +421,8 @@ def test_confignote_interface_no_scores_spec():
 
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
-    assert interface.match_group.id
     assert interface.reviewers
     assert interface.config_note
-    assert interface.paper_notes
     assert interface.papers
     assert interface.minimums
     assert interface.maximums
@@ -437,7 +432,6 @@ def test_confignote_interface_no_scores_spec():
     assert not interface.weight_by_type
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
-    assert interface.custom_load_edges
 
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
@@ -655,7 +649,7 @@ def test_confignote_interface_custom_load_negative():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': -9.4}
                     ]
@@ -888,7 +882,7 @@ def test_confignote_interface_custom_overload():
             ],
             '<custom_load_invitation_id>': [
                 {
-                    'id': {'head': '<config_note_id>'},
+                    'id': {'head': '<match_group_id>'},
                     'values': [
                         {
                             'tail': 'reviewer3',

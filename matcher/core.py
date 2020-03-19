@@ -1,7 +1,7 @@
 '''Contains core matcher functions and classes.'''
 import logging
 import threading
-
+import time
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
 
@@ -89,13 +89,16 @@ class Matcher:
         '''
         self.set_status('Running')
 
+        self.logger.debug('Start encoding')
+
         encoder = Encoder(
             reviewers=self.datasource.reviewers,
             papers=self.datasource.papers,
             constraints=self.datasource.constraints,
             scores_by_type=self.datasource.scores_by_type,
             weight_by_type=self.datasource.weight_by_type,
-            normalization_types=self.datasource.normalization_types
+            normalization_types=self.datasource.normalization_types,
+            logger=self.logger
         )
 
         self.logger.debug('Preparing solver')
@@ -109,12 +112,14 @@ class Matcher:
             logger=self.logger
         )
         solution = None
+        start_time = time.time()
         try:
             self.logger.debug('Solving solver')
             solution = solver.solve()
         except SolverException as error_handle:
+            self.logger.debug('No Solution={}'.format(error_handle))
             self.set_status('No Solution', message=str(error_handle))
-
+        self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
@@ -122,6 +127,7 @@ class Matcher:
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
         else:
+            self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
             self.set_status(
                 'No Solution',
                 message='Solver could not find a solution. Adjust your parameters')
