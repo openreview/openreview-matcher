@@ -49,12 +49,16 @@ class ConfigNoteInterface:
         if self._reviewers is None:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
             match_group = self.client.get_group(self.config_note.content['match_group'])
-            self._reviewers = match_group.members
-            profiles = self.client.search_profiles(ids=self._reviewers)
+            self.logger.debug('GET profiles for id={}'.format(self.config_note.content['match_group']))
+            profiles = self.client.search_profiles(ids=match_group.members)
             for p in profiles:
                 for u in p.content.get('names', []):
                     if u.get('username'):
                         self.reviewers_by_username[u.get('username')] = p.id
+            self._reviewers = []
+            for m in match_group.members:
+                self._reviewers.append(self.reviewers_by_username.get(m, m))
+
         return self._reviewers
 
     @property

@@ -1106,7 +1106,7 @@ def test_confignote_interface_multiple_usernames():
                     readers=[],
                     signatures=[],
                     signatories=[],
-                    members=['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3']
+                    members=['reviewer0', 'reviewer1', 'reviewer21', 'reviewer3', 'unknown@mail.com']
                 )
         },
         'mock_notes': {
@@ -1330,6 +1330,14 @@ def test_confignote_interface_multiple_usernames():
     assert scores_by_type['<bid_invitation>'][10] == ('paper2', 'reviewer1', 1)
     assert scores_by_type['<bid_invitation>'][11] == ('paper2', 'reviewer2', 1)
     assert scores_by_type['<bid_invitation>'][12] == ('paper2', 'reviewer3', 1)
+
+    assert interface.reviewers
+    assert len(interface.reviewers) == 5
+    assert 'reviewer0' in interface.reviewers
+    assert 'reviewer1' in interface.reviewers
+    assert 'reviewer2' in interface.reviewers
+    assert 'reviewer3' in interface.reviewers
+    assert 'unknown@mail.com' in interface.reviewers
 
 
 
