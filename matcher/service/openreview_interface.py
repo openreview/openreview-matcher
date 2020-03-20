@@ -15,6 +15,7 @@ class ConfigNoteInterface:
         self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
         self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_notes = []
+        self.reviewers_by_username = {}
 
         # Lazy variables
         self._reviewers = None
@@ -49,13 +50,12 @@ class ConfigNoteInterface:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
             match_group = self.client.get_group(self.config_note.content['match_group'])
             self._reviewers = match_group.members
+            profiles = self.client.search_profiles(ids=self._reviewers)
+            for p in profiles:
+                for u in p.content.get('names', []):
+                    if u.get('username'):
+                        self.reviewers_by_username[u.get('username')] = p.id
         return self._reviewers
-
-    @property
-    def map_reviewers_to_indexes(self):
-        if self._map_reviewers_to_indexes is None:
-            self._map_reviewers_to_indexes = {r:i for i,r in enumerate(self.reviewers)}
-        return self._map_reviewers_to_indexes
 
     @property
     def papers(self):
@@ -272,7 +272,6 @@ class ConfigNoteInterface:
         all_edges = []
         all_papers = { p: p for p in self.papers }
         all_reviewers = { r: r for r in self.reviewers }
-        self.logger.debug('GET invitation id={}'.format(edge_invitation_id))
 
         edges_grouped_by_paper = self.client.get_grouped_edges(
             invitation=edge_invitation_id,
@@ -282,18 +281,19 @@ class ConfigNoteInterface:
 
         self.logger.debug('GET grouped edges invitation id={}'.format(edge_invitation_id))
         filtered_edges_groups = list(filter(lambda edge_group: edge_group['id']['head'] in all_papers, edges_grouped_by_paper))
-
         for group in filtered_edges_groups:
             forum_id = group['id']['head']
-            filtered_edges = list(filter(lambda group_value: group_value['tail'] in all_reviewers, group['values']))
-            for edge in filtered_edges:
-                all_edges.append({
-                    'invitation': edge_invitation_id,
-                    'head': forum_id,
-                    'tail': edge['tail'],
-                    'weight': edge.get('weight'),
-                    'label': edge.get('label')
-                })
+            values = group['values']
+            for edge in values:
+                final_tail = self.reviewers_by_username.get(edge['tail'])
+                if final_tail:
+                    all_edges.append({
+                        'invitation': edge_invitation_id,
+                        'head': forum_id,
+                        'tail': final_tail,
+                        'weight': edge.get('weight'),
+                        'label': edge.get('label')
+                    })
         return all_edges
 
     def _build_edge(self, invitation, forum_id, reviewer, score, label, number):
