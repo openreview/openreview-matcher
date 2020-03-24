@@ -7,8 +7,8 @@ import time
 from tqdm import tqdm
 
 class CacheHandler:
-    def __init__(self, host, port, cache_expiration, logger=logging.getLogger(__name__)):
-        self.redis_client = redis.Redis(host=host, port=port)
+    def __init__(self, host, port, db, cache_expiration, logger=logging.getLogger(__name__)):
+        self.redis_client = redis.Redis(host=host, port=port, db=db)
         self.cache_expiration = cache_expiration
         self.key_prefix = ''
         self.logger = logger
@@ -34,13 +34,8 @@ class ConfigNoteInterface:
         self.client = client
         self.logger = logger
         self.cache = cache_handler
-        # Expire the cache in one day
-        if hasattr(client, 'profile'):
-            self.profile_id = client.profile.id
-        else:
-            self.profile_id = 'guest_' + str(time.time())
         self.cache_handler = cache_handler
-        self.cache_handler.set_key_prefix(self.profile_id)
+        self.cache_handler.set_key_prefix(self.client.profile.id if self.client.profile else 'guest')
 
         self.logger.debug('GET note id={}'.format(config_note_id))
         self.config_note = self.client.get_note(config_note_id)

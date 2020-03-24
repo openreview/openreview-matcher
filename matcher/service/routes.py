@@ -50,6 +50,7 @@ def match():
         cache_handler = CacheHandler(
             host=flask.current_app.config['REDIS_HOST'],
             port=flask.current_app.config['REDIS_PORT'],
+            db=flask.current_app.config['REDIS_DB'],
             cache_expiration=flask.current_app.config['REDIS_CACHE_EXPIRATION']
         )
 
@@ -105,6 +106,7 @@ def match():
     # For now, it seems like we need this broad Exception. How can we get rid of it?
     # pylint:disable=broad-except
     except Exception as error_handle:
+        flask.current_app.logger.exception("message")
         result['error'] = 'Internal server error: {}'.format(error_handle)
         return flask.jsonify(result), 500
 
