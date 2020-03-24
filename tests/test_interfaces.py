@@ -40,6 +40,7 @@ def mock_client(
     client.get_notes = mock.MagicMock(side_effect=get_notes)
     client.post_note = mock.MagicMock(side_effect=post_note)
     client.get_grouped_edges = mock.MagicMock(side_effect=get_grouped_edges)
+    client.profile = None
 
     return client
 
