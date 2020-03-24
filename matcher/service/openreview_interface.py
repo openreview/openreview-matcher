@@ -52,12 +52,6 @@ class ConfigNoteInterface:
         return self._reviewers
 
     @property
-    def map_reviewers_to_indexes(self):
-        if self._map_reviewers_to_indexes is None:
-            self._map_reviewers_to_indexes = {r:i for i,r in enumerate(self.reviewers)}
-        return self._map_reviewers_to_indexes
-
-    @property
     def papers(self):
         if self._papers is None:
             content_dict = {}
