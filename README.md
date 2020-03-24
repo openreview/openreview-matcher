@@ -22,8 +22,8 @@ The matcher can be run from the command line. For example:
 python -m matcher \
 	--scores affinity_scores.txt \
 	--weights 1 \
-	--min_papers 1 \
-	--max_papers 10 \
+	--min_papers_default 1 \
+	--max_papers_default 10 \
 	--num_reviewers 3 \
 	--num_alternates 3
 ```

@@ -6,6 +6,7 @@ Responsible for:
 
 from collections import defaultdict, namedtuple
 import numpy as np
+import logging
 
 def _score_to_cost(score, scaling_factor=100):
     '''
@@ -44,6 +45,9 @@ class Encoder:
         where each value is a float, indicating the relative weight of the corresponding
         score type.
 
+    - `normalization_types`:
+        an array of score types where we need to apply normalization.
+
     '''
     def __init__(
             self,
@@ -51,8 +55,11 @@ class Encoder:
             papers,
             constraints,
             scores_by_type,
-            weight_by_type
+            weight_by_type,
+            normalization_types=[],
+            logger=logging.getLogger(__name__)
         ):
+        self.logger = logger
 
         self.reviewers = reviewers
         self.papers = papers
@@ -60,26 +67,53 @@ class Encoder:
         self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
         self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
 
+        self.logger.debug('Init encoding')
+        self.logger.info('Use normalization={}'.format(normalization_types))
+
         self.matrix_shape = (
             len(self.papers),
             len(self.reviewers)
         )
 
-        self.default_scores = np.full(self.matrix_shape, 0, dtype=float)
-
         self.score_matrices = {
-            score_type: self._encode_scores(scores) \
-            for score_type, scores in scores_by_type.items()
+            score_type: self._encode_scores(scores) for score_type, scores in scores_by_type.items()
         }
+
+        with_normalization_matrices = {}
+        without_normalization_matrices = {}
+
+        for score_type, scores in self.score_matrices.items():
+            if score_type in normalization_types:
+                with_normalization_matrices[score_type] = scores
+            else:
+                without_normalization_matrices[score_type] = scores
 
         self.constraint_matrix = self._encode_constraints(constraints)
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
-        self.aggregate_score_matrix = sum([
-            scores * weight_by_type[score_type] for score_type, scores in self.score_matrices.items()
-        ]) if self.score_matrices else self.default_scores
+        self.aggregate_score_matrix = np.full(self.matrix_shape, 0, dtype=float)
+
+        if without_normalization_matrices:
+            self.aggregate_score_matrix = sum([
+                scores * weight_by_type[score_type] for score_type, scores in without_normalization_matrices.items()
+            ])
+
+        if with_normalization_matrices:
+            self.aggregate_score_matrix += self._normalize(weight_by_type, with_normalization_matrices)
 
         self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
+
+    def _normalize(self, weight_by_type, with_normalization_matrices):
+
+        indicator = { score_type: scores != 0.0  for score_type, scores in with_normalization_matrices.items() }
+        sum_of_weights = sum([
+            indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
+        ])
+        normalizer = np.where(sum_of_weights == 0, 0, 1/sum_of_weights)
+
+        return (normalizer * sum([
+            scores * weight_by_type[score_type] for score_type, scores in with_normalization_matrices.items()
+        ]))
 
 
     def _encode_scores(self, scores, default=0):
@@ -87,19 +121,8 @@ class Encoder:
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
 
         for forum, user, score in scores:
-            if not isinstance(score, float) and not isinstance(score, int):
-                try:
-                    score = float(score)
-                except ValueError:
-                    raise EncoderError(
-                        'could not convert score {} of type {} to float ({}, {})'.format(
-                            score, type(score), forum, user))
-
-            # sometimes papers or reviewers get deleted after edges are created,
-            # so we need to check that the head/tail are still valid
-            if forum in self.papers and user in self.reviewers:
-                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-                score_matrix[coordinates] = score
+            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            score_matrix[coordinates] = score
 
         return score_matrix
 
@@ -109,24 +132,8 @@ class Encoder:
         '''
         constraint_matrix = np.full(self.matrix_shape, 0, dtype=int)
         for forum, user, constraint in constraints:
-            if not isinstance(constraint, float) and not isinstance(constraint, int):
-                try:
-                    constraint = int(constraint)
-                except ValueError:
-                    raise EncoderError(
-                        'could not convert constraint {} of type {} to int ({}, {})'.format(
-                            constraint, type(constraint), forum, user))
-
-            if not constraint in [-1, 0, 1]:
-                raise ValueError(
-                    'constraint {} ({}, {}) must be an int of value -1, 0, or 1'.format(
-                        constraint, forum, user))
-
-            # sometimes papers or reviewers get deleted after constraint_edges are created,
-            # so we need to check that the head/tail are still valid
-            if forum in self.papers and user in self.reviewers:
-                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
-                constraint_matrix[coordinates] = constraint
+            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            constraint_matrix[coordinates] = constraint
 
         return constraint_matrix
 

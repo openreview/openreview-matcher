@@ -41,8 +41,8 @@ class FairFlow(object):
 
         :return: initialized makespan matcher.
         """
-
-        # TODO: incorporate constraints
+        self.logger = logger
+        self.logger.debug('Init FairFlow')
         self.constraint_matrix = encoder.constraint_matrix
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
 
@@ -78,8 +78,8 @@ class FairFlow(object):
         self.costs = []
         self.source = self.num_reviewers + self.num_papers
         self.sink = self.num_reviewers + self.num_papers + 1
-        self.logger = logger
         self.solved = False
+        self.logger.debug('End Init FairFlow')
 
     def objective_val(self):
         """Get the objective value of the RAP."""
@@ -494,7 +494,6 @@ class FairFlow(object):
         best_worst_pap_score = 0.0
 
         for i in range(10):
-            print('#info FairFlow:ITERATION %s ms %s' % (i, ms))
             self.logger.debug('#info FairFlow:ITERATION %s ms %s' % (i, ms))
             s1, s3 = self.try_improve_ms()
             can_improve = s3 > 0
@@ -504,15 +503,12 @@ class FairFlow(object):
                 start = time.time()
                 s1, s3 = self.try_improve_ms()
                 can_improve = s3 > 0
-                print('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
                 self.logger.debug('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
 
             worst_pap_score = np.min(np.sum(self.solution * self.affinity_matrix, axis=0))
-            print('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
             self.logger.debug('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
 
             success = s3 == 0
-            print('#info FairFlow:success = %s' % success)
             self.logger.debug('#info FairFlow:success = %s' % success)
 
             if success and worst_pap_score >= best_worst_pap_score:
@@ -525,9 +521,7 @@ class FairFlow(object):
                 mx = ms
                 ms -= (ms - mn) / 2.0
             self.makespan = ms
-        print('#info FairFlow:Best found %s' % best)
         self.logger.debug('#info FairFlow:Best found %s' % best)
-        print('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
         self.logger.debug('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
         if best is None:
             return 0.0
