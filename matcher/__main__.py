@@ -28,7 +28,7 @@ parser.add_argument(
     '--constraints',
     help='''
         One or more constraint files,
-        with each row containing comma-separated paperId, userID, and constraint (in that order).
+        with each row containing comma-separated paperID, userID, and constraint (in that order).
         Constraint values must be -1 (conflict), 1 (forced assignment), or 0 (no effect).
         e.g. "paper1,reviewer1,-1"
         '''
@@ -37,10 +37,16 @@ parser.add_argument(
 parser.add_argument(
     '--max_papers',
     help='''
-        max paper files,
+        max paper file,
         with each row containing comma-separated userID, and max_paper (in that order).
         e.g. "reviewer1,2''')
 
+parser.add_argument(
+    '--custom_num_reviewers',
+    help='''
+        per paper demand file,
+        with each row containing comma-separated paperID, and demand (in that order).
+        e.g. "paper1,2''')
 
 parser.add_argument('--weights', nargs='+', type=int)
 parser.add_argument('--min_papers_default', default=0, type=int)
@@ -150,10 +156,12 @@ if args.max_papers:
             else:
                 missing_reviewers.append(profile_id)
     if missing_reviewers:
-        logging.info('Reviewers missing in all score files: ', ', '.join(profile_id))
+        logging.info('Reviewers missing in all score files: ' + ', '.join(profile_id))
 
-demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
+demands = [args.num_reviewers] * len(papers)
+if args.custom_num_reviewers:
+    pass
 
 match_data = {
     'reviewers': reviewers,
