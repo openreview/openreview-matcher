@@ -57,6 +57,7 @@ class ConfigNoteInterface:
             content_dict = {}
             paper_invitation = self.config_note.content['paper_invitation']
             self.logger.debug('Getting notes for invitation: {}'.format(paper_invitation))
+            emergency_notes_only = False
             if '&' in paper_invitation:
                 elements = paper_invitation.split('&')
                 paper_invitation = elements[0]
@@ -65,12 +66,35 @@ class ConfigNoteInterface:
                         if element.startswith('content.') and '=' in element:
                             key, value = element.split('.')[1].split('=')
                             content_dict[key] = value
+                        elif element == 'type=emergency':
+                            emergency_notes_only = True
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self.paper_notes = list(openreview.tools.iterget_notes(
+            all_papers = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
                 content=content_dict))
+
+            if not emergency_notes_only:
+                self.paper_notes = all_papers
+            else:
+                map_number_to_paper = {note.number: note for note in all_papers}
+                map_paper_to_reviews = {}
+
+                all_reviews = openreview.tools.iterget_notes(
+                    self.client,
+                    invitation=paper_invitation.split('/-/')[0] + '/Paper[0-9]*/-/Official_Review$')
+                
+                for review in all_reviews:
+                    paper_number = int(review.invitation.split('Paper')[1].split('/')[0])
+                    if paper_number not in map_paper_to_reviews:
+                        map_paper_to_reviews[paper_number] = 0
+                    map_paper_to_reviews[paper_number] += 1
+
+                papers_for_emergency_review = [paper_number for paper_number in map_paper_to_reviews if (paper_number in map_number_to_paper) and (len(map_paper_to_reviews[paper_number]) < 3)]
+
+                self.paper_notes = [map_number_to_paper[paper_number] for paper_number in papers_for_emergency_review]
+
             self._papers = [n.id for n in self.paper_notes]
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
