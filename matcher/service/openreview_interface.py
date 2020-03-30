@@ -24,6 +24,7 @@ class ConfigNoteInterface:
         self._maximums = None
         self._demands = None
         self._constraints = None
+        self._emergency_demand_edges = None
 
         self.validate_score_spec()
 
@@ -57,7 +58,6 @@ class ConfigNoteInterface:
             content_dict = {}
             paper_invitation = self.config_note.content['paper_invitation']
             self.logger.debug('Getting notes for invitation: {}'.format(paper_invitation))
-            emergency_notes_only = False
             if '&' in paper_invitation:
                 elements = paper_invitation.split('&')
                 paper_invitation = elements[0]
@@ -66,36 +66,24 @@ class ConfigNoteInterface:
                         if element.startswith('content.') and '=' in element:
                             key, value = element.split('.')[1].split('=')
                             content_dict[key] = value
-                        elif element == 'type=emergency':
-                            emergency_notes_only = True
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            all_papers = list(openreview.tools.iterget_notes(
+            all_papers = {note.id: note for note in openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content=content_dict))
+                content=content_dict)}
 
-            if not emergency_notes_only:
-                self.paper_notes = all_papers
+            if self.config_note.content.get('emergency_demand_invitation', None):
+                papers_set = set()
+                for edge in self.emergency_demand_edges:
+                    papers_set.add(edge['id']['head'])
+                self._papers = list(papers_set)
+                for p in papers_set:
+                    self.paper_notes.append(all_papers[p])
             else:
-                map_number_to_paper = {note.number: note for note in all_papers}
-                map_paper_to_reviews = {}
-
-                all_reviews = openreview.tools.iterget_notes(
-                    self.client,
-                    invitation=paper_invitation.split('/-/')[0] + '/Paper[0-9]*/-/Official_Review$')
-                
-                for review in all_reviews:
-                    paper_number = int(review.invitation.split('Paper')[1].split('/')[0])
-                    if paper_number not in map_paper_to_reviews:
-                        map_paper_to_reviews[paper_number] = 0
-                    map_paper_to_reviews[paper_number] += 1
-
-                papers_for_emergency_review = [paper_number for paper_number in map_paper_to_reviews if (paper_number in map_number_to_paper) and (len(map_paper_to_reviews[paper_number]) < 3)]
-
-                self.paper_notes = [map_number_to_paper[paper_number] for paper_number in papers_for_emergency_review]
-
-            self._papers = [n.id for n in self.paper_notes]
+                self._papers = list(all_papers.keys())
+                self.paper_notes = list(all_papers.values())
+            
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
         return self._papers
@@ -119,10 +107,24 @@ class ConfigNoteInterface:
         return self._maximums
 
     @property
+    def emergency_demand_edges(self):
+        if self._emergency_demand_edges is None:
+            self._emergency_demand_edges = self.client.get_grouped_edges(
+                invitation=self.config_note.content['emergency_demand_invitation'],
+                tail=self.config_note.content['match_group'],
+                select='weight')
+        return self._emergency_demand_edges
+
+    @property
     def demands(self):
         if self._demands is None:
-            self._demands = [int(self.config_note.content['max_users']) for paper in self.papers]
-
+            if self.config_note.content.get('emergency_demand_invitation', None) and self.emergency_demand_edges:
+                self._demands = []
+                for edge in self.emergency_demand_edges:
+                    self._demands.append(edge['values'][0]['weight'])
+            else:
+                self._demands = [int(self.config_note.content['max_users']) for paper in self.papers]
+            self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
     @property
@@ -258,8 +260,8 @@ class ConfigNoteInterface:
         custom_load_edges = []
         edges = []
         edges = self.client.get_grouped_edges(
-                invitation = self.config_note.content['custom_load_invitation'],
-                head = self.config_note.content['match_group'],
+                invitation=self.config_note.content['custom_load_invitation'],
+                head=self.config_note.content['match_group'],
                 select='tail,label,weight')
         if edges:
             custom_load_edges = edges[0]['values']
