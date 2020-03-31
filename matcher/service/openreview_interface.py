@@ -2,6 +2,8 @@ import re
 import openreview
 import logging
 from tqdm import tqdm
+from matcher.core import MatcherError
+from matcher.encoder import EncoderError
 
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
