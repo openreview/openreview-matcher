@@ -25,6 +25,7 @@ class ConfigNoteInterface:
         self._demands = None
         self._constraints = None
         self._emergency_demand_edges = None
+        self._emergency_load_edges = None
 
         self.validate_score_spec()
 
@@ -114,6 +115,15 @@ class ConfigNoteInterface:
                 tail=self.config_note.content['match_group'],
                 select='weight')
         return self._emergency_demand_edges
+
+    @property
+    def emergency_load_edges(self):
+        if self._emergency_load_edges is None:
+            self._emergency_load_edges = self.client.get_grouped_edges(
+                invitation=self.config_note.content['emergency_supply_invitation'],
+                head=self.config_note.content['match_group'],
+                select='tail,weight')
+        return self._emergency_load_edges
 
     @property
     def demands(self):
@@ -253,36 +263,48 @@ class ConfigNoteInterface:
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
-        minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
-        maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
+        if self.emergency_load_edges:
+            map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
+            minimums = [1 for r in self.reviewers]
+            maximums = [1 for r in self.reviewers]
 
-        all_reviewers = { r: r for r in self.reviewers }
-        custom_load_edges = []
-        edges = []
-        edges = self.client.get_grouped_edges(
+            for edge in self.emergency_load_edges[0].get('values'):
+                reviewer = edge['tail']
+                load = int(edge['weight'])
+                index = map_reviewers_to_idx[reviewer]
+                maximums[index] = load
+
+        else:
+            minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
+            maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
+
+            all_reviewers = { r: r for r in self.reviewers }
+            custom_load_edges = []
+            edges = []
+            edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_load_invitation'],
                 head=self.config_note.content['match_group'],
                 select='tail,label,weight')
-        if edges:
-            custom_load_edges = edges[0]['values']
+            if edges:
+                custom_load_edges = edges[0]['values']
 
-        for edge in custom_load_edges:
-            if edge['tail'] in all_reviewers:
-                try:
-                    custom_load = int(edge['weight'])
-                except ValueError:
-                    raise MatcherError('invalid custom load weight')
+            for edge in custom_load_edges:
+                if edge['tail'] in all_reviewers:
+                    try:
+                        custom_load = int(edge['weight'])
+                    except ValueError:
+                        raise MatcherError('invalid custom load weight')
 
-                if custom_load < 0:
-                    custom_load = 0
+                    if custom_load < 0:
+                        custom_load = 0
 
-                index = self.reviewers.index(edge['tail'])
-                maximums[index] = custom_load
+                    index = self.reviewers.index(edge['tail'])
+                    maximums[index] = custom_load
 
-                if custom_load < minimums[index]:
-                    minimums[index] = custom_load
-            else:
-                self.logger.warn('Reviewer {} not found in pool'.format(edge['tail']))
+                    if custom_load < minimums[index]:
+                        minimums[index] = custom_load
+                else:
+                    self.logger.warn('Reviewer {} not found in pool'.format(edge['tail']))
 
         return minimums, maximums
 
