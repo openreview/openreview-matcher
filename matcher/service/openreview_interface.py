@@ -111,7 +111,7 @@ class ConfigNoteInterface:
 
     @property
     def emergency_demand_edges(self):
-        if self._emergency_demand_edges is None:
+        if self._emergency_demand_edges is None and self.config_note.content['emergency_demand_invitation']:
             self._emergency_demand_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['emergency_demand_invitation'],
                 tail=self.config_note.content['match_group'],
@@ -120,7 +120,7 @@ class ConfigNoteInterface:
 
     @property
     def emergency_load_edges(self):
-        if self._emergency_load_edges is None:
+        if self._emergency_load_edges is None and self.config_note.content.get('emergency_supply_invitation'):
             self._emergency_load_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['emergency_supply_invitation'],
                 head=self.config_note.content['match_group'],
