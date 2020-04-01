@@ -111,18 +111,18 @@ class ConfigNoteInterface:
 
     @property
     def emergency_demand_edges(self):
-        if self._emergency_demand_edges is None and self.config_note.content['emergency_demand_invitation']:
+        if self._emergency_demand_edges is None and self.config_note.content['custom_max_user_invitation']:
             self._emergency_demand_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['emergency_demand_invitation'],
+                invitation=self.config_note.content['custom_max_user_invitation'],
                 tail=self.config_note.content['match_group'],
                 select='weight')
         return self._emergency_demand_edges
 
     @property
     def emergency_load_edges(self):
-        if self._emergency_load_edges is None and self.config_note.content.get('emergency_supply_invitation'):
+        if self._emergency_load_edges is None and self.config_note.content.get('custom_max_paper_invitation'):
             self._emergency_load_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['emergency_supply_invitation'],
+                invitation=self.config_note.content['custom_max_paper_invitation'],
                 head=self.config_note.content['match_group'],
                 select='tail,weight')
         return self._emergency_load_edges
@@ -130,7 +130,7 @@ class ConfigNoteInterface:
     @property
     def demands(self):
         if self._demands is None:
-            if self.config_note.content.get('emergency_demand_invitation', None) and self.emergency_demand_edges:
+            if self.config_note.content.get('custom_max_users_invitation', None) and self.emergency_demand_edges:
                 self._demands = []
                 for edge in self.emergency_demand_edges:
                     self._demands.append(edge['values'][0]['weight'])
