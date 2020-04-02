@@ -54,14 +54,13 @@ def initialize_superuser():
     client = openreview.Client(baseurl = 'http://localhost:3000', username='openreview.net', password='1234')
     return client
 
-def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper, double_blind=False):
+def clean_start_conference(client, conference_id, num_reviewers, num_papers, reviews_per_paper):
     builder = openreview.conference.ConferenceBuilder(client)
     builder.set_conference_id(conference_id)
     now = datetime.datetime.utcnow()
     builder.set_submission_stage(
         due_date = now + datetime.timedelta(minutes = 10),
-        remove_fields=['abstract', 'pdf', 'keywords', 'TL;DR'],
-        double_blind=double_blind)
+        remove_fields=['abstract', 'pdf', 'keywords', 'TL;DR'])
 
     conference = builder.get_result()
 
@@ -85,9 +84,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 'authorids': authorids
             }
             signatures = ['~Super_User1']
-            readers = [conference.id] + authorids + signatures
-            if not double_blind:
-                readers += [conference.get_reviewers_id(), conference.get_program_chairs_id()]
+            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]
             writers = [conference.id] + authorids + signatures
             submission = openreview.Note(
                 signatures = signatures,
@@ -106,9 +103,6 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
-    if double_blind:
-        conference.close_submissions()
-        conference.create_blind_submissions()
     conference.create_paper_groups(authors=True, reviewers=True)
     conference.set_reviewers(emails=list(reviewers))
     conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE, build_conflicts=True)

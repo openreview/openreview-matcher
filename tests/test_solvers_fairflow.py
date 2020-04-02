@@ -44,6 +44,58 @@ def test_solvers_fairflow_random():
     # (i.e. overwhelmingly likely to be different)
     assert not np.array_equal(solver_A.affinity_matrix, solver_B.affinity_matrix)
 
+def test_solvers_fairflow_custom_demands():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = FairFlow(
+        [1,1,1,1],
+        [2,2,2,2],
+        [2,1,3],
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+
+def test_solvers_fairflow_custom_supply():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = FairFlow(
+        [1,1,1,1],
+        [2,1,3,1],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+
+def test_solvers_fairflow_custom_demand_and_supply():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = FairFlow(
+        [0,0,0,0],
+        [2,1,3,1],
+        [2,1,3],
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    assert res_A.shape == (3,4)
+
 def test_solver_impossible_constraints():
     '''
     Test to ensure that the FairFlow solver's 'solved' attribute is correctly set
