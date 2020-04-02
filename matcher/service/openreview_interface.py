@@ -26,8 +26,8 @@ class ConfigNoteInterface:
         self._maximums = None
         self._demands = None
         self._constraints = None
-        self._emergency_demand_edges = None
-        self._emergency_load_edges = None
+        self._custom_demand_edges = None
+        self._custom_supply_edges = None
 
         self.validate_score_spec()
 
@@ -76,9 +76,9 @@ class ConfigNoteInterface:
                 invitation=paper_invitation,
                 content=content_dict)}
 
-            if self.config_note.content.get('emergency_demand_invitation', None):
+            if self.config_note.content.get('custom_user_demand_invitation'):
                 papers_set = set()
-                for edge in self.emergency_demand_edges:
+                for edge in self.custom_demand_edges:
                     papers_set.add(edge['id']['head'])
                 self._papers = list(papers_set)
                 for p in papers_set:
@@ -110,32 +110,32 @@ class ConfigNoteInterface:
         return self._maximums
 
     @property
-    def emergency_demand_edges(self):
-        if self._emergency_demand_edges is None and self.config_note.content['custom_max_user_invitation']:
-            self._emergency_demand_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['custom_max_user_invitation'],
+    def custom_demand_edges(self):
+        if self._custom_demand_edges is None and self.config_note.content.get('custom_user_demand_invitation'):
+            self._custom_demand_edges = self.client.get_grouped_edges(
+                invitation=self.config_note.content['custom_user_demand_invitation'],
                 tail=self.config_note.content['match_group'],
                 select='weight')
-        return self._emergency_demand_edges
+        return self._custom_demand_edges
 
     @property
-    def emergency_load_edges(self):
-        if self._emergency_load_edges is None and self.config_note.content.get('custom_max_paper_invitation'):
-            self._emergency_load_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['custom_max_paper_invitation'],
+    def custom_supply_edges(self):
+        if self._custom_supply_edges is None and self.config_note.content.get('custom_max_papers_invitation'):
+            self._custom_supply_edges = self.client.get_grouped_edges(
+                invitation=self.config_note.content['custom_max_papers_invitation'],
                 head=self.config_note.content['match_group'],
                 select='tail,weight')
-        return self._emergency_load_edges
+        return self._custom_supply_edges
 
     @property
     def demands(self):
         if self._demands is None:
-            if self.config_note.content.get('custom_max_users_invitation', None) and self.emergency_demand_edges:
+            if self.config_note.content.get('custom_user_demand_invitation', None) and self.custom_demand_edges:
                 self._demands = []
-                for edge in self.emergency_demand_edges:
+                for edge in self.custom_demand_edges:
                     self._demands.append(edge['values'][0]['weight'])
             else:
-                self._demands = [int(self.config_note.content['max_users']) for paper in self.papers]
+                self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
             self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
@@ -265,12 +265,12 @@ class ConfigNoteInterface:
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
-        if self.emergency_load_edges:
+        if self.custom_supply_edges:
             map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
-            minimums = [1 for r in self.reviewers]
-            maximums = [1 for r in self.reviewers]
+            minimums = [0 for _ in self.reviewers]
+            maximums = [1 for _ in self.reviewers]
 
-            for edge in self.emergency_load_edges[0].get('values'):
+            for edge in self.custom_supply_edges[0].get('values'):
                 reviewer = edge['tail']
                 load = int(edge['weight'])
                 index = map_reviewers_to_idx[reviewer]
