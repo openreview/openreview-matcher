@@ -113,7 +113,7 @@ def test_confignote_interface():
                     content={
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
-                        'max_users': 1,
+                        'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
                         'alternates': 1,
@@ -338,7 +338,7 @@ def test_confignote_interface_no_scores_spec():
                     content={
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
-                        'max_users': 1,
+                        'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
                         'alternates': 1,
@@ -510,7 +510,7 @@ def test_confignote_interface_custom_load_negative():
                     content={
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
-                        'max_users': 1,
+                        'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
                         'alternates': 1,
@@ -743,7 +743,7 @@ def test_confignote_interface_custom_overload():
                     content={
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
-                        'max_users': 1,
+                        'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
                         'alternates': 1,
