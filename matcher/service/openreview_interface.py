@@ -265,6 +265,9 @@ class ConfigNoteInterface:
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
+        minimums = [int(self.config_note.content['min_papers']) for _ in self.reviewers]
+        maximums = [int(self.config_note.content['max_papers']) for _ in self.reviewers]
+
         if self.custom_supply_edges:
             map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
             minimums = [0 for _ in self.reviewers]
@@ -275,38 +278,6 @@ class ConfigNoteInterface:
                 load = int(edge['weight'])
                 index = map_reviewers_to_idx[reviewer]
                 maximums[index] = load
-
-        else:
-            minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
-            maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
-
-            all_reviewers = { r: r for r in self.reviewers }
-            custom_load_edges = []
-            edges = []
-            edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['custom_load_invitation'],
-                head=self.config_note.content['match_group'],
-                select='tail,label,weight')
-            if edges:
-                custom_load_edges = edges[0]['values']
-
-            for edge in custom_load_edges:
-                if edge['tail'] in all_reviewers:
-                    try:
-                        custom_load = int(edge['weight'])
-                    except ValueError:
-                        raise MatcherError('invalid custom load weight')
-
-                    if custom_load < 0:
-                        custom_load = 0
-
-                    index = self.reviewers.index(edge['tail'])
-                    maximums[index] = custom_load
-
-                    if custom_load < minimums[index]:
-                        minimums[index] = custom_load
-                else:
-                    self.logger.warn('Reviewer {} not found in pool'.format(edge['tail']))
 
         return minimums, maximums
 
