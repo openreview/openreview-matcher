@@ -124,12 +124,20 @@ class ConfigNoteInterface:
                 if 'translate_map' in score_spec
             }
 
+            score_defaults = {
+                inv_id: score_spec.get('default', 0) \
+                for inv_id, score_spec in scores_specification.items()
+            }
+
             self._scores_by_type = {
                 inv_id: [
                     (
                         edge['head'],
                         edge['tail'],
-                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                        self._edge_to_score(
+                            edge, 
+                            score_default=score_defaults.get(inv_id), 
+                            translate_map=translate_maps.get(inv_id))
                     ) for edge in edges] \
                 for inv_id, edges in edges_by_invitation.items() \
             }
@@ -335,13 +343,13 @@ class ConfigNoteInterface:
 
         return values
 
-    def _edge_to_score(self, edge, translate_map=None):
+    def _edge_to_score(self, edge, score_default=None, translate_map=None):
         '''
         Given an openreview.Edge, and a mapping defined by `translate_map`,
         return a numeric score, given an Edge.
         '''
 
-        score = edge['weight']
+        score = 0
 
         if translate_map:
             try:
@@ -350,6 +358,11 @@ class ConfigNoteInterface:
                 raise EncoderError(
                     'Cannot translate label {} to score. Valid labels are: {}'.format(
                         edge['label'], translate_map.keys()))
+        else:
+            score = edge.get('weight')
+
+        if not score:
+            score = score_default
 
         if not isinstance(score, float) and not isinstance(score, int):
             try:
