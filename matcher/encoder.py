@@ -116,11 +116,13 @@ class Encoder:
         ]))
 
 
-    def _encode_scores(self, scores, default=0):
+    def _encode_scores(self, scores):
         '''return a matrix containing unweighted scores.'''
+        default = scores.get('default', 0)
+        edges = scores.get('edges', [])
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
-
-        for forum, user, score in scores:
+        
+        for forum, user, score in edges:
             coordinates = (self.index_by_forum[forum], self.index_by_user[user])
             score_matrix[coordinates] = score
 

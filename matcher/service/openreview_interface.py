@@ -2,6 +2,8 @@ import re
 import openreview
 import logging
 from tqdm import tqdm
+from matcher.encoder import EncoderError
+from matcher.core import MatcherError
 
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
@@ -114,25 +116,30 @@ class ConfigNoteInterface:
 
         if self._scores_by_type is None:
             edges_by_invitation = {}
-            for invitation_id in scores_specification.keys():
+            defaults_by_invitation = {}
+            for invitation_id, spec in scores_specification.items():
                 edges_by_invitation[invitation_id] = self._get_all_edges(invitation_id)
-
-
+                defaults_by_invitation[invitation_id] = spec.get('default', 0)
+            
             translate_maps = {
                 inv_id: score_spec['translate_map'] \
                 for inv_id, score_spec in scores_specification.items() \
                 if 'translate_map' in score_spec
             }
 
-            self._scores_by_type = {
-                inv_id: [
-                    (
-                        edge['head'],
-                        edge['tail'],
-                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
-                    ) for edge in edges] \
-                for inv_id, edges in edges_by_invitation.items() \
-            }
+            for inv_id, edges in edges_by_invitation.items():
+                invitation_edges = [
+                        (
+                            edge['head'],
+                            edge['tail'],
+                            self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                        ) for edge in edges] 
+                self._scores_by_type = {
+                    inv_id: {
+                        'default': defaults_by_invitation[inv_id],
+                        'edges': invitation_edges
+                    }
+                }
         return self._scores_by_type
 
     @property
