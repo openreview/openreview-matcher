@@ -21,7 +21,7 @@ class ConfigNoteInterface:
         # Lazy variables
         self._reviewers = None
         self._papers = None
-        self._scores_by_type = None
+        self._scores_by_type = {}
         self._minimums = None
         self._maximums = None
         self._demands = None
@@ -114,7 +114,7 @@ class ConfigNoteInterface:
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
 
-        if self._scores_by_type is None:
+        if self._scores_by_type is {} and scores_specification:
             edges_by_invitation = {}
             defaults_by_invitation = {}
             for invitation_id, spec in scores_specification.items():
@@ -145,10 +145,13 @@ class ConfigNoteInterface:
     @property
     def weight_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
-        return {
-            inv_id: entry['weight'] \
-            for inv_id, entry in scores_specification.items()
-        }
+        weight_by_type = {}
+        if scores_specification:
+            weight_by_type = {
+                inv_id: entry['weight'] \
+                for inv_id, entry in scores_specification.items()
+            }
+        return weight_by_type
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
