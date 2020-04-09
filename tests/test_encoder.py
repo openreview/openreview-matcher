@@ -27,17 +27,20 @@ def encoder_context():
 
     return papers, reviewers, matrix_shape
 
+def assert_arrays(array_A, array_B):
+    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+
 def test_encoder_basic(encoder_context):
     '''Basic test of Encoder functionality, without constraints.'''
     papers, reviewers, matrix_shape = encoder_context
 
     scores_by_type = {
-        'mock/-/score_edge': [
-            (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)
-        ],
-        'mock/-/bid_edge': [
-            (forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)
-        ]
+        'mock/-/score_edge': {
+            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        },
+        'mock/-/bid_edge': {
+            'edges': [ (forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)]
+        }
     }
 
     weight_by_type = {
@@ -107,7 +110,7 @@ def test_encoder_basic(encoder_context):
 
 def test_encoder_no_scores(encoder_context):
     '''Basic test of Encoder functionality, without scores.'''
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, _ = encoder_context
 
     scores_by_type = {}
 
@@ -166,15 +169,12 @@ def test_encoder_weighting(encoder_context):
     papers, reviewers, matrix_shape = encoder_context
 
     scores_by_type = {
-        'mock/-/score_edge': [
-            (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)
-        ],
-        'mock/-/bid_edge': [
-            (forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)
-        ],
-        'mock/-/recommendation': [
-            (forum, reviewer, 5) for forum, reviewer in itertools.product(papers, reviewers)
-        ]
+        'mock/-/score_edge': {'edges': [
+            (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]},
+        'mock/-/bid_edge': {'edges': [
+            (forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)]},
+        'mock/-/recommendation': {'edges': [
+            (forum, reviewer, 5) for forum, reviewer in itertools.product(papers, reviewers)]}
     }
 
     weight_by_type = {
@@ -263,7 +263,7 @@ def test_encoder_average_weighting(encoder_context):
     papers = [1, 2, 3]
 
     scores_by_type = {
-        'TPMS': [
+        'TPMS': {'edges': [
             (1, 1, 0),
             (1, 2, 1),
             (1, 3, 1),
@@ -276,8 +276,8 @@ def test_encoder_average_weighting(encoder_context):
             (3, 2, 0),
             (3, 3, 1),
             (3, 4, 0.3)
-        ],
-        'Affinity': [
+        ]},
+        'Affinity': {'edges': [
             (1, 1, 0),
             (1, 2, 1),
             (1, 3, 1),
@@ -290,8 +290,8 @@ def test_encoder_average_weighting(encoder_context):
             (3, 2, 1),
             (3, 3, 0.5),
             (3, 4, 0.8)
-        ],
-        'Bid': [
+        ]},
+        'Bid': {'edges': [
             (1, 1, 0),
             (1, 2, 1),
             (1, 3, 1),
@@ -304,7 +304,7 @@ def test_encoder_average_weighting(encoder_context):
             (3, 2, 1),
             (3, 3, 0.5),
             (3, 4, 0.75)
-        ]
+        ]}
     }
 
     weight_by_type = {
@@ -324,9 +324,6 @@ def test_encoder_average_weighting(encoder_context):
         ['TPMS', 'Affinity']
     )
 
-    def assert_arrays(array_A, array_B):
-        assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
-
     encoded_aggregate_matrix = encoder.aggregate_score_matrix
     print(encoded_aggregate_matrix)
     expected_matrix = [
@@ -339,3 +336,47 @@ def test_encoder_average_weighting(encoder_context):
     for a in range(0,3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
 
+def test_encoder_score_default_always_0(encoder_context):
+
+    reviewers = [1, 2]
+    papers = [1, 2, 3]
+
+    scores_by_type = {
+        'Bid': {
+            'default': 0.25,
+            'edges': [
+                (1, 1, 0.7),
+                (2, 2, 0.5),
+                (3, 2, 0.1)]
+            }
+    }
+
+    weight_by_type = {
+        'Bid': 1
+    }
+
+    constraints = []
+
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        ['Affinity']
+    )
+
+    encoded_aggregate_matrix = encoder.aggregate_score_matrix
+    
+    print(encoded_aggregate_matrix)
+    
+    # Following expected matrix assumes a default of 0.25 for bid scores
+    expected_matrix = [
+        [0.7, 0.25],
+        [0.25, 0.5],
+        [0.25, 0.1]
+    ]
+    print('expected', expected_matrix)
+
+    for a in range(0,3):
+        assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
