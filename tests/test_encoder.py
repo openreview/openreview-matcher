@@ -336,7 +336,7 @@ def test_encoder_average_weighting(encoder_context):
     for a in range(0,3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
 
-def test_encoder_score_default_always_0(encoder_context):
+def test_encoder_score_use_correct_default(encoder_context):
 
     reviewers = [1, 2]
     papers = [1, 2, 3]
@@ -367,16 +367,13 @@ def test_encoder_score_default_always_0(encoder_context):
     )
 
     encoded_aggregate_matrix = encoder.aggregate_score_matrix
-    
-    print(encoded_aggregate_matrix)
-    
+
     # Following expected matrix assumes a default of 0.25 for bid scores
     expected_matrix = [
         [0.7, 0.25],
         [0.25, 0.5],
         [0.25, 0.1]
     ]
-    print('expected', expected_matrix)
 
     for a in range(0,3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])

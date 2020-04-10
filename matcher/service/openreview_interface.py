@@ -120,7 +120,7 @@ class ConfigNoteInterface:
             for invitation_id, spec in scores_specification.items():
                 edges_by_invitation[invitation_id] = self._get_all_edges(invitation_id)
                 defaults_by_invitation[invitation_id] = spec.get('default', 0)
-            
+
             translate_maps = {
                 inv_id: score_spec['translate_map'] \
                 for inv_id, score_spec in scores_specification.items() \

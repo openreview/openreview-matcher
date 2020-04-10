@@ -121,7 +121,7 @@ class Encoder:
         default = scores.get('default', 0)
         edges = scores.get('edges', [])
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
-        
+
         for forum, user, score in edges:
             coordinates = (self.index_by_forum[forum], self.index_by_user[user])
             score_matrix[coordinates] = score
