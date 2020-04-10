@@ -114,7 +114,7 @@ class ConfigNoteInterface:
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
 
-        if self._scores_by_type is {} and scores_specification:
+        if not self._scores_by_type and scores_specification:
             edges_by_invitation = {}
             defaults_by_invitation = {}
             for invitation_id, spec in scores_specification.items():
