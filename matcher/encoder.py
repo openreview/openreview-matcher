@@ -115,7 +115,6 @@ class Encoder:
             scores * weight_by_type[score_type] for score_type, scores in with_normalization_matrices.items()
         ]))
 
-
     def _encode_scores(self, scores):
         '''return a matrix containing unweighted scores.'''
         default = scores.get('default', 0)
