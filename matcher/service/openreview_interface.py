@@ -275,7 +275,7 @@ class ConfigNoteInterface:
                 reviewer = edge['tail']
                 load = int(edge['weight'])
                 index = map_reviewers_to_idx[reviewer]
-                maximums[index] = load
+                maximums[index] = load if load > 0 else 0
 
         return minimums, maximums
 
