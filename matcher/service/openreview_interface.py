@@ -71,10 +71,10 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self.paper_notes = openreview.tools.iterget_notes(
+            self.paper_notes = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content=content_dict)
+                content=content_dict))
             self._papers = [n.id for n in self.paper_notes]
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
