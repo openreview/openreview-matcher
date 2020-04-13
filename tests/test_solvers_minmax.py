@@ -115,9 +115,8 @@ def test_solvers_minmax_custom_demands_paper_with_0_demand():
         encoder(aggregate_score_matrix_A, constraint_matrix)
     )
     res_A = solver_A.solve()
-    print(res_A)
     assert res_A.shape == (3,4)
-    assert 1 == 0
+    assert np.sum(res_A, axis=1)[2] == 0
 
 def test_solver_finds_lowest_cost_soln():
     '''
