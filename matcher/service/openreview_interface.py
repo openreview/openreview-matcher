@@ -75,9 +75,7 @@ class ConfigNoteInterface:
                 self.client,
                 invitation=paper_invitation,
                 content=content_dict)
-
             self._papers = [n.id for n in self.paper_notes]
-            
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
         return self._papers

@@ -96,6 +96,25 @@ def test_solvers_fairflow_custom_demand_and_supply():
     print(res_A)
     assert res_A.shape == (3,4)
 
+def test_solvers_fairflow_custom_demands_paper_with_0_demand():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = FairFlow(
+        [0,0,0,0],
+        [2,2,2,2],
+        [2,1,0],
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    assert res_A.shape == (3,4)
+    assert 1 == 0
+
 def test_solver_impossible_constraints():
     '''
     Test to ensure that the FairFlow solver's 'solved' attribute is correctly set
@@ -120,7 +139,7 @@ def test_solver_impossible_constraints():
     )
 
     with pytest.raises(SolverException):
-        solution = solver.solve()
+        _ = solver.solve()
 
     assert not solver.solved
 
