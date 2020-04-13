@@ -87,7 +87,7 @@ logging.info('Using weights={}'.format(args.weights))
 weight_by_type = {
     score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)}
 
-scores_by_type = {score_file: [] for score_file in args.scores}
+scores_by_type = {score_file: {'edges': []} for score_file in args.scores}
 for score_file in args.scores:
     logging.info('processing file={}'.format(score_file))
     file_reviewers = []
@@ -102,7 +102,7 @@ for score_file in args.scores:
 
             file_reviewers.append(profile_id)
             file_papers.append(paper_id)
-            scores_by_type[score_file].append((paper_id, profile_id, score))
+            scores_by_type[score_file]['edges'].append((paper_id, profile_id, score))
 
     reviewer_set.update(file_reviewers)
     paper_set.update(file_papers)
