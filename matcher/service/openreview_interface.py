@@ -71,21 +71,12 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            all_papers = {note.id: note for note in openreview.tools.iterget_notes(
+            self.paper_notes = openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
-                content=content_dict)}
+                content=content_dict)
 
-            if self.config_note.content.get('custom_user_demand_invitation'):
-                papers_set = set()
-                for edge in self.custom_demand_edges:
-                    papers_set.add(edge['id']['head'])
-                self._papers = list(papers_set)
-                for p in papers_set:
-                    self.paper_notes.append(all_papers[p])
-            else:
-                self._papers = list(all_papers.keys())
-                self.paper_notes = list(all_papers.values())
+            self._papers = [n.id for n in self.paper_notes]
             
             self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
 
@@ -130,12 +121,13 @@ class ConfigNoteInterface:
     @property
     def demands(self):
         if self._demands is None:
-            if self.config_note.content.get('custom_user_demand_invitation', None) and self.custom_demand_edges:
-                self._demands = []
+            self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
+            if self.custom_demand_edges:
+                map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
                 for edge in self.custom_demand_edges:
-                    self._demands.append(edge['values'][0]['weight'])
-            else:
-                self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
+                    idx = map_papers_to_idx[edge['values'][0]['head']]
+                    self._demands[idx] = int(edge['values'][0]['weight'])
+                self.logger.debug('Custom demands recorded for {} papers'.format(len(self.custom_demand_edges)))
             self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
