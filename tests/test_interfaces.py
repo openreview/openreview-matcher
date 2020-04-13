@@ -64,8 +64,8 @@ def test_confignote_interface():
                     signatures=[],
                     reply={}
                 ),
-            '<custom_load_invitation_id>': openreview.Invitation(
-                    id='<custom_load_invitation_id>',
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
                     writers=[],
                     readers=[],
                     signatures=[],
@@ -131,7 +131,7 @@ def test_confignote_interface():
                         },
                         'assignment_invitation': '<assignment_invitation_id>',
                         'aggregate_score_invitation': '<aggregate_score_invitation_id>',
-                        'custom_load_invitation': '<custom_load_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
                         'status': None
                     }
                 ),
@@ -250,7 +250,7 @@ def test_confignote_interface():
                     ]
                 }
             ],
-            '<custom_load_invitation_id>': [
+            '<custom_max_papers_invitation_id>': [
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [
@@ -301,8 +301,8 @@ def test_confignote_missing_edges_spec():
                     signatures=[],
                     reply={}
                 ),
-            '<custom_load_invitation_id>': openreview.Invitation(
-                    id='<custom_load_invitation_id>',
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
                     writers=[],
                     readers=[],
                     signatures=[],
@@ -350,7 +350,7 @@ def test_confignote_missing_edges_spec():
                     content={
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
-                        'max_users': 1,
+                        'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
                         'alternates': 1,
@@ -370,7 +370,7 @@ def test_confignote_missing_edges_spec():
                         },
                         'assignment_invitation': '<assignment_invitation_id>',
                         'aggregate_score_invitation': '<aggregate_score_invitation_id>',
-                        'custom_load_invitation': '<custom_load_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
                         'status': None
                     }
                 ),
@@ -477,7 +477,7 @@ def test_confignote_missing_edges_spec():
                     ]
                 }
             ],
-            '<custom_load_invitation_id>': [
+            '<custom_max_papers_invitation_id>': [
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [
@@ -533,8 +533,8 @@ def test_confignote_interface_no_scores_spec():
                     signatures=[],
                     reply={}
                 ),
-            '<custom_load_invitation_id>': openreview.Invitation(
-                    id='<custom_load_invitation_id>',
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
                     writers=[],
                     readers=[],
                     signatures=[],
@@ -575,7 +575,7 @@ def test_confignote_interface_no_scores_spec():
                         'conflicts_invitation': '<conflicts_invitation_id>',
                         'assignment_invitation': '<assignment_invitation_id>',
                         'aggregate_score_invitation': '<aggregate_score_invitation_id>',
-                        'custom_load_invitation': '<custom_load_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
                         'status': None
                     }
                 ),
@@ -636,7 +636,7 @@ def test_confignote_interface_no_scores_spec():
                     ]
                 }
             ],
-            '<custom_load_invitation_id>': [
+            '<custom_max_papers_invitation_id>': [
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [
@@ -691,8 +691,8 @@ def test_confignote_interface_custom_load_negative():
                     signatures=[],
                     reply={}
                 ),
-            '<custom_load_invitation_id>': openreview.Invitation(
-                    id='<custom_load_invitation_id>',
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
                     writers=[],
                     readers=[],
                     signatures=[],
@@ -758,7 +758,7 @@ def test_confignote_interface_custom_load_negative():
                         },
                         'assignment_invitation': '<assignment_invitation_id>',
                         'aggregate_score_invitation': '<aggregate_score_invitation_id>',
-                        'custom_load_invitation': '<custom_load_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
                         'status': None
                     }
                 ),
@@ -877,7 +877,7 @@ def test_confignote_interface_custom_load_negative():
                     ]
                 }
             ],
-            '<custom_load_invitation_id>': [
+            '<custom_max_papers_invitation_id>': [
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [
@@ -924,8 +924,8 @@ def test_confignote_interface_custom_overload():
                     signatures=[],
                     reply={}
                 ),
-            '<custom_load_invitation_id>': openreview.Invitation(
-                    id='<custom_load_invitation_id>',
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
                     writers=[],
                     readers=[],
                     signatures=[],
@@ -991,7 +991,7 @@ def test_confignote_interface_custom_overload():
                         },
                         'assignment_invitation': '<assignment_invitation_id>',
                         'aggregate_score_invitation': '<aggregate_score_invitation_id>',
-                        'custom_load_invitation': '<custom_load_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
                         'status': None
                     }
                 ),
@@ -1110,7 +1110,7 @@ def test_confignote_interface_custom_overload():
                     ]
                 }
             ],
-            '<custom_load_invitation_id>': [
+            '<custom_max_papers_invitation_id>': [
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [

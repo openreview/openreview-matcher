@@ -50,7 +50,7 @@ def test_integration_basic(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -124,7 +124,7 @@ def test_integration_supply_mismatch_error(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -199,7 +199,7 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -274,7 +274,7 @@ def test_integration_no_scores(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'status': 'Initialized',
         'solver': 'MinMax'
@@ -342,7 +342,7 @@ def test_routes_invalid_invitation(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             # conference.get_affinity_score_id(reviewers_id): {
@@ -414,7 +414,7 @@ def test_routes_missing_header(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -511,7 +511,7 @@ def test_routes_forbidden_config(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
@@ -583,7 +583,7 @@ def test_routes_already_running_or_complete(openreview_context):
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
-        'custom_load_invitation': '{}/-/Custom_Load'.format(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Load'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
             conference.get_affinity_score_id(reviewers_id): {
