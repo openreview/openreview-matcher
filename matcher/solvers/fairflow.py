@@ -210,7 +210,7 @@ class FairFlow(object):
             edge_capacity = 1 if self.demands[g3[i]] else 0
             self.caps.append(edge_capacity)
             self.costs.append(0)
-            papers_needing_no_assignments += edge_capacity
+            papers_needing_no_assignments += (1 - edge_capacity)
 
         # For each paper in g2, create a dummy node the restricts the flow to
         # that paper to 1.
