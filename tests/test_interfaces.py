@@ -129,9 +129,11 @@ def test_confignote_interface():
                                 'weight': 1
                             },
                             '<bid_invitation>': {
-                                'weight': 1,
+                                'default': 0.5,
+                                'weight': 2,
                                 'translate_map': {
-                                    'High': 1
+                                    'High': 1,
+                                    'Very Low': -1
                                 }
                             }
                         },
@@ -203,8 +205,7 @@ def test_confignote_interface():
                     'id': {'head': 'paper0'},
                     'values': [
                         {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
-                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
-                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'Very Low'},
                         {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
                     ]
                 },
@@ -213,14 +214,13 @@ def test_confignote_interface():
                     'values': [
                         {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
                         {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
-                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
-                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'Very Low'},
                     ]
                 },
                 {
                     'id': {'head': 'paper2'},
                     'values': [
-                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'Very Low'},
                         {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
                         {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
                         {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
@@ -260,7 +260,8 @@ def test_confignote_interface():
                 {
                     'id': {'head': '<match_group_id>'},
                     'values': [
-                        {'tail': 'reviewer0', 'weight': 1}
+                        {'tail': 'reviewer0', 'weight': 1},
+                        {'tail': 'reviewer3', 'weight': 3}
                     ]
                 }
             ]
@@ -275,7 +276,7 @@ def test_confignote_interface():
     assert_str_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'])
     assert_str_arrays(interface.papers, ['paper0', 'paper1', 'paper2'])
     assert_float_arrays(interface.minimums, [1,1,1,1])
-    assert_float_arrays(interface.maximums, [1,2,2,2])
+    assert_float_arrays(interface.maximums, [1,2,2,3])
     assert_float_arrays(interface.demands, [1,1,1])
     assert interface.constraints
     valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
@@ -286,13 +287,36 @@ def test_confignote_interface():
             assert constraint == 0
     assert interface.scores_by_type
     assert len(interface.scores_by_type) == 2
+    map_defaults = {
+        '<bid_invitation>': 0.5,
+        '<affinity_score_invitation>': 0
+    }
     for invitation, scores in interface.scores_by_type.items():
-        assert 'default' in scores
         assert 'edges' in scores
+        assert 'default' in scores
+        assert map_defaults[invitation] == scores['default']
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+
+    very_low_bids = [
+        ('paper0', 'reviewer2'), 
+        ('paper1', 'reviewer3'), 
+        ('paper2', 'reviewer0')]
+    high_bids = [
+        ('paper0', 'reviewer0'), 
+        ('paper0', 'reviewer3'),
+        ('paper1', 'reviewer0'),
+        ('paper1', 'reviewer1'),
+        ('paper2', 'reviewer1'),
+        ('paper2', 'reviewer2')]
+    for paper, reviewer, bid in interface.scores_by_type['<bid_invitation>']['edges']:
+        if (paper, reviewer) in very_low_bids:
+            assert bid == -1
+        elif (paper, reviewer) in high_bids:
+            assert bid == 1
 
     for invitation in interface.weight_by_type:
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+    assert_float_arrays(list(interface.weight_by_type.values()), [1, 2])
 
     assert len(interface.weight_by_type) == 2
     assert interface.assignment_invitation
