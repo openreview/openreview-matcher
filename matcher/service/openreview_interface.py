@@ -153,16 +153,14 @@ class ConfigNoteInterface:
 
             for inv_id, edges in edges_by_invitation.items():
                 invitation_edges = [
-                        (
-                            edge['head'],
-                            edge['tail'],
-                            self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
-                        ) for edge in edges] 
-                self._scores_by_type = {
-                    inv_id: {
-                        'default': defaults_by_invitation[inv_id],
-                        'edges': invitation_edges
-                    }
+                    (
+                        edge['head'],
+                        edge['tail'],
+                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                    ) for edge in edges]
+                self._scores_by_type[inv_id] = {
+                    'default': defaults_by_invitation[inv_id],
+                    'edges': invitation_edges
                 }
         return self._scores_by_type
 
