@@ -11,7 +11,17 @@ import logging
 from collections import defaultdict
 import time
 
-logging.basicConfig(filename='main.log', level=logging.DEBUG)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+log_format = '%(asctime)s %(levelname)s: [in %(pathname)s:%(lineno)d] %(message)s'
+logging.basicConfig(filename="default.log", format=log_format)
+
+consoleHandler = logging.StreamHandler()
+logger.addHandler(consoleHandler)
+
+t0 = time.time()
+logger.info('Starting time={}'.format(t0))
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -28,7 +38,7 @@ parser.add_argument(
     '--constraints',
     help='''
         One or more constraint files,
-        with each row containing comma-separated paperId, userID, and constraint (in that order).
+        with each row containing comma-separated paperID, userID, and constraint (in that order).
         Constraint values must be -1 (conflict), 1 (forced assignment), or 0 (no effect).
         e.g. "paper1,reviewer1,-1"
         '''
@@ -38,11 +48,11 @@ parser.add_argument(
     '--max_papers',
     help='''
         max paper files,
-        with each row containing comma-separated userID, and max_paper (in that order).
+        with each row containing comma-separated userID, and max_papers that can be assigned to this user (in that order).
         e.g. "reviewer1,2''')
 
 
-parser.add_argument('--weights', nargs='+', type=int)
+parser.add_argument('--weights', nargs='+', type=float)
 parser.add_argument('--min_papers_default', default=0, type=int)
 parser.add_argument('--max_papers_default', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
@@ -51,7 +61,7 @@ parser.add_argument('--user_group', type=str)
 
 parser.add_argument(
     '--user_group_file',
-    help='''Pass a csv file with each line in the form: "Group1, reviewer_email"'''
+    help='''Pass a csv file with each line in the form: "Group1, user_email"'''
 )
 
 # TODO: dynamically populate solvers list
@@ -61,11 +71,11 @@ parser.add_argument(
     help='Choose from: {}'.format(['MinMax', 'FairFlow']),
     default='MinMax'
 )
-t0 = time.time()
+
 args = parser.parse_args()
 
 # Main Logic
-
+logger.info('Setting solver class')
 solver_class = None
 if args.solver == 'MinMax':
     solver_class = 'MinMax'
@@ -74,16 +84,18 @@ if args.solver == 'FairFlow':
 
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))
+logger.info('Using solver={}'.format(solver_class))
 
 reviewer_set = set()
 paper_set = set()
-logging.info('Using weights={}'.format(args.weights))
+logger.info('Using weights={}'.format(args.weights))
 weight_by_type = {
     score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)}
 
 scores_by_type = {score_file: {'edges': []} for score_file in args.scores}
+
 for score_file in args.scores:
-    logging.info('processing file={}'.format(score_file))
+    logger.info('processing file={}'.format(score_file))
     file_reviewers = []
     file_papers = []
 
@@ -150,10 +162,13 @@ if args.max_papers:
             else:
                 missing_reviewers.append(profile_id)
     if missing_reviewers:
-        logging.info('Reviewers missing in all score files: ' + ', '.join(profile_id))
+        logger.info('Reviewers missing in all score files: ' + ', '.join(profile_id))
 
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
+
+logger.info('Count of reviewers={} '.format(len(reviewers)))
+logger.info('Count of papers={}'.format(len(papers)))
 
 match_data = {
     'reviewers': reviewers,
@@ -167,22 +182,18 @@ match_data = {
     'num_alternates': num_alternates
 }
 
-logging.info('Count of reviewers={} '.format(len(reviewers)))
-logging.info('Count of papers={}'.format(len(papers)))
-
 def write_assignments(assignments):
+    logger.info('Writing assignments to file')
     with open('./assignments.json', 'w') as f:
         f.write(json.dumps(assignments, indent=2))
 
 def write_alternates(alternates):
+    logger.info('Writing alternates to file')
     with open('./alternates.json', 'w') as f:
         f.write(json.dumps(alternates, indent=2))
 
 def on_set_status(status, message):
-    logging.info('status={0}, message={1}'.format(status, message))
-
-
-logging.info('Solver class={}'.format(solver_class))
+    logger.info('status={0}, message={1}'.format(status, message))
 
 matcher = Matcher(
     datasource=match_data,
@@ -190,9 +201,9 @@ matcher = Matcher(
     on_set_assignments=write_assignments,
     on_set_alternates=write_alternates,
     solver_class=solver_class,
-    logger=logging
+    logger=logger
 )
 
 matcher.run()
 t1 = time.time()
-logging.info('Overall execution time: {0} seconds'.format(t1-t0))
+logger.info('Overall execution time: {0} seconds'.format(t1-t0))
