@@ -156,7 +156,7 @@ def test_solver_impossible_constraints():
     )
 
     with pytest.raises(SolverException):
-        _ = solver.solve()
+        solver.solve()
 
     assert not solver.solved
 
