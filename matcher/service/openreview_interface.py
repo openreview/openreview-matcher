@@ -26,7 +26,7 @@ class ConfigNoteInterface:
         self._maximums = None
         self._demands = None
         self._constraints = None
-        
+
         self.validate_score_spec()
 
     def validate_score_spec(self):
@@ -119,12 +119,13 @@ class ConfigNoteInterface:
     def demands(self):
         if self._demands is None:
             self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
-            if self._get_custom_demand_edges():
+            custom_demand_edges = self._get_custom_demand_edges()
+            if custom_demand_edges:
                 map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
-                for edge in self._get_custom_demand_edges()[0]['values']:
+                for edge in custom_demand_edges[0]['values']:
                     idx = map_papers_to_idx[edge['head']]
                     self._demands[idx] = int(edge['weight'])
-                self.logger.debug('Custom demands recorded for {} papers'.format(len(self._get_custom_demand_edges())))
+                self.logger.debug('Custom demands recorded for {} papers'.format(len(custom_demand_edges)))
             self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
@@ -263,10 +264,11 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
-        if self._get_custom_supply_edges():
+        custom_supply_edges = self._get_custom_supply_edges()
+        if custom_supply_edges:
             map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
 
-            for edge in self._get_custom_supply_edges()[0].get('values'):
+            for edge in custom_supply_edges[0].get('values'):
                 reviewer = edge['tail']
                 load = int(edge['weight'])
                 index = map_reviewers_to_idx[reviewer]
