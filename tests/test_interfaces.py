@@ -43,6 +43,9 @@ def mock_client(
 
     return client
 
+def assert_arrays(array_A, array_B):
+    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+
 def test_confignote_interface():
     '''Test of basic ConfigNoteInterface functionality.'''
 
@@ -277,6 +280,268 @@ def test_confignote_interface():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
+    interface.set_status('Running')
+    assert interface.config_note.content['status'] == 'Running'
+
+def test_confignote_interface_custom_demand_edges():
+    '''Test of basic ConfigNoteInterface functionality.'''
+
+    mock_openreview_data = {
+        'paper_ids': ['paper0', 'paper1', 'paper2'],
+        'reviewer_ids': ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'],
+        'mock_invitations': {
+            '<assignment_invitation_id>': openreview.Invitation(
+                    id='<assignment_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<aggregate_score_invitation_id>': openreview.Invitation(
+                    id='<aggregate_score_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<custom_user_demand_invitation>': openreview.Invitation(
+                    id='<custom_user_demand_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<conflicts_invitation_id>': openreview.Invitation(
+                    id='<conflicts_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<affinity_score_invitation>': openreview.Invitation(
+                    id='<affinity_score_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<bid_invitation>': openreview.Invitation(
+                    id='<bid_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+        },
+        'mock_groups': {
+            '<match_group_id>': openreview.Group(
+                    id='<match_group_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    signatories=[],
+                    members=['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3']
+                )
+        },
+        'mock_notes': {
+            '<config_note_id>': openreview.Note(
+                    id='<config_note_id>',
+                    readers=[],
+                    writers=[],
+                    signatures=[],
+                    invitation='<config_note_invitation>',
+                    content={
+                        'match_group': '<match_group_id>',
+                        'paper_invitation': '<paper_invitation_id>',
+                        'user_demand': 1,
+                        'min_papers': 0,
+                        'max_papers': 2,
+                        'alternates': 1,
+                        'conflicts_invitation': '<conflicts_invitation_id>',
+                        'scores_specification': {
+                            '<affinity_score_invitation>': {
+                                'weight': 1
+                            },
+                            '<bid_invitation>': {
+                                'weight': 1,
+                                'translate_map': {
+                                    'High': 1
+                                }
+                            }
+                        },
+                        'assignment_invitation': '<assignment_invitation_id>',
+                        'aggregate_score_invitation': '<aggregate_score_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
+                        'custom_user_demand_invitation': '<custom_user_demand_invitation_id>',
+                        'status': None
+                    }
+                ),
+            '<paper_invitation_id>': [
+                openreview.Note(
+                        id='paper0',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    ),
+                openreview.Note(
+                        id='paper1',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    ),
+                openreview.Note(
+                        id='paper2',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    )
+                ]
+        },
+        'mock_grouped_edges': {
+            '<affinity_score_invitation>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                }
+            ],
+            '<bid_invitation>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                    ]
+                }
+            ],
+            '<conflicts_invitation_id>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 1},
+                        {'tail': 'reviewer2', 'weight': 0},
+                        {'tail': 'reviewer3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 0},
+                        {'tail': 'reviewer2', 'weight': 1},
+                        {'tail': 'reviewer3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 0},
+                        {'tail': 'reviewer2', 'weight': 0},
+                        {'tail': 'reviewer3', 'weight': 1},
+                    ]
+                }
+            ],
+            '<custom_max_papers_invitation_id>': [
+                {
+                    'id': {'head': '<match_group_id>'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 1},
+                        {'tail': 'reviewer1', 'weight': 2},
+                        {'tail': 'reviewer2', 'weight': 1},
+                        {'tail': 'reviewer3', 'weight': 2}
+                    ]
+                }
+            ],
+            '<custom_user_demand_invitation_id>': [
+                {
+                    'id': {'tail': '<match_group_id>'},
+                    'values': [
+                        {'head': 'paper0', 'weight': 2},
+                        {'head': 'paper1', 'weight': 1},
+                        {'head': 'paper2', 'weight': 0}
+                    ]
+                }
+            ]
+        }
+    }
+
+    client = mock_client(**mock_openreview_data)
+
+    interface = ConfigNoteInterface(client, '<config_note_id>')
+
+    assert interface.reviewers
+    assert interface.config_note
+    assert interface.papers
+    assert interface.minimums
+    assert interface.maximums
+    assert interface.demands
+    assert list(interface.constraints)
+    assert interface.scores_by_type
+    assert interface.weight_by_type
+    assert interface.assignment_invitation
+    assert interface.aggregate_score_invitation
+
+    assert_arrays(interface.minimums, [0,0,0,0])
+    assert_arrays(interface.maximums, [1,2,1,2])
+    assert_arrays(interface.demands, [2,1,0])
+    
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
 
@@ -897,7 +1162,6 @@ def test_confignote_interface_custom_load_negative():
             assert interface.maximums[reviewer_index] == 0
         else:
             assert interface.maximums[reviewer_index] == interface.config_note.content['max_papers']
-
 
 def test_confignote_interface_custom_overload():
     '''
