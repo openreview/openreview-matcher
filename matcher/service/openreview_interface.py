@@ -103,7 +103,7 @@ class ConfigNoteInterface:
             self._custom_demand_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_user_demand_invitation'],
                 tail=self.config_note.content['match_group'],
-                select='weight')
+                select='head,weight')
         return self._custom_demand_edges
 
     def _get_custom_supply_edges(self):
@@ -120,9 +120,9 @@ class ConfigNoteInterface:
             self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
             if self._get_custom_demand_edges():
                 map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
-                for edge in self._get_custom_demand_edges():
-                    idx = map_papers_to_idx[edge['values'][0]['head']]
-                    self._demands[idx] = int(edge['values'][0]['weight'])
+                for edge in self._get_custom_demand_edges()[0]['values']:
+                    idx = map_papers_to_idx[edge['head']]
+                    self._demands[idx] = int(edge['weight'])
                 self.logger.debug('Custom demands recorded for {} papers'.format(len(self._get_custom_demand_edges())))
             self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
