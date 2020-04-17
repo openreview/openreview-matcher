@@ -98,8 +98,7 @@ class ConfigNoteInterface:
 
         return self._maximums
 
-    @property
-    def custom_demand_edges(self):
+    def __custom_demand_edges(self):
         if self._custom_demand_edges is None and self.config_note.content.get('custom_user_demand_invitation'):
             self._custom_demand_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_user_demand_invitation'],
@@ -107,8 +106,7 @@ class ConfigNoteInterface:
                 select='weight')
         return self._custom_demand_edges
 
-    @property
-    def custom_supply_edges(self):
+    def __custom_supply_edges(self):
         if self._custom_supply_edges is None and self.config_note.content.get('custom_max_papers_invitation'):
             self._custom_supply_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_max_papers_invitation'],
@@ -120,12 +118,12 @@ class ConfigNoteInterface:
     def demands(self):
         if self._demands is None:
             self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
-            if self.custom_demand_edges:
+            if self.__custom_demand_edges():
                 map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
-                for edge in self.custom_demand_edges:
+                for edge in self.__custom_demand_edges():
                     idx = map_papers_to_idx[edge['values'][0]['head']]
                     self._demands[idx] = int(edge['values'][0]['weight'])
-                self.logger.debug('Custom demands recorded for {} papers'.format(len(self.custom_demand_edges)))
+                self.logger.debug('Custom demands recorded for {} papers'.format(len(self.__custom_demand_edges())))
             self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
@@ -266,12 +264,12 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for _ in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for _ in self.reviewers]
 
-        if self.custom_supply_edges:
+        if self.__custom_supply_edges():
             map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
             minimums = [0 for _ in self.reviewers]
             maximums = [1 for _ in self.reviewers]
 
-            for edge in self.custom_supply_edges[0].get('values'):
+            for edge in self.__custom_supply_edges()[0].get('values'):
                 reviewer = edge['tail']
                 load = int(edge['weight'])
                 index = map_reviewers_to_idx[reviewer]
