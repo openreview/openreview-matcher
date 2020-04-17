@@ -43,8 +43,11 @@ def mock_client(
 
     return client
 
-def assert_arrays(array_A, array_B):
+def assert_float_arrays(array_A, array_B):
     assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+
+def assert_str_arrays(array_A, array_B):
+    assert all([a == b for a, b in zip(array_A, array_B)])
 
 def test_confignote_interface():
     '''Test of basic ConfigNoteInterface functionality.'''
@@ -118,7 +121,7 @@ def test_confignote_interface():
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
-                        'max_papers': 1,
+                        'max_papers': 2,
                         'alternates': 1,
                         'conflicts_invitation': '<conflicts_invitation_id>',
                         'scores_specification': {
@@ -268,15 +271,30 @@ def test_confignote_interface():
 
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
-    assert interface.reviewers
     assert interface.config_note
-    assert interface.papers
-    assert interface.minimums
-    assert interface.maximums
-    assert interface.demands
-    assert list(interface.constraints)
+    assert_str_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'])
+    assert_str_arrays(interface.papers, ['paper0', 'paper1', 'paper2'])
+    assert_float_arrays(interface.minimums, [1,1,1,1])
+    assert_float_arrays(interface.maximums, [1,2,2,2])
+    assert_float_arrays(interface.demands, [1,1,1])
+    assert interface.constraints
+    valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
+    for (paper,reviewer,constraint) in interface.constraints:
+        if (paper,reviewer) in valid_constraint_pairs:
+            assert constraint == 1
+        else:
+            assert constraint == 0
     assert interface.scores_by_type
-    assert interface.weight_by_type
+    assert len(interface.scores_by_type) == 2
+    for invitation, scores in interface.scores_by_type.items():
+        assert 'default' in scores
+        assert 'edges' in scores
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+
+    for invitation in interface.weight_by_type:
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+
+    assert len(interface.weight_by_type) == 2
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
@@ -538,9 +556,9 @@ def test_confignote_interface_custom_demand_edges():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    assert_arrays(interface.minimums, [0,0,0,0])
-    assert_arrays(interface.maximums, [1,2,1,2])
-    assert_arrays(interface.demands, [2,1,0])
+    assert_float_arrays(interface.minimums, [0,0,0,0])
+    assert_float_arrays(interface.maximums, [1,2,1,2])
+    assert_float_arrays(interface.demands, [2,1,0])
     
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
