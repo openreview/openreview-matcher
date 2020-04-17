@@ -26,11 +26,8 @@ class ConfigNoteInterface:
         self._maximums = None
         self._demands = None
         self._constraints = None
-        self._custom_demand_edges = None
-        self._custom_supply_edges = None
-
+        
         self.validate_score_spec()
-
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
@@ -99,20 +96,24 @@ class ConfigNoteInterface:
         return self._maximums
 
     def _get_custom_demand_edges(self):
-        if self._custom_demand_edges is None and self.config_note.content.get('custom_user_demand_invitation'):
-            self._custom_demand_edges = self.client.get_grouped_edges(
+        '''Helper function to get all the custom demand edges'''
+        custom_demand_edges = []
+        if self.config_note.content.get('custom_user_demand_invitation'):
+            custom_demand_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_user_demand_invitation'],
                 tail=self.config_note.content['match_group'],
                 select='head,weight')
-        return self._custom_demand_edges
+        return custom_demand_edges
 
     def _get_custom_supply_edges(self):
-        if self._custom_supply_edges is None and self.config_note.content.get('custom_max_papers_invitation'):
-            self._custom_supply_edges = self.client.get_grouped_edges(
+        '''Helper function to get all the custom supply edges'''
+        custom_supply_edges = []
+        if self.config_note.content.get('custom_max_papers_invitation'):
+            custom_supply_edges = self.client.get_grouped_edges(
                 invitation=self.config_note.content['custom_max_papers_invitation'],
                 head=self.config_note.content['match_group'],
                 select='tail,weight')
-        return self._custom_supply_edges
+        return custom_supply_edges
 
     @property
     def demands(self):
