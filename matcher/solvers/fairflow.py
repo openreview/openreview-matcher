@@ -402,7 +402,7 @@ class FairFlow(object):
 
             # Construct a valid solution.
             self._construct_and_solve_validifier_network()
-            
+
             # Checks: the bottom group should never grow in size.
             g1, g2, g3 = self._grp_paps_by_ms()
             assert(len(g3) <= len(old_g3))
