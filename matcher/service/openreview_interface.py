@@ -98,9 +98,12 @@ class ConfigNoteInterface:
     def _get_custom_demand_edges(self):
         '''Helper function to get all the custom demand edges'''
         custom_demand_edges = []
-        if self.config_note.content.get('custom_user_demand_invitation'):
+        custom_demand_invitation = self.config_note.content.get('custom_user_demand_invitation')
+        if custom_demand_invitation:
+            self.logger.debug('GET grouped edges invitation id={}'.format(custom_demand_invitation))
             custom_demand_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['custom_user_demand_invitation'],
+                invitation=custom_demand_invitation,
+                groupby='tail',
                 tail=self.config_note.content['match_group'],
                 select='head,weight')
         return custom_demand_edges
@@ -108,9 +111,12 @@ class ConfigNoteInterface:
     def _get_custom_supply_edges(self):
         '''Helper function to get all the custom supply edges'''
         custom_supply_edges = []
-        if self.config_note.content.get('custom_max_papers_invitation'):
+        custom_supply_invitation = self.config_note.content.get('custom_max_papers_invitation')
+        if custom_supply_invitation:
+            self.logger.debug('GET grouped edges invitation id={}'.format(custom_supply_invitation))
             custom_supply_edges = self.client.get_grouped_edges(
-                invitation=self.config_note.content['custom_max_papers_invitation'],
+                invitation=custom_supply_invitation,
+                groupby='head',
                 head=self.config_note.content['match_group'],
                 select='tail,weight')
         return custom_supply_edges
@@ -120,13 +126,16 @@ class ConfigNoteInterface:
         if self._demands is None:
             self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
             custom_demand_edges = self._get_custom_demand_edges()
+            count_processed_edges = 0
             if custom_demand_edges:
                 map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
                 for edge in custom_demand_edges[0]['values']:
-                    idx = map_papers_to_idx[edge['head']]
-                    self._demands[idx] = int(edge['weight'])
-                self.logger.debug('Custom demands recorded for {} papers'.format(len(custom_demand_edges)))
-            self.logger.debug('Demands recorded for {} papers'.format(len(self._demands)))
+                    idx = map_papers_to_idx.get(edge['head'])
+                    if idx:
+                        self._demands[idx] = int(edge['weight'])
+                        count_processed_edges += 1
+                self.logger.debug('Custom demands recorded for {} papers'.format(count_processed_edges))
+            self.logger.debug('Total demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
     @property
@@ -268,11 +277,15 @@ class ConfigNoteInterface:
         if custom_supply_edges:
             map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
 
+            count_processed_edges = 0
             for edge in custom_supply_edges[0].get('values'):
                 reviewer = edge['tail']
-                load = int(edge['weight'])
-                index = map_reviewers_to_idx[reviewer]
-                maximums[index] = load if load > 0 else 0
+                index = map_reviewers_to_idx.get(reviewer)
+                if index:
+                    load = int(edge['weight'])
+                    maximums[index] = load if load > 0 else 0
+                    count_processed_edges += 1
+            self.logger.debug('Custom supply recorded for {} users'.format(count_processed_edges))
 
         return minimums, maximums
 
