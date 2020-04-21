@@ -130,8 +130,8 @@ class ConfigNoteInterface:
             if custom_demand_edges:
                 map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
                 for edge in custom_demand_edges[0]['values']:
-                    idx = map_papers_to_idx.get(edge['head'])
-                    if idx:
+                    idx = map_papers_to_idx.get(edge['head'], -1)
+                    if idx >= 0:
                         self._demands[idx] = int(edge['weight'])
                         count_processed_edges += 1
                 self.logger.debug('Custom demands recorded for {} papers'.format(count_processed_edges))
@@ -280,8 +280,8 @@ class ConfigNoteInterface:
             count_processed_edges = 0
             for edge in custom_supply_edges[0].get('values'):
                 reviewer = edge['tail']
-                index = map_reviewers_to_idx.get(reviewer)
-                if index:
+                index = map_reviewers_to_idx.get(reviewer, -1)
+                if index >= 0:
                     load = int(edge['weight'])
                     maximums[index] = load if load > 0 else 0
                     count_processed_edges += 1
