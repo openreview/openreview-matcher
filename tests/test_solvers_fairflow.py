@@ -7,7 +7,7 @@ from matcher.solvers import SolverException, FairFlow
 encoder = namedtuple('Encoder', ['aggregate_score_matrix', 'constraint_matrix'])
 
 def assert_arrays(array_A, array_B):
-    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+    assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 def test_solvers_fairflow_random():
     '''When costs are all zero, compute random assignments'''
