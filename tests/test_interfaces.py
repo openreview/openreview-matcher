@@ -325,6 +325,282 @@ def test_confignote_interface():
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
 
+def test_confignote_interface_backward_compat_max_users():
+    '''Test of basic ConfigNoteInterface functionality.'''
+
+    mock_openreview_data = {
+        'paper_ids': ['paper0', 'paper1', 'paper2'],
+        'reviewer_ids': ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'],
+        'mock_invitations': {
+            '<assignment_invitation_id>': openreview.Invitation(
+                    id='<assignment_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<aggregate_score_invitation_id>': openreview.Invitation(
+                    id='<aggregate_score_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<conflicts_invitation_id>': openreview.Invitation(
+                    id='<conflicts_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<affinity_score_invitation>': openreview.Invitation(
+                    id='<affinity_score_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<bid_invitation>': openreview.Invitation(
+                    id='<bid_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+        },
+        'mock_groups': {
+            '<match_group_id>': openreview.Group(
+                    id='<match_group_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    signatories=[],
+                    members=['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3']
+                )
+        },
+        'mock_notes': {
+            '<config_note_id>': openreview.Note(
+                    id='<config_note_id>',
+                    readers=[],
+                    writers=[],
+                    signatures=[],
+                    invitation='<config_note_invitation>',
+                    content={
+                        'match_group': '<match_group_id>',
+                        'paper_invitation': '<paper_invitation_id>',
+                        'max_users': 1,
+                        'min_papers': 1,
+                        'max_papers': 2,
+                        'alternates': 1,
+                        'conflicts_invitation': '<conflicts_invitation_id>',
+                        'scores_specification': {
+                            '<affinity_score_invitation>': {
+                                'weight': 1
+                            },
+                            '<bid_invitation>': {
+                                'default': 0.5,
+                                'weight': 2,
+                                'translate_map': {
+                                    'High': 1,
+                                    'Very Low': -1
+                                }
+                            }
+                        },
+                        'assignment_invitation': '<assignment_invitation_id>',
+                        'aggregate_score_invitation': '<aggregate_score_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
+                        'status': None
+                    }
+                ),
+            '<paper_invitation_id>': [
+                openreview.Note(
+                        id='paper0',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    ),
+                openreview.Note(
+                        id='paper1',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    ),
+                openreview.Note(
+                        id='paper2',
+                        readers=[],
+                        writers=[],
+                        signatures=[],
+                        invitation='<paper_invitation_id>',
+                        content={}
+                    )
+                ]
+        },
+        'mock_grouped_edges': {
+            '<affinity_score_invitation>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': random.random()},
+                        {'tail': 'reviewer1', 'weight': random.random()},
+                        {'tail': 'reviewer2', 'weight': random.random()},
+                        {'tail': 'reviewer3', 'weight': random.random()},
+                    ]
+                }
+            ],
+            '<bid_invitation>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'Very Low'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'Very Low'},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': None, 'label': 'Very Low'},
+                        {'tail': 'reviewer1', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer2', 'weight': None, 'label': 'High'},
+                        {'tail': 'reviewer3', 'weight': None, 'label': 'High'},
+                    ]
+                }
+            ],
+            '<conflicts_invitation_id>': [
+                {
+                    'id': {'head': 'paper0'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 1},
+                        {'tail': 'reviewer2', 'weight': 0},
+                        {'tail': 'reviewer3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper1'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 0},
+                        {'tail': 'reviewer2', 'weight': 1},
+                        {'tail': 'reviewer3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'paper2'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 0},
+                        {'tail': 'reviewer1', 'weight': 0},
+                        {'tail': 'reviewer2', 'weight': 0},
+                        {'tail': 'reviewer3', 'weight': 1},
+                    ]
+                }
+            ],
+            '<custom_max_papers_invitation_id>': [
+                {
+                    'id': {'head': '<match_group_id>'},
+                    'values': [
+                        {'tail': 'reviewer0', 'weight': 1},
+                        {'tail': 'reviewer3', 'weight': 3}
+                    ]
+                }
+            ]
+        }
+    }
+
+    client = mock_client(**mock_openreview_data)
+
+    interface = ConfigNoteInterface(client, '<config_note_id>')
+
+    assert interface.config_note
+    assert_str_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'])
+    assert_str_arrays(interface.papers, ['paper0', 'paper1', 'paper2'])
+    assert_float_arrays(interface.minimums, [1,1,1,1])
+    assert_float_arrays(interface.maximums, [1,2,2,3])
+    assert_float_arrays(interface.demands, [1,1,1])
+    assert interface.constraints
+    valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
+    for (paper,reviewer,constraint) in interface.constraints:
+        if (paper,reviewer) in valid_constraint_pairs:
+            assert constraint == 1
+        else:
+            assert constraint == 0
+    assert interface.scores_by_type
+    assert len(interface.scores_by_type) == 2
+    map_defaults = {
+        '<bid_invitation>': 0.5,
+        '<affinity_score_invitation>': 0
+    }
+    for invitation, scores in interface.scores_by_type.items():
+        assert 'edges' in scores
+        assert 'default' in scores
+        assert map_defaults[invitation] == scores['default']
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+
+    very_low_bids = [
+        ('paper0', 'reviewer2'), 
+        ('paper1', 'reviewer3'), 
+        ('paper2', 'reviewer0')]
+    high_bids = [
+        ('paper0', 'reviewer0'), 
+        ('paper0', 'reviewer3'),
+        ('paper1', 'reviewer0'),
+        ('paper1', 'reviewer1'),
+        ('paper2', 'reviewer1'),
+        ('paper2', 'reviewer2')]
+    for paper, reviewer, bid in interface.scores_by_type['<bid_invitation>']['edges']:
+        if (paper, reviewer) in very_low_bids:
+            assert bid == -1
+        elif (paper, reviewer) in high_bids:
+            assert bid == 1
+
+    for invitation in interface.weight_by_type:
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+    assert_float_arrays(list(interface.weight_by_type.values()), [1, 2])
+
+    assert len(interface.weight_by_type) == 2
+    assert interface.assignment_invitation
+    assert interface.aggregate_score_invitation
+
+    interface.set_status('Running')
+    assert interface.config_note.content['status'] == 'Running'
+
 def test_confignote_interface_custom_demand_edges():
     '''Test of basic ConfigNoteInterface functionality.'''
 
