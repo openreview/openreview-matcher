@@ -124,7 +124,8 @@ class ConfigNoteInterface:
     @property
     def demands(self):
         if self._demands is None:
-            self._demands = [int(self.config_note.content['user_demand']) for paper in self.papers]
+            user_demand_value = self.config_note.content['user_demand'] if self.config_note.content.get('user_demand') else self.config_note.content['max_users']
+            self._demands = [int(user_demand_value) for paper in self.papers]
             custom_demand_edges = self._get_custom_demand_edges()
             count_processed_edges = 0
             if custom_demand_edges:
