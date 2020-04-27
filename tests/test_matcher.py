@@ -26,7 +26,7 @@ def test_matcher_basic_minmax():
         {
             'reviewers': reviewers,
             'papers': papers,
-            'scores_by_type': {'affinity': scores},
+            'scores_by_type': {'affinity': {'edges':scores}},
             'weight_by_type': {'affinity': 1},
             'minimums': minimums,
             'maximums': maximums,
@@ -59,7 +59,7 @@ def test_matcher_basic_fairflow():
         {
             'reviewers': reviewers,
             'papers': papers,
-            'scores_by_type': {'affinity': scores},
+            'scores_by_type': {'affinity': {'edges': scores}},
             'weight_by_type': {'affinity': 1},
             'minimums': minimums,
             'maximums': maximums,
@@ -98,7 +98,7 @@ def test_matcher_minmax_fixed_input():
         {
             'reviewers': reviewers,
             'papers': papers,
-            'scores_by_type': {'affinity': scores},
+            'scores_by_type': {'affinity': {'edges': scores}},
             'weight_by_type': {'affinity': 1},
             'minimums': minimums,
             'maximums': maximums,
@@ -140,7 +140,7 @@ def test_matcher_fairflow_fixed_input():
         {
             'reviewers': reviewers,
             'papers': papers,
-            'scores_by_type': {'affinity': scores},
+            'scores_by_type': {'affinity': {'edges': scores}},
             'weight_by_type': {'affinity': 1},
             'minimums': minimums,
             'maximums': maximums,

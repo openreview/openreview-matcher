@@ -5,6 +5,8 @@ import redis
 import pickle
 import time
 from tqdm import tqdm
+from matcher.encoder import EncoderError
+from matcher.core import MatcherError
 
 class CacheHandler:
     def __init__(self, host, port, db, cache_expiration, logger=logging.getLogger(__name__)):
@@ -49,7 +51,7 @@ class ConfigNoteInterface:
         # Lazy variables
         self._reviewers = None
         self._papers = None
-        self._scores_by_type = None
+        self._scores_by_type = {}
         self._minimums = None
         self._maximums = None
         self._demands = None
@@ -80,12 +82,6 @@ class ConfigNoteInterface:
             match_group = self.client.get_group(self.config_note.content['match_group'])
             self._reviewers = match_group.members
         return self._reviewers
-
-    @property
-    def map_reviewers_to_indexes(self):
-        if self._map_reviewers_to_indexes is None:
-            self._map_reviewers_to_indexes = {r:i for i,r in enumerate(self.reviewers)}
-        return self._map_reviewers_to_indexes
 
     @property
     def papers(self):
@@ -148,11 +144,12 @@ class ConfigNoteInterface:
     def scores_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
 
-        if self._scores_by_type is None:
+        if not self._scores_by_type and scores_specification:
             edges_by_invitation = {}
-            for invitation_id in scores_specification.keys():
+            defaults_by_invitation = {}
+            for invitation_id, spec in scores_specification.items():
                 edges_by_invitation[invitation_id] = self._get_all_edges(invitation_id)
-
+                defaults_by_invitation[invitation_id] = spec.get('default', 0)
 
             translate_maps = {
                 inv_id: score_spec['translate_map'] \
@@ -160,24 +157,31 @@ class ConfigNoteInterface:
                 if 'translate_map' in score_spec
             }
 
-            self._scores_by_type = {
-                inv_id: [
-                    (
-                        edge['head'],
-                        edge['tail'],
-                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
-                    ) for edge in edges] \
-                for inv_id, edges in edges_by_invitation.items() \
-            }
+            for inv_id, edges in edges_by_invitation.items():
+                invitation_edges = [
+                        (
+                            edge['head'],
+                            edge['tail'],
+                            self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                        ) for edge in edges] 
+                self._scores_by_type = {
+                    inv_id: {
+                        'default': defaults_by_invitation[inv_id],
+                        'edges': invitation_edges
+                    }
+                }
         return self._scores_by_type
 
     @property
     def weight_by_type(self):
         scores_specification = self.config_note.content.get('scores_specification', {})
-        return {
-            inv_id: entry['weight'] \
-            for inv_id, entry in scores_specification.items()
-        }
+        weight_by_type = {}
+        if scores_specification:
+            weight_by_type = {
+                inv_id: entry['weight'] \
+                for inv_id, entry in scores_specification.items()
+            }
+        return weight_by_type
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
