@@ -382,7 +382,7 @@ class FairFlow(object):
         self._refresh_internal_vars()
         if np.sum(self.solution) != np.sum(self.demands):
             self._construct_and_solve_validifier_network()
-        assert(np.sum(self.solution) == np.sum(self.demands))
+        assert np.sum(self.solution) == np.sum(self.demands)
         g1, g2, g3 = self._grp_paps_by_ms()
         old_g1, old_g2, old_g3 = set(g1), set(g2), set(g3)
         if np.size(g1) > 0 and np.size(g3) > 0:
@@ -445,7 +445,9 @@ class FairFlow(object):
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
                 if edge_constraint == 0:
                     # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
-                    mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), int(-1.0 - self.big_c * ws[i, j]))
+                    edge_cost = int(-1.0 - self.big_c * ws[i, j])
+                    if edge_cost < 0.0:
+                        mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), edge_cost)
 
         # edges from papers to sink.
         for j in range(n_pap):

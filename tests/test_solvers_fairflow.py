@@ -51,12 +51,12 @@ def test_solver_no_0_score_assignment():
     Purpose: Assert that an assignment is never made for 0 or less score
     '''
     aggregate_score_matrix = np.transpose(np.array([
-        [0, 1, 0, -1, 1],
+        [-1, 1, 1, 0, 1],
         [1, 0, -1, 0, 1],
-        [0, 1, 0, 1, 0],
-        [-1, -1, -1, -1, 1]]))
+        [0, 1, 1, 1, 0],
+        [1, 1, 1, 1, 0]]))
     constraint_matrix = np.transpose(np.array([
-        [0, 0, 0, 0, 0],
+        [0, -1, 0, 0, 0],
         [0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0]]))
@@ -68,17 +68,13 @@ def test_solver_no_0_score_assignment():
         encoder(aggregate_score_matrix, constraint_matrix)
     )
 
-    with pytest.raises(SolverException):
-        solver.solve()
+    res = solver.solve()
+    assert res.shape == (5,4)
 
-    assert not solver.solved
-    # # make sure result does not violate constraints (i.e. no flow at i,j if there is a -1 constraint at i,j
-    # print ('res', res)
-    # print ('agg', aggregate_score_matrix)
-    # nrows, ncols = res.shape
-    # for i in range(nrows):
-    #     for j in range(ncols):
-    #         assert not (aggregate_score_matrix[i,j] <= 0 and res[i,j] > 0), "Solution violates the rule for not making less than 0 score assignments at [{},{}]".format(i,j)
+    nrows, ncols = res.shape
+    for i in range(nrows):
+        for j in range(ncols):
+            assert not (aggregate_score_matrix[i,j] <= 0 and res[i,j] > 0), "Solution violates the rule for not making less than 0 score assignments at [{},{}]".format(i,j)
 
 def test_solver_impossible_constraints():
     '''
