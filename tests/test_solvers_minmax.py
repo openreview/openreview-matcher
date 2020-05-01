@@ -10,7 +10,7 @@ def check_solution(solver, expected_cost):
     assert solver.optimal_cost == solver.cost, "Minimum cost solution is not the sum of the flows * unit cost in result matrix"
     assert solver.cost == expected_cost,  "Lowest cost solution should have cost = {}".format(expected_cost)
 
-def test_solvers_minmax_random():
+def test_solver_minmax_random():
     '''When costs are all zero, compute random assignments'''
     cost_matrix_A = np.transpose(np.array([
         [0, 0, 0],
@@ -48,7 +48,37 @@ def test_solvers_minmax_random():
     # (i.e. overwhelmingly likely to be different)
     assert not np.array_equal(solver_A.cost_matrix, solver_B.cost_matrix)
 
-def test_solvers_minmax_custom_demands():
+def test_solver_minmax_0_score_assignment():
+    '''
+    Tests 5 papers, 4 reviewers. Reviewers review min: 1, max: 3 papers. Each paper needs 2 reviews.
+    Purpose: Assert that an assignment is never made for score 0 or less
+    '''
+    aggregate_score_matrix = np.transpose(np.array([
+        [-1, 1, 1, 0, 1],
+        [1, 0, -1, 0, 1],
+        [0, 1, 1, 1, 0],
+        [1, 1, 1, 1, 0]]))
+    constraint_matrix = np.transpose(np.array([
+        [0, -1, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0]]))
+
+    solver = MinMaxSolver(
+        [1,1,1,1],
+        [3,3,3,3],
+        [2,2,2,2,2],
+        encoder(aggregate_score_matrix, constraint_matrix)
+    )
+
+    res = solver.solve()
+    assert res.shape == (5,4)
+    nrows, ncols = res.shape if len(res.shape) == 2 else (0,0)
+    for i in range(nrows):
+        for j in range(ncols):
+            assert not (aggregate_score_matrix[i,j] <= 0 and res[i,j] > 0), "Solution violates the rule for not making less than 0 score assignments at [{},{}]".format(i,j)
+
+def test_solver_minmax_custom_demands():
     aggregate_score_matrix_A = np.transpose(np.array([
         [0.2, 0.1, 0.4],
         [0.5, 0.2, 0.3],
@@ -65,7 +95,7 @@ def test_solvers_minmax_custom_demands():
     res_A = solver_A.solve()
     assert res_A.shape == (3,4)
 
-def test_solvers_minmax_custom_supply():
+def test_solver_minmax_custom_supply():
     aggregate_score_matrix_A = np.transpose(np.array([
         [0.2, 0.1, 0.4],
         [0.5, 0.2, 0.3],
@@ -82,7 +112,7 @@ def test_solvers_minmax_custom_supply():
     res_A = solver_A.solve()
     assert res_A.shape == (3,4)
 
-def test_solvers_minmax_custom_demand_and_supply():
+def test_solver_minmax_custom_demand_and_supply():
     aggregate_score_matrix_A = np.transpose(np.array([
         [0.2, 0.1, 0.4],
         [0.5, 0.2, 0.3],
@@ -100,7 +130,7 @@ def test_solvers_minmax_custom_demand_and_supply():
     print(res_A)
     assert res_A.shape == (3,4)
 
-def test_solvers_minmax_custom_demands_paper_with_0_demand():
+def test_solver_minmax_custom_demands_paper_with_0_demand():
     aggregate_score_matrix_A = np.transpose(np.array([
         [0.2, 0.1, 0.4],
         [0.5, 0.2, 0.3],
@@ -118,7 +148,7 @@ def test_solvers_minmax_custom_demands_paper_with_0_demand():
     assert res_A.shape == (3,4)
     assert np.sum(res_A, axis=1)[2] == 0
 
-def test_solver_finds_lowest_cost_soln():
+def test_solver_minmax_finds_lowest_cost_soln():
     '''
     4 reviewers 3 papers.   Papers 0,1 need 1 review; Paper 2 needs 2 reviews.  Reviewers can do max of 2 reviews
     Setup so that lowest cost solution should be
@@ -147,7 +177,7 @@ def test_solver_finds_lowest_cost_soln():
     expected_cost = 0
     check_solution(solver, expected_cost)
 
-def test_solver_impossible_constraints():
+def test_solver_minmax_impossible_constraints():
     '''
     Test to ensure that the MinMaxSolver's 'solved' attribute is correctly set
     when no solution is possible due to constraints.
@@ -170,11 +200,10 @@ def test_solver_impossible_constraints():
         encoder(cost_matrix, constraint_matrix)
     )
 
-    solution = solver.solve()
-
+    solver.solve()
     assert not solver.solved
 
-def test_solver_respects_constraints():
+def test_solver_minmax_respects_constraints():
     '''
     Tests 5 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
     Constrained such that:
@@ -213,7 +242,7 @@ def test_solver_respects_constraints():
 
     check_solution(solver, solver.optimal_cost)
 
-def test_solver_find_lowest_cost_and_respect_constraints():
+def test_solver_minmax_find_lowest_cost_and_respect_constraints():
     '''
     Tests 5 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 2 reviews.
     Constrained such that:
@@ -252,7 +281,7 @@ def test_solver_find_lowest_cost_and_respect_constraints():
             assert not (res[i,j] > 0 and cost_matrix[i,j] > -10), "Solution contains an arc that is not part of an lowest-cost solution"
     check_solution(solver,solver.optimal_cost)
 
-def test_solver4():
+def test_solver4_minmax():
     '''
     Tests 6 papers, 6 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 2 reviews.
     All scores set to 1 so that any match that does not violate constraints is optimal
@@ -291,7 +320,7 @@ def test_solver4():
         assert reviewer_count_reviews == 2
     check_solution(solver,solver.optimal_cost)
 
-def test_solver5():
+def test_solver5_minmax():
     '''
     Tests 3 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 3 reviews.
     Reviewer 4 has very high cost.  Other reviewers have 0 cost.
@@ -336,7 +365,7 @@ def test_solver5():
     # TestSolver.silent = False
     check_solution(solver,solver.optimal_cost)
 
-def test_solver6():
+def test_solver6_minmax():
     '''
     Tests 3 papers, 4 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 3 reviews.
     Reviewer 4 has very high cost.  Other reviewers have 0 cost.
@@ -380,7 +409,7 @@ def test_solver6():
     # TestSolver.silent = False
     check_solution(solver,solver.optimal_cost)
 
-def test_solver_respects_one_minimum():
+def test_solver_minmax_respects_one_minimum():
     '''
     Tests 3 papers, 4 reviewers.   Reviewers review min: 1, max: 3 papers.   Each paper needs 3 reviews.
     Reviewer 4 has very high cost.  Other reviewers have 0 cost.
@@ -423,7 +452,7 @@ def test_solver_respects_one_minimum():
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews >= 1
 
-def test_solver_respects_two_minimum():
+def test_solver_minmax_respects_two_minimum():
     '''
     Tests 3 papers, 4 reviewers.   Reviewers review min: 2, max: 3 papers.   Each paper needs 3 reviews.
     Reviewer 4 has very high cost.  Other reviewers have 0 cost.
@@ -464,4 +493,3 @@ def test_solver_respects_two_minimum():
             if res[rix,pix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews >= 1
-
