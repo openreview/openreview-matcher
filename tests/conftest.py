@@ -60,7 +60,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     now = datetime.datetime.utcnow()
     builder.set_submission_stage(
         due_date = now + datetime.timedelta(minutes = 10),
-        remove_fields=['authors', 'abstract', 'pdf', 'keywords', 'TL;DR'])
+        remove_fields=['abstract', 'pdf', 'keywords', 'TL;DR'])
 
     conference = builder.get_result()
 
@@ -77,8 +77,10 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     with open(AFFINITY_SCORE_FILE, 'w') as file_handle:
         for paper_number in range(num_papers):
             authorids = ['testauthor{0}{1}@test.com'.format(paper_number, author_code) for author_code in ['A', 'B', 'C']]
+            authors = ['Author Author' for _ in ['A', 'B', 'C']]
             content = {
                 'title': 'Test_Paper_{}'.format(paper_number),
+                'authors': authors,
                 'authorids': authorids
             }
             signatures = ['~Super_User1']
@@ -101,8 +103,8 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
-    conference.set_authors()
-    conference.set_reviewers(emails = list(reviewers))
+    conference.create_paper_groups(authors=True, reviewers=True)
+    conference.set_reviewers(emails=list(reviewers))
     conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE, build_conflicts=True)
 
     return conference
