@@ -1,11 +1,10 @@
-from gurobipy import Model, GRB
+from gurobipy import Model, GRB, tupledict
 from itertools import product
 import numpy as np
 import time
 import logging
 
-
-class pr4a_solver:
+class PR4ASOLVER:
     # tolerance for integrality check
     _EPS = 1e-3
 
@@ -39,25 +38,35 @@ class pr4a_solver:
         problem.setParam('OutputFlag', False)
 
         # edges from source to reviewers, capacity controls maximum reviewer load
-        self._source_vars = problem.addVar(self.numrev, vtype=GRB.CONTINUOUS, lb=0.0,
-                                            ub=self.ability, name='reviewers')
+        # self._source_vars = problem.addVars(self.numrev, vtype=GRB.CONTINUOUS, lb=0.0, ub=7, name='reviewers')
+
+        self._source_vars = tupledict
+        for r_idx in range(self.numrev):
+            self._source_vars[r_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=self.abilities[r_idx], name='reviewers')    
 
         # edges from papers to sink, capacity controls a number of reviewers per paper
-        self._sink_vars = problem.addVars(self.numpapers, vtype=GRB.CONTINUOUS, lb=0.0,
-                                          ub=self.demand, name='papers')
+        self._sink_vars = tupledict
+        for p_idx in range(self.numpapers):
+            self._sink_vars[p_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=self.demands[p_idx], name='papers')
 
         # edges between reviewers and papers. Initially capacities are set to 0 (no edge is added in the network)
-        self._mix_vars = problem.addVars(self.numrev, self.numpapers, vtype=GRB.CONTINUOUS,
-                                         lb=0.0, ub=0.0, name='assignment')
+        self._mix_vars = tupledict
+        for r_idx in range(self.numrev):
+            for p_idx in range(self.numpapers):
+                self._mix_vars[r_idx, p_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=0.0, name='assignment')
+
         problem.update()
 
+        all_vars = problem.getVars()
+        print (all_vars)
+
         # flow balance equations for reviewers' nodes
-        self._balance_reviewers = problem.addConstrs((self._source_vars[i] == self._mix_vars.sum(i, '*')
-                                                      for i in range(self.numrev)))
+        self._balance_reviewers = problem.addConstrs(
+            (self._source_vars[i] == self._mix_vars.sum(i, '*') \
+                for i in range(self.numrev)))
 
         # flow balance equations for papers' nodes
-        self._balance_papers = problem.addConstrs((self._sink_vars[i] == self._mix_vars.sum('*', i)
-                                                   for i in range(self.numpapers)))
+        self._balance_papers = problem.addConstrs((self._sink_vars[i] == self._mix_vars.sum('*', i) for i in range(self.numpapers)))
         problem.update()
 
         self._problem = problem
@@ -205,7 +214,7 @@ class pr4a_solver:
         current_best = None
         current_best_score = 0
         local_simmatrix = self.simmatrix.copy()
-        local_abilities = self.ability * np.ones(self.numrev)
+        local_abilities = self.abilities.copy()
         not_assigned = set(range(self.numpapers))
         final_assignment = {}
 
@@ -225,8 +234,7 @@ class pr4a_solver:
                 tmp_simmatrix = local_simmatrix.copy()
 
                 # Step 2(b)
-                assignment1, lower_bound = self._subroutine(tmp_simmatrix, kappa, tmp_abilities, not_assigned,
-                                                            lower_bound, upper_bound)
+                assignment1, lower_bound = self._subroutine(tmp_simmatrix, kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)
 
                 # Step 2(c)
                 for paper in assignment1:
@@ -235,8 +243,7 @@ class pr4a_solver:
                         tmp_abilities[reviewer] -= 1
 
                 # Step 2(d)
-                assignment2 = self._subroutine(tmp_simmatrix, self.demand - kappa, tmp_abilities, not_assigned,
-                                               lower_bound, upper_bound)[0]
+                assignment2 = self._subroutine(tmp_simmatrix, self.demand - kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)[0]
 
                 # Step 2(e)
                 assignment = self._join_assignment(assignment1, assignment2)
@@ -274,6 +281,7 @@ class pr4a_solver:
         self.fa = final_assignment
         self.best_quality = self.quality(final_assignment)
 
-    def fair_assignment(self):
+    def solve(self):
         self._initialize_model()
-        self._fair_assignment()
+        # self._fair_assignment()
+        # return self.fa
