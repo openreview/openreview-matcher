@@ -157,7 +157,7 @@ def test_integration_supply_mismatch_error(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'No Solution'
-    assert matcher_status.content['error_message'] == 'total demand (100) is out of range when min review supply is (10) and max review supply is (10)'
+    assert matcher_status.content['error_message'] == 'Total demand (100) is out of range when min review supply is (10) and max review supply is (10)'
 
     paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
@@ -232,7 +232,7 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'No Solution'
-    assert matcher_status.content['error_message'] == 'total demand (30) is out of range when min review supply is (40) and max review supply is (50)'
+    assert matcher_status.content['error_message'] == 'Total demand (30) is out of range when min review supply is (40) and max review supply is (50)'
 
     paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
