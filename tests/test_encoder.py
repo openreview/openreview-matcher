@@ -10,6 +10,7 @@ import pytest
 import numpy as np
 
 from matcher.encoder import Encoder
+from conftest import assert_arrays
 
 MockNote = namedtuple('Note', ['id', 'forum'])
 MockEdge = namedtuple('Edge', ['head', 'tail', 'weight', 'label'])
@@ -26,9 +27,6 @@ def encoder_context():
     matrix_shape = (num_papers, num_reviewers)
 
     return papers, reviewers, matrix_shape
-
-def assert_arrays(array_A, array_B):
-    assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 def test_encoder_basic(encoder_context):
     '''Basic test of Encoder functionality, without constraints.'''
