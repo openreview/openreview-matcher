@@ -44,10 +44,10 @@ def mock_client(
     return client
 
 def assert_float_arrays(array_A, array_B):
-    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+    assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 def assert_str_arrays(array_A, array_B):
-    assert all([a == b for a, b in zip(array_A, array_B)])
+    assert all([a == b for a, b in zip(sorted(array_A), sorted(array_B))])
 
 def test_confignote_interface():
     '''Test of basic ConfigNoteInterface functionality.'''
