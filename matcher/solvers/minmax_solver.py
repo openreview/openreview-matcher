@@ -54,10 +54,10 @@ class MinMaxSolver:
         max_supply = sum(self.maximums)
         demand = sum(self.demands)
 
-        self.logger.debug('total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
+        self.logger.debug('Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
 
         if demand > max_supply or demand < min_supply:
-            raise SolverException('total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
+            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
 
         self.logger.debug('Finished checking graph inputs')
 
