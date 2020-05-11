@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 import openreview
 from matcher.service.openreview_interface import ConfigNoteInterface
+from conftest import assert_arrays
 
 def mock_client(
             paper_ids,
@@ -42,12 +43,6 @@ def mock_client(
     client.get_grouped_edges = mock.MagicMock(side_effect=get_grouped_edges)
 
     return client
-
-def assert_float_arrays(array_A, array_B):
-    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
-
-def assert_str_arrays(array_A, array_B):
-    assert all([a == b for a, b in zip(array_A, array_B)])
 
 def test_confignote_interface():
     '''Test of basic ConfigNoteInterface functionality.'''
@@ -273,11 +268,11 @@ def test_confignote_interface():
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
     assert interface.config_note
-    assert_str_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'])
-    assert_str_arrays(interface.papers, ['paper0', 'paper1', 'paper2'])
-    assert_float_arrays(interface.minimums, [1,1,1,1])
-    assert_float_arrays(interface.maximums, [1,2,2,3])
-    assert_float_arrays(interface.demands, [1,1,1])
+    assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
+    assert_arrays(interface.papers, ['paper0', 'paper1', 'paper2'], is_string=True)
+    assert_arrays(interface.minimums, [1,1,1,1])
+    assert_arrays(interface.maximums, [1,2,2,3])
+    assert_arrays(interface.demands, [1,1,1])
     assert interface.constraints
     valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
     for (paper,reviewer,constraint) in interface.constraints:
@@ -316,7 +311,7 @@ def test_confignote_interface():
 
     for invitation in interface.weight_by_type:
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
-    assert_float_arrays(list(interface.weight_by_type.values()), [1, 2])
+    assert_arrays(list(interface.weight_by_type.values()), [1, 2])
 
     assert len(interface.weight_by_type) == 2
     assert interface.assignment_invitation
@@ -549,11 +544,11 @@ def test_confignote_interface_backward_compat_max_users():
     interface = ConfigNoteInterface(client, '<config_note_id>')
 
     assert interface.config_note
-    assert_str_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'])
-    assert_str_arrays(interface.papers, ['paper0', 'paper1', 'paper2'])
-    assert_float_arrays(interface.minimums, [1,1,1,1])
-    assert_float_arrays(interface.maximums, [1,2,2,3])
-    assert_float_arrays(interface.demands, [1,1,1])
+    assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
+    assert_arrays(interface.papers, ['paper0', 'paper1', 'paper2'], is_string=True)
+    assert_arrays(interface.minimums, [1,1,1,1])
+    assert_arrays(interface.maximums, [1,2,2,3])
+    assert_arrays(interface.demands, [1,1,1])
     assert interface.constraints
     valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
     for (paper,reviewer,constraint) in interface.constraints:
@@ -592,7 +587,7 @@ def test_confignote_interface_backward_compat_max_users():
 
     for invitation in interface.weight_by_type:
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
-    assert_float_arrays(list(interface.weight_by_type.values()), [1, 2])
+    assert_arrays(list(interface.weight_by_type.values()), [1, 2])
 
     assert len(interface.weight_by_type) == 2
     assert interface.assignment_invitation
@@ -856,9 +851,9 @@ def test_confignote_interface_custom_demand_edges():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    assert_float_arrays(interface.minimums, [0,0,0,0])
-    assert_float_arrays(interface.maximums, [1,2,1,2])
-    assert_float_arrays(interface.demands, [2,1,0])
+    assert_arrays(interface.minimums, [0,0,0,0])
+    assert_arrays(interface.maximums, [1,2,1,2])
+    assert_arrays(interface.demands, [2,1,0])
     
     interface.set_status('Running')
     assert interface.config_note.content['status'] == 'Running'
