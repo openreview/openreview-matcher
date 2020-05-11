@@ -6,6 +6,9 @@ from matcher.solvers import SolverException, FairFlow
 
 encoder = namedtuple('Encoder', ['aggregate_score_matrix', 'constraint_matrix'])
 
+def assert_arrays(array_A, array_B):
+    assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
+
 def test_solvers_fairflow_random():
     '''When costs are all zero, compute random assignments'''
     aggregate_score_matrix_A = np.transpose(np.array([
@@ -15,10 +18,11 @@ def test_solvers_fairflow_random():
         [0, 0, 0]
     ]))
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [1,1,2]
     solver_A = FairFlow(
         [1,1,1,1],
         [2,2,2,2],
-        [1,1,2],
+        demands,
         encoder(aggregate_score_matrix_A, constraint_matrix)
     )
     res_A = solver_A.solve()
@@ -34,7 +38,7 @@ def test_solvers_fairflow_random():
     solver_B = FairFlow(
         [1,1,1,1],
         [2,2,2,2],
-        [1,1,2],
+        demands,
         encoder(aggregate_score_matrix_B, constraint_matrix)
     )
     res_B = solver_B.solve()
@@ -43,6 +47,90 @@ def test_solvers_fairflow_random():
     # ensure that the affinity matrices are random
     # (i.e. overwhelmingly likely to be different)
     assert not np.array_equal(solver_A.affinity_matrix, solver_B.affinity_matrix)
+    result_A = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result_A, demands)
+    result_B = [assignments for assignments in np.sum(res_B, axis=1)]
+    assert_arrays(result_B, demands)
+
+def test_solvers_fairflow_custom_demands():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2,1,3]
+    solver_A = FairFlow(
+        [1,1,1,1],
+        [2,2,2,2],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+
+def test_solvers_fairflow_custom_supply():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2,2,2]
+    solver_A = FairFlow(
+        [1,1,1,1],
+        [2,1,3,1],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+
+def test_solvers_fairflow_custom_demand_and_supply():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2,1,3]
+    solver_A = FairFlow(
+        [0,0,0,0],
+        [2,1,3,1],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+
+def test_solvers_fairflow_custom_demands_paper_with_0_demand():
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.2, 0.1, 0.4],
+        [0.5, 0.2, 0.3],
+        [0.2, 0.0, 0.6],
+        [0.7, 0.9, 0.3]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2,1,0]
+    solver_A = FairFlow(
+        [0,0,0,0],
+        [2,2,2,2],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3,4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
 
 def test_solver_impossible_constraints():
     '''
@@ -68,7 +156,7 @@ def test_solver_impossible_constraints():
     )
 
     with pytest.raises(SolverException):
-        solution = solver.solve()
+        solver.solve()
 
     assert not solver.solved
 

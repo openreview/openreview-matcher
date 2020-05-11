@@ -29,7 +29,6 @@ class ConfigNoteInterface:
 
         self.validate_score_spec()
 
-
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             try:
@@ -96,11 +95,48 @@ class ConfigNoteInterface:
 
         return self._maximums
 
+    def _get_custom_demand_edges(self):
+        '''Helper function to get all the custom demand edges'''
+        custom_demand_edges = []
+        custom_demand_invitation = self.config_note.content.get('custom_user_demand_invitation')
+        if custom_demand_invitation:
+            self.logger.debug('GET grouped edges invitation id={}'.format(custom_demand_invitation))
+            custom_demand_edges = self.client.get_grouped_edges(
+                invitation=custom_demand_invitation,
+                groupby='tail',
+                tail=self.config_note.content['match_group'],
+                select='head,weight')
+        return custom_demand_edges
+
+    def _get_custom_supply_edges(self):
+        '''Helper function to get all the custom supply edges'''
+        custom_supply_edges = []
+        custom_supply_invitation = self.config_note.content.get('custom_max_papers_invitation')
+        if custom_supply_invitation:
+            self.logger.debug('GET grouped edges invitation id={}'.format(custom_supply_invitation))
+            custom_supply_edges = self.client.get_grouped_edges(
+                invitation=custom_supply_invitation,
+                groupby='head',
+                head=self.config_note.content['match_group'],
+                select='tail,weight')
+        return custom_supply_edges
+
     @property
     def demands(self):
         if self._demands is None:
-            self._demands = [int(self.config_note.content['max_users']) for paper in self.papers]
-
+            user_demand_value = self.config_note.content.get('user_demand') if 'user_demand' in self.config_note.content else self.config_note.content['max_users']
+            self._demands = [int(user_demand_value) for paper in self.papers]
+            custom_demand_edges = self._get_custom_demand_edges()
+            count_processed_edges = 0
+            if custom_demand_edges:
+                map_papers_to_idx = { p: idx for idx, p in enumerate(self.papers) }
+                for edge in custom_demand_edges[0]['values']:
+                    idx = map_papers_to_idx.get(edge['head'], -1)
+                    if idx >= 0:
+                        self._demands[idx] = int(edge['weight'])
+                        count_processed_edges += 1
+                self.logger.debug('Custom demands recorded for {} papers'.format(count_processed_edges))
+            self.logger.debug('Total demands recorded for {} papers'.format(len(self._demands)))
         return self._demands
 
     @property
@@ -129,16 +165,14 @@ class ConfigNoteInterface:
 
             for inv_id, edges in edges_by_invitation.items():
                 invitation_edges = [
-                        (
-                            edge['head'],
-                            edge['tail'],
-                            self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
-                        ) for edge in edges] 
-                self._scores_by_type = {
-                    inv_id: {
-                        'default': defaults_by_invitation[inv_id],
-                        'edges': invitation_edges
-                    }
+                    (
+                        edge['head'],
+                        edge['tail'],
+                        self._edge_to_score(edge, translate_map=translate_maps.get(inv_id))
+                    ) for edge in edges]
+                self._scores_by_type[inv_id] = {
+                    'default': defaults_by_invitation[inv_id],
+                    'edges': invitation_edges
                 }
         return self._scores_by_type
 
@@ -240,33 +274,19 @@ class ConfigNoteInterface:
         minimums = [int(self.config_note.content['min_papers']) for r in self.reviewers]
         maximums = [int(self.config_note.content['max_papers']) for r in self.reviewers]
 
-        all_reviewers = { r: r for r in self.reviewers }
-        custom_load_edges = []
-        edges = []
-        edges = self.client.get_grouped_edges(
-                invitation = self.config_note.content['custom_load_invitation'],
-                head = self.config_note.content['match_group'],
-                select='tail,label,weight')
-        if edges:
-            custom_load_edges = edges[0]['values']
+        custom_supply_edges = self._get_custom_supply_edges()
+        if custom_supply_edges:
+            map_reviewers_to_idx = { r: idx for idx, r in enumerate(self.reviewers) }
 
-        for edge in custom_load_edges:
-            if edge['tail'] in all_reviewers:
-                try:
-                    custom_load = int(edge['weight'])
-                except ValueError:
-                    raise MatcherError('invalid custom load weight')
-
-                if custom_load < 0:
-                    custom_load = 0
-
-                index = self.reviewers.index(edge['tail'])
-                maximums[index] = custom_load
-
-                if custom_load < minimums[index]:
-                    minimums[index] = custom_load
-            else:
-                self.logger.warn('Reviewer {} not found in pool'.format(edge['tail']))
+            count_processed_edges = 0
+            for edge in custom_supply_edges[0].get('values'):
+                reviewer = edge['tail']
+                index = map_reviewers_to_idx.get(reviewer, -1)
+                if index >= 0:
+                    load = int(edge['weight'])
+                    maximums[index] = load if load > 0 else 0
+                    count_processed_edges += 1
+            self.logger.debug('Custom supply recorded for {} users'.format(count_processed_edges))
 
         return minimums, maximums
 

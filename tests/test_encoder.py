@@ -28,7 +28,7 @@ def encoder_context():
     return papers, reviewers, matrix_shape
 
 def assert_arrays(array_A, array_B):
-    assert all([float(a) == float(b) for a, b in zip(array_A, array_B)])
+    assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 def test_encoder_basic(encoder_context):
     '''Basic test of Encoder functionality, without constraints.'''

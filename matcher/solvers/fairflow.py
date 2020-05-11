@@ -203,11 +203,14 @@ class FairFlow(object):
             self.costs.append(0)
 
         # Next construct the sink node and edges to each paper in g3.
+        papers_needing_no_assignments = 0
         for i in range(np.size(g3)):
             self.start_inds.append(self.num_reviewers + g3[i])
             self.end_inds.append(self.sink)
-            self.caps.append(1)
+            edge_capacity = 1 if self.demands[g3[i]] else 0
+            self.caps.append(edge_capacity)
             self.costs.append(0)
+            papers_needing_no_assignments += (1 - edge_capacity)
 
         # For each paper in g2, create a dummy node the restricts the flow to
         # that paper to 1.
@@ -281,7 +284,7 @@ class FairFlow(object):
                     else:
                         self.costs.append(int(-1.0 - self.big_c * rp_aff))
 
-        flow = int(min(np.size(g3), np.size(g1)))
+        flow = int(min(np.size(g3) - papers_needing_no_assignments, np.size(g1)))
         self.supplies = np.zeros(self.num_reviewers + self.num_papers + 2)
         self.supplies[self.source] = flow
         self.supplies[self.sink] = -flow
