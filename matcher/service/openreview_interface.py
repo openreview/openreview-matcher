@@ -45,7 +45,7 @@ class ConfigNoteInterface:
             try:
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
-                self.set_status('Error', str(error_handle))
+                self.set_status('Error', error_handle)
                 raise error_handle
 
     @property
@@ -62,7 +62,7 @@ class ConfigNoteInterface:
                 match_group = self.client.get_group(self.config_note.content['match_group'])
                 self._reviewers = match_group.members
             except Exception as error_handle:
-                self.set_status('Error', str(error_handle))
+                self.set_status('Error', error_handle)
                 raise error_handle
         return self._reviewers
 
