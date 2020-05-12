@@ -3,7 +3,6 @@ import openreview
 import logging
 from tqdm import tqdm
 from matcher.encoder import EncoderError
-from matcher.core import MatcherError
 
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
@@ -11,10 +10,21 @@ class ConfigNoteInterface:
         self.logger = logger
         self.logger.debug('GET note id={}'.format(config_note_id))
         self.config_note = self.client.get_note(config_note_id)
+
         self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-        self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
-        self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
-        self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
+        try:
+            self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
+        except openreview.OpenReviewException as error_handle:
+            self.set_status('Error', error_handle)
+            raise error_handle
+
+        self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
+        try:
+            self.aggregate_score_invitation = openreview.tools.get_invitation(self.client, self.config_note.content['aggregate_score_invitation'])
+        except openreview.OpenReviewException as error_handle:
+            self.set_status('Error', error_handle)
+            raise error_handle
+
         self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_notes = []
 
@@ -31,11 +41,11 @@ class ConfigNoteInterface:
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
+            self.logger.debug('GET invitation id={}'.format(invitation_id))
             try:
-                self.logger.debug('GET invitation id={}'.format(invitation_id))
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
-                self.set_status('Error')
+                self.set_status('Error', str(error_handle))
                 raise error_handle
 
     @property
@@ -48,8 +58,12 @@ class ConfigNoteInterface:
     def reviewers(self):
         if self._reviewers is None:
             self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
-            match_group = self.client.get_group(self.config_note.content['match_group'])
-            self._reviewers = match_group.members
+            try:
+                match_group = self.client.get_group(self.config_note.content['match_group'])
+                self._reviewers = match_group.members
+            except Exception as error_handle:
+                self.set_status('Error', str(error_handle))
+                raise error_handle
         return self._reviewers
 
     @property
@@ -67,7 +81,9 @@ class ConfigNoteInterface:
                             key, value = element.split('.')[1].split('=')
                             content_dict[key] = value
                         else:
-                            self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
+                            error_msg = 'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element)
+                            self.set_status('Error', error_msg)
+                            raise openreview.OpenReviewException(error_msg)
             self.paper_notes = list(openreview.tools.iterget_notes(
                 self.client,
                 invitation=paper_invitation,
@@ -192,10 +208,13 @@ class ConfigNoteInterface:
         self.config_note.content['status'] = status
 
         if message:
+            message = str(message)
             self.config_note.content['error_message'] = message
+            if status == 'Error':
+                self.logger.error(message)
 
         self.config_note = self.client.post_note(self.config_note)
-        self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
+        self.logger.info('status set to: {}'.format(self.config_note.content['status']))
 
     def set_assignments(self, assignments_by_forum):
         '''Helper function for posting assignments returned by the Encoder'''
