@@ -379,7 +379,6 @@ def test_routes_invalid_invitation(openreview_context):
     assert invalid_invitation_response.status_code == 404
 
     config_note = openreview_client.get_note(config_note.id)
-    print(config_note)
     assert config_note.content['status'] == 'Error'
 
 def test_routes_missing_header(openreview_context):
