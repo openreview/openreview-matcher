@@ -11,21 +11,6 @@ class ConfigNoteInterface:
         self.logger.debug('GET note id={}'.format(config_note_id))
         self.config_note = self.client.get_note(config_note_id)
 
-        self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-        try:
-            self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
-        except openreview.OpenReviewException as error_handle:
-            self.set_status('Error', error_handle)
-            raise error_handle
-
-        self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-        try:
-            self.aggregate_score_invitation = openreview.tools.get_invitation(self.client, self.config_note.content['aggregate_score_invitation'])
-        except openreview.OpenReviewException as error_handle:
-            self.set_status('Error', error_handle)
-            raise error_handle
-
-        self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_notes = []
 
         # Lazy variables
@@ -37,9 +22,24 @@ class ConfigNoteInterface:
         self._demands = None
         self._constraints = None
 
-        self.validate_score_spec()
+        self._init_config_attributes()
+        self._validate_score_spec()
 
-    def validate_score_spec(self):
+    def _init_config_attributes(self):
+        try:
+            self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
+            self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
+            
+            self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
+            self.aggregate_score_invitation = openreview.tools.get_invitation(self.client, self.config_note.content['aggregate_score_invitation'])
+            
+            self.num_alternates = int(self.config_note.content['alternates'])
+        
+        except openreview.OpenReviewException as error_handle:
+            self.set_status('Error', error_handle)
+            raise error_handle
+
+    def _validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             self.logger.debug('GET invitation id={}'.format(invitation_id))
             try:
@@ -254,10 +254,18 @@ class ConfigNoteInterface:
                     )
                 )
 
-        openreview.tools.post_bulk_edges(self.client, assignment_edges)
-        openreview.tools.post_bulk_edges(self.client, score_edges)
-        self.logger.debug('posted {} assignment edges'.format(len(assignment_edges)))
-        self.logger.debug('posted {} aggregate score edges'.format(len(score_edges)))
+        try:
+            self.logger.debug('posting {} assignment edges'.format(len(assignment_edges)))
+            posted_assignmnet_edges = openreview.tools.post_bulk_edges(self.client, assignment_edges)
+            
+            self.logger.debug('posting {} aggregate score edges'.format(len(score_edges)))
+            posted_score_edges = openreview.tools.post_bulk_edges(self.client, score_edges)
+
+            self.logger.debug('posted {} assignment edges'.format(len(posted_assignmnet_edges)))
+            self.logger.debug('posted {} aggregate score edges'.format(len(posted_score_edges)))
+        except openreview.OpenReviewException as error_handle:
+            self.set_status('Error', error_handle)
+            raise error_handle
 
     def set_alternates(self, alternates_by_forum):
         '''Helper function for posting alternates returned by the Encoder'''
@@ -285,8 +293,13 @@ class ConfigNoteInterface:
                     )
                 )
 
-        openreview.tools.post_bulk_edges(self.client, score_edges)
-        self.logger.debug('posted {} aggregate score edges for alternates'.format(len(score_edges)))
+        try:
+            self.logger.debug('posting {} aggregate score edges for alternates'.format(len(score_edges)))
+            posted_score_edges = openreview.tools.post_bulk_edges(self.client, score_edges)
+            self.logger.debug('posted {} aggregate score edges for alternates'.format(len(posted_score_edges)))
+        except openreview.OpenReviewException as error_handle:
+            self.set_status('Error', error_handle)
+            raise error_handle
 
     def _get_quota_arrays(self):
         '''get `minimum` and `maximum` reviewer load arrays, accounting for custom loads'''
