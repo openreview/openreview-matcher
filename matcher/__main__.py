@@ -185,19 +185,6 @@ match_data = {
     'logger': logger
 }
 
-# def write_assignments(assignments):
-#     logger.info('Writing assignments to file')
-#     with open('./assignments.json', 'w') as f:
-#         f.write(json.dumps(assignments, indent=2))
-
-# def write_alternates(alternates):
-#     logger.info('Writing alternates to file')
-#     with open('./alternates.json', 'w') as f:
-#         f.write(json.dumps(alternates, indent=2))
-
-# def on_set_status(status, message):
-#     logger.info('status={0}, message={1}'.format(status, message))
-
 matcher = Matcher(
     datasource=match_data,
     solver_class=solver_class,
