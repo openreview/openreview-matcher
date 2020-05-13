@@ -172,9 +172,9 @@ class SimpleSolver:
 
         supply = sum(self.num_reviews)
         demand = sum(self.demands)
-        self.logger.debug('total supply of reviews is ({}) and total demands are ({})'.format(supply, demand))
+        self.logger.debug('Total supply of reviews is ({}) and total demands are ({})'.format(supply, demand))
         if strict and supply < demand:
-            raise SolverException('total supply of reviews ({}) must be greater than total demand ({})'.format(supply, demand))
+            raise SolverException('Total supply of reviews ({}) must be greater than total demand ({})'.format(supply, demand))
 
         self.logger.debug('Finished checking graph inputs')
 
