@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 import json
+from enum import Enum
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
 
@@ -10,6 +11,14 @@ SOLVER_MAP = {
     'MinMax' : MinMaxSolver,
     'FairFlow' : FairFlow
 }
+
+class MATCHER_STATUS(Enum):
+    INITIALIZED = 'Initialized'
+    RUNNING = 'Running'
+    ERROR = 'Error'
+    NO_SOLUTION = 'No Solution'
+    COMPLETE = "Complete"
+    DEPLOYED = "Deployed"
 
 class MatcherError(Exception):
     '''Exception wrapper class for errors related to Matcher.'''
@@ -57,7 +66,7 @@ class KeywordDatasource:
             f.write(json.dumps(alternates, indent=2))
 
     def set_status(self, status, message):
-        self.logger.info('status={0}, message={1}'.format(status, message))
+        self.logger.info('status={0}, message={1}'.format(status.value, message))
 
 class Matcher:
     '''Main class that coordinates an Encoder and a Solver.'''
@@ -85,7 +94,7 @@ class Matcher:
         return SOLVER_MAP.get(solver_class, MinMaxSolver)
 
     def set_status(self, status, message=None):
-        self.status = status
+        self.status = status.value
         self.datasource.set_status(status, message=message)
 
     def set_assignments(self, assignments):
@@ -101,7 +110,7 @@ class Matcher:
         Compute a match of reviewers to papers and post it to the as assignment notes.
         The config note's status field will be set to reflect completion or errors.
         '''
-        self.set_status('Running')
+        self.set_status(MATCHER_STATUS.RUNNING)
 
         self.logger.debug('Start encoding')
 
@@ -134,7 +143,7 @@ class Matcher:
             solution = solver.solve()
         except SolverException as error_handle:
             self.logger.debug('No Solution={}'.format(error_handle))
-            self.set_status('No Solution', message=str(error_handle))
+            self.set_status(MATCHER_STATUS.NO_SOLUTION, message=str(error_handle))
 
         self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:
@@ -142,9 +151,9 @@ class Matcher:
             self.set_assignments(encoder.decode_assignments(solution))
             self.set_alternates(
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
-            self.set_status('Complete')
+            self.set_status(MATCHER_STATUS.COMPLETE)
         else:
             self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
             self.set_status(
-                'No Solution',
+                MATCHER_STATUS.NO_SOLUTION,
                 message='Solver could not find a solution. Adjust your parameters')
