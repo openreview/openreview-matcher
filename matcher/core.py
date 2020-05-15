@@ -4,7 +4,6 @@ import threading
 import time
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
-import openreview
 
 SOLVER_MAP = {
     'MinMax' : MinMaxSolver,

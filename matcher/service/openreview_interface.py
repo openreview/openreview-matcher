@@ -222,7 +222,7 @@ class ConfigNoteInterface:
                 self.logger.error(message)
 
         self.config_note = self.client.post_note(self.config_note)
-        self.logger.info('status set to: {}'.format(self.config_note.content['status']))
+        self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
 
     def set_assignments(self, assignments_by_forum):
         '''Helper function for posting assignments returned by the Encoder'''
