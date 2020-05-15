@@ -4,15 +4,12 @@ import threading
 import time
 from .solvers import SolverException, MinMaxSolver, FairFlow
 from .encoder import Encoder
+import openreview
 
 SOLVER_MAP = {
     'MinMax' : MinMaxSolver,
     'FairFlow' : FairFlow
 }
-
-class MatcherError(Exception):
-    '''Exception wrapper class for errors related to Matcher.'''
-    pass
 
 class KeywordDatasource:
     def __init__(
@@ -91,38 +88,58 @@ class Matcher:
 
         self.logger.debug('Start encoding')
 
-        encoder = Encoder(
-            reviewers=self.datasource.reviewers,
-            papers=self.datasource.papers,
-            constraints=self.datasource.constraints,
-            scores_by_type=self.datasource.scores_by_type,
-            weight_by_type=self.datasource.weight_by_type,
-            normalization_types=self.datasource.normalization_types,
-            logger=self.logger
-        )
-
-        self.logger.debug('Preparing solver')
-
-        # solver
-        solver = self.solver_class(
-            self.datasource.minimums,
-            self.datasource.maximums,
-            self.datasource.demands,
-            encoder,
-            logger=self.logger
-        )
-        solution = None
-        start_time = time.time()
         try:
+            encoder = Encoder(
+                reviewers=self.datasource.reviewers,
+                papers=self.datasource.papers,
+                constraints=self.datasource.constraints,
+                scores_by_type=self.datasource.scores_by_type,
+                weight_by_type=self.datasource.weight_by_type,
+                normalization_types=self.datasource.normalization_types,
+                logger=self.logger
+            )
+            self.logger.debug('Finished encoding')
+
+        except Exception as error_handle:
+            self.set_status('Error', str(error_handle))
+            raise error_handle
+
+        try:
+            self.logger.debug('Preparing solver')
+            solver = self.solver_class(
+                self.datasource.minimums,
+                self.datasource.maximums,
+                self.datasource.demands,
+                encoder,
+                logger=self.logger
+            )
+            solution = None
+            start_time = time.time()
+
             self.logger.debug('Solving solver')
             solution = solver.solve()
+            self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
+
         except SolverException as error_handle:
             self.logger.debug('No Solution={}'.format(error_handle))
             self.set_status('No Solution', message=str(error_handle))
-        self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
+            raise error_handle
+
+        except Exception as error_handle:
+            self.logger.debug('Error, message={}'.format(error_handle))
+            self.set_status('Error', message=str(error_handle))
+            raise error_handle
+
         if solver.solved:
-            self.solution = solution
-            self.set_assignments(encoder.decode_assignments(solution))
-            self.set_alternates(
-                encoder.decode_alternates(solution, self.datasource.num_alternates))
-            self.set_status('Complete')
+            try:
+                self.solution = solution
+                self.logger.debug('Setting assignments')
+                self.set_assignments(encoder.decode_assignments(solution))
+                self.logger.debug('Finished setting assignments')
+                self.logger.debug('Setting alternates')
+                self.set_alternates(encoder.decode_alternates(solution, self.datasource.num_alternates))
+                self.logger.debug('Finished setting alternates')
+                self.set_status('Complete')
+            except Exception as error_handle:
+                self.set_status('Error', str(error_handle))
+                raise error_handle

@@ -8,13 +8,20 @@ import threading
 import openreview
 
 from matcher import Matcher
-from .openreview_interface import ConfigNoteInterface
+from .openreview_interface import ConfigNoteInterface, ConfigNoteInterfaceError
 
 BLUEPRINT = flask.Blueprint('match', __name__)
 
 class MatcherStatusException(Exception):
     '''Exception wrapper class for errors related to the status of the Matcher'''
     pass
+
+def set_config_status(openreview_client, config_note_id, status, message=''):
+    '''Set the status of the config note'''
+    config_note = openreview_client.get_note(id=config_note_id)
+    config_note.content['status'] = status
+    config_note.content['error_message'] = message
+    config_note = openreview_client.post_note(config_note)
 
 @BLUEPRINT.route('/match/test')
 def test():
@@ -75,10 +82,27 @@ def match():
 
         flask.current_app.logger.debug('Match for configuration has started: {}'.format(config_note_id))
 
-    except openreview.OpenReviewException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
-
+    except ConfigNoteInterfaceError as error_handle:
         error_type = str(error_handle)
+        flask.current_app.logger.error(error_type)
+
+        request_status = 404
+
+        # Set status in config note only when the error is not for config note's existence itself
+        if 'Config note not found' not in error_type:
+            set_config_status(openreview_client, config_note_id, 'Error', message=error_type)
+
+        result['error'] = error_type
+        return flask.jsonify(result), request_status
+
+    except MatcherStatusException as error_handle:
+        flask.current_app.logger.error(str(error_handle))
+        result['error'] = str(error_handle)
+        return flask.jsonify(result), 400
+    
+    except openreview.OpenReviewException as error_handle:
+        error_type = str(error_handle)
+        flask.current_app.logger.error(error_type)  
         status = 500
 
         if 'not found' in error_type.lower():
@@ -88,11 +112,6 @@ def match():
 
         result['error'] = error_type
         return flask.jsonify(result), status
-
-    except MatcherStatusException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
-        result['error'] = str(error_handle)
-        return flask.jsonify(result), 400
 
     # For now, it seems like we need this broad Exception. How can we get rid of it?
     # pylint:disable=broad-except
