@@ -81,6 +81,21 @@ class FairFlow(object):
         self.solved = False
         self.logger.debug('End Init FairFlow')
 
+    def _validate_input_range(self):
+        '''Validate if demand is in the range of min supply and max supply'''
+        self.logger.debug('Checking if demand is in range')
+
+        min_supply = sum(self.minimums)
+        max_supply = sum(self.maximums)
+        demand = sum(self.demands)
+
+        self.logger.debug('Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
+
+        if demand > max_supply or demand < min_supply:
+            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
+
+        self.logger.debug('Finished checking graph inputs')
+
     def objective_val(self):
         """Get the objective value of the RAP."""
         return np.sum(self.sol_as_mat() * self.orig_affinities)
@@ -546,6 +561,7 @@ class FairFlow(object):
             The solution as a matrix.
         """
 
+        self._validate_input_range()
         ms = self.find_ms()
         self.makespan = ms
         s1, s3 = self.try_improve_ms()

@@ -109,6 +109,12 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
 
     return conference
 
+def assert_arrays(array_A, array_B, is_string=False):
+    if is_string:
+        assert all([a == b for a, b in zip(sorted(array_A), sorted(array_B))])
+    else:
+        assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])    
+
 @pytest.fixture
 def openreview_context(scope='function'):
     '''

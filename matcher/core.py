@@ -126,9 +126,3 @@ class Matcher:
             self.set_alternates(
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
-        else:
-            self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
-            self.set_status(
-                'No Solution',
-                message='Solver could not find a solution. Adjust your parameters')
-
