@@ -48,36 +48,6 @@ def test_solver_minmax_random():
     # (i.e. overwhelmingly likely to be different)
     assert not np.array_equal(solver_A.cost_matrix, solver_B.cost_matrix)
 
-def test_solver_minmax_0_score_assignment():
-    '''
-    Tests 5 papers, 4 reviewers. Reviewers review min: 1, max: 3 papers. Each paper needs 2 reviews.
-    Purpose: Assert that an assignment is never made for score 0 or less
-    '''
-    aggregate_score_matrix = np.transpose(np.array([
-        [-1, 1, 1, 0, 1],
-        [1, 0, -1, 0, 1],
-        [0, 1, 1, 1, 0],
-        [1, 1, 1, 1, 0]]))
-    constraint_matrix = np.transpose(np.array([
-        [0, -1, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0]]))
-
-    solver = MinMaxSolver(
-        [1,1,1,1],
-        [3,3,3,3],
-        [2,2,2,2,2],
-        encoder(aggregate_score_matrix, constraint_matrix)
-    )
-
-    res = solver.solve()
-    assert res.shape == (5,4)
-    nrows, ncols = res.shape if len(res.shape) == 2 else (0,0)
-    for i in range(nrows):
-        for j in range(ncols):
-            assert not (aggregate_score_matrix[i,j] <= 0 and res[i,j] > 0), "Solution violates the rule for not making less than 0 score assignments at [{},{}]".format(i,j)
-
 def test_solver_minmax_custom_demands():
     aggregate_score_matrix_A = np.transpose(np.array([
         [0.2, 0.1, 0.4],

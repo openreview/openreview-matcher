@@ -4,8 +4,6 @@ def test_fixtures(openreview_context):
 	'''
 	Simple test to ensure that test fixtures are working.
 	'''
-	app = openreview_context['app']
-	test_client = openreview_context['test_client']
 	openreview_client = openreview_context['openreview_client']
 
 	num_reviewers = 3
