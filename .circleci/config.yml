@@ -4,7 +4,7 @@ jobs:
   build:
     working_directory: ~/openreview-matcher-repo
     docker:
-    - image: circleci/node:12.13.1
+    - image: circleci/node:12.18.3
     - image: circleci/redis:6.0.0
     - image: circleci/mongo:3.6.4
     - image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
