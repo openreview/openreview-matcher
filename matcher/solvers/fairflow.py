@@ -305,9 +305,12 @@ class FairFlow(object):
         self.supplies[self.sink] = -flow
 
         for i in range(len(self.start_inds)):
-            self.min_cost_flow.AddArcWithCapacityAndUnitCost(
-                self.start_inds[i], self.end_inds[i], self.caps[i],
-                self.costs[i])
+            if self.costs[i] != 0:
+                self.min_cost_flow.AddArcWithCapacityAndUnitCost(
+                    self.start_inds[i],
+                    self.end_inds[i],
+                    self.caps[i],
+                    self.costs[i])
         for i in range(len(self.supplies)):
             self.min_cost_flow.SetNodeSupply(i, int(self.supplies[i]))
 
