@@ -12,7 +12,7 @@ from matcher import Matcher
 from .openreview_interface import ConfigNoteInterface
 
 BLUEPRINT = flask.Blueprint('match', __name__)
-CORS(BLUEPRINT)
+CORS(BLUEPRINT, supports_credentials=True)
 
 class MatcherStatusException(Exception):
     '''Exception wrapper class for errors related to the status of the Matcher'''
