@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='openreview-matcher',
-      version='0.2',
+      version='0.3',
       description='OpenReview matching library',
       url='https://github.com/openreview/openreview-matcher',
       author='Michael Spector',
@@ -13,6 +13,7 @@ setup(name='openreview-matcher',
           'openreview-py',
           'ortools',
           'pytest',
-          'Flask'
+          'Flask',
+          'flask-cors==3.0.8'
       ],
       zip_safe=False)

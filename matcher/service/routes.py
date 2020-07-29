@@ -4,6 +4,7 @@ Implements the Flask API endpoints.
 TODO: could error handling be cleaner?
 '''
 import flask
+from flask_cors import CORS
 import threading
 import openreview
 
@@ -11,6 +12,7 @@ from matcher import Matcher
 from .openreview_interface import ConfigNoteInterface
 
 BLUEPRINT = flask.Blueprint('match', __name__)
+CORS(BLUEPRINT)
 
 class MatcherStatusException(Exception):
     '''Exception wrapper class for errors related to the status of the Matcher'''
