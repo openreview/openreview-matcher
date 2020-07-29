@@ -24,7 +24,7 @@ def test():
     flask.current_app.logger.info('In test')
     return 'OpenReview Matcher (random assignments)'
 
-@BLUEPRINT.route('/match', methods=['POST', 'OPTIONS'])
+@BLUEPRINT.route('/match', methods=['POST'])
 def match():
     '''Main entry point into the app. Initiates a match run'''
 
