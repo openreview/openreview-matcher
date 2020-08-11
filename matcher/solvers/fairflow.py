@@ -322,7 +322,8 @@ class FairFlow(object):
         have flow leaving a reviewer and entering a paper, assign the reviewer
         to that paper.
         """
-        if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
+        solver_status = self.min_cost_flow.Solve()
+        if solver_status == self.min_cost_flow.OPTIMAL:
             num_un = 0
             for arc in range(self.min_cost_flow.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
@@ -353,11 +354,13 @@ class FairFlow(object):
                             self.solution[rev, pap] = 0.0
             self.valid = False
         else:
-            raise SolverException('There was an issue with the min cost flow input.')
+            raise SolverException('There was an issue with the min cost flow input. '
+                                  '[solve_ms_improvement] SOLVER_STATUS: {}'.format(solver_status))
 
     def solve_validifier(self):
         """Reassign reviewers to make the matching valid."""
-        if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
+        solver_status = self.min_cost_flow.Solve()
+        if solver_status == self.min_cost_flow.OPTIMAL:
             for arc in range(self.min_cost_flow.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
                 if self.min_cost_flow.Tail(arc) != self.source and self.min_cost_flow.Head(arc) != self.sink:
@@ -371,7 +374,8 @@ class FairFlow(object):
             assert (np.sum(self.solution) == np.sum(self.demands))
             self.valid = True
         else:
-            raise SolverException('There was an issue with the min cost flow input.')
+            raise SolverException('There was an issue with the min cost flow input. '
+                                  '[solve_validifier] SOLVER_STATUS: {}'.format(solver_status))
 
     def sol_as_mat(self):
         if self.valid:
@@ -482,7 +486,8 @@ class FairFlow(object):
             mcf.SetNodeSupply(i, int(supplies[i]))
 
         # Solve.
-        if mcf.Solve() == mcf.OPTIMAL:
+        solver_status = mcf.Solve()
+        if solver_status == mcf.OPTIMAL:
             for arc in range(mcf.NumArcs()):
                 # Can ignore arcs leading out of source or into sink.
                 if mcf.Tail(arc) != source and mcf.Head(arc) != sink:
@@ -493,7 +498,8 @@ class FairFlow(object):
                         self.solution[rev, pap] = 1.0
             self.solved = True
         else:
-            raise SolverException('Solver could not find a solution. Adjust your parameters')
+            raise SolverException('Solver could not find a solution. Adjust your parameters. '
+                                  '[_construct_graph_and_solve] SOLVER_STATUS: {}'.format(solver_status))
 
     def find_ms(self):
         """Find the highest possible makespan.
