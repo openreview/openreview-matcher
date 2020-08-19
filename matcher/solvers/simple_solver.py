@@ -306,7 +306,7 @@ class SimpleSolver:
                 if r_node in self.reviewer_nodes and p_node in self.paper_nodes:
                     self.flow_matrix[p_node.index, r_node.index] = flow
         else:
-            logging.debug(f"Solver status: {solver_status}")
+            logging.debug("Solver status: {}".format(solver_status))
             self.solved = False
 
         return self.flow_matrix

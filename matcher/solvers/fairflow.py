@@ -61,8 +61,8 @@ class FairFlow(object):
 
         # Find reviewers with no positive affinity edges after constraints are applied and remove their load_lb
         bad_affinity_reviewers = np.where(np.max(self.affinity_matrix * (self.constraint_matrix == 0).T, axis=1) <= 0)[0]
-        logging.debug(f"Setting minimum load for {len(bad_affinity_reviewers)} reviewers to 0 "
-                      f"because they do not have positive affinity with any paper")
+        logging.debug("Setting minimum load for {} reviewers to 0 "
+                      "because they do not have positive affinity with any paper".format(len(bad_affinity_reviewers)))
         for rev_id in bad_affinity_reviewers:
             self.minimums[rev_id] = 0
 
@@ -538,7 +538,7 @@ class FairFlow(object):
             self.logger.debug('#info FairFlow:ITERATION %s ms %s' % (i, ms))
             try:
                 s1, s3 = self.try_improve_ms()
-                self.logger.debug(f'Round 0: s1 {s1} s3 {s3}')
+                self.logger.debug('Round 0: s1 {} s3 {}'.format(s1, s3))
                 can_improve_round_counter = 1
                 can_improve = s3 > 0
                 prev_s1, prev_s3 = -1, -1
@@ -546,7 +546,7 @@ class FairFlow(object):
                     prev_s1, prev_s3 = s1, s3
                     start = time.time()
                     s1, s3 = self.try_improve_ms()
-                    self.logger.debug(f'Round {can_improve_round_counter}: s1 {s1} s3 {s3}')
+                    self.logger.debug('Round {}: s1 {} s3 {}'.format(can_improve_round_counter, s1, s3))
                     can_improve_round_counter += 1
                     can_improve = s3 > 0
                     self.logger.debug('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
