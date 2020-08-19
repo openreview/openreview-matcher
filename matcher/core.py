@@ -25,7 +25,8 @@ class KeywordDatasource:
                 minimums=[],
                 maximums=[],
                 demands=[],
-                num_alternates=0
+                num_alternates=0,
+                allow_only_pos_affinity=False
             ):
 
         self.reviewers = reviewers
@@ -37,6 +38,7 @@ class KeywordDatasource:
         self.maximums = maximums
         self.demands = demands
         self.num_alternates = num_alternates
+        self.allow_all_affinities = not allow_only_pos_affinity
         self.normalization_types = []
 
 class Matcher:
@@ -109,6 +111,7 @@ class Matcher:
             self.datasource.maximums,
             self.datasource.demands,
             encoder,
+            allow_all_affinities=self.datasource.allow_all_affinities,
             logger=self.logger
         )
         solution = None

@@ -27,6 +27,7 @@ class MinMaxSolver:
             maximums,
             demands,
             encoder,
+            allow_all_affinities=True,
             logger=logging.getLogger(__name__)
         ):
 
@@ -34,16 +35,18 @@ class MinMaxSolver:
         self.maximums = maximums
         self.demands = demands
         self.cost_matrix = encoder.cost_matrix
+        self.allow_all_affinities = allow_all_affinities
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
 
         self.constraint_matrix = encoder.constraint_matrix
 
-        # Find reviewers with no negative cost edges after constraints are applied and remove their load_lb
-        bad_affinity_reviewers = np.where(np.min(self.cost_matrix * (self.constraint_matrix == 0), axis=0) >= 0)[0]
-        for rev_id in bad_affinity_reviewers:
-            self.minimums[rev_id] = 0
+        if not self.allow_all_affinities:
+            # Find reviewers with no negative cost edges after constraints are applied and remove their load_lb
+            bad_affinity_reviewers = np.where(np.min(self.cost_matrix * (self.constraint_matrix == 0), axis=0) >= 0)[0]
+            for rev_id in bad_affinity_reviewers:
+                self.minimums[rev_id] = 0
 
         self.solved = False
         self.flow_matrix = None
@@ -77,6 +80,7 @@ class MinMaxSolver:
             self.demands,
             self.cost_matrix,
             self.constraint_matrix,
+            allow_all_affinities=self.allow_all_affinities,
             logger=self.logger,
             strict=False
         ) # strict=False prevents errors from being thrown for supply/demand mismatch
@@ -95,6 +99,7 @@ class MinMaxSolver:
             adjusted_demands,
             self.cost_matrix,
             adjusted_constraints,
+            allow_all_affinities=self.allow_all_affinities,
             logger=self.logger)
 
         maximum_result = maximum_solver.solve()

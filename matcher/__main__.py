@@ -57,6 +57,8 @@ parser.add_argument('--min_papers_default', default=0, type=int)
 parser.add_argument('--max_papers_default', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
 parser.add_argument('--num_alternates', default=3, type=int)
+parser.add_argument('--allow_only_pos_affinity', action='store_true',
+                    help='''Use flag to disallow <= 0 affinity pairs in solver solution''')
 parser.add_argument('--user_group', type=str)
 
 parser.add_argument(
@@ -179,7 +181,8 @@ match_data = {
     'minimums': minimums,
     'maximums': maximums,
     'demands': demands,
-    'num_alternates': num_alternates
+    'num_alternates': num_alternates,
+    'allow_only_pos_affinity': args.allow_only_pos_affinity
 }
 
 def write_assignments(assignments):

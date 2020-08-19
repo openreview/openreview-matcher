@@ -66,11 +66,13 @@ class SimpleSolver:
             demands,
             cost_matrix,
             constraint_matrix,
+            allow_all_affinities=True,
             logger=logging.getLogger(__name__),
             strict=True
         ):
 
         self.logger = logger
+        self.allow_all_affinities = allow_all_affinities
 
         self.cost = 0
         self.solved = False
@@ -129,7 +131,7 @@ class SimpleSolver:
                 # a constraint of 0 means there's no constraint, so apply the cost as normal
                 # a constraint of 1 means that this user was explicitly assigned to this paper
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
-                if arc_constraint == 0 and arc_cost < 0:
+                if arc_constraint == 0 and (self.allow_all_affinities or arc_cost < 0):
                     self.add_edge(r_node, p_node, 1, arc_cost)
                 elif arc_constraint == 1:
                     # TODO: this should be handled as a hard constraint
