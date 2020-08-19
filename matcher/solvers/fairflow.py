@@ -69,6 +69,7 @@ class FairFlow(object):
         self.id = uuid.uuid4()
         self.makespan = 0.0     # the minimum allowable paper score.
         self.solution = solution if solution else np.zeros((self.num_reviewers, self.num_papers))
+        self.starter_solution = self.solution.copy()
         self.valid = True if solution else False
         assert(self.affinity_matrix.shape == self.solution.shape)
         self.max_affinities = np.max(self.affinity_matrix)
@@ -575,7 +576,7 @@ class FairFlow(object):
                 mx = ms
                 ms -= (ms - mn) / 2.0
             self.makespan = ms
-            self.solution = np.zeros((self.num_reviewers, self.num_papers))
+            self.solution = self.starter_solution.copy()
         self.logger.debug('#info FairFlow:Best found %s' % best)
         self.logger.debug('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
         if best is None:
