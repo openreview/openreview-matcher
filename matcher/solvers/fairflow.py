@@ -220,9 +220,11 @@ class FairFlow(object):
         # Next construct the sink node and edges to each paper in g3.
         papers_needing_no_assignments = 0
         for i in range(np.size(g3)):
+            if not self.demands[g3[i]]:
+                continue
             self.start_inds.append(self.num_reviewers + g3[i])
             self.end_inds.append(self.sink)
-            edge_capacity = 1 if self.demands[g3[i]] else 0
+            edge_capacity = 1
             self.caps.append(edge_capacity)
             self.costs.append(0)
             papers_needing_no_assignments += (1 - edge_capacity)
@@ -453,14 +455,15 @@ class FairFlow(object):
 
         # edges from source to reviewers.
         for i in range(n_rev):
-            mcf.AddArcWithCapacityAndUnitCost(source, i, int(_caps[i]), 0)
+            if int(_caps[i]) > 0:
+                mcf.AddArcWithCapacityAndUnitCost(source, i, int(_caps[i]), 0)
 
         # edges from reviewers to papers.
         for i in range(n_rev):
             for j in range(n_pap):
                 arc_cap = 1
                 if self.solution[i, j] == 1:
-                    arc_cap = 0
+                    continue
 
                 edge_constraint = self.constraint_matrix[(j,i)]
 
@@ -475,7 +478,8 @@ class FairFlow(object):
 
         # edges from papers to sink.
         for j in range(n_pap):
-            mcf.AddArcWithCapacityAndUnitCost(n_rev + j, sink, int(_covs[j]), 0)
+            if int(_covs[j]) > 0:
+                mcf.AddArcWithCapacityAndUnitCost(n_rev + j, sink, int(_covs[j]), 0)
 
         supplies = np.zeros(n_rev + n_pap + 2)
         supplies[source] = int(flow)
