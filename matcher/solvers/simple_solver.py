@@ -129,7 +129,7 @@ class SimpleSolver:
                 # a constraint of 0 means there's no constraint, so apply the cost as normal
                 # a constraint of 1 means that this user was explicitly assigned to this paper
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
-                if arc_constraint == 0:
+                if arc_constraint == 0 and arc_cost < 0:
                     self.add_edge(r_node, p_node, 1, arc_cost)
                 elif arc_constraint == 1:
                     # TODO: this should be handled as a hard constraint
@@ -294,7 +294,8 @@ class SimpleSolver:
         assert hasattr(self, 'min_cost_flow'), \
             'Solver not constructed. Run self.construct_solver() first.'
         self.cost = 0
-        if self.min_cost_flow.Solve() == self.min_cost_flow.OPTIMAL:
+        solver_status = self.min_cost_flow.Solve()
+        if solver_status == self.min_cost_flow.OPTIMAL:
             self.solved = True
             for i in range(self.min_cost_flow.NumArcs()):
                 self.cost += self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
@@ -305,6 +306,7 @@ class SimpleSolver:
                 if r_node in self.reviewer_nodes and p_node in self.paper_nodes:
                     self.flow_matrix[p_node.index, r_node.index] = flow
         else:
+            logging.debug(f"Solver status: {solver_status}")
             self.solved = False
 
         return self.flow_matrix
