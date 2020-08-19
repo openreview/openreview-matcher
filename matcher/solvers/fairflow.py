@@ -59,9 +59,13 @@ class FairFlow(object):
         self.num_reviewers = np.size(self.affinity_matrix, axis=0)
         self.num_papers = np.size(self.affinity_matrix, axis=1)
 
-        min_affinities = np.min(affinity_matrix)
-        if min_affinities < 0:
-            self.affinity_matrix -= min_affinities
+        # Find reviewers with no positive affinity edges after constraints are applied and remove their load_lb
+        bad_affinity_reviewers = np.where(np.max(self.affinity_matrix * (self.constraint_matrix == 0).T, axis=1) <= 0)[0]
+        logging.debug(f"Setting minimum load for {len(bad_affinity_reviewers)} reviewers to 0 "
+                      f"because they do not have positive affinity with any paper")
+        for rev_id in bad_affinity_reviewers:
+            self.minimums[rev_id] = 0
+
         self.id = uuid.uuid4()
         self.makespan = 0.0     # the minimum allowable paper score.
         self.solution = solution if solution else np.zeros((self.num_reviewers, self.num_papers))
@@ -161,14 +165,17 @@ class FairFlow(object):
         # First solve flow with lower bounds as caps.
         # Construct edges between the source and each reviewer that must review.
         if self.minimums is not None:
+            logging.debug("Solving MCF with min load constraint")
             rev_caps = np.maximum(self.minimums - np.sum(self.solution, axis=1), 0)
             assert (np.size(rev_caps) == self.num_reviewers)
             flow = np.sum(rev_caps)
             pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
-            self._construct_graph_and_solve(self.num_reviewers, self.num_papers, rev_caps, pap_caps, self.affinity_matrix, flow)
+            if flow > 0:
+                self._construct_graph_and_solve(self.num_reviewers, self.num_papers, rev_caps, pap_caps, self.affinity_matrix, flow)
 
         # Now compute the residual flow that must be routed so that each paper
         # is sufficiently reviewed. Also compute residual maximums and demands.
+        logging.debug("solving MCF with max load constraint")
         rev_caps = self.maximums - np.sum(self.solution, axis=1)
         assert (np.size(rev_caps) == self.num_reviewers)
         pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
@@ -258,6 +265,8 @@ class FairFlow(object):
                 for pap2 in g2:
                     if self.solution[rev, pap2] == 0.0 and self.constraint_matrix[pap2, rev] == 0.0:
                         rp_aff = self.affinity_matrix[rev, pap2]
+                        if rp_aff <= 0.0:
+                            continue
                         self.start_inds.append(rev)
                         self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
                         pg2_to_minaff[pap2] = min(pg2_to_minaff[pap2], rp_aff)
@@ -289,12 +298,14 @@ class FairFlow(object):
         for rev in assignment_to_give:
             for pap3 in g3:
                 if self.solution[rev, pap3] == 0.0 and self.constraint_matrix[pap3, rev] == 0.0:
+                    rp_aff = self.affinity_matrix[rev, pap3]
+                    if rp_aff <= 0.0:
+                        continue
                     self.start_inds.append(rev)
                     self.end_inds.append(self.num_reviewers + pap3)
                     self.caps.append(1)
                     lb = self.makespan - self.max_affinities
                     pap_score = pap_scores[pap3]
-                    rp_aff = self.affinity_matrix[rev, pap3]
                     # give a bigger reward if assignment would improve group.
                     if rp_aff + pap_score >= lb:
                         self.costs.append(int(-1.0 - self.bigger_c * rp_aff))
@@ -406,7 +417,7 @@ class FairFlow(object):
             paper scores).
         """
         self._refresh_internal_vars()
-        if np.sum(self.solution) != np.sum(self.demands):
+        if not np.all(np.sum(self.solution, axis=0) == self.demands):
             self._construct_and_solve_validifier_network()
         assert np.sum(self.solution) == np.sum(self.demands)
         g1, g2, g3 = self._grp_paps_by_ms()
@@ -470,11 +481,9 @@ class FairFlow(object):
                 # a constraint of 0 means there's no constraint, so apply the cost as normal, so add an arc normally
                 # a constraint of 1 means that this user was explicitly assigned to this paper. We do not support positive constraints right now, so, do not add an arc
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
-                if edge_constraint == 0:
+                if edge_constraint == 0 and ws[i, j] > 0:
                     # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
-                    edge_cost = int(-1.0 - self.big_c * ws[i, j])
-                    if edge_cost < 0.0:
-                        mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), edge_cost)
+                    mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), int(-1.0 - self.big_c * ws[i, j]))
 
         # edges from papers to sink.
         for j in range(n_pap):
@@ -527,21 +536,34 @@ class FairFlow(object):
 
         for i in range(10):
             self.logger.debug('#info FairFlow:ITERATION %s ms %s' % (i, ms))
-            s1, s3 = self.try_improve_ms()
-            can_improve = s3 > 0
-            prev_s1, prev_s3 = -1, -1
-            while can_improve and prev_s3 != s3:
-                prev_s1, prev_s3 = s1, s3
-                start = time.time()
+            try:
                 s1, s3 = self.try_improve_ms()
+                self.logger.debug(f'Round 0: s1 {s1} s3 {s3}')
+                can_improve_round_counter = 1
                 can_improve = s3 > 0
-                self.logger.debug('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
+                prev_s1, prev_s3 = -1, -1
+                while can_improve and prev_s3 != s3:
+                    prev_s1, prev_s3 = s1, s3
+                    start = time.time()
+                    s1, s3 = self.try_improve_ms()
+                    self.logger.debug(f'Round {can_improve_round_counter}: s1 {s1} s3 {s3}')
+                    can_improve_round_counter += 1
+                    can_improve = s3 > 0
+                    self.logger.debug('#info FairFlow:try_improve takes: %s s' % (time.time() - start))
 
-            worst_pap_score = np.min(np.sum(self.solution * self.affinity_matrix, axis=0))
-            self.logger.debug('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
+                worst_pap_score = np.min(np.sum(self.solution * self.affinity_matrix, axis=0))
+                self.logger.debug('#info FairFlow:best worst paper score %s worst score %s' % (best_worst_pap_score, worst_pap_score))
 
-            success = s3 == 0
-            self.logger.debug('#info FairFlow:success = %s' % success)
+                success_c1 = s3 == 0
+                success_c2 = (np.min(self.affinity_matrix[self.solution.astype(np.bool)]) > 0)
+                success = success_c1 & success_c2
+                self.logger.debug('#info FairFlow:success = %s [success_c1: %s, success_c2: %s]'
+                                  % (success, success_c1, success_c2))
+            except SolverException as error_handle:
+                self.logger.debug('No Solution={}'.format(error_handle))
+                worst_pap_score = -np.inf
+                success = False
+                self.logger.debug('#info FairFlow:success = %s' % success)
 
             if success and worst_pap_score >= best_worst_pap_score:
                 best = ms
@@ -553,6 +575,7 @@ class FairFlow(object):
                 mx = ms
                 ms -= (ms - mn) / 2.0
             self.makespan = ms
+            self.solution = np.zeros((self.num_reviewers, self.num_papers))
         self.logger.debug('#info FairFlow:Best found %s' % best)
         self.logger.debug('#info FairFlow:Best Worst Paper Score found %s' %best_worst_pap_score)
         if best is None:
