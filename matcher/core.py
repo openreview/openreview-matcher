@@ -130,4 +130,4 @@ class Matcher:
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status('Complete')
         else:
-            self.set_status('Not solved')
+            self.set_status('No Solution')
