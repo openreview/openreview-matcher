@@ -4,7 +4,7 @@ import pytest
 import openreview
 from matcher.service.openreview_interface import ConfigNoteInterface
 from conftest import assert_arrays
-from matcher.core import MATCHER_STATUS
+from matcher.core import MatcherStatus
 
 def mock_client(
             paper_ids,
@@ -318,7 +318,7 @@ def test_confignote_interface():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    interface.set_status(MATCHER_STATUS.RUNNING)
+    interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
 def test_confignote_interface_backward_compat_max_users():
@@ -594,7 +594,7 @@ def test_confignote_interface_backward_compat_max_users():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    interface.set_status(MATCHER_STATUS.RUNNING)
+    interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
 def test_confignote_interface_custom_demand_edges():
@@ -856,7 +856,7 @@ def test_confignote_interface_custom_demand_edges():
     assert_arrays(interface.maximums, [1,2,1,2])
     assert_arrays(interface.demands, [2,1,0])
     
-    interface.set_status(MATCHER_STATUS.RUNNING)
+    interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
 def test_confignote_missing_edges_spec():
@@ -1083,7 +1083,7 @@ def test_confignote_missing_edges_spec():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    interface.set_status(MATCHER_STATUS.RUNNING)
+    interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
     for _, scores in interface.scores_by_type.items():
@@ -1242,7 +1242,7 @@ def test_confignote_interface_no_scores_spec():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    interface.set_status(MATCHER_STATUS.RUNNING)
+    interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
 def test_confignote_interface_custom_load_negative():

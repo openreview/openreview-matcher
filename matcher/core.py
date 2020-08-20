@@ -12,7 +12,7 @@ SOLVER_MAP = {
     'FairFlow' : FairFlow
 }
 
-class MATCHER_STATUS(Enum):
+class MatcherStatus(Enum):
     INITIALIZED = 'Initialized'
     RUNNING = 'Running'
     ERROR = 'Error'
@@ -110,7 +110,7 @@ class Matcher:
         Compute a match of reviewers to papers and post it to the as assignment notes.
         The config note's status field will be set to reflect completion or errors.
         '''
-        self.set_status(MATCHER_STATUS.RUNNING)
+        self.set_status(MatcherStatus.RUNNING)
 
         self.logger.debug('Start encoding')
 
@@ -143,7 +143,7 @@ class Matcher:
             solution = solver.solve()
         except SolverException as error_handle:
             self.logger.debug('No Solution={}'.format(error_handle))
-            self.set_status(MATCHER_STATUS.NO_SOLUTION, message=str(error_handle))
+            self.set_status(MatcherStatus.NO_SOLUTION, message=str(error_handle))
 
         self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
         if solver.solved:
@@ -151,4 +151,4 @@ class Matcher:
             self.set_assignments(encoder.decode_assignments(solution))
             self.set_alternates(
                 encoder.decode_alternates(solution, self.datasource.num_alternates))
-            self.set_status(MATCHER_STATUS.COMPLETE)
+            self.set_status(MatcherStatus.COMPLETE)
