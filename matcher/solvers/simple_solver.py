@@ -93,23 +93,21 @@ class SimpleSolver:
         self.costs = []
         self.node_by_number = {}
 
-        self.total_supply = min(sum(self.num_reviews), sum(self.demands))
-        if self.total_supply == 0:
-            # Skip graph processing if total supply is 0 (e.g. MinMax solver is used without minimum load constraints)
-            return
+        total_supply = min(sum(self.num_reviews), sum(self.demands))
+
 
         # -- Add Nodes --
 
         # no index because the source isn't represented in the cost/constraint matrices.
         self.source_node = self.add_node(
             index=None,
-            supply=self.total_supply)
+            supply=total_supply)
 
         self.reviewer_nodes = [self.add_node(i) for i in range(self.num_reviewers)]
         self.paper_nodes = [self.add_node(i) for i in range(self.num_papers)]
 
         # no index because the sink isn't represented in the cost/constraint matrices.
-        self.sink_node = self.add_node(index=None, supply=(-1 * self.total_supply))
+        self.sink_node = self.add_node(index=None, supply=(-1 * total_supply))
 
         # make various indexes for Nodes
         self.reviewer_node_by_index = {n.index: n for n in self.reviewer_nodes}
@@ -295,11 +293,6 @@ class SimpleSolver:
         and returns the solution in the form of a flow matrix.
 
         '''
-        if self.total_supply == 0:
-            self.solved = True
-            logging.debug("Total supply is 0. Skipping solver")
-            return self.flow_matrix
-
         assert hasattr(self, 'min_cost_flow'), \
             'Solver not constructed. Run self.construct_solver() first.'
         self.cost = 0
