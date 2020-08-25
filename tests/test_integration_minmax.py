@@ -88,6 +88,97 @@ def test_integration_basic(openreview_context):
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
+def test_integration_no_solution_due_to_conflicts(openreview_context):
+    '''
+    Basic integration test. Makes use of the OpenReview Builder
+    '''
+    openreview_client = openreview_context['openreview_client']
+    test_client = openreview_context['test_client']
+
+    conference_id = 'ICLR.cca/2020/Conference'
+    num_reviewers = 3
+    num_papers = 1
+    reviews_per_paper = 3
+    max_papers = 1
+    min_papers = 1
+    alternates = 0
+
+    conference = clean_start_conference(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper
+    )
+
+    reviewers_id = conference.get_reviewers_id()
+
+    config = {
+        'title': 'integration-test',
+        'user_demand': str(reviews_per_paper),
+        'max_papers': str(max_papers),
+        'min_papers': str(min_papers),
+        'alternates': str(alternates),
+        'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
+        'paper_invitation': conference.get_blind_submission_id(),
+        'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
+        'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
+        'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
+        'match_group': reviewers_id,
+        'scores_specification': {
+            conference.get_affinity_score_id(reviewers_id): {
+                'weight': 1.0,
+                'default': 0.0
+            }
+        },
+        'status': 'Initialized',
+        'solver': 'MinMax'
+    }
+
+    config_note = openreview.Note(**{
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
+        'readers': [conference.get_id()],
+        'writers': [conference.get_id()],
+        'signatures': [conference.get_id()],
+        'content': config
+    })
+
+    for reviewer in openreview_client.get_group(reviewers_id).members:
+        openreview_client.post_edge(openreview.Edge(
+            invitation=conference.get_conflict_score_id(reviewers_id),
+            label="Personal",
+            weight=-1,
+            head=conference.get_submissions()[-1].id,
+            tail=reviewer,
+            signatures=[conference.id],
+            readers=[
+                conference.id,
+                conference.get_area_chairs_id(),
+                reviewer
+            ],
+            writers=[conference.id],
+        ))
+
+    config_note = openreview_client.post_note(config_note)
+    assert config_note
+
+    response = test_client.post(
+        '/match',
+        data=json.dumps({'configNoteId': config_note.id}),
+        content_type='application/json',
+        headers=openreview_client.headers
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(openreview_client, config_note.id)
+    assert matcher_status.content['status'] == 'No Solution'
+    assert matcher_status.content['error_message'] == 'Solver could not find a solution. Adjust your parameters'
+
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+
+    assert len(paper_assignment_edges) == 0
+
 def test_integration_supply_mismatch_error(openreview_context):
     '''
     Basic integration test. Makes use of the OpenReview Builder

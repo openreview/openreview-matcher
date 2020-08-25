@@ -60,6 +60,7 @@ class Matcher:
         self.solution = None
         self.assignments = None
         self.alternates = None
+        self.status = 'Initialized'
 
         self.solver_class = self.__set_solver_class(solver_class)
 
@@ -69,6 +70,9 @@ class Matcher:
     def set_status(self, status, message=None):
         self.status = status
         self.on_set_status(status, message=message)
+
+    def get_status(self):
+        return self.status
 
     def set_assignments(self, assignments):
         self.assignments = assignments
@@ -142,3 +146,6 @@ class Matcher:
             except Exception as error_handle:
                 self.set_status('Error', str(error_handle))
                 raise error_handle
+        elif self.get_status() != 'No Solution':
+            self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
+            self.set_status('No Solution', message='Solver could not find a solution. Adjust your parameters')
