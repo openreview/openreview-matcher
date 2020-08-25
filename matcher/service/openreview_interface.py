@@ -3,7 +3,7 @@ import openreview
 import logging
 from tqdm import tqdm
 from matcher.encoder import EncoderError
-from matcher.core import MatcherError
+from matcher.core import MatcherError, MatcherStatus
 
 class ConfigNoteInterface:
     def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
@@ -36,7 +36,7 @@ class ConfigNoteInterface:
                 self.logger.debug('GET invitation id={}'.format(invitation_id))
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
-                self.set_status('Error')
+                self.set_status(MatcherStatus.ERROR)
                 raise error_handle
 
     @property
@@ -190,7 +190,7 @@ class ConfigNoteInterface:
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
-        self.config_note.content['status'] = status
+        self.config_note.content['status'] = status.value
 
         if message:
             self.config_note.content['error_message'] = message
