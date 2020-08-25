@@ -67,9 +67,6 @@ def match():
             target=Matcher(
                 datasource=interface,
                 solver_class=solver_class,
-                on_set_status=interface.set_status,
-                on_set_assignments=interface.set_assignments,
-                on_set_alternates=interface.set_alternates,
                 logger=flask.current_app.logger
             ).run
         )
