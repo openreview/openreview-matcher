@@ -179,27 +179,14 @@ match_data = {
     'minimums': minimums,
     'maximums': maximums,
     'demands': demands,
-    'num_alternates': num_alternates
+    'num_alternates': num_alternates,
+    'assignment_output': 'assignments.json',
+    'alternates_output': 'alternates.json',
+    'logger': logger
 }
-
-def write_assignments(assignments):
-    logger.info('Writing assignments to file')
-    with open('./assignments.json', 'w') as f:
-        f.write(json.dumps(assignments, indent=2))
-
-def write_alternates(alternates):
-    logger.info('Writing alternates to file')
-    with open('./alternates.json', 'w') as f:
-        f.write(json.dumps(alternates, indent=2))
-
-def on_set_status(status, message):
-    logger.info('status={0}, message={1}'.format(status, message))
 
 matcher = Matcher(
     datasource=match_data,
-    on_set_status=on_set_status,
-    on_set_assignments=write_assignments,
-    on_set_alternates=write_alternates,
     solver_class=solver_class,
     logger=logger
 )

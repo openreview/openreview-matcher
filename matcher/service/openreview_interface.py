@@ -3,6 +3,7 @@ import openreview
 import logging
 from tqdm import tqdm
 from matcher.encoder import EncoderError
+from matcher.core import MatcherError, MatcherStatus
 
 class ConfigNoteInterfaceError(Exception):
     '''Exception wrapper class for errors related to Config Note Interface'''
@@ -58,6 +59,7 @@ class ConfigNoteInterface:
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
                 self.logger.error('Score invitation not found: {}'.format(invitation_id))
+                self.set_status(MatcherStatus.ERROR)
                 raise ConfigNoteInterfaceError('Score invitation not found') from error_handle
 
     @property
@@ -213,7 +215,7 @@ class ConfigNoteInterface:
 
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
-        self.config_note.content['status'] = status
+        self.config_note.content['status'] = status.value
 
         if message:
             message = str(message)
