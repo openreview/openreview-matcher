@@ -29,7 +29,7 @@ class FairFlow(object):
     third group, or running the procedure does not change the sum total score of
     the matching.
     """
-    def __init__(self, minimums, maximums, demands, encoder, allow_all_affinities=True, solution=None,
+    def __init__(self, minimums, maximums, demands, encoder, allow_non_pos_affinity_assignments=False, solution=None,
                  logger=logging.getLogger(__name__)):
         """
         Initialize a makespan flow matcher
@@ -38,14 +38,14 @@ class FairFlow(object):
         :param maximums: a list of integers specifying the maximum number of papers for each reviewer.
         :param demands: a list of integers specifying the number of reviews required per paper.
         :param encoder: an Encoder class object used to get affinity and constraint matrices.
-        :param allow_all_affinities: bool to allow all pairs with any affinity in the solution. set to False to allow
-                                     (strict) positive affinity only in solution.
+        :param allow_non_pos_affinity_assignments: bool to allow pairs with non-positive affinity in the solution.
+                                                   set to False to only allow (strict) positive affinity in solution.
         :param solution: a matrix of assignments (same shape as encoder.affinity_matrix)
 
         :return: initialized makespan matcher.
         """
         self.logger = logger
-        self.allow_all_affinities = allow_all_affinities
+        self.allow_non_pos_affinity_assignments = allow_non_pos_affinity_assignments
         self.logger.debug('Init FairFlow')
         self.constraint_matrix = encoder.constraint_matrix
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
@@ -63,7 +63,7 @@ class FairFlow(object):
         self.num_reviewers = np.size(self.affinity_matrix, axis=0)
         self.num_papers = np.size(self.affinity_matrix, axis=1)
 
-        if not self.allow_all_affinities:
+        if not self.allow_non_pos_affinity_assignments:
             # Find reviewers with no positive affinity edges after constraints are applied and remove their load_lb
             bad_affinity_reviewers = np.where(np.max(self.affinity_matrix * (self.constraint_matrix == 0).T, axis=1) <= 0)[0]
             logging.debug("Setting minimum load for {} reviewers to 0 "
@@ -271,7 +271,7 @@ class FairFlow(object):
                 for pap2 in g2:
                     if self.solution[rev, pap2] == 0.0 and self.constraint_matrix[pap2, rev] == 0.0:
                         rp_aff = self.affinity_matrix[rev, pap2]
-                        if not self.allow_all_affinities and rp_aff <= 0.0:
+                        if not self.allow_non_pos_affinity_assignments and rp_aff <= 0.0:
                             continue
                         self.start_inds.append(rev)
                         self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
@@ -305,7 +305,7 @@ class FairFlow(object):
             for pap3 in g3:
                 if self.solution[rev, pap3] == 0.0 and self.constraint_matrix[pap3, rev] == 0.0:
                     rp_aff = self.affinity_matrix[rev, pap3]
-                    if not self.allow_all_affinities and rp_aff <= 0.0:
+                    if not self.allow_non_pos_affinity_assignments and rp_aff <= 0.0:
                         continue
                     self.start_inds.append(rev)
                     self.end_inds.append(self.num_reviewers + pap3)
@@ -487,7 +487,7 @@ class FairFlow(object):
                 # a constraint of 0 means there's no constraint, so apply the cost as normal, so add an arc normally
                 # a constraint of 1 means that this user was explicitly assigned to this paper. We do not support positive constraints right now, so, do not add an arc
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
-                if edge_constraint == 0 and (self.allow_all_affinities or ws[i, j] > 0):
+                if edge_constraint == 0 and (self.allow_non_pos_affinity_assignments or ws[i, j] > 0):
                     # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
                     mcf.AddArcWithCapacityAndUnitCost(i, n_rev + j, int(arc_cap), int(-1.0 - self.big_c * ws[i, j]))
 
@@ -562,7 +562,7 @@ class FairFlow(object):
 
                 success_c1 = s3 == 0
                 success_c2 = (np.min(self.affinity_matrix[self.solution.astype(np.bool)]) > 0)
-                success = success_c1 & (self.allow_all_affinities | success_c2)
+                success = success_c1 & (self.allow_non_pos_affinity_assignments | success_c2)
                 self.logger.debug('#info FairFlow:success = %s [success_c1: %s, success_c2: %s]'
                                   % (success, success_c1, success_c2))
             except SolverException as error_handle:
