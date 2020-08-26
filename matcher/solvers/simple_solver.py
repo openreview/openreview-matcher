@@ -25,6 +25,10 @@ SimpleSolver is initialized with the following arguments:
         1: strongly favor this pair
        -1: strongly avoid this pair
 
+    "allow_zero_score_assignments":
+        False (default) or True. If False, does not use zero-affinity pairs
+        (scores for the pair are not known and default to 0) in the solution
+
     "strict":
         True (default) or False. If True, throws an error when the sum of
         the number of available reviews does not equal the sum of demands
@@ -66,13 +70,13 @@ class SimpleSolver:
             demands,
             cost_matrix,
             constraint_matrix,
-            allow_non_pos_affinity_assignments=False,
+            allow_zero_score_assignments=False,
             logger=logging.getLogger(__name__),
             strict=True
         ):
 
         self.logger = logger
-        self.allow_non_pos_affinity_assignments = allow_non_pos_affinity_assignments
+        self.allow_zero_score_assignments = allow_zero_score_assignments
 
         self.cost = 0
         self.solved = False
@@ -131,7 +135,7 @@ class SimpleSolver:
                 # a constraint of 0 means there's no constraint, so apply the cost as normal
                 # a constraint of 1 means that this user was explicitly assigned to this paper
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
-                if arc_constraint == 0 and (self.allow_non_pos_affinity_assignments or arc_cost < 0):
+                if arc_constraint == 0 and (self.allow_zero_score_assignments or arc_cost != 0):
                     self.add_edge(r_node, p_node, 1, arc_cost)
                 elif arc_constraint == 1:
                     # TODO: this should be handled as a hard constraint

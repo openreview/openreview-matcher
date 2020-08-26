@@ -27,7 +27,7 @@ class MinMaxSolver:
             maximums,
             demands,
             encoder,
-            allow_non_pos_affinity_assignments=False,
+            allow_zero_score_assignments=False,
             logger=logging.getLogger(__name__)
         ):
 
@@ -35,18 +35,19 @@ class MinMaxSolver:
         self.maximums = maximums
         self.demands = demands
         self.cost_matrix = encoder.cost_matrix
-        self.allow_non_pos_affinity_assignments = allow_non_pos_affinity_assignments
+        self.allow_zero_score_assignments = allow_zero_score_assignments
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
 
         self.constraint_matrix = encoder.constraint_matrix
 
-        if not self.allow_non_pos_affinity_assignments:
-            # Find reviewers with no negative cost edges after constraints are applied and remove their load_lb
-            bad_affinity_reviewers = np.where(np.min(self.cost_matrix * (self.constraint_matrix == 0), axis=0) >= 0)[0]
+        if not self.allow_zero_score_assignments:
+            # Find reviewers with no known cost edges (non-zero) after constraints are applied and remove their load_lb
+            bad_affinity_reviewers = np.where(np.all((self.cost_matrix * (self.constraint_matrix == 0)) == 0,
+                                                     axis=0))[0]
             logging.debug("Setting minimum load for {} reviewers to 0 because "
-                          "they do not have positive affinity with any paper".format(len(bad_affinity_reviewers)))
+                          "they do not have known affinity with any paper".format(len(bad_affinity_reviewers)))
             for rev_id in bad_affinity_reviewers:
                 self.minimums[rev_id] = 0
 
@@ -82,7 +83,7 @@ class MinMaxSolver:
             self.demands,
             self.cost_matrix,
             self.constraint_matrix,
-            allow_non_pos_affinity_assignments=self.allow_non_pos_affinity_assignments,
+            allow_zero_score_assignments=self.allow_zero_score_assignments,
             logger=self.logger,
             strict=False
         ) # strict=False prevents errors from being thrown for supply/demand mismatch
@@ -101,7 +102,7 @@ class MinMaxSolver:
             adjusted_demands,
             self.cost_matrix,
             adjusted_constraints,
-            allow_non_pos_affinity_assignments=self.allow_non_pos_affinity_assignments,
+            allow_zero_score_assignments=self.allow_zero_score_assignments,
             logger=self.logger)
 
         maximum_result = maximum_solver.solve()

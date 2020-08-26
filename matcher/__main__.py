@@ -57,8 +57,8 @@ parser.add_argument('--min_papers_default', default=0, type=int)
 parser.add_argument('--max_papers_default', type=int)
 parser.add_argument('--num_reviewers', default=3, type=int)
 parser.add_argument('--num_alternates', default=3, type=int)
-parser.add_argument('--allow_non_pos_affinity_assignments', action='store_true',
-                    help='''Use flag to allow <= 0 affinity pairs in solver solution''')
+parser.add_argument('--allow_zero_score_assignments', action='store_true',
+                    help='''Use flag to allow 0 affinity (unknown scores default to 0) pairs in solver solution''')
 parser.add_argument('--user_group', type=str)
 
 parser.add_argument(
@@ -182,7 +182,7 @@ match_data = {
     'maximums': maximums,
     'demands': demands,
     'num_alternates': num_alternates,
-    'allow_non_pos_affinity_assignments': args.allow_non_pos_affinity_assignments,
+    'allow_zero_score_assignments': args.allow_zero_score_assignments,
     'assignments_output': 'assignments.json',
     'alternates_output': 'alternates.json',
     'logger': logger

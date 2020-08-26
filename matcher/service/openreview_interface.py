@@ -17,8 +17,8 @@ class ConfigNoteInterface:
         self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
         self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_notes = []
-        self.allow_non_pos_affinity_assignments = (self.config_note.content.get('allow_non_pos_affinity_assignments',
-                                                                                'False') == 'True')
+        self.allow_zero_score_assignments = (self.config_note.content.get('allow_zero_score_assignments',
+                                                                          'False') == 'True')
 
         # Lazy variables
         self._reviewers = None
