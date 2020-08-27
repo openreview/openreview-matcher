@@ -373,7 +373,8 @@ def test_solver_fairflow_respect_minimums_2():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(aggregate_score_matrix, constraint_matrix)
+        encoder(aggregate_score_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -419,7 +420,8 @@ def test_solver_fairflow_respect_minimums_3():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(aggregate_score_matrix, constraint_matrix)
+        encoder(aggregate_score_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -466,7 +468,8 @@ def test_solver_fairflow_respects_one_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(aggregate_score_matrix, constraint_matrix)
+        encoder(aggregate_score_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -512,7 +515,8 @@ def test_solver_fairflow_respects_two_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(aggregate_score_matrix, constraint_matrix)
+        encoder(aggregate_score_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)

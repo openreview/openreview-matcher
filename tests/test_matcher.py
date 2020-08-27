@@ -112,12 +112,11 @@ def test_matcher_minmax_fixed_input():
 
     assert len(test_minmax_matcher.solution) == 3
     assert len(test_minmax_matcher.solution[0]) == 3
-    assert None == nptest.assert_array_equal(test_minmax_matcher.solution, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    assert None == nptest.assert_array_equal(test_minmax_matcher.solution, [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
     assert test_minmax_matcher.assignments
     assert test_minmax_matcher.alternates
 
 def test_matcher_fairflow_fixed_input():
-    logger = logging.getLogger(__name__)
     reviewers = ['reviewer1', 'reviewer2', 'reviewer3']
     papers = ['paper1', 'paper2', 'paper3']
 
@@ -154,6 +153,6 @@ def test_matcher_fairflow_fixed_input():
 
     assert len(test_fairflow_matcher.solution) == 3
     assert len(test_fairflow_matcher.solution[0]) == 3
-    assert None == nptest.assert_array_equal(test_fairflow_matcher.solution, [[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    assert None == nptest.assert_array_equal(test_fairflow_matcher.solution, [[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
     assert test_fairflow_matcher.assignments
     assert test_fairflow_matcher.alternates

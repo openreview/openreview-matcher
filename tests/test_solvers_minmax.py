@@ -139,7 +139,8 @@ def test_solver_minmax_finds_lowest_cost_soln():
         [1,1,1,1],
         [2,2,2,2],
         [1,1,2],
-        encoder(cost_matrix, constraint_matrix)
+        encoder(cost_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3,4)
@@ -320,7 +321,8 @@ def test_solver5_minmax():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(cost_matrix, constraint_matrix)
+        encoder(cost_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -364,7 +366,8 @@ def test_solver6_minmax():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(cost_matrix, constraint_matrix)
+        encoder(cost_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -409,7 +412,8 @@ def test_solver_minmax_respects_one_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(cost_matrix, constraint_matrix)
+        encoder(cost_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)
@@ -451,7 +455,8 @@ def test_solver_minmax_respects_two_minimum():
         rev_mins,
         rev_maxs,
         papers_reqd,
-        encoder(cost_matrix, constraint_matrix)
+        encoder(cost_matrix, constraint_matrix),
+        allow_zero_score_assignments=True
     )
     res = solver.solve()
     assert res.shape == (3, 4)

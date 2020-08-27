@@ -368,7 +368,8 @@ def test_integration_no_scores(openreview_context):
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
         'match_group': reviewers_id,
         'status': 'Initialized',
-        'solver': 'MinMax'
+        'solver': 'MinMax',
+        'allow_zero_score_assignments': 'Allow'
     }
 
     config_note = openreview.Note(**{
@@ -436,10 +437,6 @@ def test_routes_invalid_invitation(openreview_context):
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
         'match_group': reviewers_id,
         'scores_specification': {
-            # conference.get_affinity_score_id(reviewers_id): {
-            #     'weight': 1.0,
-            #     'default': 0.0
-            # },
             '<some_invalid_invitation>': {
                 'weight': 1.0,
                 'default': 0.0
