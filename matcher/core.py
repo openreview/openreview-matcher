@@ -5,7 +5,7 @@ import time
 import json
 from enum import Enum
 from .solvers import SolverException, MinMaxSolver, FairFlow
-from .encoder import Encoder
+from .encoder import Encoder, EncoderError
 
 SOLVER_MAP = {
     'MinMax' : MinMaxSolver,
@@ -130,11 +130,6 @@ class Matcher:
             )
             self.logger.debug('Finished encoding')
 
-        except Exception as error_handle:
-            self.set_status(MatcherStatus.ERROR, str(error_handle))
-            raise error_handle
-
-        try:
             self.logger.debug('Preparing solver')
             solver = self.solver_class(
                 self.datasource.minimums,
@@ -149,6 +144,10 @@ class Matcher:
             self.logger.debug('Solving solver')
             solution = solver.solve()
             self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
+
+        except EncoderError as error_handle:
+            self.set_status(MatcherStatus.ERROR, str(error_handle))
+            raise error_handle
 
         except SolverException as error_handle:
             self.logger.debug('No Solution={}'.format(error_handle))

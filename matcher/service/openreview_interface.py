@@ -10,9 +10,10 @@ class ConfigNoteInterfaceError(Exception):
     pass
 
 class ConfigNoteInterface:
-    def __init__(self, client, config_note_id, logger=logging.getLogger(__name__)):
+    def __init__(self, client, config_note, logger=logging.getLogger(__name__)):
         self.client = client
         self.logger = logger
+        self.config_note = config_note
 
         self.paper_notes = []
 
@@ -25,16 +26,10 @@ class ConfigNoteInterface:
         self._demands = None
         self._constraints = None
 
-        self._init_config_attributes(config_note_id)
+        self._init_config_attributes()
         self._validate_score_spec()
 
-    def _init_config_attributes(self, config_note_id):
-        try:
-            self.logger.debug('GET note id={}'.format(config_note_id))
-            self.config_note = self.client.get_note(config_note_id)
-        except openreview.OpenReviewException as error_handle:
-            self.logger.error('Config note note found: {}'.format(config_note_id))
-            raise ConfigNoteInterfaceError('Config note not found') from error_handle
+    def _init_config_attributes(self):
 
         try:
             self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))

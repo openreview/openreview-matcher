@@ -44,6 +44,7 @@ def match():
         flask.current_app.logger.error('No Authorization token in headers')
         result['error'] = 'No Authorization token in headers'
         return flask.jsonify(result), 400
+
     try:
         config_note_id = flask.request.json['configNoteId']
 
@@ -54,10 +55,14 @@ def match():
             token=token,
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
         )
+        
+        config_note = openreview.tools.get_note(client=openreview_client, id=config_note_id)
+        if config_note is None:
+            raise ConfigNoteInterfaceError('Config note not found')
 
         interface = ConfigNoteInterface(
             client=openreview_client,
-            config_note_id=config_note_id,
+            config_note=config_note,
             logger=flask.current_app.logger
         )
 

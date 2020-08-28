@@ -266,7 +266,7 @@ def test_confignote_interface():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     assert interface.config_note
     assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
@@ -542,7 +542,7 @@ def test_confignote_interface_backward_compat_max_users():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     assert interface.config_note
     assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
@@ -838,7 +838,7 @@ def test_confignote_interface_custom_demand_edges():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     assert interface.reviewers
     assert interface.config_note
@@ -1069,7 +1069,7 @@ def test_confignote_missing_edges_spec():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     assert interface.reviewers
     assert interface.config_note
@@ -1228,7 +1228,7 @@ def test_confignote_interface_no_scores_spec():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     assert interface.reviewers
     assert interface.config_note
@@ -1469,7 +1469,7 @@ def test_confignote_interface_custom_load_negative():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
         if reviewer == 'reviewer0':
@@ -1704,7 +1704,7 @@ def test_confignote_interface_custom_overload():
 
     client = mock_client(**mock_openreview_data)
 
-    interface = ConfigNoteInterface(client, '<config_note_id>')
+    interface = ConfigNoteInterface(client, mock_openreview_data.get('mock_notes').get('<config_note_id>'))
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
         if reviewer == 'reviewer3':
