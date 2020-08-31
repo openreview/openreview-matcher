@@ -377,7 +377,7 @@ def test_routes_invalid_aggregate_invitation(openreview_context):
 
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content['status'] == 'Error'
-    assert config_note.content['error_message'] == 'Aggregate score invitation not found'
+    assert config_note.content['error_message'] == 'Not Found'
 
 def test_routes_invalid_score_invitation(openreview_context):
     ''''''
@@ -446,7 +446,7 @@ def test_routes_invalid_score_invitation(openreview_context):
 
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content['status'] == 'Error'
-    assert config_note.content['error_message'] == 'Score invitation not found'
+    assert config_note.content['error_message'] == 'Not Found'
 
 def test_routes_missing_header(openreview_context):
     '''request with missing header should response with 400'''

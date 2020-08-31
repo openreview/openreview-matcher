@@ -31,31 +31,18 @@ class ConfigNoteInterface:
 
     def _init_config_attributes(self):
 
-        try:
-            self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
-            self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
-        except openreview.OpenReviewException as error_handle:
-            self.logger.error('Assignment invitation not found: {}'.format(self.config_note.content['assignment_invitation']))
-            raise ConfigNoteInterfaceError('Assignment invitation not found') from error_handle
+        self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
+        self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
 
-        try:
-            self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
-            self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
-        except openreview.OpenReviewException as error_handle:
-            self.logger.error('Aggregate score invitation not found: {}'.format(self.config_note.content['aggregate_score_invitation']))
-            raise ConfigNoteInterfaceError('Aggregate score invitation not found') from error_handle
+        self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
+        self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
 
         self.num_alternates = int(self.config_note.content.get('alternates', 0))
 
     def _validate_score_spec(self):
         for invitation_id in self.config_note.content.get('scores_specification', {}):
             self.logger.debug('GET invitation id={}'.format(invitation_id))
-            try:
-                self.client.get_invitation(invitation_id)
-            except openreview.OpenReviewException as error_handle:
-                self.logger.error('Score invitation not found: {}'.format(invitation_id))
-                self.set_status(MatcherStatus.ERROR)
-                raise ConfigNoteInterfaceError('Score invitation not found') from error_handle
+            self.client.get_invitation(invitation_id)
 
     @property
     def normalization_types(self):
@@ -87,7 +74,6 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             error_msg = 'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element)
-                            self.set_status('Error', error_msg)
                             raise openreview.OpenReviewException(error_msg)
             self.paper_notes = list(openreview.tools.iterget_notes(
                 self.client,

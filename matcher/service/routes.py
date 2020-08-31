@@ -55,7 +55,8 @@ def match():
             token=token,
             baseurl=flask.current_app.config['OPENREVIEW_BASEURL']
         )
-        
+
+        config_note = None
         config_note = openreview.tools.get_note(client=openreview_client, id=config_note_id)
         if config_note is None:
             raise ConfigNoteInterfaceError('Config note not found')
@@ -103,16 +104,20 @@ def match():
         flask.current_app.logger.error(str(error_handle))
         result['error'] = str(error_handle)
         return flask.jsonify(result), 400
-    
+
     except openreview.OpenReviewException as error_handle:
         error_type = str(error_handle)
-        flask.current_app.logger.error(error_type)  
+        flask.current_app.logger.error(error_type)
         status = 500
 
         if 'not found' in error_type.lower():
             status = 404
+            if config_note:
+                set_config_status(openreview_client, config_note_id, 'Error', message=error_handle.args[0][0]['type'])
         elif 'forbidden' in error_type.lower():
             status = 403
+            if config_note:
+                set_config_status(openreview_client, config_note_id, 'Error', message=error_handle.args[0][0]['type'])
 
         result['error'] = error_type
         return flask.jsonify(result), status
