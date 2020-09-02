@@ -25,6 +25,7 @@ def test_solvers_fairflow_random():
     )
     res_A = solver_A.solve()
     assert res_A.shape == (3,4)
+    assert solver_A.solved
 
     aggregate_score_matrix_B = np.transpose(np.array([
         [0, 0, 0],
@@ -41,6 +42,7 @@ def test_solvers_fairflow_random():
     )
     res_B = solver_B.solve()
     assert res_B.shape == (3,4)
+    assert solver_B.solved
 
     # ensure that the affinity matrices are random
     # (i.e. overwhelmingly likely to be different)
@@ -529,3 +531,42 @@ def test_solver_fairflow_respects_two_minimum():
             if res[rix,pix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews >= 1
+
+def test_solver_fairflow_avoid_zero_scores_get_no_solution():
+    '''
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 2, max: 3 papers.
+    Each paper needs 3 reviews.
+    Reviewer 4 has very high cost.
+    Other reviewers have 0 cost.
+    Purpose:  Make sure all reviewers (including reviewer 4) get at least their minimum
+    '''
+    num_papers = 3
+    num_reviewers = 4
+    min_papers_per_reviewer = 2
+    max_papers_per_reviewer = 3
+    paper_revs_reqd = 3
+    aggregate_score_matrix = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 1, 0]]))
+    constraint_matrix = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]]))
+
+    rev_mins = [min_papers_per_reviewer] * num_reviewers
+    rev_maxs = [max_papers_per_reviewer] * num_reviewers
+    papers_reqd = [paper_revs_reqd] * num_papers
+    solver = FairFlow(
+        rev_mins,
+        rev_maxs,
+        papers_reqd,
+        encoder(aggregate_score_matrix, constraint_matrix),
+        allow_zero_score_assignments=False
+    )
+
+    with pytest.raises(SolverException, match=r'.*Solver could not find a solution.*'):
+        res = solver.solve()

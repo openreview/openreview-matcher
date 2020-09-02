@@ -279,7 +279,7 @@ def test_integration_no_scores(openreview_context):
         'match_group': reviewers_id,
         'status': 'Initialized',
         'solver': 'FairFlow',
-        'allow_zero_score_assignments': 'Allow'
+        'allow_zero_score_assignments': 'Yes'
     }
 
     config_note = openreview.Note(**{
