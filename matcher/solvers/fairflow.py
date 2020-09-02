@@ -272,14 +272,13 @@ class FairFlow(object):
                 for pap2 in g2:
                     if self.solution[rev, pap2] == 0.0 and self.constraint_matrix[pap2, rev] == 0.0:
                         rp_aff = self.affinity_matrix[rev, pap2]
-                        if not self.allow_zero_score_assignments and rp_aff == 0.0:
-                            continue
-                        self.start_inds.append(rev)
-                        self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
-                        pg2_to_minaff[pap2] = min(pg2_to_minaff[pap2], rp_aff)
+                        if self.allow_zero_score_assignments or rp_aff != 0.0:
+                            self.start_inds.append(rev)
+                            self.end_inds.append(self.num_reviewers + self.num_papers + 2 + pap2)
+                            pg2_to_minaff[pap2] = min(pg2_to_minaff[pap2], rp_aff)
 
-                        self.caps.append(1)
-                        self.costs.append(0)
+                            self.caps.append(1)
+                            self.costs.append(0)
                 added.add(rev)
         # For each paper in g2, reverse the flow to assigned revs only if the
         # reversal, plus the min edge coming in from G1 wouldn't violate ms.
@@ -306,18 +305,17 @@ class FairFlow(object):
             for pap3 in g3:
                 if self.solution[rev, pap3] == 0.0 and self.constraint_matrix[pap3, rev] == 0.0:
                     rp_aff = self.affinity_matrix[rev, pap3]
-                    if not self.allow_zero_score_assignments and rp_aff == 0.0:
-                        continue
-                    self.start_inds.append(rev)
-                    self.end_inds.append(self.num_reviewers + pap3)
-                    self.caps.append(1)
-                    lb = self.makespan - self.max_affinities
-                    pap_score = pap_scores[pap3]
-                    # give a bigger reward if assignment would improve group.
-                    if rp_aff + pap_score >= lb:
-                        self.costs.append(int(-1.0 - self.bigger_c * rp_aff))
-                    else:
-                        self.costs.append(int(-1.0 - self.big_c * rp_aff))
+                    if self.allow_zero_score_assignments or rp_aff != 0.0:
+                        self.start_inds.append(rev)
+                        self.end_inds.append(self.num_reviewers + pap3)
+                        self.caps.append(1)
+                        lb = self.makespan - self.max_affinities
+                        pap_score = pap_scores[pap3]
+                        # give a bigger reward if assignment would improve group.
+                        if rp_aff + pap_score >= lb:
+                            self.costs.append(int(-1.0 - self.bigger_c * rp_aff))
+                        else:
+                            self.costs.append(int(-1.0 - self.big_c * rp_aff))
 
         flow = int(min(np.size(g3) - papers_needing_no_assignments, np.size(g1)))
         self.supplies = np.zeros(self.num_reviewers + self.num_papers + 2)
