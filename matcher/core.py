@@ -36,6 +36,7 @@ class KeywordDatasource:
                 maximums=[],
                 demands=[],
                 num_alternates=0,
+                allow_zero_score_assignments=False,
                 assignments_output='assignments.json',
                 alternates_output='alternates.json',
                 logger=logging.getLogger(__name__)
@@ -50,6 +51,7 @@ class KeywordDatasource:
         self.maximums = maximums
         self.demands = demands
         self.num_alternates = num_alternates
+        self.allow_zero_score_assignments = allow_zero_score_assignments
         self.normalization_types = []
         self.assignments_output = assignments_output
         self.alternates_output = alternates_output
@@ -136,6 +138,7 @@ class Matcher:
             self.datasource.maximums,
             self.datasource.demands,
             encoder,
+            allow_zero_score_assignments=self.datasource.allow_zero_score_assignments,
             logger=self.logger
         )
 

@@ -278,7 +278,8 @@ def test_integration_no_scores(openreview_context):
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
         'match_group': reviewers_id,
         'status': 'Initialized',
-        'solver': 'FairFlow'
+        'solver': 'FairFlow',
+        'allow_zero_score_assignments': 'Yes'
     }
 
     config_note = openreview.Note(**{
