@@ -110,7 +110,7 @@ def test_confignote_interface():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -294,11 +294,11 @@ def test_confignote_interface():
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
 
     very_low_bids = [
-        ('paper0', 'reviewer2'), 
-        ('paper1', 'reviewer3'), 
+        ('paper0', 'reviewer2'),
+        ('paper1', 'reviewer3'),
         ('paper2', 'reviewer0')]
     high_bids = [
-        ('paper0', 'reviewer0'), 
+        ('paper0', 'reviewer0'),
         ('paper0', 'reviewer3'),
         ('paper1', 'reviewer0'),
         ('paper1', 'reviewer1'),
@@ -386,7 +386,7 @@ def test_confignote_interface_backward_compat_max_users():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -570,11 +570,11 @@ def test_confignote_interface_backward_compat_max_users():
         assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
 
     very_low_bids = [
-        ('paper0', 'reviewer2'), 
-        ('paper1', 'reviewer3'), 
+        ('paper0', 'reviewer2'),
+        ('paper1', 'reviewer3'),
         ('paper2', 'reviewer0')]
     high_bids = [
-        ('paper0', 'reviewer0'), 
+        ('paper0', 'reviewer0'),
         ('paper0', 'reviewer3'),
         ('paper1', 'reviewer0'),
         ('paper1', 'reviewer1'),
@@ -669,7 +669,7 @@ def test_confignote_interface_custom_demand_edges():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -855,7 +855,7 @@ def test_confignote_interface_custom_demand_edges():
     assert_arrays(interface.minimums, [0,0,0,0])
     assert_arrays(interface.maximums, [1,2,1,2])
     assert_arrays(interface.demands, [2,1,0])
-    
+
     interface.set_status(MatcherStatus.RUNNING)
     assert interface.config_note.content['status'] == 'Running'
 
@@ -924,7 +924,7 @@ def test_confignote_missing_edges_spec():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -1142,7 +1142,7 @@ def test_confignote_interface_no_scores_spec():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -1314,7 +1314,7 @@ def test_confignote_interface_custom_load_negative():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
@@ -1546,7 +1546,7 @@ def test_confignote_interface_custom_overload():
                     id='<config_note_id>',
                     readers=[],
                     writers=[],
-                    signatures=[],
+                    signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
                         'match_group': '<match_group_id>',
