@@ -113,6 +113,7 @@ def test_confignote_interface():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
@@ -389,6 +390,7 @@ def test_confignote_interface_backward_compat_max_users():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'max_users': 1,
@@ -672,6 +674,7 @@ def test_confignote_interface_custom_demand_edges():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
@@ -927,6 +930,7 @@ def test_confignote_missing_edges_spec():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
@@ -1145,6 +1149,7 @@ def test_confignote_interface_no_scores_spec():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
@@ -1317,6 +1322,7 @@ def test_confignote_interface_custom_load_negative():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
@@ -1549,6 +1555,7 @@ def test_confignote_interface_custom_overload():
                     signatures=['<match_group_id>'],
                     invitation='<config_note_invitation>',
                     content={
+                        'title': 'test-1',
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
