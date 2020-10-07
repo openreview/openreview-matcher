@@ -18,6 +18,7 @@ class MatcherStatus(Enum):
     ERROR = 'Error'
     NO_SOLUTION = 'No Solution'
     COMPLETE = 'Complete'
+    DEPLOYING = 'Deploying'
     DEPLOYED = 'Deployed'
 
 class MatcherError(Exception):

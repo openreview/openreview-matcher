@@ -11,6 +11,9 @@ class ConfigNoteInterface:
         self.logger = logger
         self.logger.debug('GET note id={}'.format(config_note_id))
         self.config_note = self.client.get_note(config_note_id)
+        self.venue_id = self.config_note.signatures[0]
+        self.label = self.config_note.content['title']
+        self.match_group = self.config_note.content['match_group']
         self.logger.debug('GET invitation id={}'.format(self.config_note.content['assignment_invitation']))
         self.assignment_invitation = self.client.get_invitation(self.config_note.content['assignment_invitation'])
         self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
@@ -48,8 +51,8 @@ class ConfigNoteInterface:
     @property
     def reviewers(self):
         if self._reviewers is None:
-            self.logger.debug('GET group id={}'.format(self.config_note.content['match_group']))
-            match_group = self.client.get_group(self.config_note.content['match_group'])
+            self.logger.debug('GET group id={}'.format(self.match_group))
+            match_group = self.client.get_group(self.match_group)
             self._reviewers = match_group.members
         return self._reviewers
 
@@ -105,7 +108,7 @@ class ConfigNoteInterface:
             custom_demand_edges = self.client.get_grouped_edges(
                 invitation=custom_demand_invitation,
                 groupby='tail',
-                tail=self.config_note.content['match_group'],
+                tail=self.match_group,
                 select='head,weight')
         return custom_demand_edges
 
@@ -118,7 +121,7 @@ class ConfigNoteInterface:
             custom_supply_edges = self.client.get_grouped_edges(
                 invitation=custom_supply_invitation,
                 groupby='head',
-                head=self.config_note.content['match_group'],
+                head=self.match_group,
                 select='tail,weight')
         return custom_supply_edges
 
@@ -200,7 +203,6 @@ class ConfigNoteInterface:
 
     def set_assignments(self, assignments_by_forum):
         '''Helper function for posting assignments returned by the Encoder'''
-        label = self.config_note.content['title']
         paper_by_forum = {n.forum: n for n in self.paper_notes}
 
         self.logger.debug('saving {} edges'.format(self.assignment_invitation.id))
@@ -220,7 +222,7 @@ class ConfigNoteInterface:
                         forum,
                         user,
                         score,
-                        label,
+                        self.label,
                         paper.number
                     )
                 )
@@ -231,7 +233,7 @@ class ConfigNoteInterface:
                         forum,
                         user,
                         score,
-                        label,
+                        self.label,
                         paper.number
                     )
                 )
@@ -243,8 +245,6 @@ class ConfigNoteInterface:
 
     def set_alternates(self, alternates_by_forum):
         '''Helper function for posting alternates returned by the Encoder'''
-
-        label = self.config_note.content['title']
 
         paper_by_forum = {n.forum: n for n in self.paper_notes}
 
@@ -262,7 +262,7 @@ class ConfigNoteInterface:
                         forum,
                         user,
                         score,
-                        label,
+                        self.label,
                         paper.number
                     )
                 )
@@ -391,3 +391,33 @@ class ConfigNoteInterface:
                         edge['weight'], type(edge['weight'])))
 
         return score
+
+
+class Deployment():
+
+    def __init__(self, config_note_interface, logger=logging.getLogger(__name__)):
+
+        self.config_note_interface=config_note_interface
+
+    def run(self):
+
+        self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
+
+        notes = self.config_note_interface.client.get_notes(invitation='OpenReview.net/Support/-/Request_Form', content={'venue_id':self.config_note_interface.venue_id})
+        if not notes:
+            raise openreview.OpenReviewException('Venue request not found')
+
+        conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
+
+        conference.set_assignments(assignment_title=self.config_note_interface.label,
+            is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
+            overwrite=True)
+
+        self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
+
+
+
+
+
+
+
