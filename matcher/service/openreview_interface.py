@@ -286,6 +286,7 @@ class ConfigNoteInterface:
                 if index >= 0:
                     load = int(edge['weight'])
                     maximums[index] = load if load > 0 else 0
+                    minimums[index] = min(minimums[index], maximums[index])
                     count_processed_edges += 1
             self.logger.debug('Custom supply recorded for {} users'.format(count_processed_edges))
 
