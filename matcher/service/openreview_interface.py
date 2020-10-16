@@ -419,7 +419,7 @@ class Deployment():
             self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
         except Exception as e:
             self.logger.error(str(e))
-            self.config_note_interface.set_status(MatcherStatus.ERROR, str(e))
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYMENT_ERROR, str(e))
 
 
 
