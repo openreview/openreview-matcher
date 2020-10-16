@@ -399,6 +399,7 @@ class Deployment():
     def __init__(self, config_note_interface, logger=logging.getLogger(__name__)):
 
         self.config_note_interface=config_note_interface
+        self.logger=logger
 
     def run(self):
 
@@ -417,7 +418,7 @@ class Deployment():
 
             self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
         except Exception as e:
-            logger.error(str(e))
+            self.logger.error(str(e))
             self.config_note_interface.set_status(MatcherStatus.ERROR, str(e))
 
 
