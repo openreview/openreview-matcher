@@ -402,20 +402,23 @@ class Deployment():
 
     def run(self):
 
-        self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
+        try:
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
-        notes = self.config_note_interface.client.get_notes(invitation='OpenReview.net/Support/-/Request_Form', content={'venue_id':self.config_note_interface.venue_id})
-        if not notes:
-            raise openreview.OpenReviewException('Venue request not found')
+            notes = self.config_note_interface.client.get_notes(invitation='OpenReview.net/Support/-/Request_Form', content={'venue_id':self.config_note_interface.venue_id})
+            if not notes:
+                raise openreview.OpenReviewException('Venue request not found')
 
-        conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
+            conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
 
-        conference.set_assignments(assignment_title=self.config_note_interface.label,
-            is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
-            overwrite=True)
+            conference.set_assignments(assignment_title=self.config_note_interface.label,
+                is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
+                overwrite=True)
 
-        self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
-
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
+        except Exception as e:
+            logger.error(str(e))
+            self.config_note_interface.set_status(MatcherStatus.ERROR, str(e))
 
 
 
