@@ -678,7 +678,7 @@ def test_confignote_interface_custom_demand_edges():
                         'match_group': '<match_group_id>',
                         'paper_invitation': '<paper_invitation_id>',
                         'user_demand': 1,
-                        'min_papers': 0,
+                        'min_papers': 1,
                         'max_papers': 2,
                         'alternates': 1,
                         'conflicts_invitation': '<conflicts_invitation_id>',
@@ -822,7 +822,7 @@ def test_confignote_interface_custom_demand_edges():
                         {'tail': 'reviewer0', 'weight': 1},
                         {'tail': 'reviewer1', 'weight': 2},
                         {'tail': 'reviewer2', 'weight': 1},
-                        {'tail': 'reviewer3', 'weight': 2}
+                        {'tail': 'reviewer3', 'weight': 0}
                     ]
                 }
             ],
@@ -855,8 +855,8 @@ def test_confignote_interface_custom_demand_edges():
     assert interface.assignment_invitation
     assert interface.aggregate_score_invitation
 
-    assert_arrays(interface.minimums, [0,0,0,0])
-    assert_arrays(interface.maximums, [1,2,1,2])
+    assert_arrays(interface.minimums, [1,1,1,0])
+    assert_arrays(interface.maximums, [1,2,1,0])
     assert_arrays(interface.demands, [2,1,0])
 
     interface.set_status(MatcherStatus.RUNNING)
