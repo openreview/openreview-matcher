@@ -194,9 +194,7 @@ class ConfigNoteInterface:
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
         self.config_note.content['status'] = status.value
-
-        if message:
-            self.config_note.content['error_message'] = message
+        self.config_note.content['error_message'] = message
 
         self.config_note = self.client.post_note(self.config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
