@@ -20,6 +20,7 @@ class MatcherStatus(Enum):
     COMPLETE = 'Complete'
     DEPLOYING = 'Deploying'
     DEPLOYED = 'Deployed'
+    DEPLOYMENT_ERROR = 'Deployment Error'
 
 class MatcherError(Exception):
     '''Exception wrapper class for errors related to Matcher.'''

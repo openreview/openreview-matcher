@@ -194,9 +194,7 @@ class ConfigNoteInterface:
     def set_status(self, status, message=''):
         '''Set the status of the config note'''
         self.config_note.content['status'] = status.value
-
-        if message:
-            self.config_note.content['error_message'] = message
+        self.config_note.content['error_message'] = message
 
         self.config_note = self.client.post_note(self.config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
@@ -399,23 +397,27 @@ class Deployment():
     def __init__(self, config_note_interface, logger=logging.getLogger(__name__)):
 
         self.config_note_interface=config_note_interface
+        self.logger=logger
 
     def run(self):
 
-        self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
+        try:
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
-        notes = self.config_note_interface.client.get_notes(invitation='OpenReview.net/Support/-/Request_Form', content={'venue_id':self.config_note_interface.venue_id})
-        if not notes:
-            raise openreview.OpenReviewException('Venue request not found')
+            notes = self.config_note_interface.client.get_notes(invitation='OpenReview.net/Support/-/Request_Form', content={'venue_id':self.config_note_interface.venue_id})
+            if not notes:
+                raise openreview.OpenReviewException('Venue request not found')
 
-        conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
+            conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
 
-        conference.set_assignments(assignment_title=self.config_note_interface.label,
-            is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
-            overwrite=True)
+            conference.set_assignments(assignment_title=self.config_note_interface.label,
+                is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
+                overwrite=True)
 
-        self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
-
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
+        except Exception as e:
+            self.logger.error(str(e))
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYMENT_ERROR, str(e))
 
 
 
