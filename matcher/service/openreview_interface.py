@@ -410,6 +410,8 @@ class Deployment():
 
             conference = openreview.helpers.get_conference(self.config_note_interface.client, notes[0].id)
 
+            ## impersonate user to get all the permissions to deploy the groups
+            conference.client.impersonate(self.config_note_interface.venue_id)
             conference.set_assignments(assignment_title=self.config_note_interface.label,
                 is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
                 overwrite=True)
