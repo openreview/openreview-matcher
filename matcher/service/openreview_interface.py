@@ -414,7 +414,8 @@ class Deployment():
             conference.client.impersonate(self.config_note_interface.venue_id)
             conference.set_assignments(assignment_title=self.config_note_interface.label,
                 is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
-                overwrite=True)
+                overwrite=True,
+                enable_reviewer_reassignment=True)
 
             self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
         except Exception as e:
