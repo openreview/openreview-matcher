@@ -21,8 +21,6 @@ jobs:
         command: |
           cd ~/openreview
           npm install
-          sudo npm install -g grunt-cli
-          grunt regen
           mkdir files
     - run:
         name: run app
