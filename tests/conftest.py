@@ -60,7 +60,9 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     now = datetime.datetime.utcnow()
     builder.set_submission_stage(
         due_date = now + datetime.timedelta(minutes = 10),
-        remove_fields=['abstract', 'pdf', 'keywords', 'TL;DR'])
+        remove_fields=['abstract', 'pdf', 'keywords', 'TL;DR'],
+        withdrawn_submission_reveal_authors=True,
+        desk_rejected_submission_reveal_authors=True)
 
     conference = builder.get_result()
 
@@ -84,7 +86,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 'authorids': authorids
             }
             signatures = ['~Super_User1']
-            readers = [conference.id] + authorids + signatures + [conference.get_reviewers_id(), conference.get_program_chairs_id()]
+            readers = [conference.id] + authorids + signatures
             writers = [conference.id] + authorids + signatures
             submission = openreview.Note(
                 signatures = signatures,
@@ -103,7 +105,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
                 row = [posted_submission.forum, reviewer, '{:.3f}'.format(score)]
                 file_handle.write(','.join(row) + '\n')
 
-    conference.create_paper_groups(authors=True, reviewers=True)
+    conference.setup_post_submission_stage(force=True)
     conference.set_reviewers(emails=list(reviewers))
     conference.setup_matching(affinity_score_file=AFFINITY_SCORE_FILE, build_conflicts=True)
 
@@ -113,7 +115,7 @@ def assert_arrays(array_A, array_B, is_string=False):
     if is_string:
         assert all([a == b for a, b in zip(sorted(array_A), sorted(array_B))])
     else:
-        assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])    
+        assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 @pytest.fixture
 def openreview_context(scope='function'):
