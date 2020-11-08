@@ -283,7 +283,7 @@ class ConfigNoteInterface:
                 index = map_reviewers_to_idx.get(reviewer, -1)
                 if index >= 0:
                     load = int(edge['weight'])
-                    maximums[index] = load if load > 0 else 0
+                    maximums[index] = min(maximums[index], load if load > 0 else 0)
                     minimums[index] = min(minimums[index], maximums[index])
                     count_processed_edges += 1
             self.logger.debug('Custom supply recorded for {} users'.format(count_processed_edges))

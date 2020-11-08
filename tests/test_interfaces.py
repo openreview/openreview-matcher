@@ -273,7 +273,7 @@ def test_confignote_interface():
     assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
     assert_arrays(interface.papers, ['paper0', 'paper1', 'paper2'], is_string=True)
     assert_arrays(interface.minimums, [1,1,1,1])
-    assert_arrays(interface.maximums, [1,2,2,3])
+    assert_arrays(interface.maximums, [1,2,2,2])
     assert_arrays(interface.demands, [1,1,1])
     assert interface.constraints
     valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
@@ -550,7 +550,7 @@ def test_confignote_interface_backward_compat_max_users():
     assert_arrays(interface.reviewers, ['reviewer0', 'reviewer1', 'reviewer2', 'reviewer3'], is_string=True)
     assert_arrays(interface.papers, ['paper0', 'paper1', 'paper2'], is_string=True)
     assert_arrays(interface.minimums, [1,1,1,1])
-    assert_arrays(interface.maximums, [1,2,2,3])
+    assert_arrays(interface.maximums, [1,2,2,2])
     assert_arrays(interface.demands, [1,1,1])
     assert interface.constraints
     valid_constraint_pairs = [('paper0', 'reviewer1'), ('paper1', 'reviewer2'), ('paper2', 'reviewer3')]
@@ -1486,7 +1486,7 @@ def test_confignote_interface_custom_load_negative():
 def test_confignote_interface_custom_overload():
     '''
     Default maximum number of assignments per reviewer is 1,
-    but reviewer 3 has a custom load of 3.
+    but reviewer 3 has a custom load of 3. We should use the minimum of both.
 
     '''
 
@@ -1715,7 +1715,7 @@ def test_confignote_interface_custom_overload():
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
         if reviewer == 'reviewer3':
-            assert interface.maximums[reviewer_index] == 3
+            assert interface.maximums[reviewer_index] == 1
         else:
             assert interface.maximums[reviewer_index] == interface.config_note.content['max_papers']
 
