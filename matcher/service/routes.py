@@ -54,6 +54,7 @@ def match():
             config_note_id=config_note_id,
             logger=flask.current_app.logger
         )
+        openreview_client.impersonate(interface.venue_id)
 
         if interface.config_note.content['status'] == 'Running':
             raise MatcherStatusException('Matcher is already running')
@@ -138,7 +139,7 @@ def deploy():
             logger=flask.current_app.logger
         )
 
-        if interface.config_note.content['status'] != 'Complete':
+        if interface.config_note.content['status'] not in ['Complete', 'Deployment Error']:
             raise MatcherStatusException('Matcher configuration is not complete')
 
         deployment = Deployment(interface)
