@@ -4,12 +4,13 @@ import threading
 import time
 import json
 from enum import Enum
-from .solvers import SolverException, MinMaxSolver, FairFlow
+from .solvers import SolverException, MinMaxSolver, FairFlow, RandomizedSolver
 from .encoder import Encoder
 
 SOLVER_MAP = {
     'MinMax' : MinMaxSolver,
-    'FairFlow' : FairFlow
+    'FairFlow' : FairFlow,
+    'Randomized' : RandomizedSolver
 }
 
 class MatcherStatus(Enum):
@@ -38,6 +39,7 @@ class KeywordDatasource:
                 maximums=[],
                 demands=[],
                 num_alternates=0,
+                probability_limits=[],
                 allow_zero_score_assignments=False,
                 assignments_output='assignments.json',
                 alternates_output='alternates.json',
@@ -52,6 +54,7 @@ class KeywordDatasource:
         self.minimums = minimums
         self.maximums = maximums
         self.demands = demands
+        self.probability_limits = probability_limits
         self.num_alternates = num_alternates
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.normalization_types = []
@@ -129,6 +132,7 @@ class Matcher:
             scores_by_type=self.datasource.scores_by_type,
             weight_by_type=self.datasource.weight_by_type,
             normalization_types=self.datasource.normalization_types,
+            probability_limits=self.datasource.probability_limits,
             logger=self.logger
         )
 

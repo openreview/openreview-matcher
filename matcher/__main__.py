@@ -66,11 +66,19 @@ parser.add_argument(
     help='''Pass a csv file with each line in the form: "Group1, user_email"'''
 )
 
+parser.add_argument(
+    '--probability_limits',
+    help='''
+        One or more probability limit files for use with the Randomized Solver,
+        with each row containing comma-separated paperID, userID, and limit on the marginal probability of that assignment, OR a single float representing the limit on the marginal assignment probability for all assignments.
+        '''
+)
+
 # TODO: dynamically populate solvers list
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
     '--solver',
-    help='Choose from: {}'.format(['MinMax', 'FairFlow']),
+    help='Choose from: {}'.format(['MinMax', 'FairFlow', 'Randomized']),
     default='MinMax'
 )
 
@@ -83,6 +91,8 @@ if args.solver == 'MinMax':
     solver_class = 'MinMax'
 if args.solver == 'FairFlow':
     solver_class = 'FairFlow'
+if args.solver == 'Randomized':
+    solver_class = 'Randomized'
 
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))
@@ -169,6 +179,33 @@ if args.max_papers:
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
 
+probability_limits = []
+if args.probability_limits:
+    try:
+        probability_limits = float(args.probability_limits)
+    except ValueError: # read from file
+        missing_reviewers = set()
+        missing_papers = set()
+        with open(args.probability_limits) as file_handle:
+            for row in csv.reader(file_handle):
+                paper_id = row[0].strip()
+                profile_id = row[1].strip()
+                limit = row[2].strip()
+
+                if profile_id in reviewer_set and paper_id in paper_set:
+                    probability_limits.append((paper_id, profile_id, limit))
+
+                if profile_id not in reviewer_set:
+                    missing_reviewers.add(profile_id)
+                if paper_id not in paper_set:
+                    missing_papers.add(paper_id)
+
+        if missing_reviewers:
+            logger.info('Reviewers with probability limits but missing in all score files: ' + ', '.join(missing_reviewers))
+        if missing_papers:
+            logger.info('Papers with probability limits but missing in all score files: ' + ', '.join(missing_papers))
+
+
 logger.info('Count of reviewers={} '.format(len(reviewers)))
 logger.info('Count of papers={}'.format(len(papers)))
 
@@ -181,6 +218,7 @@ match_data = {
     'minimums': minimums,
     'maximums': maximums,
     'demands': demands,
+    'probability_limits': probability_limits,
     'num_alternates': num_alternates,
     'allow_zero_score_assignments': args.allow_zero_score_assignments,
     'assignments_output': 'assignments.json',

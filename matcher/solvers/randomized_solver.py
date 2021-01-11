@@ -1,0 +1,180 @@
+from .simple_solver import SimpleSolver
+from .bvn_extension import run_bvn
+from ortools.linear_solver import pywraplp
+from cffi import FFI
+import logging
+import numpy as np
+from itertools import product
+
+class RandomizedSolver():
+    def __init__(
+            self,
+            minimums,
+            maximums,
+            demands,
+            encoder,
+            allow_zero_score_assignments=False,
+            logger=logging.getLogger(__name__)
+        ):
+
+        self.minimums = minimums
+        self.maximums = maximums
+        self.demands = demands
+        self.cost_matrix = encoder.cost_matrix
+        self.num_revs, self.num_paps = self.cost_matrix.shape
+        self.allow_zero_score_assignments = allow_zero_score_assignments
+
+        if not self.cost_matrix.any():
+            self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
+
+        self.constraint_matrix = encoder.constraint_matrix
+
+        self.prob_limit_matrix = encoder.prob_limit_matrix
+
+        if not self.allow_zero_score_assignments: # TODO can we avoid doubling this? prob not since this is the first place both are combined
+            # Find reviewers with no known cost edges (non-zero) after constraints are applied and remove their load_lb
+            bad_affinity_reviewers = np.where(np.all((self.cost_matrix * (self.constraint_matrix == 0)) == 0,
+                                                     axis=0))[0]
+            logging.debug("Setting minimum load for {} reviewers to 0 because "
+                          "they do not have known affinity with any paper".format(len(bad_affinity_reviewers)))
+            for rev_id in bad_affinity_reviewers:
+                self.minimums[rev_id] = 0
+
+
+        self.solved = False
+        self.fractional_assignment = None
+        self.flow_matrix = None
+        self.cost = None
+        self.logger = logger
+
+        self._check_inputs()
+        self.construct_solver()
+
+
+    def _check_inputs(self):
+        '''Validate inputs (e.g. that matrix and array dimensions are correct) and that demand is in supply range'''
+        # TODO almost exact repeat from simple_solver
+        self.logger.debug('Checking graph inputs')
+
+        for matrix in [self.cost_matrix, self.constraint_matrix, self.prob_limit_matrix]:
+            if not isinstance(matrix, np.ndarray):
+                raise SolverException(
+                    'cost, constraint, and probability limit matrices must be of type numpy.ndarray')
+
+        if (not np.shape(self.cost_matrix) == (self.num_paps, self.num_revs) or 
+                not np.shape(self.constraint_matrix) == (self.num_paps, self.num_revs) or 
+                not np.shape(self.prob_limit_matrix) == (self.num_paps, self.num_revs)):
+            raise SolverException(
+                'cost {}, constraint {}, and probability limit {} matrices must be the same shape'.format(
+                    np.shape(self.cost_matrix), np.shape(self.constraint_matrix), np.shape(self.prob_limit_matrix)))
+
+        if not len(self.minimums) == self.num_revs or not len(self.maximums) == self.num_revs:
+            raise SolverException(
+                'minimums ({}) and maximums ({}) must be same length as number of reviewers ({})'.format(
+                    len(self.minimums), len(self.maximums), self.num_revs))
+
+        if not len(self.demands) == self.num_paps:
+            raise SolverException(
+                'self.demands array must be same length ({}) as number of papers ({})'.format(
+                    len(self.demands), self.num_paps))
+
+        # TODO exact repeat from minmax solver
+        self.logger.debug('Checking if demand is in range')
+
+        min_supply = sum(self.minimums)
+        max_supply = sum(self.maximums)
+        demand = sum(self.demands)
+
+        self.logger.debug('Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
+
+        if demand > max_supply or demand < min_supply:
+            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
+
+        # TODO also add section for checking subset feasibility 
+        self.logger.debug('Finished checking graph inputs')
+
+
+    def construct_solver(self):
+        self.lp_solver = pywraplp.Solver.CreateSolver('GLOP')
+
+        F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
+        #F = [[[]] * self.num_revs] * self.num_paps
+        for i, j in product(range(self.num_paps), range(self.num_revs)):
+            constraint = self.constraint_matrix[i, j]
+            limit = self.prob_limit_matrix[i, j]
+            if constraint == 0 and (self.allow_zero_score_assignments or self.cost_matrix[i, j] != 0):
+                # no conflict
+                F[i][j] = self.lp_solver.NumVar(0, limit, "F[{}][{}]".format(i, j))
+            elif constraint == 1:
+                # assign to paper as much as possible given limits
+                F[i][j] = self.lp_solver.NumVar(limit, limit, "F[{}][{}]".format(i, j))
+            else:
+                # conflict
+                F[i][j] = self.lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
+
+   
+        for i in range(self.num_paps):
+            c = self.lp_solver.Constraint(self.demands[i], self.demands[i])
+            for j in range(self.num_revs):
+                c.SetCoefficient(F[i][j], 1)
+
+        for j in range(self.num_revs):
+            c = self.lp_solver.Constraint(self.minimums[j], self.maximums[j])
+            for i in range(self.num_paps):
+                c.SetCoefficient(F[i][j], 1)
+
+        '''
+        for i, s in product(range(self.num_paps), range(self.num_subsets)):
+            c = self.lp_solver.Constraint(0, 1)
+            for j in range(self.num_revs):
+                if self.subsets[j] == s:
+                    c.SetCoefficient(F[i][j], 1)
+        '''
+    
+        objective = self.lp_solver.Objective()
+        for i, j in product(range(self.num_paps), range(self.num_revs)):
+            objective.SetCoefficient(F[i][j], self.cost_matrix[i, j])
+        objective.SetMinimization()
+
+
+    def solve(self):
+        assert hasattr(self, 'lp_solver'), \
+            'Solver not constructed. Run self.construct_solver() first.'
+
+        self.cost = 0
+        status = self.lp_solver.Solve()
+        if status == self.lp_solver.OPTIMAL:
+            self.solved = True
+            self.cost = self.lp_solver.Objective().Value()
+            self.fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs))
+            for i, j in product(range(self.num_paps), range(self.num_revs)):
+                self.fractional_assignment_matrix[i, j] = self.lp_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value() 
+        else:
+            logging.debug("Solver status: {}".format(status))
+            self.solved = False
+            return
+        print(self.fractional_assignment_matrix)
+        self.sample_assignment()
+        return self.flow_matrix
+
+    def sample_assignment(self):
+        assert self.solved, \
+            'Solver not solved. Run self.solve() before sampling.'
+
+        print("SAMPLING")
+        ffi = FFI()
+        F = self.fractional_assignment_matrix.flatten().astype(np.double)
+        Fbuf = ffi.new("double[]", self.num_paps * self.num_revs)
+        for i in range(F.size):
+            Fbuf[i] = F[i]
+        Sbuf = ffi.new("int[]", self.num_revs)
+        for i in range(self.num_revs):
+            Sbuf[i] = 1
+        
+        run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs)
+
+        self.flow_matrix = np.zeros((self.num_paps, self.num_revs))
+        for i in range(F.size):
+            coords = np.unravel_index(i, (self.num_paps, self.num_revs))
+            self.flow_matrix[coords] = Fbuf[i]
+        print(self.flow_matrix)
