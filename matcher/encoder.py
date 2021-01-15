@@ -155,7 +155,7 @@ class Encoder:
             for forum, user, limit in probability_limits:
                 coordinates = (self.index_by_forum[forum], self.index_by_user[user])
                 prob_limit_matrix[coordinates] = limit
-            return prob_limit_matrix
+        return prob_limit_matrix
 
 
     def decode_assignments(self, flow_matrix):

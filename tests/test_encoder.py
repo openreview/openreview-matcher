@@ -375,3 +375,72 @@ def test_encoder_score_use_correct_default(encoder_context):
 
     for a in range(0,3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
+
+def test_encoder_probability_limits(encoder_context):
+    '''Test of Encoder with probabililty limits'''
+    papers, reviewers, matrix_shape = encoder_context
+
+    scores_by_type = {
+        'mock/-/score_edge': {
+            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        }
+    }
+
+    weight_by_type = {
+        'mock/-/score_edge': 1
+    }
+
+    constraints = []
+
+    # by default all limits should be 1
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type
+    )
+
+    desired_limits = np.ones(matrix_shape)
+    assert np.all(encoder.prob_limit_matrix == desired_limits)
+
+    # test a list with all paper-reviewer pairs
+    prob_limits = [(forum, reviewer, 0.6) for forum, reviewer in itertools.product(papers, reviewers)]
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        probability_limits=prob_limits
+    )
+    desired_limits = np.full(matrix_shape, 0.6)
+    assert np.all(encoder.prob_limit_matrix == desired_limits)
+
+    # test a list with only some paper-reviewer pairs
+    prob_limits = [(papers[i], reviewers[i], 0.6) for i in range(2)]
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        probability_limits=prob_limits
+    )
+    desired_limits = np.ones(matrix_shape)
+    desired_limits[0, 0] = 0.6
+    desired_limits[1, 1] = 0.6
+    assert np.all(encoder.prob_limit_matrix == desired_limits)
+
+    # test a single float limit
+    prob_limits = 0.9
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        probability_limits=prob_limits
+    )
+    desired_limits = np.full(matrix_shape, 0.9)
+    assert np.all(encoder.prob_limit_matrix == desired_limits)

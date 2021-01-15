@@ -1,4 +1,23 @@
+'''
+A paper-reviewer assignment solver that maximizes expected total affinity,
+obeying limits on the marginal probabilities of each paper-reviewer assignment.
+
+The assignment is found in two steps: (1) an LP is solved to find the optimal
+"fractional assignment" (i.e., a marginal probability for each reviewer-paper
+pair), and (2) the fractional assignment is sampled from. The sampling
+procedure is implemented in C in the bvn_extension/ folder and accessed using
+the CFFI library. This algorithm is detailed in Jecmen et al 2020.
+
+Note that the sampling procedure has precision limited to 1e-7 and fractional
+assignments are rounded to this precision before sampling. It's possible that
+this results in an invalid sampled assignment if many probabilities are small.
+
+Currently, alternates do not obey any probability guarantees, so using them
+may break the desired probability limits.
+'''
+
 from .simple_solver import SimpleSolver
+from .core import SolverException
 from .bvn_extension import run_bvn
 from ortools.linear_solver import pywraplp
 from cffi import FFI
@@ -16,12 +35,11 @@ class RandomizedSolver():
             allow_zero_score_assignments=False,
             logger=logging.getLogger(__name__)
         ):
-
         self.minimums = minimums
         self.maximums = maximums
         self.demands = demands
         self.cost_matrix = encoder.cost_matrix
-        self.num_revs, self.num_paps = self.cost_matrix.shape
+        self.num_paps, self.num_revs = self.cost_matrix.shape
         self.allow_zero_score_assignments = allow_zero_score_assignments
 
         if not self.cost_matrix.any():
@@ -31,8 +49,7 @@ class RandomizedSolver():
 
         self.prob_limit_matrix = encoder.prob_limit_matrix
 
-        if not self.allow_zero_score_assignments: # TODO can we avoid doubling this? prob not since this is the first place both are combined
-            # Find reviewers with no known cost edges (non-zero) after constraints are applied and remove their load_lb
+        if not self.allow_zero_score_assignments:
             bad_affinity_reviewers = np.where(np.all((self.cost_matrix * (self.constraint_matrix == 0)) == 0,
                                                      axis=0))[0]
             logging.debug("Setting minimum load for {} reviewers to 0 because "
@@ -40,11 +57,11 @@ class RandomizedSolver():
             for rev_id in bad_affinity_reviewers:
                 self.minimums[rev_id] = 0
 
-
         self.solved = False
-        self.fractional_assignment = None
+        self.fractional_assignment_matrix = None
+        self.expected_cost = None # expected cost of the fractional assignment
         self.flow_matrix = None
-        self.cost = None
+        self.cost = None # actual cost of the sampled assignment
         self.logger = logger
 
         self._check_inputs()
@@ -52,8 +69,7 @@ class RandomizedSolver():
 
 
     def _check_inputs(self):
-        '''Validate inputs (e.g. that matrix and array dimensions are correct) and that demand is in supply range'''
-        # TODO almost exact repeat from simple_solver
+        '''Validate inputs (e.g. that matrix and array dimensions are correct)'''
         self.logger.debug('Checking graph inputs')
 
         for matrix in [self.cost_matrix, self.constraint_matrix, self.prob_limit_matrix]:
@@ -78,7 +94,15 @@ class RandomizedSolver():
                 'self.demands array must be same length ({}) as number of papers ({})'.format(
                     len(self.demands), self.num_paps))
 
-        # TODO exact repeat from minmax solver
+        # check that probabilities are legal
+        if np.any(np.logical_or(self.prob_limit_matrix > 1, self.prob_limit_matrix < 0)):
+            raise SolverException('Some probability limits are not in [0, 1]')
+
+        self.logger.debug('Finished checking graph inputs')
+
+
+    def _validate_input_range(self):
+        '''Validate if demand is in the range of min supply and max supply'''
         self.logger.debug('Checking if demand is in range')
 
         min_supply = sum(self.minimums)
@@ -90,15 +114,11 @@ class RandomizedSolver():
         if demand > max_supply or demand < min_supply:
             raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
 
-        # TODO also add section for checking subset feasibility 
-        self.logger.debug('Finished checking graph inputs')
-
 
     def construct_solver(self):
         self.lp_solver = pywraplp.Solver.CreateSolver('GLOP')
 
         F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
-        #F = [[[]] * self.num_revs] * self.num_paps
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             constraint = self.constraint_matrix[i, j]
             limit = self.prob_limit_matrix[i, j]
@@ -112,7 +132,6 @@ class RandomizedSolver():
                 # conflict
                 F[i][j] = self.lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
 
-   
         for i in range(self.num_paps):
             c = self.lp_solver.Constraint(self.demands[i], self.demands[i])
             for j in range(self.num_revs):
@@ -123,14 +142,6 @@ class RandomizedSolver():
             for i in range(self.num_paps):
                 c.SetCoefficient(F[i][j], 1)
 
-        '''
-        for i, s in product(range(self.num_paps), range(self.num_subsets)):
-            c = self.lp_solver.Constraint(0, 1)
-            for j in range(self.num_revs):
-                if self.subsets[j] == s:
-                    c.SetCoefficient(F[i][j], 1)
-        '''
-    
         objective = self.lp_solver.Objective()
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             objective.SetCoefficient(F[i][j], self.cost_matrix[i, j])
@@ -141,11 +152,11 @@ class RandomizedSolver():
         assert hasattr(self, 'lp_solver'), \
             'Solver not constructed. Run self.construct_solver() first.'
 
-        self.cost = 0
+        self.expected_cost = 0
         status = self.lp_solver.Solve()
         if status == self.lp_solver.OPTIMAL:
             self.solved = True
-            self.cost = self.lp_solver.Objective().Value()
+            self.expected_cost = self.lp_solver.Objective().Value()
             self.fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs))
             for i, j in product(range(self.num_paps), range(self.num_revs)):
                 self.fractional_assignment_matrix[i, j] = self.lp_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value() 
@@ -153,15 +164,20 @@ class RandomizedSolver():
             logging.debug("Solver status: {}".format(status))
             self.solved = False
             return
-        print(self.fractional_assignment_matrix)
+
+        # sampling procedure has limited precision of 1e-7
+        if np.any(self.fractional_assignment_matrix % 1e-7 >= 1e-8):
+            self.logger.debug('Warning: some probabilities will be rounded b    efore sampling. This could cause the sampled assignment to be invalid.')
+
         self.sample_assignment()
         return self.flow_matrix
+
 
     def sample_assignment(self):
         assert self.solved, \
             'Solver not solved. Run self.solve() before sampling.'
 
-        print("SAMPLING")
+        # construct CFFI interface to the sampling extension in C
         ffi = FFI()
         F = self.fractional_assignment_matrix.flatten().astype(np.double)
         Fbuf = ffi.new("double[]", self.num_paps * self.num_revs)
@@ -177,4 +193,12 @@ class RandomizedSolver():
         for i in range(F.size):
             coords = np.unravel_index(i, (self.num_paps, self.num_revs))
             self.flow_matrix[coords] = Fbuf[i]
-        print(self.flow_matrix)
+
+        self.cost = np.sum(self.flow_matrix * self.cost_matrix)
+
+        # check that sampled assignment is valid
+        pap_loads = np.sum(self.flow_matrix, axis=1)
+        rev_loads = np.sum(self.flow_matrix, axis=0)
+        if not (np.all(pap_loads == np.array(self.demands)) and
+                np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
+            raise SolverException('Sampled assignment is invalid. Maybe rounding occurred?')
