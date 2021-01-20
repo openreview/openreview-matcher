@@ -174,10 +174,6 @@ class RandomizedSolver():
                 out=(np.zeros_like(self.prob_limit_matrix)), # if fractional assignment is 1, alternate probability is 0
                 where=(self.fractional_assignment_matrix != 1))
 
-        # sampling procedure has limited precision of 1e-7
-        if np.any(self.fractional_assignment_matrix % 1e-7 >= 1e-8):
-            self.logger.debug('Warning: some probabilities will be rounded before sampling. This could cause the sampled assignment to be invalid.')
-
         self.sample_assignment()
         return self.flow_matrix
 
