@@ -163,8 +163,13 @@ class Matcher:
         if solver.solved:
             self.solution = solution
             self.set_assignments(encoder.decode_assignments(solution))
-            self.set_alternates(
-                encoder.decode_alternates(solution, self.datasource.num_alternates))
+            if hasattr(solver, 'get_alternates'):
+                self.set_alternates(
+                    encoder.decode_selected_alternates(
+                        solver.get_alternates(self.datasource.num_alternates)))
+            else:
+                self.set_alternates(
+                    encoder.decode_alternates(solution, self.datasource.num_alternates))
             self.set_status(MatcherStatus.COMPLETE)
         elif self.get_status() != 'No Solution':
             self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')

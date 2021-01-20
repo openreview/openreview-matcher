@@ -12,8 +12,8 @@ Note that the sampling procedure has precision limited to 1e-7 and fractional
 assignments are rounded to this precision before sampling. It's possible that
 this results in an invalid sampled assignment if many probabilities are small.
 
-Currently, alternates do not obey any probability guarantees, so using them
-may break the desired probability limits.
+Alternates are also selected probabilistically so that the probability limits
+are maintained even if all alternates are used.
 '''
 
 from .simple_solver import SimpleSolver
@@ -62,6 +62,7 @@ class RandomizedSolver():
         self.expected_cost = None # expected cost of the fractional assignment
         self.flow_matrix = None
         self.cost = None # actual cost of the sampled assignment
+        self.alternate_probability_matrix = None # marginal probability for each alternate
         self.logger = logger
 
         self._check_inputs()
@@ -165,15 +166,25 @@ class RandomizedSolver():
             self.solved = False
             return
 
+        # set alternate probability to guarantee that
+        # P[(p, r) assigned OR alternate] <= self.prob_limit_matrix[p, r]
+        # by setting P[alternate] = (prob_limit - P[assign]) / (1 - P[assign])
+        self.alternate_probability_matrix = np.divide(self.prob_limit_matrix - self.fractional_assignment_matrix,
+                1 - self.fractional_assignment_matrix,
+                out=(np.zeros_like(self.prob_limit_matrix)), # if fractional assignment is 1, alternate probability is 0
+                where=(self.fractional_assignment_matrix != 1))
+
         # sampling procedure has limited precision of 1e-7
         if np.any(self.fractional_assignment_matrix % 1e-7 >= 1e-8):
-            self.logger.debug('Warning: some probabilities will be rounded b    efore sampling. This could cause the sampled assignment to be invalid.')
+            self.logger.debug('Warning: some probabilities will be rounded before sampling. This could cause the sampled assignment to be invalid.')
 
         self.sample_assignment()
         return self.flow_matrix
 
 
     def sample_assignment(self):
+        ''' Sample a deterministic assignment from the fractional assignment '''
+
         assert self.solved, \
             'Solver not solved. Run self.solve() before sampling.'
 
@@ -202,3 +213,23 @@ class RandomizedSolver():
         if not (np.all(pap_loads == np.array(self.demands)) and
                 np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
             raise SolverException('Sampled assignment is invalid. Maybe rounding occurred?')
+
+
+    def get_alternates(self, num_alternates):
+        ''' Sample alternates in order to respect probability guarantees '''
+
+        assert self.solved, \
+            'Solver not solved. Run self.solve() before sampling.'
+
+        rng = np.random.default_rng()
+
+        alternates_by_index = {}
+        for i in range(self.num_paps):
+            unassigned = []
+            for j in range(self.num_revs):
+                # only allow j as an alternate with limited probability
+                if self.flow_matrix[i, j] == 0 and rng.random() < self.alternate_probability_matrix[i, j]:
+                    unassigned.append((self.cost_matrix[i, j], j))
+            unassigned.sort()
+            alternates_by_index[i] = [entry[1] for entry in unassigned[:num_alternates]]
+        return alternates_by_index

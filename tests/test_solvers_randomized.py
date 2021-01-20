@@ -72,6 +72,36 @@ def test_basic():
     ]))
     assert np.all(solver.fractional_assignment_matrix == solution), 'Fractional assignment should be correct'
 
+def test_varied_limits():
+    ''' Test with varying probability limits '''
+    S = np.transpose(np.array([
+        [1, 0.1],
+        [1, 1],
+        [0.3, 0.6],
+        [0.5, 0.8]
+    ]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 0.75)
+    Q[0, 0] = 0.5
+    Q[1, 2] = 0.25
+    Q[0, 1] = 0.5
+    Q[0, 3] = 1
+    solver = RandomizedSolver(
+        [0,0,0,0],
+        [1,1,1,1],
+        [2,2],
+        encoder(-S, M, Q)
+    )
+
+    check_test_solution(solver)
+
+    solution = np.transpose(np.array([
+        [0.5, 0.5],
+        [0.5, 0.5],
+        [0.75, 0.25],
+        [0.25, 0.75]
+    ]))
+    assert np.all(solver.fractional_assignment_matrix == solution), 'Fractional assignment should be correct'
 
 def test_bad_limits():
     ''' Test for error-checking the probability limits '''
@@ -96,7 +126,8 @@ def test_bad_limits():
     except SolverException:
         pass
 
-    Q[1, 1] = 1.5 try:
+    Q[1, 1] = 1.5
+    try:
         solver = RandomizedSolver(
             [0,0,0,0],
             [1,1,1,1],
@@ -262,3 +293,64 @@ def test_large():
         encoder(-S, M, Q)
     )
     check_test_solution(solver, 100, 0.2)
+
+
+def test_alternates():
+    ''' Test that alternates are selected correctly '''
+
+    # probability limits 1 case
+    S = np.transpose(np.array([
+        [0.1, 0.4, 0.7],
+        [0.3, 0.6, 0.5],
+        [0.5, 0.9, 0.4]
+    ]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 1.0)
+
+    solver = RandomizedSolver(
+        [0,0,0],
+        [1,1,1],
+        [1,1,1],
+        encoder(-S, M, Q)
+    )
+    solution = np.transpose(np.array([
+        [0, 0, 1],
+        [1, 0, 0],
+        [0, 1, 0]
+    ]))
+    solver.solve()
+
+    alternates = {
+        0 : [2, 0],
+        1 : [1, 0],
+        2 : [1, 2]
+    }
+
+    alt_probs = np.ones((3, 3)) - solution
+
+    answer = solver.get_alternates(2)
+    assert np.all(solver.fractional_assignment_matrix == solution)
+    assert np.all(solver.alternate_probability_matrix == alt_probs)
+    assert np.all(answer == alternates)
+
+    # test with lower probability limits
+    Q = np.full(np.shape(S), 0.7)
+    solver = RandomizedSolver(
+        [0,0,0],
+        [1,1,1],
+        [1,1,1],
+        encoder(-S, M, Q)
+    )
+    solution = np.transpose(np.array([
+        [0, 0.3, 0.7],
+        [0.7, 0, 0.3],
+        [0.3, 0.7, 0]
+    ]))
+    alt_probs = np.transpose(np.array([
+        [0.7, 4/7, 0],
+        [0, 0.7, 4/7],
+        [4/7, 0, 0.7]
+    ]))
+    solver.solve()
+    assert np.all(np.isclose(solution, solver.fractional_assignment_matrix))
+    assert np.all(np.isclose(alt_probs, solver.alternate_probability_matrix))

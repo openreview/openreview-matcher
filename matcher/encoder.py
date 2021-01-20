@@ -208,3 +208,23 @@ class Encoder:
             alternates_by_forum[paper_id] = unassigned[:num_alternates]
 
         return alternates_by_forum
+
+    def decode_selected_alternates(self, alternates_by_index):
+        '''
+        Convert a dictionary of
+            paper_index -> [list of reviewer_index]
+        into a dictionary of alternates keyed on IDs.
+        '''
+        alternates_by_forum = {}
+        for paper_index, reviewer_indices in alternates_by_index.items():
+            paper_id = self.papers[paper_index]
+            reviewer_list = []
+            for reviewer_index in reviewer_indices:
+                reviewer_id = self.reviewers[reviewer_index]
+                entry = {
+                    'aggregate_score': self.aggregate_score_matrix[(paper_index, reviewer_index)],
+                    'user': reviewer_id
+                }
+                reviewer_list.append(entry)
+            alternates_by_forum[paper_id] = reviewer_list
+        return alternates_by_forum

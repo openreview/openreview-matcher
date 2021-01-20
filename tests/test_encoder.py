@@ -444,3 +444,47 @@ def test_encoder_probability_limits(encoder_context):
     )
     desired_limits = np.full(matrix_shape, 0.9)
     assert np.all(encoder.prob_limit_matrix == desired_limits)
+
+
+def test_specific_alternates(encoder_context):
+    '''Test the decode_selected_alternates function'''
+    papers, reviewers, matrix_shape = encoder_context
+
+    scores_by_type = {
+        'mock/-/score_edge': {
+            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        }
+    }
+
+    weight_by_type = {
+        'mock/-/score_edge': 1
+    }
+
+    constraints = []
+
+    encoder = Encoder(
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type
+    )
+
+    alternates_by_index = {
+        0 : [0, 1],
+        1 : [1, 3, 0],
+        2 : [2]
+    }
+
+    alternates_by_forum = {
+        'paper{}'.format(i) : [
+            {
+                'aggregate_score': 0.5,
+                'user': 'reviewer{}'.format(j)
+            } for j in alternates_by_index[i]
+        ] for i in range(len(papers))
+    }
+
+    alternates = encoder.decode_selected_alternates(alternates_by_index)
+
+    assert alternates == alternates_by_forum
