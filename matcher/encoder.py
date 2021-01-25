@@ -213,7 +213,8 @@ class Encoder:
         '''
         Convert a dictionary of
             paper_index -> [list of reviewer_index]
-        into a dictionary of alternates keyed on IDs.
+        into a dictionary of alternates keyed on IDs. Used by RandomizedSolver
+        to carefully choose alternates.
         '''
         alternates_by_forum = {}
         for paper_index, reviewer_indices in alternates_by_index.items():

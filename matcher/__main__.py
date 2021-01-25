@@ -93,8 +93,6 @@ if args.solver == 'FairFlow':
     solver_class = 'FairFlow'
 if args.solver == 'Randomized':
     solver_class = 'Randomized'
-    if not args.probability_limits:
-        raise ValueError('--probability_limits argument required with Randomized solver')
 
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))

@@ -5,6 +5,7 @@ from matcher.solvers import SolverException, RandomizedSolver
 
 encoder = namedtuple('Encoder', ['cost_matrix', 'constraint_matrix', 'prob_limit_matrix'])
 
+
 def check_sampled_solution(solver):
     ''' Performs basic checks on the validity of a sampled assignment '''
     pap_loads = np.sum(solver.flow_matrix, axis=1)
@@ -15,10 +16,12 @@ def check_sampled_solution(solver):
             ), 'Sampled assignment should be in legal polytope'
     assert np.all(np.where(solver.constraint_matrix == -1, solver.flow_matrix == 0, True)), 'Sampled assignment should obey constraint matrix'
 
+
 def check_test_solution(solver, T=1000, tol=1e-1):
     '''
     Takes several samples and performs basic checks on the correctness of the fractional assignment
     and the sampled assignments. T = number of samples, tol = tolerance for the mean matrix
+    Note that this function is random and could potentially cause false test failures in very rare cases.
     '''
     solver.solve()
     assert solver.solved, 'Problem should be solvable'
@@ -72,6 +75,7 @@ def test_basic():
     ]))
     assert np.all(solver.fractional_assignment_matrix == solution), 'Fractional assignment should be correct'
 
+
 def test_varied_limits():
     ''' Test with varying probability limits '''
     S = np.transpose(np.array([
@@ -102,6 +106,7 @@ def test_varied_limits():
         [0.25, 0.75]
     ]))
     assert np.all(solver.fractional_assignment_matrix == solution), 'Fractional assignment should be correct'
+
 
 def test_bad_limits():
     ''' Test for error-checking the probability limits '''
@@ -199,6 +204,25 @@ def test_impossible_constraints():
     solver.solve()
     assert not solver.solved
 
+    Q = np.full(np.shape(S), 0.75)
+    Q[:, 0] = 0 # no probability on first reviewer
+    solver = RandomizedSolver(
+        [0,0,0,0],
+        [3,3,3,3],
+        [2,2,2],
+        encoder(-S, M, Q)
+    )
+    solver.solve()
+    assert solver.solved # ok if minimum is 0
+    solver = RandomizedSolver(
+        [1,1,1,1],
+        [3,3,3,3],
+        [2,2,2],
+        encoder(-S, M, Q)
+    )
+    solver.solve()
+    assert not solver.solved # not if minimum is 1
+
 
 def test_fractional_reviewer_load():
     ''' Test that sampling works correctly if some reviewer loads are fractional '''
@@ -224,6 +248,26 @@ def test_fractional_reviewer_load():
     for _ in range(100):
         solver.sample_assignment()
         check_sampled_solution(solver)
+
+
+def test_low_reviewer_load():
+    ''' Test that sampling works correctly if all reviewer loads are below one'''
+    S = np.ones((3, 4))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 0.3) # each reviewer has load 0.9 at most
+
+    solver = RandomizedSolver(
+        [0,0,0,0],
+        [1,1,1,1],
+        [1,1,1],
+        encoder(-S, M, Q)
+    )
+    solver.solve()
+
+    for _ in range(100):
+        solver.sample_assignment()
+        check_sampled_solution(solver)
+
 
 def test_solution_optimal_no_limit():
     ''' Test that the correct optimal solution is found without probability limits '''
@@ -253,6 +297,7 @@ def test_solution_optimal_no_limit():
     solver.sample_assignment() # should not change since assignment is deterministic
     assert np.all(solver.fractional_assignment_matrix == solution) and np.all(solver.flow_matrix == solution)
     assert solver.expected_cost == -3.2 and solver.cost == -3.2
+
 
 def test_constraints():
     ''' Ensure constraint matrix is respected '''
