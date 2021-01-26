@@ -78,7 +78,7 @@ def clean_start_conference(client, conference_id, num_reviewers, num_papers, rev
     # Maybe conference.setup_matching() should allow a score matrix as input
     with open(AFFINITY_SCORE_FILE, 'w') as file_handle:
         for paper_number in range(num_papers):
-            authorids = ['testauthor{0}{1}@test.com'.format(paper_number, author_code) for author_code in ['A', 'B', 'C']]
+            authorids = ['testauthor{0}{1}@test.com'.format(paper_number, author_code) for author_code in ['a', 'b', 'c']]
             authors = ['Author Author' for _ in ['A', 'B', 'C']]
             content = {
                 'title': 'Test_Paper_{}'.format(paper_number),
