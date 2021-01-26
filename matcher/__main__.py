@@ -94,6 +94,7 @@ if args.solver == 'FairFlow':
 if args.solver == 'Randomized':
     solver_class = 'Randomized'
 
+
 if not solver_class:
     raise ValueError('Invalid solver class {}'.format(args.solver))
 logger.info('Using solver={}'.format(solver_class))
