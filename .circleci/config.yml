@@ -4,7 +4,7 @@ jobs:
   build:
     working_directory: ~/openreview-matcher-repo
     docker:
-    - image: circleci/node:12.13.1
+    - image: circleci/python:3.7-node
     - image: circleci/redis:6.0.0
     - image: circleci/mongo:3.6.4
     - image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
@@ -28,24 +28,15 @@ jobs:
           cd ~/openreview
           NODE_ENV=circleci node scripts/clean_start_app.js
         background: true
-    - run: sudo apt-get install python3
-    - run: curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-    - run: sudo python3 get-pip.py
-    - run: sudo apt-get update
-    - run: sudo apt-get install python3-venv
     - run:
         name: install dependencies
         command: |
           cd ~/openreview-matcher-repo
-          python3 -m venv venv
-          . venv/bin/activate
           pip install -e .
-          deactivate
     - run:
         name: install the local openreview-py as a dependency
         command: |
           cd ~/openreview-matcher-repo
-          . venv/bin/activate
           pip install -e ~/openreview-py
     - run:
         name: run tests
@@ -53,7 +44,6 @@ jobs:
           cd ~/openreview-matcher-repo
           mkdir reports
           mkdir reports/pytest
-          . venv/bin/activate
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
     - store_test_results:
         path: reports
