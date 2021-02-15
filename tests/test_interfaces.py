@@ -1719,3 +1719,263 @@ def test_confignote_interface_custom_overload():
         else:
             assert interface.maximums[reviewer_index] == interface.config_note.content['max_papers']
 
+
+def test_confignote_interface_matching_users():
+    '''Test of basic ConfigNoteInterface functionality.'''
+
+    mock_openreview_data = {
+        'paper_ids': ['ac0', 'ac1', 'ac2'],
+        'reviewer_ids': ['sac0', 'sac1', 'sac2', 'sac3'],
+        'mock_invitations': {
+            '<assignment_invitation_id>': openreview.Invitation(
+                    id='<assignment_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<aggregate_score_invitation_id>': openreview.Invitation(
+                    id='<aggregate_score_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<custom_max_papers_invitation_id>': openreview.Invitation(
+                    id='<custom_max_papers_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<conflicts_invitation_id>': openreview.Invitation(
+                    id='<conflicts_invitation_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<affinity_score_invitation>': openreview.Invitation(
+                    id='<affinity_score_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+            '<bid_invitation>': openreview.Invitation(
+                    id='<bid_invitation>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    reply={}
+                ),
+        },
+        'mock_groups': {
+            '<match_group_id>': openreview.Group(
+                    id='<match_group_id>',
+                    writers=[],
+                    readers=[],
+                    signatures=[],
+                    signatories=[],
+                    members=['sac0', 'sac1', 'sac2', 'sac3']
+                ),
+            '<ac_group_id>': openreview.Group(
+                    id='<ac_group_id>',
+                    readers=[],
+                    writers=[],
+                    signatures=[],
+                    members=['ac0', 'ac1', 'ac2'],
+                    signatories=[]
+                )
+        },
+        'mock_notes': {
+            '<config_note_id>': openreview.Note(
+                    id='<config_note_id>',
+                    readers=[],
+                    writers=[],
+                    signatures=['<match_group_id>'],
+                    invitation='<config_note_invitation>',
+                    content={
+                        'title': 'test-1',
+                        'match_group': '<match_group_id>',
+                        'paper_invitation': '<ac_group_id>',
+                        'user_demand': 1,
+                        'min_papers': 1,
+                        'max_papers': 2,
+                        'alternates': 1,
+                        'conflicts_invitation': '<conflicts_invitation_id>',
+                        'scores_specification': {
+                            '<affinity_score_invitation>': {
+                                'weight': 1
+                            },
+                            '<bid_invitation>': {
+                                'default': 0.5,
+                                'weight': 2,
+                                'translate_map': {
+                                    'High': 1,
+                                    'Very Low': -1
+                                }
+                            }
+                        },
+                        'assignment_invitation': '<assignment_invitation_id>',
+                        'aggregate_score_invitation': '<aggregate_score_invitation_id>',
+                        'custom_max_papers_invitation': '<custom_max_papers_invitation_id>',
+                        'status': None
+                    }
+                )
+        },
+        'mock_grouped_edges': {
+            '<affinity_score_invitation>': [
+                {
+                    'id': {'head': 'ac0'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': random.random()},
+                        {'tail': 'sac1', 'weight': random.random()},
+                        {'tail': 'sac2', 'weight': random.random()},
+                        {'tail': 'sac3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac1'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': random.random()},
+                        {'tail': 'sac1', 'weight': random.random()},
+                        {'tail': 'sac2', 'weight': random.random()},
+                        {'tail': 'sac3', 'weight': random.random()},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac2'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': random.random()},
+                        {'tail': 'sac1', 'weight': random.random()},
+                        {'tail': 'sac2', 'weight': random.random()},
+                        {'tail': 'sac3', 'weight': random.random()},
+                    ]
+                }
+            ],
+            '<bid_invitation>': [
+                {
+                    'id': {'head': 'ac0'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': None, 'label': 'High'},
+                        {'tail': 'sac2', 'weight': None, 'label': 'Very Low'},
+                        {'tail': 'sac3', 'weight': None, 'label': 'High'},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac1'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': None, 'label': 'High'},
+                        {'tail': 'sac1', 'weight': None, 'label': 'High'},
+                        {'tail': 'sac3', 'weight': None, 'label': 'Very Low'},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac2'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': None, 'label': 'Very Low'},
+                        {'tail': 'sac1', 'weight': None, 'label': 'High'},
+                        {'tail': 'sac2', 'weight': None, 'label': 'High'},
+                        {'tail': 'sac3', 'weight': None, 'label': 'High'},
+                    ]
+                }
+            ],
+            '<conflicts_invitation_id>': [
+                {
+                    'id': {'head': 'ac0'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': 0},
+                        {'tail': 'sac1', 'weight': 1},
+                        {'tail': 'sac2', 'weight': 0},
+                        {'tail': 'sac3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac1'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': 0},
+                        {'tail': 'sac1', 'weight': 0},
+                        {'tail': 'sac2', 'weight': 1},
+                        {'tail': 'sac3', 'weight': 0},
+                    ]
+                },
+                {
+                    'id': {'head': 'ac2'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': 0},
+                        {'tail': 'sac1', 'weight': 0},
+                        {'tail': 'sac2', 'weight': 0},
+                        {'tail': 'sac3', 'weight': 1},
+                    ]
+                }
+            ],
+            '<custom_max_papers_invitation_id>': [
+                {
+                    'id': {'head': '<match_group_id>'},
+                    'values': [
+                        {'tail': 'sac0', 'weight': 1},
+                        {'tail': 'sac3', 'weight': 3}
+                    ]
+                }
+            ]
+        }
+    }
+
+    client = mock_client(**mock_openreview_data)
+
+    interface = ConfigNoteInterface(client, '<config_note_id>')
+
+    assert interface.config_note
+    assert_arrays(interface.reviewers, ['sac0', 'sac1', 'sac2', 'sac3'], is_string=True)
+    assert_arrays(interface.papers, ['ac0', 'ac1', 'ac2'], is_string=True)
+    assert_arrays(interface.minimums, [1,1,1,1])
+    assert_arrays(interface.maximums, [1,2,2,2])
+    assert_arrays(interface.demands, [1,1,1])
+    assert interface.constraints
+    valid_constraint_pairs = [('ac0', 'sac1'), ('ac1', 'sac2'), ('ac2', 'sac3')]
+    for (ac,sac,constraint) in interface.constraints:
+        if (ac,sac) in valid_constraint_pairs:
+            assert constraint == 1
+        else:
+            assert constraint == 0
+    assert interface.scores_by_type
+    assert len(interface.scores_by_type) == 2
+    map_defaults = {
+        '<bid_invitation>': 0.5,
+        '<affinity_score_invitation>': 0
+    }
+    for invitation, scores in interface.scores_by_type.items():
+        assert 'edges' in scores
+        assert 'default' in scores
+        assert map_defaults[invitation] == scores['default']
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+
+    very_low_bids = [
+        ('ac0', 'sac2'),
+        ('ac1', 'sac3'),
+        ('ac2', 'sac0')]
+    high_bids = [
+        ('acr0', 'sac0'),
+        ('ac0', 'sac3'),
+        ('ac1', 'sac0'),
+        ('ac1', 'sac1'),
+        ('ac2', 'sac1'),
+        ('ac2', 'sac2')]
+    for ac, sac, bid in interface.scores_by_type['<bid_invitation>']['edges']:
+        if (ac, sac) in very_low_bids:
+            assert bid == -1
+        elif (ac, sac) in high_bids:
+            assert bid == 1
+
+    for invitation in interface.weight_by_type:
+        assert invitation in ['<bid_invitation>', '<affinity_score_invitation>']
+    assert_arrays(list(interface.weight_by_type.values()), [1, 2])
+
+    assert len(interface.weight_by_type) == 2
+    assert interface.assignment_invitation
+    assert interface.aggregate_score_invitation
+
+    interface.set_status(MatcherStatus.RUNNING)
+    assert interface.config_note.content['status'] == 'Running'
+
