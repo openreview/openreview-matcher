@@ -19,7 +19,7 @@ class ConfigNoteInterface:
         self.logger.debug('GET invitation id={}'.format(self.config_note.content['aggregate_score_invitation']))
         self.aggregate_score_invitation = self.client.get_invitation(self.config_note.content['aggregate_score_invitation'])
         self.num_alternates = int(self.config_note.content['alternates'])
-        self.paper_notes = []
+        self.paper_numbers = {}
         self.allow_zero_score_assignments = (self.config_note.content.get('allow_zero_score_assignments', 'No') == 'Yes')
 
         # Lazy variables
@@ -72,12 +72,19 @@ class ConfigNoteInterface:
                             content_dict[key] = value
                         else:
                             self.logger.debug('Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(element))
-            self.paper_notes = list(openreview.tools.iterget_notes(
-                self.client,
-                invitation=paper_invitation,
-                content=content_dict))
-            self._papers = [n.id for n in self.paper_notes]
-            self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
+            if '/-/' in paper_invitation:
+                paper_notes = list(openreview.tools.iterget_notes(
+                    self.client,
+                    invitation=paper_invitation,
+                    content=content_dict))
+                self._papers = [n.id for n in paper_notes]
+                self.paper_numbers = { n.id : n.number for n in paper_notes }
+                self.logger.debug('Count of notes found: {}'.format(len(self._papers)))
+            else:
+                self.logger.debug('GET group id={}'.format(paper_invitation))
+                group = self.client.get_group(paper_invitation)
+                self._papers = group.members
+                self.paper_numbers = { n: 1 for n in group.members }
 
         return self._papers
 
@@ -201,7 +208,6 @@ class ConfigNoteInterface:
 
     def set_assignments(self, assignments_by_forum):
         '''Helper function for posting assignments returned by the Encoder'''
-        paper_by_forum = {n.forum: n for n in self.paper_notes}
 
         self.logger.debug('saving {} edges'.format(self.assignment_invitation.id))
 
@@ -209,7 +215,7 @@ class ConfigNoteInterface:
         score_edges = []
 
         for forum, assignments in assignments_by_forum.items():
-            paper = paper_by_forum[forum]
+            paper_number = self.paper_numbers[forum]
             for paper_user_entry in assignments:
                 score = paper_user_entry['aggregate_score']
                 user = paper_user_entry['user']
@@ -221,7 +227,7 @@ class ConfigNoteInterface:
                         user,
                         score,
                         self.label,
-                        paper.number
+                        paper_number
                     )
                 )
 
@@ -232,7 +238,7 @@ class ConfigNoteInterface:
                         user,
                         score,
                         self.label,
-                        paper.number
+                        paper_number
                     )
                 )
 
@@ -244,11 +250,9 @@ class ConfigNoteInterface:
     def set_alternates(self, alternates_by_forum):
         '''Helper function for posting alternates returned by the Encoder'''
 
-        paper_by_forum = {n.forum: n for n in self.paper_notes}
-
         score_edges = []
         for forum, assignments in alternates_by_forum.items():
-            paper = paper_by_forum[forum]
+            paper_number = self.paper_numbers[forum]
 
             for paper_user_entry in assignments:
                 score = paper_user_entry['aggregate_score']
@@ -261,7 +265,7 @@ class ConfigNoteInterface:
                         user,
                         score,
                         self.label,
-                        paper.number
+                        paper_number
                     )
                 )
 
