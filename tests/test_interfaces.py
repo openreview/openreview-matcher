@@ -115,7 +115,7 @@ def test_confignote_interface():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 2,
@@ -140,13 +140,13 @@ def test_confignote_interface():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -154,7 +154,7 @@ def test_confignote_interface():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -162,7 +162,7 @@ def test_confignote_interface():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -392,7 +392,7 @@ def test_confignote_interface_backward_compat_max_users():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'max_users': 1,
                         'min_papers': 1,
                         'max_papers': 2,
@@ -417,13 +417,13 @@ def test_confignote_interface_backward_compat_max_users():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -431,7 +431,7 @@ def test_confignote_interface_backward_compat_max_users():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -439,7 +439,7 @@ def test_confignote_interface_backward_compat_max_users():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -676,7 +676,7 @@ def test_confignote_interface_custom_demand_edges():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 2,
@@ -700,13 +700,13 @@ def test_confignote_interface_custom_demand_edges():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -714,7 +714,7 @@ def test_confignote_interface_custom_demand_edges():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -722,7 +722,7 @@ def test_confignote_interface_custom_demand_edges():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -932,7 +932,7 @@ def test_confignote_missing_edges_spec():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
@@ -957,13 +957,13 @@ def test_confignote_missing_edges_spec():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -971,7 +971,7 @@ def test_confignote_missing_edges_spec():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -979,7 +979,7 @@ def test_confignote_missing_edges_spec():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -1151,7 +1151,7 @@ def test_confignote_interface_no_scores_spec():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
@@ -1163,13 +1163,13 @@ def test_confignote_interface_no_scores_spec():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1177,7 +1177,7 @@ def test_confignote_interface_no_scores_spec():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1185,7 +1185,7 @@ def test_confignote_interface_no_scores_spec():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -1324,7 +1324,7 @@ def test_confignote_interface_custom_load_negative():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
@@ -1347,13 +1347,13 @@ def test_confignote_interface_custom_load_negative():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1361,7 +1361,7 @@ def test_confignote_interface_custom_load_negative():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1369,7 +1369,7 @@ def test_confignote_interface_custom_load_negative():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
@@ -1557,7 +1557,7 @@ def test_confignote_interface_custom_overload():
                     content={
                         'title': 'test-1',
                         'match_group': '<match_group_id>',
-                        'paper_invitation': '<paper_invitation_id>',
+                        'paper_invitation': '<venue/-/paper_invitation_id>',
                         'user_demand': 1,
                         'min_papers': 1,
                         'max_papers': 1,
@@ -1580,13 +1580,13 @@ def test_confignote_interface_custom_overload():
                         'status': None
                     }
                 ),
-            '<paper_invitation_id>': [
+            '<venue/-/paper_invitation_id>': [
                 openreview.Note(
                         id='paper0',
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1594,7 +1594,7 @@ def test_confignote_interface_custom_overload():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     ),
                 openreview.Note(
@@ -1602,7 +1602,7 @@ def test_confignote_interface_custom_overload():
                         readers=[],
                         writers=[],
                         signatures=[],
-                        invitation='<paper_invitation_id>',
+                        invitation='<venue/-/paper_invitation_id>',
                         content={}
                     )
                 ]
