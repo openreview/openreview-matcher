@@ -13,7 +13,7 @@ setup(name='openreview-matcher',
       install_requires=[
           'numpy',
           'openreview-py',
-          'ortools',
+          'ortools>=8.1.8487',
           'pytest',
           'Flask',
           'flask-cors==3.0.8',

@@ -272,7 +272,7 @@ def test_low_reviewer_load():
 def test_solution_optimal_no_limit():
     ''' Test that the correct optimal solution is found without probability limits '''
     S = np.transpose(np.array([
-        [0.1, 0.4, 0.7],
+        [0, 0.4, 0.7],
         [0.3, 0.6, 0.5],
         [0.5, 0.8, 0.5]
     ]))
@@ -345,9 +345,9 @@ def test_alternates():
 
     # probability limits 1 case
     S = np.transpose(np.array([
-        [0.1, 0.4, 0.7],
-        [0.3, 0.6, 0.5],
-        [0.5, 0.9, 0.4]
+        [0, 0.3, 1],
+        [1, 0.5, 0.4],
+        [0.4, 1, 0.3]
     ]))
     M = np.zeros(np.shape(S))
     Q = np.full(np.shape(S), 1.0)
