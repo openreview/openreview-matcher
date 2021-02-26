@@ -31,6 +31,8 @@ class ConfigNoteInterface:
         self._demands = None
         self._constraints = None
 
+        self.probability_limits = [] # TODO implement
+
         self.validate_score_spec()
 
     def validate_score_spec(self):

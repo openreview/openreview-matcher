@@ -48,6 +48,10 @@ class Encoder:
     - `normalization_types`:
         an array of score types where we need to apply normalization.
 
+    - `probability_limits`:
+        a list of triples, formatted as follows:
+        (<str paper_ID>, <str reviewer_ID>, <float limit>)
+        OR a float, indicating the probability limit for all reviewer-paper pairs
     '''
     def __init__(
             self,
@@ -57,6 +61,7 @@ class Encoder:
             scores_by_type,
             weight_by_type,
             normalization_types=[],
+            probability_limits=[],
             logger=logging.getLogger(__name__)
         ):
         self.logger = logger
@@ -89,6 +94,7 @@ class Encoder:
                 without_normalization_matrices[score_type] = scores
 
         self.constraint_matrix = self._encode_constraints(constraints)
+        self.prob_limit_matrix = self._encode_probability_limits(probability_limits)
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
         self.aggregate_score_matrix = np.full(self.matrix_shape, 0, dtype=float)
@@ -137,6 +143,20 @@ class Encoder:
             constraint_matrix[coordinates] = constraint
 
         return constraint_matrix
+
+    def _encode_probability_limits(self, probability_limits):
+        '''
+        return a matrix containing probability limits
+        '''
+        if isinstance(probability_limits, float):
+            prob_limit_matrix = np.full(self.matrix_shape, probability_limits, dtype=float)
+        else: # list of tuples
+            prob_limit_matrix = np.full(self.matrix_shape, 1, dtype=float) # default to no limit
+            for forum, user, limit in probability_limits:
+                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+                prob_limit_matrix[coordinates] = limit
+        return prob_limit_matrix
+
 
     def decode_assignments(self, flow_matrix):
         '''
@@ -187,4 +207,25 @@ class Encoder:
 
             alternates_by_forum[paper_id] = unassigned[:num_alternates]
 
+        return alternates_by_forum
+
+    def decode_selected_alternates(self, alternates_by_index):
+        '''
+        Convert a dictionary of
+            paper_index -> [list of reviewer_index]
+        into a dictionary of alternates keyed on IDs. Used by RandomizedSolver
+        to carefully choose alternates.
+        '''
+        alternates_by_forum = {}
+        for paper_index, reviewer_indices in alternates_by_index.items():
+            paper_id = self.papers[paper_index]
+            reviewer_list = []
+            for reviewer_index in reviewer_indices:
+                reviewer_id = self.reviewers[reviewer_index]
+                entry = {
+                    'aggregate_score': self.aggregate_score_matrix[(paper_index, reviewer_index)],
+                    'user': reviewer_id
+                }
+                reviewer_list.append(entry)
+            alternates_by_forum[paper_id] = reviewer_list
         return alternates_by_forum
