@@ -33,6 +33,10 @@ Run the module with the `--help` flag to learn about the arguments:
 python -m matcher --help
 ```
 
+## Randomized Solver
+
+The randomized solver (`--solver Randomized` on the command line) implements a randomized assignment algorithm. It takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. The solver then finds a randomized assignment that maximizes expected total affinity, subject to the given probability limits. This randomized assignment is found with an LP, implemented in `matcher/solvers/randomized_solver.py`. It returns a deterministic assignment which was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn\_extension`.
+
 ## Running the Server
 The server is implemented in Flask and can be started from the command line:
 ```
