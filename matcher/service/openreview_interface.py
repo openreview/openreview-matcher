@@ -340,7 +340,7 @@ class ConfigNoteInterface:
             readers = self._get_values(invitation, number, 'readers', forum_id, reviewer),
             nonreaders = self._get_values(invitation, number, 'nonreaders'),
             writers = self._get_values(invitation, number, 'writers'),
-            signatures = self._get_values(invitation, number, 'signatures'))
+            signatures = [self.venue_id])
 
     def _get_values(self, invitation, number, property, head=None, tail=None):
         '''Return values compatible with the field `property` in invitation.reply.content'''
@@ -369,7 +369,7 @@ class ConfigNoteInterface:
                 else:
                     values.append(value)
 
-        return values
+        return [v.replace('{head.number}', str(number)) for v in values]
 
     def _edge_to_score(self, edge, translate_map=None):
         '''
