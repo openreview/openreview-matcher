@@ -37,7 +37,13 @@ python -m matcher --help
 
 ### MinMax Solver
 
+Basic implementation using the Minimum Cost function implemented in the Google [ortools](https://developers.google.com/optimization/flow/mincostflow) library. MinMax solver tries to optimize the scores respecting the restrictions of min and max quotas for each paper and reviewer.
+
 ### FairFlow Solver
+
+Fairlfow solver tries to more fairly assign reviewers to papers in a way that each paper has at least some minimum affinity with the reviewers to which it is assigned.
+
+For more information, see [this paper](https://arxiv.org/abs/1905.11924v1)
 
 ### Randomized Solver
 
