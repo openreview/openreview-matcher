@@ -115,7 +115,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     reviewers_id = conference.get_reviewers_id()
 
     config = {
-        'title': 'integration-test',
+        'title': 'integration-test-2',
         'user_demand': str(reviews_per_paper),
         'max_papers': str(max_papers),
         'min_papers': str(min_papers),
@@ -160,7 +160,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert matcher_status.content['status'] == 'No Solution'
     assert matcher_status.content['error_message'] == 'Total demand (200) is out of range when min review supply is (10) and max review supply is (10)'
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test-2', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == 0
 

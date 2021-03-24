@@ -121,56 +121,60 @@ class Matcher:
         Compute a match of reviewers to papers and post it to the as assignment notes.
         The config note's status field will be set to reflect completion or errors.
         '''
-        self.set_status(MatcherStatus.RUNNING)
-
-        self.logger.debug('Start encoding')
-
-        encoder = Encoder(
-            reviewers=self.datasource.reviewers,
-            papers=self.datasource.papers,
-            constraints=self.datasource.constraints,
-            scores_by_type=self.datasource.scores_by_type,
-            weight_by_type=self.datasource.weight_by_type,
-            normalization_types=self.datasource.normalization_types,
-            probability_limits=self.datasource.probability_limits,
-            logger=self.logger
-        )
-
-        self.logger.debug('Preparing solver')
-
-        # solver
-        solver = self.solver_class(
-            self.datasource.minimums,
-            self.datasource.maximums,
-            self.datasource.demands,
-            encoder,
-            allow_zero_score_assignments=self.datasource.allow_zero_score_assignments,
-            logger=self.logger
-        )
-
-        solution = None
-        start_time = time.time()
-
         try:
+            self.set_status(MatcherStatus.RUNNING)
+
+            self.logger.debug('Start encoding')
+
+            encoder = Encoder(
+                reviewers=self.datasource.reviewers,
+                papers=self.datasource.papers,
+                constraints=self.datasource.constraints,
+                scores_by_type=self.datasource.scores_by_type,
+                weight_by_type=self.datasource.weight_by_type,
+                normalization_types=self.datasource.normalization_types,
+                probability_limits=self.datasource.probability_limits,
+                logger=self.logger
+            )
+
+            self.logger.debug('Preparing solver')
+
+            # solver
+            solver = self.solver_class(
+                self.datasource.minimums,
+                self.datasource.maximums,
+                self.datasource.demands,
+                encoder,
+                allow_zero_score_assignments=self.datasource.allow_zero_score_assignments,
+                logger=self.logger
+            )
+
+            solution = None
+            start_time = time.time()
+
             self.logger.debug('Solving solver')
             solution = solver.solve()
+
+            self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
+
+            if solver.solved:
+                self.solution = solution
+                self.set_assignments(encoder.decode_assignments(solution))
+                if hasattr(solver, 'get_alternates'):
+                    self.set_alternates(
+                        encoder.decode_selected_alternates(
+                            solver.get_alternates(self.datasource.num_alternates)))
+                else:
+                    self.set_alternates(
+                        encoder.decode_alternates(solution, self.datasource.num_alternates))
+                self.set_status(MatcherStatus.COMPLETE)
+            elif self.get_status() != 'No Solution':
+                self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
+                self.set_status(MatcherStatus.NO_SOLUTION, message='Solver could not find a solution. Adjust your parameters')
+
         except SolverException as error_handle:
             self.logger.debug('No Solution={}'.format(error_handle))
             self.set_status(MatcherStatus.NO_SOLUTION, message=str(error_handle))
-
-        self.logger.debug('Complete solver run took {} seconds'.format(time.time() - start_time))
-
-        if solver.solved:
-            self.solution = solution
-            self.set_assignments(encoder.decode_assignments(solution))
-            if hasattr(solver, 'get_alternates'):
-                self.set_alternates(
-                    encoder.decode_selected_alternates(
-                        solver.get_alternates(self.datasource.num_alternates)))
-            else:
-                self.set_alternates(
-                    encoder.decode_alternates(solution, self.datasource.num_alternates))
-            self.set_status(MatcherStatus.COMPLETE)
-        elif self.get_status() != 'No Solution':
-            self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
-            self.set_status(MatcherStatus.NO_SOLUTION, message='Solver could not find a solution. Adjust your parameters')
+        except Exception as error_handle:
+            self.logger.debug('Error={}'.format(error_handle))
+            self.set_status(MatcherStatus.ERROR, message=str(error_handle))
