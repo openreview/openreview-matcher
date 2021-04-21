@@ -419,7 +419,7 @@ class Deployment():
             ## impersonate user to get all the permissions to deploy the groups
             conference.client.impersonate(self.config_note_interface.venue_id)
             conference.set_assignments(assignment_title=self.config_note_interface.label,
-                is_area_chair=self.config_note_interface.match_group.endswith('Area_Chairs'),
+                committee_id=self.config_note_interface.match_group,
                 overwrite=True,
                 enable_reviewer_reassignment=True)
 
