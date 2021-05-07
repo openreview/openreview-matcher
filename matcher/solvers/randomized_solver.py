@@ -64,9 +64,12 @@ class RandomizedSolver():
         self.cost = None # actual cost of the sampled assignment
         self.alternate_probability_matrix = None # marginal probability for each alternate
         self.logger = logger
+        self.opt_solved = False
+        self.opt_cost = None # cost of the optimal deterministic assignment
 
         self._check_inputs()
-        self.construct_solver()
+        self.fractional_assignment_solver = self.construct_solver(self.prob_limit_matrix)
+        self.deterministic_assignment_solver = self.construct_solver(np.ones_like(self.prob_limit_matrix))
 
 
     def _check_inputs(self):
@@ -116,55 +119,65 @@ class RandomizedSolver():
             raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
 
 
-    def construct_solver(self):
-        self.lp_solver = pywraplp.Solver.CreateSolver('GLOP')
+    def construct_solver(self, limit_matrix):
+        lp_solver = pywraplp.Solver.CreateSolver('GLOP')
 
         F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             constraint = self.constraint_matrix[i, j]
-            limit = self.prob_limit_matrix[i, j]
+            limit = limit_matrix[i, j]
             if constraint == 0 and (self.allow_zero_score_assignments or self.cost_matrix[i, j] != 0):
                 # no conflict
-                F[i][j] = self.lp_solver.NumVar(0, limit, "F[{}][{}]".format(i, j))
+                F[i][j] = lp_solver.NumVar(0, limit, "F[{}][{}]".format(i, j))
             elif constraint == 1:
                 # assign to paper as much as possible given limits
-                F[i][j] = self.lp_solver.NumVar(limit, limit, "F[{}][{}]".format(i, j))
+                F[i][j] = lp_solver.NumVar(limit, limit, "F[{}][{}]".format(i, j))
             else:
                 # conflict
-                F[i][j] = self.lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
+                F[i][j] = lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
 
         for i in range(self.num_paps):
-            c = self.lp_solver.Constraint(self.demands[i], self.demands[i])
+            c = lp_solver.Constraint(self.demands[i], self.demands[i])
             for j in range(self.num_revs):
                 c.SetCoefficient(F[i][j], 1)
 
         for j in range(self.num_revs):
-            c = self.lp_solver.Constraint(self.minimums[j], self.maximums[j])
+            c = lp_solver.Constraint(self.minimums[j], self.maximums[j])
             for i in range(self.num_paps):
                 c.SetCoefficient(F[i][j], 1)
 
-        objective = self.lp_solver.Objective()
+        objective = lp_solver.Objective()
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             objective.SetCoefficient(F[i][j], self.cost_matrix[i, j])
         objective.SetMinimization()
+        return lp_solver
 
 
     def solve(self):
-        assert hasattr(self, 'lp_solver'), \
-            'Solver not constructed. Run self.construct_solver() first.'
+        assert hasattr(self, 'fractional_assignment_solver'), \
+            'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
 
         self.expected_cost = 0
-        status = self.lp_solver.Solve()
-        if status == self.lp_solver.OPTIMAL:
+        status = self.fractional_assignment_solver.Solve()
+        if status == self.fractional_assignment_solver.OPTIMAL:
             self.solved = True
-            self.expected_cost = self.lp_solver.Objective().Value()
+            self.expected_cost = self.fractional_assignment_solver.Objective().Value()
             self.fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs))
             for i, j in product(range(self.num_paps), range(self.num_revs)):
-                self.fractional_assignment_matrix[i, j] = self.lp_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value() 
+                self.fractional_assignment_matrix[i, j] = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
         else:
             logging.debug("Solver status: {}".format(status))
             self.solved = False
             return
+
+        self.opt_cost = 0
+        status = self.deterministic_assignment_solver.Solve()
+        if status == self.deterministic_assignment_solver.OPTIMAL:
+            self.opt_solved = True
+            self.opt_cost = self.deterministic_assignment_solver.Objective().Value()
+        else:
+            logging.debug("Deterministic solver status: {}".format(status))
+            self.opt_solved = False
 
         # set alternate probability to guarantee that
         # P[(p, r) assigned OR alternate] <= self.prob_limit_matrix[p, r]
@@ -229,3 +242,13 @@ class RandomizedSolver():
             unassigned.sort()
             alternates_by_index[i] = [entry[1] for entry in unassigned[:num_alternates]]
         return alternates_by_index
+
+    def get_fraction_of_opt(self):
+        '''
+        Return the fraction of the optimal score achieved by the randomized assignment (in expectation).
+        This is sensible as long as costs = score * -scale.
+        '''
+        assert self.solved and self.opt_solved, \
+            'Fractional and optimal solvers not solved. Run self.solve() before sampling.'
+
+        return self.expected_cost / self.opt_cost if self.opt_cost != 0 else 1
