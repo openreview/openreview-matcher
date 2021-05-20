@@ -49,6 +49,8 @@ def test_integration_basic(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -96,7 +98,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
 
-    conference_id = 'ICML.cc/2019/Conference'
+    conference_id = 'ICML.cc/2021/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10 #impossible!
@@ -123,6 +125,8 @@ def test_integration_supply_mismatch_error(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -158,7 +162,7 @@ def test_integration_supply_mismatch_error(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'No Solution'
-    assert matcher_status.content['error_message'] == 'Total demand (200) is out of range when min review supply is (10) and max review supply is (10)'
+    assert matcher_status.content['error_message'] == 'Total demand (100) is out of range when min review supply is (10) and max review supply is (10)'
 
     paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
@@ -198,6 +202,8 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -273,6 +279,8 @@ def test_integration_no_scores(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -342,6 +350,8 @@ def test_routes_invalid_invitation(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -414,6 +424,8 @@ def test_routes_missing_header(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -510,6 +522,8 @@ def test_routes_forbidden_config(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),
@@ -582,6 +596,8 @@ def test_routes_already_running_or_complete(openreview_context):
         'config_invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'paper_invitation': conference.get_blind_submission_id(),
         'assignment_invitation': conference.get_paper_assignment_id(reviewers_id),
+        'deployed_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, deployed=True),
+        'invite_assignment_invitation': conference.get_paper_assignment_id(reviewers_id, invite=True),
         'aggregate_score_invitation': '{}/-/Aggregate_Score'.format(reviewers_id),
         'conflicts_invitation': conference.get_conflict_score_id(reviewers_id),
         'custom_max_papers_invitation': '{}/-/Custom_Max_Papers'.format(reviewers_id),

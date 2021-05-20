@@ -154,6 +154,9 @@ class RandomizedSolver():
 
 
     def solve(self):
+
+        self._validate_input_range()
+
         assert hasattr(self, 'fractional_assignment_solver'), \
             'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
 
