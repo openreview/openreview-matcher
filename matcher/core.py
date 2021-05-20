@@ -72,8 +72,8 @@ class KeywordDatasource:
         with open(self.alternates_output, 'w') as f:
             f.write(json.dumps(alternates, indent=2))
 
-    def set_status(self, status, message):
-        self.logger.info('status={0}, message={1}'.format(status.value, message))
+    def set_status(self, status, message, additional_status_info={}):
+        self.logger.info('status={0}, message={1}, additional_status_info={2}'.format(status.value, message, additional_status_info))
 
 class Matcher:
     '''Main class that coordinates an Encoder and a Solver.'''
@@ -101,9 +101,9 @@ class Matcher:
     def __set_solver_class(self, solver_class):
         return SOLVER_MAP.get(solver_class, MinMaxSolver)
 
-    def set_status(self, status, message=None):
+    def set_status(self, status, message=None, additional_status_info={}):
         self.status = status.value
-        self.datasource.set_status(status, message=message)
+        self.datasource.set_status(status, message=message, additional_status_info=additional_status_info)
 
     def get_status(self):
         return self.status
@@ -167,7 +167,10 @@ class Matcher:
                 else:
                     self.set_alternates(
                         encoder.decode_alternates(solution, self.datasource.num_alternates))
-                self.set_status(MatcherStatus.COMPLETE)
+                additional_status_info={}
+                if hasattr(solver, 'get_fraction_of_opt'):
+                    additional_status_info['randomized_fraction_of_opt'] = solver.get_fraction_of_opt()
+                self.set_status(MatcherStatus.COMPLETE, message='', additional_status_info=additional_status_info)
             elif self.get_status() != 'No Solution':
                 self.logger.debug('No Solution. Solver could not find a solution. Adjust your parameters')
                 self.set_status(MatcherStatus.NO_SOLUTION, message='Solver could not find a solution. Adjust your parameters')

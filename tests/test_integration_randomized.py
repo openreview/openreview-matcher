@@ -62,7 +62,8 @@ def test_integration_basic(openreview_context):
             }
         },
         'status': 'Initialized',
-        'solver': 'Randomized'
+        'solver': 'Randomized',
+        'randomized_probability_limits': '0.5'
     }
 
     config_note = openreview.Note(**{
@@ -86,6 +87,7 @@ def test_integration_basic(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'Complete'
+    assert 'randomized_fraction_of_opt' in matcher_status.content
 
     paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
 
