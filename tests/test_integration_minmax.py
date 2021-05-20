@@ -158,7 +158,6 @@ def test_integration_no_solution_due_to_conflicts(openreview_context):
             signatures=[conference.id],
             readers=[
                 conference.id,
-                conference.get_area_chairs_id(),
                 reviewer
             ],
             writers=[conference.id],
