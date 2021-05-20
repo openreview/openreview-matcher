@@ -16,7 +16,7 @@ setup(name='openreview-matcher',
           'ortools>=8.1.8487',
           'pytest',
           'Flask',
-          'flask-cors==3.0.8',
+          'flask-cors==3.0.9',
           'cffi>=1.0.0'
       ],
       zip_safe=False)

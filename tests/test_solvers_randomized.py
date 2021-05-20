@@ -399,3 +399,56 @@ def test_alternates():
     solver.solve()
     assert np.all(np.isclose(solution, solver.fractional_assignment_matrix))
     assert np.all(np.isclose(alt_probs, solver.alternate_probability_matrix))
+
+
+def test_opt_fraction():
+    ''' Test that fraction of opt is calculated correctly '''
+    S = np.eye(5)
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 0.5)
+    solver = RandomizedSolver(
+        [0,0,0,0,0],
+        [1,1,1,1,1],
+        [1,1,1,1,1],
+        encoder(-S, M, Q),
+        True # allow zero score assignment
+    )
+
+    solver.solve()
+    assert solver.solved and solver.opt_solved
+    assert solver.expected_cost == -2.5
+    assert solver.opt_cost == -5
+    assert solver.get_fraction_of_opt() == 0.5
+
+    S = np.eye(5)
+    for i in range(1, 5):
+        S[i-1, i] = 1
+    S[4, 0] = 1
+    solver = RandomizedSolver(
+        [0,0,0,0,0],
+        [1,1,1,1,1],
+        [1,1,1,1,1],
+        encoder(-S, M, Q),
+        True # allow zero score assignment
+    )
+
+    solver.solve()
+    assert solver.solved and solver.opt_solved
+    assert solver.expected_cost == -5
+    assert solver.opt_cost == -5
+    assert solver.get_fraction_of_opt() == 1
+
+    Q = np.full(np.shape(S), 0.3)
+    solver = RandomizedSolver(
+        [0,0,0,0,0],
+        [1,1,1,1,1],
+        [1,1,1,1,1],
+        encoder(-S, M, Q),
+        True # allow zero score assignment
+    )
+
+    solver.solve()
+    assert solver.solved and solver.opt_solved
+    assert solver.expected_cost == -3
+    assert solver.opt_cost == -5
+    assert solver.get_fraction_of_opt() == 0.6
