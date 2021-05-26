@@ -81,8 +81,8 @@ class RandomizedSolver():
                 raise SolverException(
                     'cost, constraint, and probability limit matrices must be of type numpy.ndarray')
 
-        if (not np.shape(self.cost_matrix) == (self.num_paps, self.num_revs) or 
-                not np.shape(self.constraint_matrix) == (self.num_paps, self.num_revs) or 
+        if (not np.shape(self.cost_matrix) == (self.num_paps, self.num_revs) or
+                not np.shape(self.constraint_matrix) == (self.num_paps, self.num_revs) or
                 not np.shape(self.prob_limit_matrix) == (self.num_paps, self.num_revs)):
             raise SolverException(
                 'cost {}, constraint {}, and probability limit {} matrices must be the same shape'.format(
@@ -154,6 +154,9 @@ class RandomizedSolver():
 
 
     def solve(self):
+
+        self._validate_input_range()
+
         assert hasattr(self, 'fractional_assignment_solver'), \
             'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
 
@@ -206,7 +209,7 @@ class RandomizedSolver():
         Sbuf = ffi.new("int[]", self.num_revs)
         for i in range(self.num_revs):
             Sbuf[i] = 1
-        
+
         run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs)
 
         self.flow_matrix = np.zeros((self.num_paps, self.num_revs))

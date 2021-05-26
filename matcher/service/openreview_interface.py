@@ -21,6 +21,7 @@ class ConfigNoteInterface:
         self.num_alternates = int(self.config_note.content['alternates'])
         self.paper_numbers = {}
         self.allow_zero_score_assignments = (self.config_note.content.get('allow_zero_score_assignments', 'No') == 'Yes')
+        self.probability_limits = float(self.config_note.content.get('randomized_probability_limits', 1.0))
 
         # Lazy variables
         self._reviewers = None
@@ -30,8 +31,6 @@ class ConfigNoteInterface:
         self._maximums = None
         self._demands = None
         self._constraints = None
-
-        self.probability_limits = [] # TODO implement
 
         self.validate_score_spec()
 
@@ -200,10 +199,13 @@ class ConfigNoteInterface:
             }
         return weight_by_type
 
-    def set_status(self, status, message=''):
+    def set_status(self, status, message='', additional_status_info={}):
         '''Set the status of the config note'''
         self.config_note.content['status'] = status.value
         self.config_note.content['error_message'] = message
+        for key,value in additional_status_info.items():
+            print('Save property', key, value)
+            self.config_note.content[key] = value
 
         self.config_note = self.client.post_note(self.config_note)
         self.logger.debug('status set to: {}'.format(self.config_note.content['status']))
