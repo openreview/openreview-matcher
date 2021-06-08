@@ -218,7 +218,7 @@ class RandomizedSolver():
         for i in range(self.num_revs):
             Sbuf[i] = 1
 
-        run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs)
+        run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs, self.one)
 
         self.flow_matrix = np.zeros((self.num_paps, self.num_revs))
         for i in range(F.size):
