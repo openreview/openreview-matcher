@@ -8,10 +8,6 @@ pair), and (2) the fractional assignment is sampled from. The sampling
 procedure is implemented in C in the bvn_extension/ folder and accessed using
 the CFFI library. This algorithm is detailed in Jecmen et al 2020.
 
-Note that the sampling procedure has precision limited to 1e-7 and fractional
-assignments are rounded to this precision before sampling. It's possible that
-this results in an invalid sampled assignment if many probabilities are small.
-
 Alternates are also selected probabilistically so that the probability limits
 are maintained even if all alternates are used.
 '''
@@ -67,6 +63,9 @@ class RandomizedSolver():
         self.opt_solved = False
         self.opt_cost = None # cost of the optimal deterministic assignment
 
+        self.integer_fractional_assignment_matrix = None # actual solution to LP
+        self.one = 10000000 # precision of fractional assignment
+
         self._check_inputs()
         self.fractional_assignment_solver = self.construct_solver(self.prob_limit_matrix)
         self.deterministic_assignment_solver = self.construct_solver(np.ones_like(self.prob_limit_matrix))
@@ -120,12 +119,13 @@ class RandomizedSolver():
 
 
     def construct_solver(self, limit_matrix):
+        ''' LP is solved with all probabilities scaled up by self.one. Solution is assumed to be integral. '''
         lp_solver = pywraplp.Solver.CreateSolver('GLOP')
 
         F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             constraint = self.constraint_matrix[i, j]
-            limit = limit_matrix[i, j]
+            limit = int(self.one * limit_matrix[i, j])
             if constraint == 0 and (self.allow_zero_score_assignments or self.cost_matrix[i, j] != 0):
                 # no conflict
                 F[i][j] = lp_solver.NumVar(0, limit, "F[{}][{}]".format(i, j))
@@ -137,12 +137,12 @@ class RandomizedSolver():
                 F[i][j] = lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
 
         for i in range(self.num_paps):
-            c = lp_solver.Constraint(self.demands[i], self.demands[i])
+            c = lp_solver.Constraint(int(self.one*self.demands[i]), int(self.one*self.demands[i]))
             for j in range(self.num_revs):
                 c.SetCoefficient(F[i][j], 1)
 
         for j in range(self.num_revs):
-            c = lp_solver.Constraint(self.minimums[j], self.maximums[j])
+            c = lp_solver.Constraint(int(self.one*self.minimums[j]), int(self.one*self.maximums[j]))
             for i in range(self.num_paps):
                 c.SetCoefficient(F[i][j], 1)
 
@@ -164,10 +164,18 @@ class RandomizedSolver():
         status = self.fractional_assignment_solver.Solve()
         if status == self.fractional_assignment_solver.OPTIMAL:
             self.solved = True
-            self.expected_cost = self.fractional_assignment_solver.Objective().Value()
-            self.fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs))
+            self.expected_cost = self.fractional_assignment_solver.Objective().Value() / self.one
+
+            self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
             for i, j in product(range(self.num_paps), range(self.num_revs)):
-                self.fractional_assignment_matrix[i, j] = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
+                actual_value = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
+                assert np.round(actual_value) - actual_value < 1e-5, 'LP solution should be integral'
+                self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
+
+            assert np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0), \
+                'Paper loads should be "integral"'
+
+            self.fractional_assignment_matrix = self.integer_fractional_assignment_matrix / self.one
         else:
             logging.debug("Solver status: {}".format(status))
             self.solved = False
@@ -177,7 +185,7 @@ class RandomizedSolver():
         status = self.deterministic_assignment_solver.Solve()
         if status == self.deterministic_assignment_solver.OPTIMAL:
             self.opt_solved = True
-            self.opt_cost = self.deterministic_assignment_solver.Objective().Value()
+            self.opt_cost = self.deterministic_assignment_solver.Objective().Value() / self.one
         else:
             logging.debug("Deterministic solver status: {}".format(status))
             self.opt_solved = False
@@ -202,8 +210,8 @@ class RandomizedSolver():
 
         # construct CFFI interface to the sampling extension in C
         ffi = FFI()
-        F = self.fractional_assignment_matrix.flatten().astype(np.double)
-        Fbuf = ffi.new("double[]", self.num_paps * self.num_revs)
+        F = self.integer_fractional_assignment_matrix.flatten()
+        Fbuf = ffi.new("int[]", self.num_paps * self.num_revs)
         for i in range(F.size):
             Fbuf[i] = F[i]
         Sbuf = ffi.new("int[]", self.num_revs)
@@ -224,7 +232,7 @@ class RandomizedSolver():
         rev_loads = np.sum(self.flow_matrix, axis=0)
         if not (np.all(pap_loads == np.array(self.demands)) and
                 np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
-            raise SolverException('Sampled assignment is invalid. Maybe rounding occurred?')
+            raise SolverException('Sampled assignment is invalid')
 
 
     def get_alternates(self, num_alternates):
