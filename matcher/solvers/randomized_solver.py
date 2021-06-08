@@ -37,6 +37,7 @@ class RandomizedSolver():
         self.cost_matrix = encoder.cost_matrix
         self.num_paps, self.num_revs = self.cost_matrix.shape
         self.allow_zero_score_assignments = allow_zero_score_assignments
+        self.logger = logger
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
@@ -48,7 +49,7 @@ class RandomizedSolver():
         if not self.allow_zero_score_assignments:
             bad_affinity_reviewers = np.where(np.all((self.cost_matrix * (self.constraint_matrix == 0)) == 0,
                                                      axis=0))[0]
-            logging.debug("Setting minimum load for {} reviewers to 0 because "
+            self.logger.debug("Setting minimum load for {} reviewers to 0 because "
                           "they do not have known affinity with any paper".format(len(bad_affinity_reviewers)))
             for rev_id in bad_affinity_reviewers:
                 self.minimums[rev_id] = 0
@@ -59,7 +60,6 @@ class RandomizedSolver():
         self.flow_matrix = None
         self.cost = None # actual cost of the sampled assignment
         self.alternate_probability_matrix = None # marginal probability for each alternate
-        self.logger = logger
         self.opt_solved = False
         self.opt_cost = None # cost of the optimal deterministic assignment
 
@@ -117,9 +117,11 @@ class RandomizedSolver():
         if demand > max_supply or demand < min_supply:
             raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
 
+        self.logger.debug('Finished checking if demand is in range')
 
     def construct_solver(self, limit_matrix):
         ''' LP is solved with all probabilities scaled up by self.one. Solution is assumed to be integral. '''
+        self.logger.debug('construct_solver')
         lp_solver = pywraplp.Solver.CreateSolver('GLOP')
 
         F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
@@ -150,15 +152,20 @@ class RandomizedSolver():
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             objective.SetCoefficient(F[i][j], self.cost_matrix[i, j])
         objective.SetMinimization()
+
+        self.logger.debug('Finished construct_solver')
         return lp_solver
 
 
     def solve(self):
+        self.logger.debug('solve')
 
         self._validate_input_range()
 
         assert hasattr(self, 'fractional_assignment_solver'), \
             'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
+
+        self.logger.debug('start fractional_assignment_solver')
 
         self.expected_cost = 0
         status = self.fractional_assignment_solver.Solve()
@@ -177,9 +184,11 @@ class RandomizedSolver():
 
             self.fractional_assignment_matrix = self.integer_fractional_assignment_matrix / self.one
         else:
-            logging.debug("Solver status: {}".format(status))
+            self.logger.debug("Solver status: {}".format(status))
             self.solved = False
             return
+
+        self.logger.debug('start deterministic_assignment_solver')
 
         self.opt_cost = 0
         status = self.deterministic_assignment_solver.Solve()
@@ -187,9 +196,10 @@ class RandomizedSolver():
             self.opt_solved = True
             self.opt_cost = self.deterministic_assignment_solver.Objective().Value() / self.one
         else:
-            logging.debug("Deterministic solver status: {}".format(status))
+            self.logger.debug("Deterministic solver status: {}".format(status))
             self.opt_solved = False
 
+        self.logger.debug('set alternate_probability_matrix')
         # set alternate probability to guarantee that
         # P[(p, r) assigned OR alternate] <= self.prob_limit_matrix[p, r]
         # by setting P[alternate] = (prob_limit - P[assign]) / (1 - P[assign])
@@ -199,11 +209,14 @@ class RandomizedSolver():
                 where=(self.fractional_assignment_matrix != 1))
 
         self.sample_assignment()
+        self.logger.debug('Finished solve')
+
         return self.flow_matrix
 
 
     def sample_assignment(self):
         ''' Sample a deterministic assignment from the fractional assignment '''
+        self.logger.debug('sample_assignment')
 
         assert self.solved, \
             'Solver not solved. Run self.solve() before sampling.'
@@ -234,9 +247,13 @@ class RandomizedSolver():
                 np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
             raise SolverException('Sampled assignment is invalid')
 
+        self.logger.debug('Finished sample_assignment')
+
+
 
     def get_alternates(self, num_alternates):
         ''' Sample alternates in order to respect probability guarantees '''
+        self.logger.debug('get_alternates')
 
         assert self.solved, \
             'Solver not solved. Run self.solve() before sampling.'
@@ -252,6 +269,7 @@ class RandomizedSolver():
                     unassigned.append((self.cost_matrix[i, j], j))
             unassigned.sort()
             alternates_by_index[i] = [entry[1] for entry in unassigned[:num_alternates]]
+        self.logger.debug('Finished get_alternates')
         return alternates_by_index
 
     def get_fraction_of_opt(self):
@@ -259,6 +277,8 @@ class RandomizedSolver():
         Return the fraction of the optimal score achieved by the randomized assignment (in expectation).
         This is sensible as long as costs = score * -scale.
         '''
+        self.logger.debug('get_fraction_of_opt')
+
         assert self.solved and self.opt_solved, \
             'Fractional and optimal solvers not solved. Run self.solve() before sampling.'
 
