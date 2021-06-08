@@ -176,11 +176,14 @@ class RandomizedSolver():
             self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
             for i, j in product(range(self.num_paps), range(self.num_revs)):
                 actual_value = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
-                assert np.round(actual_value) - actual_value < 1e-5, 'LP solution should be integral'
+                if np.round(actual_value) - actual_value > 1e-5:
+                    self.logger.debug('LP solution not integral at ' + str(i) + ',' + str(j) + ' with value of ' + str(actual_value))
                 self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
 
-            assert np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0), \
-                'Paper loads should be "integral"'
+            if not np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0):
+                self.logger.debug('Paper loads rounded')
+                self.solved = False
+                return
 
             self.fractional_assignment_matrix = self.integer_fractional_assignment_matrix / self.one
         else:
