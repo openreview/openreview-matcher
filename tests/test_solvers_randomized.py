@@ -452,3 +452,23 @@ def test_opt_fraction():
     assert solver.expected_cost == -3
     assert solver.opt_cost == -5
     assert solver.get_fraction_of_opt() == 0.6
+
+
+def test_identical_costs():
+    ''' Test that LP is integral when all costs identical '''
+    S = np.transpose(np.array([
+        [1.0, 1],
+        [1, 1],
+        [1, 1],
+        [1, 1]
+    ]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 1.0)
+    solver = RandomizedSolver(
+        [0,0,0,0],
+        [1,1,1,1],
+        [2,2],
+        encoder(-S, M, Q)
+    )
+    for _ in range(1000):
+        check_test_solution(solver, T=1)
