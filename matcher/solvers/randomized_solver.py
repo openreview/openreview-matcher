@@ -166,6 +166,8 @@ class RandomizedSolver():
         assert hasattr(self, 'fractional_assignment_solver'), \
             'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
 
+        self.logger.debug('start fractional_assignment_solver')
+
         self.expected_cost = 0
         status = self.fractional_assignment_solver.Solve()
         if status == self.fractional_assignment_solver.OPTIMAL:
@@ -175,9 +177,11 @@ class RandomizedSolver():
             for i, j in product(range(self.num_paps), range(self.num_revs)):
                 self.fractional_assignment_matrix[i, j] = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
         else:
-            logging.debug("Solver status: {}".format(status))
+            self.logger.debug("Solver status: {}".format(status))
             self.solved = False
             return
+
+        self.logger.debug('start deterministic_assignment_solver')
 
         self.opt_cost = 0
         status = self.deterministic_assignment_solver.Solve()
@@ -185,9 +189,10 @@ class RandomizedSolver():
             self.opt_solved = True
             self.opt_cost = self.deterministic_assignment_solver.Objective().Value()
         else:
-            logging.debug("Deterministic solver status: {}".format(status))
+            self.logger.debug("Deterministic solver status: {}".format(status))
             self.opt_solved = False
 
+        self.logger.debug('set alternate_probability_matrix')
         # set alternate probability to guarantee that
         # P[(p, r) assigned OR alternate] <= self.prob_limit_matrix[p, r]
         # by setting P[alternate] = (prob_limit - P[assign]) / (1 - P[assign])
