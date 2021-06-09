@@ -168,14 +168,19 @@ class RandomizedSolver():
         self.logger.debug('start fractional_assignment_solver')
 
         self.expected_cost = 0
+        self.logger.debug('call to Solve()')
         status = self.fractional_assignment_solver.Solve()
+        self.logger.debug('check optimal')
         if status == self.fractional_assignment_solver.OPTIMAL:
+            self.logger.debug('status is optimal')
             self.solved = True
             self.expected_cost = self.fractional_assignment_solver.Objective().Value() / self.one
-
+            self.logger.debug('start iterating papers and reviewers')
             self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
             for i, j in product(range(self.num_paps), range(self.num_revs)):
+                self.logger.debug('before lookup variable: ' + str(i) + ', ' + str(j))
                 actual_value = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
+                self.logger.debug('actual_value: ' + str(actual_value))
                 if np.round(actual_value) - actual_value > 1e-5:
                     self.logger.debug('LP solution not integral at ' + str(i) + ',' + str(j) + ' with value of ' + str(actual_value))
                 self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
