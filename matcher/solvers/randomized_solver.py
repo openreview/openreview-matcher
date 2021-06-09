@@ -147,6 +147,9 @@ class RandomizedSolver():
         result_matrix = self.fractional_assignment_solver.solve()
         self.solved = self.fractional_assignment_solver.solved
         self.expected_cost = self.fractional_assignment_solver.cost / self.one
+        if not self.solved:
+            self.logger.debug('fractional_assignment solving failed')
+            return
 
         self.logger.debug('start iterating papers and reviewers')
         self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
@@ -155,10 +158,6 @@ class RandomizedSolver():
             if np.round(actual_value) - actual_value > 1e-5:
                 self.logger.debug('LP solution not integral at ' + str(i) + ',' + str(j) + ' with value of ' + str(actual_value))
             self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
-        if not self.solved:
-            self.logger.debug('fractional_assignment solving failed')
-            return
-
         if not np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0):
             self.logger.debug('Paper loads rounded')
             self.solved = False
