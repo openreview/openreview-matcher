@@ -12,6 +12,4 @@ ffibuilder.set_source("_bvn_extension", # extension name
     header,
     sources=['matcher/solvers/bvn_extension/bvn.c'],
     libraries=['m'])  # link with the math library
-
-if __name__ == "__main__":
-    ffibuilder.compile(verbose=True)
+ffibuilder.compile(verbose=True)
