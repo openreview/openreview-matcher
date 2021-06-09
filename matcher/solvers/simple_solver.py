@@ -33,6 +33,10 @@ SimpleSolver is initialized with the following arguments:
         True (default) or False. If True, throws an error when the sum of
         the number of available reviews does not equal the sum of demands
 
+    "limit_matrix":
+        a #papers by #reviewers numpy array representing the limit on the flow
+        between that reviewer and paper (usually 1)
+
 
 Node is a namedtuple that is used to represent nodes in the graph:
 
@@ -72,7 +76,8 @@ class SimpleSolver:
             constraint_matrix,
             allow_zero_score_assignments=False,
             logger=logging.getLogger(__name__),
-            strict=True
+            strict=True,
+            limit_matrix=None
         ):
 
         self.logger = logger
@@ -88,6 +93,8 @@ class SimpleSolver:
         self.num_papers = np.size(cost_matrix, axis=0)
         self.num_reviewers = np.size(cost_matrix, axis=1)
         self.current_offset = 0
+        if type(limit_matrix) == type(None):
+            limit_matrix = np.ones(np.shape(self.cost_matrix), dtype=np.int64)
 
         self._check_inputs(strict)
 
@@ -136,11 +143,11 @@ class SimpleSolver:
                 # a constraint of 1 means that this user was explicitly assigned to this paper
                 # a constraint of anything other that 0 or 1 essentially indicates a conflict, so do not add an arc
                 if arc_constraint == 0 and (self.allow_zero_score_assignments or arc_cost != 0):
-                    self.add_edge(r_node, p_node, 1, arc_cost)
+                    self.add_edge(r_node, p_node, limit_matrix[coordinates], arc_cost)
                 elif arc_constraint == 1:
                     # TODO: this should be handled as a hard constraint
                     arc_cost = self._least_cost() - 1
-                    self.add_edge(r_node, p_node, 1, int(arc_cost))
+                    self.add_edge(r_node, p_node, limit_matrix[coordinates], int(arc_cost))
 
         # connect paper nodes to the sink node.
         for p_node in self.paper_nodes:
@@ -243,7 +250,6 @@ class SimpleSolver:
         Assigns the Node the next available number, given all other Nodes in the graph.
 
         '''
-
         # cast `supply` to Python int because SimpleMinCostFlow can't handle other int types
         # (e.g. numpy.int64)
         new_node = Node(number=self.current_offset, index=index, supply=int(supply))
@@ -263,7 +269,6 @@ class SimpleSolver:
         Edges are represented virtually by the presence of Node numbers in the aligned arrays
         `self.start_nodes` and `self.end_nodes`; there is no "Edge" object.
         '''
-
         self.start_nodes.append(start_node)
         self.end_nodes.append(end_node)
 

@@ -3,7 +3,12 @@ from collections import namedtuple
 import numpy as np
 from matcher.solvers import SolverException, RandomizedSolver
 
-encoder = namedtuple('Encoder', ['cost_matrix', 'constraint_matrix', 'prob_limit_matrix'])
+cost_scale = 1000
+class encoder:
+    def __init__(self, cost, constraint, prob_limit):
+        self.cost_matrix = cost * cost_scale
+        self.constraint_matrix = constraint
+        self.prob_limit_matrix = prob_limit
 
 
 def check_sampled_solution(solver):
@@ -293,10 +298,10 @@ def test_solution_optimal_no_limit():
     solver.solve()
 
     assert np.all(solver.fractional_assignment_matrix == solution) and np.all(solver.flow_matrix == solution)
-    assert solver.expected_cost == -3.2 and solver.cost == -3.2
+    assert solver.expected_cost == (cost_scale * -3.2) and solver.cost == (cost_scale * -3.2)
     solver.sample_assignment() # should not change since assignment is deterministic
     assert np.all(solver.fractional_assignment_matrix == solution) and np.all(solver.flow_matrix == solution)
-    assert solver.expected_cost == -3.2 and solver.cost == -3.2
+    assert solver.expected_cost == (cost_scale * -3.2) and solver.cost == (cost_scale * -3.2)
 
 
 def test_constraints():
@@ -416,8 +421,8 @@ def test_opt_fraction():
 
     solver.solve()
     assert solver.solved and solver.opt_solved
-    assert solver.expected_cost == -2.5
-    assert solver.opt_cost == -5
+    assert solver.expected_cost == (cost_scale * -2.5)
+    assert solver.opt_cost == (cost_scale * -5)
     assert solver.get_fraction_of_opt() == 0.5
 
     S = np.eye(5)
@@ -434,8 +439,8 @@ def test_opt_fraction():
 
     solver.solve()
     assert solver.solved and solver.opt_solved
-    assert solver.expected_cost == -5
-    assert solver.opt_cost == -5
+    assert solver.expected_cost == (cost_scale * -5)
+    assert solver.opt_cost == (cost_scale * -5)
     assert solver.get_fraction_of_opt() == 1
 
     Q = np.full(np.shape(S), 0.3)
@@ -449,8 +454,8 @@ def test_opt_fraction():
 
     solver.solve()
     assert solver.solved and solver.opt_solved
-    assert solver.expected_cost == -3
-    assert solver.opt_cost == -5
+    assert solver.expected_cost == (cost_scale * -3)
+    assert solver.opt_cost == (cost_scale * -5)
     assert solver.get_fraction_of_opt() == 0.6
 
 
