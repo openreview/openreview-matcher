@@ -8,20 +8,23 @@ from collections import defaultdict, namedtuple
 import numpy as np
 import logging
 
+
 def _score_to_cost(score, scaling_factor=100):
-    '''
+    """
     Simple helper function for converting a score into a cost.
 
     Scaling factor is arbitrary and usually shouldn't be changed.
-    '''
+    """
     return score * -scaling_factor
 
+
 class EncoderError(Exception):
-    '''Exception wrapper class for errors related to Encoder'''
+    """Exception wrapper class for errors related to Encoder"""
     pass
 
+
 class Encoder:
-    '''
+    """
     Responsible for keeping track of paper and reviewer indexes.
 
     Arguments:
@@ -52,7 +55,8 @@ class Encoder:
         a list of triples, formatted as follows:
         (<str paper_ID>, <str reviewer_ID>, <float limit>)
         OR a float, indicating the probability limit for all reviewer-paper pairs
-    '''
+    """
+
     def __init__(
             self,
             reviewers,
@@ -63,8 +67,14 @@ class Encoder:
             normalization_types=[],
             probability_limits=[],
             logger=logging.getLogger(__name__)
-        ):
+    ):
         self.logger = logger
+
+        if len(reviewers) == 0:
+            raise EncoderError('Reviewers List is empty.')
+
+        if len(papers) == 0:
+            raise EncoderError('Papers List is empty.')
 
         self.reviewers = reviewers
         self.papers = papers
@@ -111,18 +121,18 @@ class Encoder:
 
     def _normalize(self, weight_by_type, with_normalization_matrices):
 
-        indicator = { score_type: scores != 0.0  for score_type, scores in with_normalization_matrices.items() }
+        indicator = {score_type: scores != 0.0 for score_type, scores in with_normalization_matrices.items()}
         sum_of_weights = sum([
             indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
         ])
-        normalizer = np.where(sum_of_weights == 0, 0, 1/sum_of_weights)
+        normalizer = np.where(sum_of_weights == 0, 0, 1 / sum_of_weights)
 
         return (normalizer * sum([
             scores * weight_by_type[score_type] for score_type, scores in with_normalization_matrices.items()
         ]))
 
     def _encode_scores(self, scores):
-        '''return a matrix containing unweighted scores.'''
+        """return a matrix containing unweighted scores."""
         default = scores.get('default', 0)
         edges = scores.get('edges', [])
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
@@ -134,9 +144,9 @@ class Encoder:
         return score_matrix
 
     def _encode_constraints(self, constraints):
-        '''
+        """
         return a matrix containing constraint values. label should have no bearing on the outcome.
-        '''
+        """
         constraint_matrix = np.full(self.matrix_shape, 0, dtype=int)
         for forum, user, constraint in constraints:
             coordinates = (self.index_by_forum[forum], self.index_by_user[user])
@@ -145,24 +155,23 @@ class Encoder:
         return constraint_matrix
 
     def _encode_probability_limits(self, probability_limits):
-        '''
+        """
         return a matrix containing probability limits
-        '''
+        """
         if isinstance(probability_limits, float):
             prob_limit_matrix = np.full(self.matrix_shape, probability_limits, dtype=float)
-        else: # list of tuples
-            prob_limit_matrix = np.full(self.matrix_shape, 1, dtype=float) # default to no limit
+        else:  # list of tuples
+            prob_limit_matrix = np.full(self.matrix_shape, 1, dtype=float)  # default to no limit
             for forum, user, limit in probability_limits:
                 coordinates = (self.index_by_forum[forum], self.index_by_user[user])
                 prob_limit_matrix[coordinates] = limit
         return prob_limit_matrix
 
-
     def decode_assignments(self, flow_matrix):
-        '''
+        """
         Return a dictionary, keyed on forum IDs, with lists containing dicts
         representing assigned users.
-        '''
+        """
         assignments_by_forum = defaultdict(list)
 
         for paper_index, paper_flows in enumerate(flow_matrix):
@@ -181,11 +190,11 @@ class Encoder:
         return dict(assignments_by_forum)
 
     def decode_alternates(self, flow_matrix, num_alternates):
-        '''
+        """
         Return a dictionary, keyed on forum IDs, with lists containing dicts
         representing alternate suggested users.
 
-        '''
+        """
         alternates_by_forum = {}
 
         for paper_index, paper_flows in enumerate(flow_matrix):
@@ -210,12 +219,12 @@ class Encoder:
         return alternates_by_forum
 
     def decode_selected_alternates(self, alternates_by_index):
-        '''
+        """
         Convert a dictionary of
             paper_index -> [list of reviewer_index]
         into a dictionary of alternates keyed on IDs. Used by RandomizedSolver
         to carefully choose alternates.
-        '''
+        """
         alternates_by_forum = {}
         for paper_index, reviewer_indices in alternates_by_index.items():
             paper_id = self.papers[paper_index]

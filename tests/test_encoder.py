@@ -2,42 +2,47 @@
 Unit test suite for `matcher/encoder.py`
 '''
 
-
 import itertools
 from collections import namedtuple
 
 import pytest
 import numpy as np
 
-from matcher.encoder import Encoder
+from matcher.encoder import Encoder, EncoderError
 from conftest import assert_arrays
 
 MockNote = namedtuple('Note', ['id', 'forum'])
 MockEdge = namedtuple('Edge', ['head', 'tail', 'weight', 'label'])
 
+
 @pytest.fixture
 def encoder_context():
-    '''pytest fixture for Encoder testing'''
-    num_reviewers = 4
-    num_papers = 3
+    """pytest fixture for Encoder testing"""
 
-    papers = ['paper{}'.format(i) for i in range(num_papers)]
-    reviewers = ['reviewer{}'.format(i) for i in range(num_reviewers)]
+    def _encoder_context(n_reviewers=4, n_papers=3):
+        num_reviewers = n_reviewers
+        num_papers = n_papers
 
-    matrix_shape = (num_papers, num_reviewers)
+        papers = ['paper{}'.format(i) for i in range(num_papers)]
+        reviewers = ['reviewer{}'.format(i) for i in range(num_reviewers)]
 
-    return papers, reviewers, matrix_shape
+        matrix_shape = (num_papers, num_reviewers)
+
+        return papers, reviewers, matrix_shape
+
+    return _encoder_context
+
 
 def test_encoder_basic(encoder_context):
-    '''Basic test of Encoder functionality, without constraints.'''
-    papers, reviewers, matrix_shape = encoder_context
+    """Basic test of Encoder functionality, without constraints."""
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         'mock/-/score_edge': {
-            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
         },
         'mock/-/bid_edge': {
-            'edges': [ (forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)]
+            'edges': [(forum, reviewer, 1) for forum, reviewer in itertools.product(papers, reviewers)]
         }
     }
 
@@ -106,9 +111,10 @@ def test_encoder_basic(encoder_context):
     assert 'reviewer2' not in paper2_alternates
     assert 'reviewer3' not in paper1_alternates
 
+
 def test_encoder_no_scores(encoder_context):
-    '''Basic test of Encoder functionality, without scores.'''
-    papers, reviewers, _ = encoder_context
+    """Basic test of Encoder functionality, without scores."""
+    papers, reviewers, _ = encoder_context()
 
     scores_by_type = {}
 
@@ -162,9 +168,10 @@ def test_encoder_no_scores(encoder_context):
     assert 'reviewer2' not in paper2_alternates
     assert 'reviewer3' not in paper1_alternates
 
+
 def test_encoder_weighting(encoder_context):
-    '''Ensure that matrix weights are applied properly'''
-    papers, reviewers, matrix_shape = encoder_context
+    """Ensure that matrix weights are applied properly"""
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         'mock/-/score_edge': {'edges': [
@@ -216,15 +223,15 @@ def test_encoder_weighting(encoder_context):
     assert encoded_aggregate_matrix.shape == correct_aggregate_matrix.shape
     assert (encoded_aggregate_matrix == correct_aggregate_matrix).all()
 
+
 def test_encoder_constraints(encoder_context):
-    '''Ensure that constraints are being encoded properly'''
-    papers, reviewers, matrix_shape = encoder_context
+    """Ensure that constraints are being encoded properly"""
+    papers, reviewers, matrix_shape = encoder_context()
 
     # computing constraints is completely separate from computing scores,
     # so we don't test them here.
     scores_by_type = {}
     weight_by_type = {}
-
 
     # label should have no bearing on the outcome
     # any positive weight should be encoded as 1
@@ -255,8 +262,8 @@ def test_encoder_constraints(encoder_context):
     assert encoded_constraint_matrix.shape == correct_constraint_matrix.shape
     assert (encoded_constraint_matrix == correct_constraint_matrix).all()
 
-def test_encoder_average_weighting(encoder_context):
 
+def test_encoder_average_weighting(encoder_context):
     reviewers = [1, 2, 3, 4]
     papers = [1, 2, 3]
 
@@ -331,11 +338,11 @@ def test_encoder_average_weighting(encoder_context):
     ]
     print('expected', expected_matrix)
 
-    for a in range(0,3):
+    for a in range(0, 3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
 
-def test_encoder_score_use_correct_default(encoder_context):
 
+def test_encoder_score_use_correct_default(encoder_context):
     reviewers = [1, 2]
     papers = [1, 2, 3]
 
@@ -346,7 +353,7 @@ def test_encoder_score_use_correct_default(encoder_context):
                 (1, 1, 0.7),
                 (2, 2, 0.5),
                 (3, 2, 0.1)]
-            }
+        }
     }
 
     weight_by_type = {
@@ -373,16 +380,17 @@ def test_encoder_score_use_correct_default(encoder_context):
         [0.25, 0.1]
     ]
 
-    for a in range(0,3):
+    for a in range(0, 3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
 
+
 def test_encoder_probability_limits(encoder_context):
-    '''Test of Encoder with probabililty limits'''
-    papers, reviewers, matrix_shape = encoder_context
+    """Test of Encoder with probabililty limits"""
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         'mock/-/score_edge': {
-            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
         }
     }
 
@@ -447,12 +455,12 @@ def test_encoder_probability_limits(encoder_context):
 
 
 def test_specific_alternates(encoder_context):
-    '''Test the decode_selected_alternates function'''
-    papers, reviewers, matrix_shape = encoder_context
+    """Test the decode_selected_alternates function"""
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         'mock/-/score_edge': {
-            'edges': [ (forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
         }
     }
 
@@ -471,13 +479,13 @@ def test_specific_alternates(encoder_context):
     )
 
     alternates_by_index = {
-        0 : [0, 1],
-        1 : [1, 3, 0],
-        2 : [2]
+        0: [0, 1],
+        1: [1, 3, 0],
+        2: [2]
     }
 
     alternates_by_forum = {
-        'paper{}'.format(i) : [
+        'paper{}'.format(i): [
             {
                 'aggregate_score': 0.5,
                 'user': 'reviewer{}'.format(j)
@@ -488,3 +496,57 @@ def test_specific_alternates(encoder_context):
     alternates = encoder.decode_selected_alternates(alternates_by_index)
 
     assert alternates == alternates_by_forum
+
+
+def test_encoder_no_reviewers(encoder_context):
+    papers, reviewers, matrix_shape = encoder_context(n_reviewers=0)
+
+    scores_by_type = {
+        'mock/-/score_edge': {
+            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        }
+    }
+
+    weight_by_type = {
+        'mock/-/score_edge': 1
+    }
+
+    constraints = []
+
+    with pytest.raises(EncoderError) as exc:
+        encoder = Encoder(
+            reviewers,
+            papers,
+            constraints,
+            scores_by_type,
+            weight_by_type
+        )
+
+    assert 'Reviewers List is empty.' == str(exc.value)
+
+
+def test_encoder_no_papers(encoder_context):
+    papers, reviewers, matrix_shape = encoder_context(n_papers=0)
+
+    scores_by_type = {
+        'mock/-/score_edge': {
+            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        }
+    }
+
+    weight_by_type = {
+        'mock/-/score_edge': 1
+    }
+
+    constraints = []
+
+    with pytest.raises(EncoderError) as exc:
+        encoder = Encoder(
+            reviewers,
+            papers,
+            constraints,
+            scores_by_type,
+            weight_by_type
+        )
+
+    assert 'Papers List is empty.' == str(exc.value)

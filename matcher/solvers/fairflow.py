@@ -80,7 +80,8 @@ class FairFlow(object):
 
         if self.affinity_matrix.shape != self.solution.shape:
             raise SolverException(
-                'Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}'.format(self.affinity_matrix.shape, self.solution.shape))
+                'Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}'.format(self.affinity_matrix.shape, self.solution.shape)
+            )
 
         self.max_affinities = np.max(self.affinity_matrix)
         self.big_c = 10000
@@ -107,7 +108,9 @@ class FairFlow(object):
         self.logger.debug('Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
 
         if demand > max_supply or demand < min_supply:
-            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
+            raise SolverException(
+                'Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply)
+            )
 
         self.logger.debug('Finished checking graph inputs')
 
