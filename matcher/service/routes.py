@@ -15,9 +15,11 @@ from .openreview_interface import Deployment
 BLUEPRINT = flask.Blueprint('match', __name__)
 CORS(BLUEPRINT, supports_credentials=True)
 
+
 class MatcherStatusException(Exception):
     '''Exception wrapper class for errors related to the status of the Matcher'''
     pass
+
 
 @BLUEPRINT.route('/match/test')
 def test():
@@ -25,14 +27,13 @@ def test():
     flask.current_app.logger.info('In test')
     return 'OpenReview Matcher (random assignments)'
 
+
 @BLUEPRINT.route('/match', methods=['POST'])
 def match():
     '''Main entry point into the app. Initiates a match run'''
 
     flask.current_app.logger.debug('Match request received')
-
     result = {}
-
     token = flask.request.headers.get('Authorization')
     if not token:
         flask.current_app.logger.error('No Authorization token in headers')
@@ -67,16 +68,12 @@ def match():
 
         solver_class = interface.config_note.content.get('solver', 'MinMax')
 
-        flask.current_app.logger.debug('Solver class {} selected for configuration id {}'.format(solver_class, config_note_id))
-
-        thread = threading.Thread(
-            target=Matcher(
-                datasource=interface,
-                solver_class=solver_class,
-                logger=flask.current_app.logger
-            ).run
+        flask.current_app.logger.debug(
+            'Solver class {} selected for configuration id {}'.format(solver_class, config_note_id)
         )
-        thread.start()
+
+        from .celery_tasks import run_matching
+        run_matching.apply_async((interface, solver_class, flask.current_app.logger), queue='matching', ignore_result=False, task_id=config_note_id)
 
         flask.current_app.logger.debug('Match for configuration has started: {}'.format(config_note_id))
 
@@ -143,6 +140,13 @@ def deploy():
             raise MatcherStatusException('Matcher configuration is not complete')
 
         deployment = Deployment(interface)
+        # deployment_job = Job.create(
+        #     Deployment(
+        #         config_note_interface=interface,
+        #         logger=flask.current_app.logger
+        #     ).run
+        # )
+        # deploy_queue.enqueue_job(deployment_job)
 
         thread = threading.Thread(
             target=Deployment(

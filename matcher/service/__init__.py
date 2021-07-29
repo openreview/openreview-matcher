@@ -2,10 +2,13 @@ import os
 import flask
 import logging, logging.handlers
 
+from celery import Celery
+
+
 def configure_logger(app):
-    '''
+    """
     Configures the app's logger object.
-    '''
+    """
     app.logger.removeHandler(flask.logging.default_handler)
     formatter = logging.Formatter(
         '%(asctime)s %(levelname)s: [in %(pathname)s:%(lineno)d] %(threadName)s %(message)s')
@@ -13,7 +16,7 @@ def configure_logger(app):
     file_handler = logging.handlers.RotatingFileHandler(
         filename=app.config['LOG_FILE'],
         mode='a',
-        maxBytes=1*1000*1000,
+        maxBytes=1 * 1000 * 1000,
         backupCount=20)
 
     file_handler.setFormatter(formatter)
@@ -32,10 +35,11 @@ def configure_logger(app):
 
     return app.logger
 
+
 def create_app(config=None):
-    '''
+    """
     Implements the "app factory" pattern, recommended by Flask documentation.
-    '''
+    """
 
     app = flask.Flask(
         __name__,
@@ -59,3 +63,16 @@ def create_app(config=None):
     app.register_blueprint(routes.BLUEPRINT)
 
     return app
+
+
+def create_celery(app):
+    """
+    Initializes a celery application using Flask App
+    """
+    celery = Celery(
+        app.import_name,
+        include=["matcher.service.celery_tasks"],
+        config_source='matcher.service.config.celery_config'
+    )
+
+    return celery
