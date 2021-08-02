@@ -4,6 +4,7 @@ from kombu.serialization import registry
 task_default_queue = 'default'
 task_queues = (
     Queue('matching', routing_key='matcher.service.celery_tasks.run_matching'),
+    Queue('deployment', routing_key='matcher.service.celery_tasks.run_deployment')
 )
 # CELERY_IMPORTS = ('tasks')
 task_ignore_result = False

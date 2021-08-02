@@ -3,4 +3,4 @@ from matcher.service import (
 )
 
 app = create_app()
-celery_app = create_celery(app)
+celery_app = create_celery(app, config_source='matcher.service.config.celery_config')

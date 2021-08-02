@@ -19,7 +19,6 @@ setup(name='openreview-matcher',
           'flask-cors==3.0.9',
           'cffi>=1.0.0',
           'celery',
-          'pytest-celery==0.0.0'
-          'flower'
+          'pytest-celery',
       ],
       zip_safe=False)

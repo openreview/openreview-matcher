@@ -73,7 +73,12 @@ def match():
         )
 
         from .celery_tasks import run_matching
-        run_matching.apply_async((interface, solver_class, flask.current_app.logger), queue='matching', ignore_result=False, task_id=config_note_id)
+        run_matching.apply_async(
+            (interface, solver_class, flask.current_app.logger),
+            queue='matching',
+            ignore_result=False,
+            task_id=config_note_id
+        )
 
         flask.current_app.logger.debug('Match for configuration has started: {}'.format(config_note_id))
 
@@ -139,22 +144,13 @@ def deploy():
         if interface.config_note.content['status'] not in ['Complete', 'Deployment Error']:
             raise MatcherStatusException('Matcher configuration is not complete')
 
-        deployment = Deployment(interface)
-        # deployment_job = Job.create(
-        #     Deployment(
-        #         config_note_interface=interface,
-        #         logger=flask.current_app.logger
-        #     ).run
-        # )
-        # deploy_queue.enqueue_job(deployment_job)
-
-        thread = threading.Thread(
-            target=Deployment(
-                config_note_interface=interface,
-                logger=flask.current_app.logger
-            ).run
+        from .celery_tasks import run_deployment
+        run_deployment.apply_async(
+            (interface, flask.current_app.logger),
+            queue='deployment',
+            ignore_result=False,
+            task_id=config_note_id
         )
-        thread.start()
 
         flask.current_app.logger.debug('Deployment for configuration has started: {}'.format(config_note_id))
 

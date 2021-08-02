@@ -140,12 +140,13 @@ def openreview_context(scope='function'):
             'SUPERUSER_TILDE_ID': '~Super_User1',
             'SUPERUSER_EMAIL': 'info@openreview.net',
         })
-
+    celery = matcher.service.create_celery(app, config_source='tests.celery_config_test')
     superuser_client = initialize_superuser()
 
     with app.app_context():
         yield {
             'app': app,
+            'celery': celery,
             'test_client': app.test_client(),
             'openreview_client': superuser_client
         }
@@ -171,3 +172,10 @@ if __name__ == '__main__':
     conference = clean_start_conference(
         superuser_client, conference_id, num_reviewers, num_papers, reviews_per_paper)
 
+
+@pytest.fixture(scope='session')
+def celery_config():
+    return {
+        'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
+        'result_backend': 'redis://localhost:6379/0'
+    }
