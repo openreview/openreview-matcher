@@ -15,7 +15,8 @@ from matcher.solvers import SolverException
 
 from conftest import clean_start_conference, wait_for_status
 
-def test_integration_basic(openreview_context):
+
+def test_integration_basic(openreview_context, celery_app, celery_worker):
     '''
     Basic integration test. Makes use of the OpenReview Builder
     '''
@@ -89,11 +90,14 @@ def test_integration_basic(openreview_context):
     assert matcher_status.content['status'] == 'Complete'
     assert 'randomized_fraction_of_opt' in matcher_status.content
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test',
+                                                         invitation=conference.get_paper_assignment_id(
+                                                             conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
-def test_integration_supply_mismatch_error(openreview_context):
+
+def test_integration_supply_mismatch_error(openreview_context, celery_app, celery_worker):
     '''
     Basic integration test. Makes use of the OpenReview Builder
     '''
@@ -103,7 +107,7 @@ def test_integration_supply_mismatch_error(openreview_context):
     conference_id = 'ICML.cc/2021/Conference'
     num_reviewers = 10
     num_papers = 10
-    reviews_per_paper = 10 #impossible!
+    reviews_per_paper = 10  # impossible!
     max_papers = 1
     min_papers = 1
     alternates = 0
@@ -164,13 +168,17 @@ def test_integration_supply_mismatch_error(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'No Solution'
-    assert matcher_status.content['error_message'] == 'Total demand (100) is out of range when min review supply is (10) and max review supply is (10)'
+    assert matcher_status.content[
+               'error_message'] == 'Total demand (100) is out of range when min review supply is (10) and max review supply is (10)'
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test',
+                                                         invitation=conference.get_paper_assignment_id(
+                                                             conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == 0
 
-def test_integration_demand_out_of_supply_range_error(openreview_context):
+
+def test_integration_demand_out_of_supply_range_error(openreview_context, celery_app, celery_worker):
     '''
     Test to check that a No Solution is observed when demand is not in the range of min and max supply
     '''
@@ -241,13 +249,17 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content['status'] == 'No Solution'
-    assert matcher_status.content['error_message'] == 'Total demand (30) is out of range when min review supply is (40) and max review supply is (50)'
+    assert matcher_status.content[
+               'error_message'] == 'Total demand (30) is out of range when min review supply is (40) and max review supply is (50)'
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test',
+                                                         invitation=conference.get_paper_assignment_id(
+                                                             conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == 0
 
-def test_integration_no_scores(openreview_context):
+
+def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     '''
     Basic integration test. Makes use of the OpenReview Builder
     '''
@@ -316,11 +328,14 @@ def test_integration_no_scores(openreview_context):
     config_note = openreview_client.get_note(config_note.id)
     assert matcher_status.content['status'] == 'Complete'
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test', invitation=conference.get_paper_assignment_id(conference.get_reviewers_id()))
+    paper_assignment_edges = openreview_client.get_edges(label='integration-test',
+                                                         invitation=conference.get_paper_assignment_id(
+                                                             conference.get_reviewers_id()))
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
-def test_routes_invalid_invitation(openreview_context):
+
+def test_routes_invalid_invitation(openreview_context, celery_app, celery_worker):
     ''''''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
@@ -394,7 +409,8 @@ def test_routes_invalid_invitation(openreview_context):
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content['status'] == 'Error'
 
-def test_routes_missing_header(openreview_context):
+
+def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     '''request with missing header should response with 400'''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
@@ -460,7 +476,8 @@ def test_routes_missing_header(openreview_context):
     )
     assert missing_header_response.status_code == 400
 
-def test_routes_missing_config(openreview_context):
+
+def test_routes_missing_config(openreview_context, celery_app, celery_worker):
     '''should return 404 if config note doesn't exist'''
 
     openreview_client = openreview_context['openreview_client']
@@ -474,8 +491,9 @@ def test_routes_missing_config(openreview_context):
     )
     assert missing_config_response.status_code == 404
 
-@pytest.mark.skip # TODO: fix the authorization so that this test passes.
-def test_routes_bad_token(openreview_context):
+
+@pytest.mark.skip  # TODO: fix the authorization so that this test passes.
+def test_routes_bad_token(openreview_context, celery_app, celery_worker):
     '''should return 400 if token is bad'''
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
@@ -489,8 +507,9 @@ def test_routes_bad_token(openreview_context):
     )
     assert bad_token_response.status_code == 400
 
-@pytest.mark.skip # TODO: fix authorization so that this test passes.
-def test_routes_forbidden_config(openreview_context):
+
+@pytest.mark.skip  # TODO: fix authorization so that this test passes.
+def test_routes_forbidden_config(openreview_context, celery_app, celery_worker):
     '''should return 403 if user does not have permission on config note'''
 
     openreview_client = openreview_context['openreview_client']
@@ -565,7 +584,8 @@ def test_routes_forbidden_config(openreview_context):
     )
     assert forbidden_response.status_code == 403
 
-def test_routes_already_running_or_complete(openreview_context):
+
+def test_routes_already_running_or_complete(openreview_context, celery_app, celery_worker):
     '''should return 400 if the match is already running or complete'''
 
     openreview_client = openreview_context['openreview_client']
@@ -650,4 +670,3 @@ def test_routes_already_running_or_complete(openreview_context):
     assert already_complete_response.status_code == 400
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content['status'] == 'Complete'
-
