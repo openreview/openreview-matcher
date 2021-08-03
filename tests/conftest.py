@@ -125,8 +125,8 @@ def assert_arrays(array_A, array_B, is_string=False):
         assert all([float(a) == float(b) for a, b in zip(sorted(array_A), sorted(array_B))])
 
 
-@pytest.fixture
-def openreview_context(scope='function'):
+@pytest.fixture()
+def openreview_context():
     '''
     A pytest fixture for setting up a clean OpenReview test instance:
 
@@ -163,6 +163,7 @@ def celery_config():
     return {
         'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
         'result_backend': 'redis://localhost:6379/0',
+        'task_track_started': True,
         'task_serializer': 'pickle',
         'result_serializer': 'pickle',
         'accept_content': ['pickle', 'application/x-python-serialize'],

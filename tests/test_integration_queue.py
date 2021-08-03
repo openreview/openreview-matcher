@@ -1,18 +1,23 @@
+"""
+End-to-end integration tests with OpenReview server and Celery task queue.
+"""
+
 import json
 
-from openreview import openreview
+import openreview
+from celery.result import AsyncResult
 
-from matcher.service.celery_tasks import run_matching
-from matcher.service.openreview_interface import ConfigNoteInterface
-from tests.conftest import clean_start_conference, wait_for_status
+from conftest import clean_start_conference, wait_for_status
 
 
-def test_matching_task(openreview_context, celery_app, celery_worker):
+def test_integration_basic(openreview_context, celery_app, celery_worker):
+    """
+    Basic integration test. Makes use of the OpenReview Builder
+    """
     openreview_client = openreview_context['openreview_client']
     test_client = openreview_context['test_client']
-    app = openreview_context['app']
 
-    conference_id = 'ICLR.cc/2018x/Conference'
+    conference_id = 'AKBC.ws/2018/Conference'
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -52,10 +57,10 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
             }
         },
         'status': 'Initialized',
-        'solver': 'MinMax'
+        'solver': 'FairFlow'
     }
 
-    config_note = openreview.Note(**{
+    config_note1 = openreview.Note(**{
         'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
         'readers': [conference.get_id()],
         'writers': [conference.get_id()],
@@ -63,23 +68,44 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
         'content': config
     })
 
-    config_note = openreview_client.post_note(config_note)
-    assert config_note
+    config_note2 = openreview.Note(**{
+        'invitation': '{}/-/Assignment_Configuration'.format(reviewers_id),
+        'readers': [conference.get_id()],
+        'writers': [conference.get_id()],
+        'signatures': [conference.get_id()],
+        'content': config
+    })
 
-    interface = ConfigNoteInterface(
-        client=openreview_client,
-        config_note_id=config_note.id,
-        logger=app.logger
+    config_note1 = openreview_client.post_note(config_note1)
+    assert config_note1
+
+    config_note2 = openreview_client.post_note(config_note2)
+    assert config_note2
+
+    response = test_client.post(
+        '/match',
+        data=json.dumps({'configNoteId': config_note1.id}),
+        content_type='application/json',
+        headers=openreview_client.headers
     )
-    solver_class = interface.config_note.content.get('solver', 'MinMax')
-    task = run_matching.s(interface, solver_class, app.logger).apply()
+    assert response.status_code == 200
 
-    matcher_status = wait_for_status(openreview_client, config_note.id)
+    response = test_client.post(
+        '/match',
+        data=json.dumps({'configNoteId': config_note2.id}),
+        content_type='application/json',
+        headers=openreview_client.headers
+    )
+    assert response.status_code == 200
+
+    task1 = AsyncResult(config_note1.id)
+    task2 = AsyncResult(config_note2.id)
+
+    assert task2.state == 'PENDING'
+    assert config_note2.content['status'] == "Initialized"
+
+    matcher_status = wait_for_status(openreview_client, config_note1.id)
     assert matcher_status.content['status'] == 'Complete'
-    assert task.status == 'SUCCESS'
 
-    paper_assignment_edges = openreview_client.get_edges(label='integration-test',
-                                                         invitation=conference.get_paper_assignment_id(
-                                                             conference.get_reviewers_id()))
-
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    matcher_status = wait_for_status(openreview_client, config_note2.id)
+    assert matcher_status.content['status'] == 'Complete'

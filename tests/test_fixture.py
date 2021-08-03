@@ -1,4 +1,10 @@
 from conftest import clean_start_conference
+from celery import shared_task
+
+
+@shared_task
+def mul(x, y):
+    return x * y
 
 
 def test_fixtures(openreview_context):
@@ -19,9 +25,8 @@ def test_fixtures(openreview_context):
 
 
 def test_celery_fixtures(celery_app, celery_worker):
-    @celery_app.task(bind=True)
-    def mul(self, x, y):
-        return x * y
-
-    result = mul.s(4, 4).apply()
-    assert result.get() == 16
+    """
+    Simple test to ensure that celery fixtures are working.
+    """
+    result = mul.delay(4, 4)
+    assert result.get(timeout=10) == 16
