@@ -18,8 +18,8 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     test_client = openreview_context['test_client']
 
     conference_id = 'AKBC.ws/2018/Conference'
-    num_reviewers = 10
-    num_papers = 10
+    num_reviewers = 20
+    num_papers = 20
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
@@ -98,7 +98,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     )
     assert response.status_code == 200
 
-    task1 = AsyncResult(config_note1.id)
+    # task1 = AsyncResult(config_note1.id)
     task2 = AsyncResult(config_note2.id)
 
     assert task2.state == 'PENDING'
@@ -107,5 +107,6 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     matcher_status = wait_for_status(openreview_client, config_note1.id)
     assert matcher_status.content['status'] == 'Complete'
 
+    # assert task2.state == 'STARTED'
     matcher_status = wait_for_status(openreview_client, config_note2.id)
     assert matcher_status.content['status'] == 'Complete'
