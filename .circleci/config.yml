@@ -12,6 +12,13 @@ jobs:
       environment:
         xpack.security.enabled: false
         transport.host: localhost
+    - image: rabbitmq:management
+      environment:
+        - RABBITMQ_DEFAULT_USER=openreview
+        - RABBITMQ_DEFAULT_PASS=openreview
+      ports:
+        - "5673:5672"
+        - "15672:15672"
     steps:
     - checkout
     - run:
@@ -48,6 +55,12 @@ jobs:
         command: |
           cd ~/openreview-matcher-repo
           pip install -e ~/openreview-py
+    - run:
+        name: run celery worker
+        command: |
+          cd ~/openreview-matcher-repo
+          celery --app matcher.service.server.celery_app worker --loglevel=INFO -n worker -c 1
+        background: true
     - run:
         name: run tests
         command: |
