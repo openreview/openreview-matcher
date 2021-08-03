@@ -16,6 +16,7 @@ jobs:
       environment:
         - DEFAULT_USER=openreview
         - DEFAULT_PASS=openreview
+        - DEFAULT_VHOST=localhost
       ports:
         - "5672:5672"
         - "15672:15672"
