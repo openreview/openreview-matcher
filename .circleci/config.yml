@@ -20,6 +20,9 @@ jobs:
       ports:
         - "5672:5672"
         - "15672:15672"
+      command: |
+        rabbitmq-server
+        rabbitmqctl set_permissions -p localhost openreview ".*" ".*" ".*"
     steps:
     - checkout
     - run:
