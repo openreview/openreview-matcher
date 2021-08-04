@@ -60,12 +60,6 @@ jobs:
           cd ~/openreview-matcher-repo
           pip install -e ~/openreview-py
     - run:
-        name: run celery worker
-        command: |
-          cd ~/openreview-matcher-repo
-          celery --app matcher.service.server.celery_app worker --loglevel=INFO -n worker -c 1
-        background: true
-    - run:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
