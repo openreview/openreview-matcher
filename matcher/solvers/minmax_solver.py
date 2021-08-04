@@ -28,7 +28,8 @@ class MinMaxSolver:
             demands,
             encoder,
             allow_zero_score_assignments=False,
-            logger=logging.getLogger(__name__)
+            logger=logging.getLogger(__name__),
+            limit_matrix=None
         ):
 
         self.minimums = minimums
@@ -36,6 +37,10 @@ class MinMaxSolver:
         self.demands = demands
         self.cost_matrix = encoder.cost_matrix
         self.allow_zero_score_assignments = allow_zero_score_assignments
+        if type(limit_matrix) == type(None):
+            self.limit_matrix = np.ones(np.shape(self.cost_matrix), dtype=np.int64)
+        else:
+            self.limit_matrix = limit_matrix
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
@@ -85,13 +90,15 @@ class MinMaxSolver:
             self.constraint_matrix,
             allow_zero_score_assignments=self.allow_zero_score_assignments,
             logger=self.logger,
-            strict=False
+            strict=False,
+            limit_matrix=self.limit_matrix
         ) # strict=False prevents errors from being thrown for supply/demand mismatch
         minimum_result = minimum_solver.solve()
         stop_time = time.time()
         self.logger.debug('Min Solver finished at {} and took {} seconds'.format(stop_time, stop_time - start_time))
 
-        adjusted_constraints = self.constraint_matrix - minimum_solver.flow_matrix
+        adjusted_constraints = self.constraint_matrix
+        adjusted_limits = self.limit_matrix - minimum_solver.flow_matrix
         adjusted_maximums = self.maximums - np.sum(minimum_solver.flow_matrix, axis=0)
         adjusted_demands = self.demands - np.sum(minimum_solver.flow_matrix, axis=1)
 
@@ -103,7 +110,8 @@ class MinMaxSolver:
             self.cost_matrix,
             adjusted_constraints,
             allow_zero_score_assignments=self.allow_zero_score_assignments,
-            logger=self.logger)
+            logger=self.logger,
+            limit_matrix=adjusted_limits)
 
         maximum_result = maximum_solver.solve()
         stop_time = time.time()

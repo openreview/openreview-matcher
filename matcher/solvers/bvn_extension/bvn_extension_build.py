@@ -6,12 +6,10 @@ from cffi import FFI
 
 ffibuilder = FFI()
 
-header = "int run_bvn(double* flows, int* subsets, int nrevs, int npaps);"
+header = "int run_bvn(int* flows, int* subsets, int nrevs, int npaps, int one_);"
 ffibuilder.cdef(header)
 ffibuilder.set_source("_bvn_extension", # extension name
     header,
     sources=['matcher/solvers/bvn_extension/bvn.c'],
     libraries=['m'])  # link with the math library
-
-if __name__ == "__main__":
-    ffibuilder.compile(verbose=True)
+ffibuilder.compile(verbose=True)

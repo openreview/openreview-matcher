@@ -19,16 +19,9 @@
 #include <math.h>
 #include <assert.h>
 
-/* Input flows are rounded to round(flow * one) and these probabilities
- * are then sampled from. If this truncation takes the fractional assignment
- * out of the legal polytope then sampled assignments may be invalid as
- * well. Defined so that one = 10^dig.
- */
-#define one 10000000
-#define dig 7
-
 #define debug 0
 
+int one;
 
 /* STATE VARIABLES */
 
@@ -83,19 +76,21 @@ void free_buffers(void);
  * Arguments:
  * - flows: The row-major flattened fractional assignment matrix
  *   (size npaps * nrevs). The function modifies this buffer so that it contains
- *   the output sampled assignment.
+ *   the output sampled assignment. Input flows are scaled up by one_ to be integers.
  * - subsets: An array of size nrevs containing a strictly positive subset ID
  *   for each reviewer. Reviewers in the same subset are not assigned to the
  *   same paper if possible. Currently unused by the Python interface.
  * - npaps: Number of papers.
  * - nrevs: Number of reviewers.
+ * - one_: Scale of flows.
  */
-int run_bvn(double* flows, int* subsets, int npaps, int nrevs)
+int run_bvn(int* flows, int* subsets, int npaps, int nrevs, int one_)
 {
     srand(clock()); // set random seed to current clock time
     rand(); // throw away first random number
 
     int n = npaps + nrevs;
+	one = one_;
 
 	// allocate space for n vertices, and 2*p*r maximum edges
 	initialize_state(n + 1, (2 * npaps * nrevs) + 1);
@@ -106,7 +101,7 @@ int run_bvn(double* flows, int* subsets, int npaps, int nrevs)
     {
 		int x = idx_to_rev(i, npaps, nrevs);
 		int y = idx_to_pap(i, npaps, nrevs);
-		int z = round(flows[i] * one);
+		int z = flows[i];//round(flows[i] * one);
 
         c[x] += z; // update load counters at vertices
         c[y] -= z;
