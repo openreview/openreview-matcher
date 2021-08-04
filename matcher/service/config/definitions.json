@@ -1,0 +1,30 @@
+{
+ "rabbit_version": "3.8.19",
+ "users": [
+  {
+   "name": "openreview",
+   "password_hash": "openreview",
+   "hashing_algorithm": "rabbit_password_hashing_sha256",
+   "tags": ""
+  }
+ ],
+ "vhosts": [
+  {
+   "name": "localhost"
+  }
+ ],
+ "permissions": [
+  {
+   "user": "openreview",
+   "vhost": "localhost",
+   "configure": ".*",
+   "write": ".*",
+   "read": ".*"
+  }
+ ],
+ "parameters": [],
+ "policies": [],
+ "queues": [],
+ "exchanges": [],
+ "bindings": []
+}

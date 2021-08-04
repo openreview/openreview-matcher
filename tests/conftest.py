@@ -176,6 +176,14 @@ def celery_includes():
     return ["matcher.service.celery_tasks"]
 
 
+@pytest.fixture(scope='session')
+def celery_worker_parameters():
+    return {
+        'queues':  ('default', 'matching', 'deployment'),
+        'perform_ping_check': False
+    }
+
+
 if __name__ == '__main__':
     config = {
         'OPENREVIEW_USERNAME': 'openreview.net',

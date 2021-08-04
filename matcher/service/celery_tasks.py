@@ -30,4 +30,4 @@ def run_deployment(self, interface: ConfigNoteInterface, logger: logging.Logger)
         deployment.run()
     except Exception as exc:
         deployment.logger.error('Error: {}'.format(exc))
-        self.config_note_interface.set_status(MatcherStatus.DEPLOYMENT_ERROR, message=exc)
+        deployment.config_note_interface.set_status(MatcherStatus.DEPLOYMENT_ERROR, message=exc)
