@@ -173,7 +173,10 @@ def celery_config():
 
 @pytest.fixture(scope='session')
 def celery_includes():
-    return ["matcher.service.celery_tasks"]
+    return [
+        "matcher.service.celery_tasks",
+        "tests.tasks"
+    ]
 
 
 @pytest.fixture(scope='session')
