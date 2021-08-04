@@ -8,15 +8,11 @@ pair), and (2) the fractional assignment is sampled from. The sampling
 procedure is implemented in C in the bvn_extension/ folder and accessed using
 the CFFI library. This algorithm is detailed in Jecmen et al 2020.
 
-Note that the sampling procedure has precision limited to 1e-7 and fractional
-assignments are rounded to this precision before sampling. It's possible that
-this results in an invalid sampled assignment if many probabilities are small.
-
 Alternates are also selected probabilistically so that the probability limits
 are maintained even if all alternates are used.
 '''
 
-from .simple_solver import SimpleSolver
+from .minmax_solver import MinMaxSolver
 from .core import SolverException
 from .bvn_extension import run_bvn
 from ortools.linear_solver import pywraplp
@@ -42,6 +38,7 @@ class RandomizedSolver():
         self.num_paps, self.num_revs = self.cost_matrix.shape
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.logger = logger
+        self.encoder = encoder # for passing cost and constraint matrices to MinMaxSolver
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
@@ -67,9 +64,12 @@ class RandomizedSolver():
         self.opt_solved = False
         self.opt_cost = None # cost of the optimal deterministic assignment
 
+        self.integer_fractional_assignment_matrix = None # actual solution to LP
+        self.one = 100000 # precision of fractional assignment
+
         self._check_inputs()
-        self.fractional_assignment_solver = self.construct_solver(self.prob_limit_matrix)
-        self.deterministic_assignment_solver = self.construct_solver(np.ones_like(self.prob_limit_matrix))
+        self.fractional_assignment_solver = self.construct_solver(self.prob_limit_matrix, self.one)
+        self.deterministic_assignment_solver = self.construct_solver(np.ones_like(self.prob_limit_matrix), 1)
 
 
     def _check_inputs(self):
@@ -120,42 +120,18 @@ class RandomizedSolver():
 
         self.logger.debug('Finished checking if demand is in range')
 
-    def construct_solver(self, limit_matrix):
+    def construct_solver(self, limit_matrix, scale):
+        ''' LP is solved with all probabilities scaled up by scale. Solution is assumed to be integral. '''
         self.logger.debug('construct_solver')
 
-        lp_solver = pywraplp.Solver.CreateSolver('GLOP')
-
-        F = [[None for j in range(self.num_revs)] for i in range(self.num_paps)]
-        for i, j in product(range(self.num_paps), range(self.num_revs)):
-            constraint = self.constraint_matrix[i, j]
-            limit = limit_matrix[i, j]
-            if constraint == 0 and (self.allow_zero_score_assignments or self.cost_matrix[i, j] != 0):
-                # no conflict
-                F[i][j] = lp_solver.NumVar(0, limit, "F[{}][{}]".format(i, j))
-            elif constraint == 1:
-                # assign to paper as much as possible given limits
-                F[i][j] = lp_solver.NumVar(limit, limit, "F[{}][{}]".format(i, j))
-            else:
-                # conflict
-                F[i][j] = lp_solver.NumVar(0, 0, "F[{}][{}]".format(i, j))
-
-        for i in range(self.num_paps):
-            c = lp_solver.Constraint(self.demands[i], self.demands[i])
-            for j in range(self.num_revs):
-                c.SetCoefficient(F[i][j], 1)
-
-        for j in range(self.num_revs):
-            c = lp_solver.Constraint(self.minimums[j], self.maximums[j])
-            for i in range(self.num_paps):
-                c.SetCoefficient(F[i][j], 1)
-
-        objective = lp_solver.Objective()
-        for i, j in product(range(self.num_paps), range(self.num_revs)):
-            objective.SetCoefficient(F[i][j], self.cost_matrix[i, j])
-        objective.SetMinimization()
+        scaled_minimums = scale * np.array(self.minimums)
+        scaled_maximums = scale * np.array(self.maximums)
+        scaled_demands = scale * np.array(self.demands)
+        scaled_limits = scale * limit_matrix
+        solver = MinMaxSolver(scaled_minimums, scaled_maximums, scaled_demands, self.encoder, self.allow_zero_score_assignments, self.logger, scaled_limits)
 
         self.logger.debug('Finished construct_solver')
-        return lp_solver
+        return solver
 
 
     def solve(self):
@@ -168,29 +144,33 @@ class RandomizedSolver():
 
         self.logger.debug('start fractional_assignment_solver')
 
-        self.expected_cost = 0
-        status = self.fractional_assignment_solver.Solve()
-        if status == self.fractional_assignment_solver.OPTIMAL:
-            self.solved = True
-            self.expected_cost = self.fractional_assignment_solver.Objective().Value()
-            self.fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs))
-            for i, j in product(range(self.num_paps), range(self.num_revs)):
-                self.fractional_assignment_matrix[i, j] = self.fractional_assignment_solver.LookupVariable("F[{}][{}]".format(i, j)).solution_value()
-        else:
-            self.logger.debug("Solver status: {}".format(status))
+        result_matrix = self.fractional_assignment_solver.solve()
+        self.solved = self.fractional_assignment_solver.solved
+        self.expected_cost = self.fractional_assignment_solver.cost / self.one
+        if not self.solved:
+            self.logger.debug('fractional_assignment solving failed')
+            return
+
+        self.logger.debug('start iterating papers and reviewers')
+        self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
+        for i, j in product(range(self.num_paps), range(self.num_revs)):
+            actual_value = result_matrix[i, j]
+            if np.round(actual_value) - actual_value > 1e-5:
+                self.logger.debug('LP solution not integral at ' + str(i) + ',' + str(j) + ' with value of ' + str(actual_value))
+            self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
+        if not np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0):
+            self.logger.debug('Paper loads rounded')
             self.solved = False
             return
 
+        self.fractional_assignment_matrix = self.integer_fractional_assignment_matrix / self.one
+
         self.logger.debug('start deterministic_assignment_solver')
 
-        self.opt_cost = 0
-        status = self.deterministic_assignment_solver.Solve()
-        if status == self.deterministic_assignment_solver.OPTIMAL:
-            self.opt_solved = True
-            self.opt_cost = self.deterministic_assignment_solver.Objective().Value()
-        else:
-            self.logger.debug("Deterministic solver status: {}".format(status))
-            self.opt_solved = False
+        result_matrix = self.deterministic_assignment_solver.solve()
+        self.opt_solved = self.deterministic_assignment_solver.solved
+        self.opt_cost = self.deterministic_assignment_solver.cost
+
 
         self.logger.debug('set alternate_probability_matrix')
         # set alternate probability to guarantee that
@@ -216,15 +196,15 @@ class RandomizedSolver():
 
         # construct CFFI interface to the sampling extension in C
         ffi = FFI()
-        F = self.fractional_assignment_matrix.flatten().astype(np.double)
-        Fbuf = ffi.new("double[]", self.num_paps * self.num_revs)
+        F = self.integer_fractional_assignment_matrix.flatten()
+        Fbuf = ffi.new("int[]", self.num_paps * self.num_revs)
         for i in range(F.size):
             Fbuf[i] = F[i]
         Sbuf = ffi.new("int[]", self.num_revs)
         for i in range(self.num_revs):
             Sbuf[i] = 1
 
-        run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs)
+        run_bvn(Fbuf, Sbuf, self.num_paps, self.num_revs, self.one)
 
         self.flow_matrix = np.zeros((self.num_paps, self.num_revs))
         for i in range(F.size):
@@ -238,7 +218,7 @@ class RandomizedSolver():
         rev_loads = np.sum(self.flow_matrix, axis=0)
         if not (np.all(pap_loads == np.array(self.demands)) and
                 np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
-            raise SolverException('Sampled assignment is invalid. Maybe rounding occurred?')
+            raise SolverException('Sampled assignment is invalid')
 
         self.logger.debug('Finished sample_assignment')
 
