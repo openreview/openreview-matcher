@@ -41,18 +41,18 @@ jobs:
     - run:
         name: setup virtual environment
         command: |
-          cd
           python -m venv matcher
-          source matcher/bin/activate
     - run:
         name: install dependencies
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           pip install -e .
     - run:
         name: install the local openreview-py as a dependency
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           pip install -e ~/openreview-py
     - run:
         name: run tests
