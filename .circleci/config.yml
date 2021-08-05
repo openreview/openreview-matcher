@@ -42,7 +42,7 @@ jobs:
         name: install dependencies
         command: |
           cd ~/openreview-matcher-repo
-          pip install -e .
+          pip install -e . --user
     - run:
         name: install the local openreview-py as a dependency
         command: |
