@@ -522,7 +522,7 @@ def test_encoder_no_reviewers(encoder_context):
             weight_by_type
         )
 
-    assert 'Reviewers List is empty.' == str(exc.value)
+    assert 'Reviewers List can not be empty.' == str(exc.value)
 
 
 def test_encoder_no_papers(encoder_context):
@@ -549,4 +549,4 @@ def test_encoder_no_papers(encoder_context):
             weight_by_type
         )
 
-    assert 'Papers List is empty.' == str(exc.value)
+    assert 'Papers List can not be empty.' == str(exc.value)
