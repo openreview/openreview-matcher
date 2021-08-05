@@ -58,6 +58,7 @@ jobs:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           mkdir reports
           mkdir reports/pytest
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
