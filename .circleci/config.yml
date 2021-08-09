@@ -50,19 +50,26 @@ jobs:
           NODE_ENV=circleci node scripts/clean_start_app.js
         background: true
     - run:
+        name: setup virtual environment
+        command: |
+          python -m venv matcher
+    - run:
         name: install dependencies
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           pip install -e .
     - run:
         name: install the local openreview-py as a dependency
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           pip install -e ~/openreview-py
     - run:
         name: run tests
         command: |
           cd ~/openreview-matcher-repo
+          source matcher/bin/activate
           mkdir reports
           mkdir reports/pytest
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
