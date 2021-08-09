@@ -90,11 +90,12 @@ def match():
         )
 
         from .celery_tasks import run_matching
+
         run_matching.apply_async(
             (interface, solver_class, flask.current_app.logger),
-            queue='matching',
+            queue="matching",
             ignore_result=False,
-            task_id=config_note_id
+            task_id=config_note_id,
         )
 
         flask.current_app.logger.debug(
@@ -171,11 +172,12 @@ def deploy():
             )
 
         from .celery_tasks import run_deployment
+
         run_deployment.apply_async(
             (interface, flask.current_app.logger),
-            queue='deployment',
+            queue="deployment",
             ignore_result=False,
-            task_id=config_note_id
+            task_id=config_note_id,
         )
 
         flask.current_app.logger.debug(

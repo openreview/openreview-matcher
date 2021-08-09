@@ -29,7 +29,7 @@ def test_celery_fixtures(celery_app, celery_worker):
     Simple test to ensure that celery fixtures are working.
     """
     result = mul.apply_async(
-            (4, 4),
-            queue='default',
-        )
+        (4, 4),
+        queue="default",
+    )
     assert result.get(timeout=10) == 16

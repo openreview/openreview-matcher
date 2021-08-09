@@ -78,7 +78,7 @@ def create_celery(app, config_source):
     celery = Celery(
         app.import_name,
         include=["matcher.service.celery_tasks"],
-        config_source=config_source
+        config_source=config_source,
     )
 
     return celery

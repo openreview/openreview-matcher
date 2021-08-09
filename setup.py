@@ -23,7 +23,7 @@ setup(
         "cffi>=1.0.0",
         "pre-commit",
         "celery",
-        "redis"
+        "redis",
     ],
     zip_safe=False,
 )

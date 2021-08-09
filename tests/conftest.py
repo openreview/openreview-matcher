@@ -15,8 +15,8 @@ import openreview
 
 import matcher.service
 
-AFFINITY_SCORE_FILE = './affinity_scores'
-pytest_plugins = ['celery.contrib.pytest']
+AFFINITY_SCORE_FILE = "./affinity_scores"
+pytest_plugins = ["celery.contrib.pytest"]
 
 
 def ping_url(url):
@@ -34,7 +34,6 @@ def ping_url(url):
     raise TimeoutError("no response within {} iterations".format(iterations))
 
 
-
 def wait_for_status(client, config_note_id):
     """
     Repeatedly requests the configuration note until its status is not 'Initialized' or 'Running',
@@ -50,7 +49,6 @@ def wait_for_status(client, config_note_id):
             return config_note
 
     raise TimeoutError("matcher did not finish")
-
 
 
 def initialize_superuser():
@@ -151,7 +149,6 @@ def assert_arrays(array_A, array_B, is_string=False):
         )
 
 
-
 @pytest.fixture()
 def openreview_context():
     """
@@ -187,34 +184,31 @@ def openreview_context():
         }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def celery_config():
     return {
         # 'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
-        'broker_url': 'redis://localhost:6379',
-        'result_backend': 'redis://localhost:6379/0',
-        'task_track_started': True,
-        'task_serializer': 'pickle',
-        'result_serializer': 'pickle',
-        'accept_content': ['pickle', 'application/x-python-serialize'],
-        'task_create_missing_queues': True,
+        "broker_url": "redis://localhost:6379",
+        "result_backend": "redis://localhost:6379/0",
+        "task_track_started": True,
+        "task_serializer": "pickle",
+        "result_serializer": "pickle",
+        "accept_content": ["pickle", "application/x-python-serialize"],
+        "task_create_missing_queues": True,
     }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def celery_includes():
-    return [
-        "matcher.service.celery_tasks",
-        "tests.tasks"
-    ]
+    return ["matcher.service.celery_tasks", "tests.tasks"]
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def celery_worker_parameters():
     return {
-        'queues':  ('default', 'matching', 'deployment'),
-        'perform_ping_check': False,
-        'concurrency': 4,
+        "queues": ("default", "matching", "deployment"),
+        "perform_ping_check": False,
+        "concurrency": 4,
     }
 
 
