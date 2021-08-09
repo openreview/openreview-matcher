@@ -71,6 +71,12 @@ class Encoder:
     ):
         self.logger = logger
 
+        if len(reviewers) == 0:
+            raise EncoderError("Reviewers List can not be empty.")
+
+        if len(papers) == 0:
+            raise EncoderError("Papers List can not be empty.")
+
         self.reviewers = reviewers
         self.papers = papers
 

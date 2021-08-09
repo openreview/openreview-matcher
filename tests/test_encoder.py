@@ -2,14 +2,13 @@
 Unit test suite for `matcher/encoder.py`
 """
 
-
 import itertools
 from collections import namedtuple
 
 import pytest
 import numpy as np
 
-from matcher.encoder import Encoder
+from matcher.encoder import Encoder, EncoderError
 from conftest import assert_arrays
 
 MockNote = namedtuple("Note", ["id", "forum"])
@@ -19,20 +18,24 @@ MockEdge = namedtuple("Edge", ["head", "tail", "weight", "label"])
 @pytest.fixture
 def encoder_context():
     """pytest fixture for Encoder testing"""
-    num_reviewers = 4
-    num_papers = 3
 
-    papers = ["paper{}".format(i) for i in range(num_papers)]
-    reviewers = ["reviewer{}".format(i) for i in range(num_reviewers)]
+    def _encoder_context(n_reviewers=4, n_papers=3):
+        num_reviewers = n_reviewers
+        num_papers = n_papers
 
-    matrix_shape = (num_papers, num_reviewers)
+        papers = ["paper{}".format(i) for i in range(num_papers)]
+        reviewers = ["reviewer{}".format(i) for i in range(num_reviewers)]
 
-    return papers, reviewers, matrix_shape
+        matrix_shape = (num_papers, num_reviewers)
+
+        return papers, reviewers, matrix_shape
+
+    return _encoder_context
 
 
 def test_encoder_basic(encoder_context):
     """Basic test of Encoder functionality, without constraints."""
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         "mock/-/score_edge": {
@@ -118,7 +121,7 @@ def test_encoder_basic(encoder_context):
 
 def test_encoder_no_scores(encoder_context):
     """Basic test of Encoder functionality, without scores."""
-    papers, reviewers, _ = encoder_context
+    papers, reviewers, _ = encoder_context()
 
     scores_by_type = {}
 
@@ -179,7 +182,7 @@ def test_encoder_no_scores(encoder_context):
 
 def test_encoder_weighting(encoder_context):
     """Ensure that matrix weights are applied properly"""
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         "mock/-/score_edge": {
@@ -249,7 +252,7 @@ def test_encoder_weighting(encoder_context):
 
 def test_encoder_constraints(encoder_context):
     """Ensure that constraints are being encoded properly"""
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, matrix_shape = encoder_context()
 
     # computing constraints is completely separate from computing scores,
     # so we don't test them here.
@@ -283,7 +286,6 @@ def test_encoder_constraints(encoder_context):
 
 
 def test_encoder_average_weighting(encoder_context):
-
     reviewers = [1, 2, 3, 4]
     papers = [1, 2, 3]
 
@@ -361,7 +363,6 @@ def test_encoder_average_weighting(encoder_context):
 
 
 def test_encoder_score_use_correct_default(encoder_context):
-
     reviewers = [1, 2]
     papers = [1, 2, 3]
 
@@ -396,7 +397,7 @@ def test_encoder_score_use_correct_default(encoder_context):
 
 def test_encoder_probability_limits(encoder_context):
     """Test of Encoder with probabililty limits"""
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         "mock/-/score_edge": {
@@ -466,7 +467,7 @@ def test_encoder_probability_limits(encoder_context):
 
 def test_specific_alternates(encoder_context):
     """Test the decode_selected_alternates function"""
-    papers, reviewers, matrix_shape = encoder_context
+    papers, reviewers, matrix_shape = encoder_context()
 
     scores_by_type = {
         "mock/-/score_edge": {
@@ -498,3 +499,51 @@ def test_specific_alternates(encoder_context):
     alternates = encoder.decode_selected_alternates(alternates_by_index)
 
     assert alternates == alternates_by_forum
+
+
+def test_encoder_no_reviewers(encoder_context):
+    papers, reviewers, matrix_shape = encoder_context(n_reviewers=0)
+
+    scores_by_type = {
+        "mock/-/score_edge": {
+            "edges": [
+                (forum, reviewer, 0.5)
+                for forum, reviewer in itertools.product(papers, reviewers)
+            ]
+        }
+    }
+
+    weight_by_type = {"mock/-/score_edge": 1}
+
+    constraints = []
+
+    with pytest.raises(EncoderError) as exc:
+        encoder = Encoder(
+            reviewers, papers, constraints, scores_by_type, weight_by_type
+        )
+
+    assert "Reviewers List can not be empty." == str(exc.value)
+
+
+def test_encoder_no_papers(encoder_context):
+    papers, reviewers, matrix_shape = encoder_context(n_papers=0)
+
+    scores_by_type = {
+        "mock/-/score_edge": {
+            "edges": [
+                (forum, reviewer, 0.5)
+                for forum, reviewer in itertools.product(papers, reviewers)
+            ]
+        }
+    }
+
+    weight_by_type = {"mock/-/score_edge": 1}
+
+    constraints = []
+
+    with pytest.raises(EncoderError) as exc:
+        encoder = Encoder(
+            reviewers, papers, constraints, scores_by_type, weight_by_type
+        )
+
+    assert "Papers List can not be empty." == str(exc.value)

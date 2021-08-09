@@ -99,7 +99,14 @@ class FairFlow(object):
         )
         self.starter_solution = self.solution.copy()
         self.valid = True if solution else False
-        assert self.affinity_matrix.shape == self.solution.shape
+
+        if self.affinity_matrix.shape != self.solution.shape:
+            raise SolverException(
+                "Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}".format(
+                    self.affinity_matrix.shape, self.solution.shape
+                )
+            )
+
         self.max_affinities = np.max(self.affinity_matrix)
         self.big_c = 10000
         self.bigger_c = self.big_c ** 2
@@ -173,7 +180,7 @@ class FairFlow(object):
             np.where(paper_scores >= self.makespan - self.max_affinities),
         )
         g3 = np.where(self.makespan - self.max_affinities > paper_scores)[0]
-        assert np.size(g1) + np.size(g2) + np.size(g3) == self.num_papers
+
         return g1, g2, g3
 
     def _worst_reviewer(self, papers):
@@ -207,7 +214,6 @@ class FairFlow(object):
             rev_caps = np.maximum(
                 self.minimums - np.sum(self.solution, axis=1), 0
             )
-            assert np.size(rev_caps) == self.num_reviewers
             flow = np.sum(rev_caps)
             pap_caps = np.maximum(
                 self.demands - np.sum(self.solution, axis=0), 0
@@ -226,7 +232,6 @@ class FairFlow(object):
         # is sufficiently reviewed. Also compute residual maximums and demands.
         logging.debug("solving MCF with max load constraint")
         rev_caps = self.maximums - np.sum(self.solution, axis=1)
-        assert np.size(rev_caps) == self.num_reviewers
         pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
         flow = np.sum(pap_caps)
         self._construct_graph_and_solve(
@@ -238,11 +243,21 @@ class FairFlow(object):
             flow,
         )
 
-        # Finally, return.
-        assert np.all(np.sum(self.solution, axis=0) == self.demands)
-        assert np.all(np.sum(self.solution, axis=1) <= self.maximums)
+        # Finally, check validity and return.
+        if not (np.all(np.sum(self.solution, axis=0) == self.demands)):
+            raise SolverException(
+                "Invalid solution. Constructed graph does not match the required review demands for all the papers."
+            )
+        if not (np.all(np.sum(self.solution, axis=1) <= self.maximums)):
+            raise SolverException(
+                "Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers."
+            )
         if self.minimums is not None:
-            assert np.all(np.sum(self.solution, axis=1) >= self.minimums)
+            if not (np.all(np.sum(self.solution, axis=1) >= self.minimums)):
+                raise SolverException(
+                    "Invalid solution. Constructed graph does not satisfy the minimum paper limit for all the reviewers."
+                )
+
         self.valid = True
         return self.solution
 
@@ -424,7 +439,6 @@ class FairFlow(object):
                             pap = head - (
                                 self.num_reviewers + self.num_papers + 2
                             )
-                            assert tail <= self.num_reviewers
                             rev = tail
                             assert self.solution[rev, pap] == 0.0
                             self.solution[rev, pap] = 1.0
@@ -464,13 +478,17 @@ class FairFlow(object):
                         rev = self.min_cost_flow.Tail(arc)
                         pap = self.min_cost_flow.Head(arc) - self.num_reviewers
                         assert self.solution[rev, pap] == 0.0
-                        assert (
-                            np.sum(self.solution[:, pap], axis=0)
-                            == self.demands[pap] - 1
-                        )
                         self.solution[rev, pap] = 1.0
-            assert np.all(np.sum(self.solution, axis=1) <= self.maximums)
-            assert np.sum(self.solution) == np.sum(self.demands)
+
+            if not (np.all(np.sum(self.solution, axis=0) == self.demands)):
+                raise SolverException(
+                    "Invalid solution. Constructed graph does not match the required review demands for all the papers."
+                )
+            if not (np.all(np.sum(self.solution, axis=1) <= self.maximums)):
+                raise SolverException(
+                    "Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers."
+                )
+
             self.valid = True
         else:
             raise SolverException(
@@ -508,15 +526,13 @@ class FairFlow(object):
         self._refresh_internal_vars()
         if not np.all(np.sum(self.solution, axis=0) == self.demands):
             self._construct_and_solve_validifier_network()
-        assert np.sum(self.solution) == np.sum(self.demands)
+
         g1, g2, g3 = self._grp_paps_by_ms()
         old_g1, old_g2, old_g3 = set(g1), set(g2), set(g3)
         if np.size(g1) > 0 and np.size(g3) > 0:
             self._refresh_internal_vars()
             # Unassign the worst reviewer from each paper in g3.
             w_revs, w_paps = self._worst_reviewer(g3)
-            assert np.sum(self.solution) == np.sum(self.demands)
-            assert len(set(w_paps)) == len(w_paps)
             self.solution[w_revs, w_paps] = 0.0
 
             # Try to route reviewers from the top group to the bottom.
@@ -528,7 +544,12 @@ class FairFlow(object):
 
             # Checks: the bottom group should never grow in size.
             g1, g2, g3 = self._grp_paps_by_ms()
-            assert len(g3) <= len(old_g3)
+
+            if len(g3) > len(old_g3):
+                raise SolverException(
+                    "The negative paper group should never grow in size"
+                )
+
             return np.size(g1), np.size(g3)
         else:
             return np.size(g1), np.size(g3)
@@ -691,7 +712,6 @@ class FairFlow(object):
                 mn = ms
                 ms += (mx - ms) / 2.0
             else:
-                assert not success or worst_pap_score < best_worst_pap_score
                 mx = ms
                 ms -= (ms - mn) / 2.0
             self.makespan = ms
