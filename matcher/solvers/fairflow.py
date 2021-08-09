@@ -102,7 +102,9 @@ class FairFlow(object):
 
         if self.affinity_matrix.shape != self.solution.shape:
             raise SolverException(
-                'Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}'.format(self.affinity_matrix.shape, self.solution.shape)
+                "Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}".format(
+                    self.affinity_matrix.shape, self.solution.shape
+                )
             )
 
         self.max_affinities = np.max(self.affinity_matrix)
@@ -137,8 +139,8 @@ class FairFlow(object):
             raise SolverException(
                 "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
                     demand, min_supply, max_supply
-                ))
-
+                )
+            )
 
         self.logger.debug("Finished checking graph inputs")
 
@@ -209,7 +211,9 @@ class FairFlow(object):
         # Construct edges between the source and each reviewer that must review.
         if self.minimums is not None:
             logging.debug("Solving MCF with min load constraint")
-            rev_caps = np.maximum(self.minimums - np.sum(self.solution, axis=1), 0)
+            rev_caps = np.maximum(
+                self.minimums - np.sum(self.solution, axis=1), 0
+            )
             flow = np.sum(rev_caps)
             pap_caps = np.maximum(
                 self.demands - np.sum(self.solution, axis=0), 0
@@ -242,16 +246,16 @@ class FairFlow(object):
         # Finally, check validity and return.
         if not (np.all(np.sum(self.solution, axis=0) == self.demands)):
             raise SolverException(
-                'Invalid solution. Constructed graph does not match the required review demands for all the papers.'
+                "Invalid solution. Constructed graph does not match the required review demands for all the papers."
             )
         if not (np.all(np.sum(self.solution, axis=1) <= self.maximums)):
             raise SolverException(
-                'Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers.'
+                "Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers."
             )
         if self.minimums is not None:
             if not (np.all(np.sum(self.solution, axis=1) >= self.minimums)):
                 raise SolverException(
-                    'Invalid solution. Constructed graph does not satisfy the minimum paper limit for all the reviewers.'
+                    "Invalid solution. Constructed graph does not satisfy the minimum paper limit for all the reviewers."
                 )
 
         self.valid = True
@@ -432,7 +436,9 @@ class FairFlow(object):
                         tail = self.min_cost_flow.Tail(arc)
                         if head >= self.num_reviewers + self.num_papers + 2:
                             # this is an edge that restricts flow to a paper
-                            pap = head - (self.num_reviewers + self.num_papers + 2)
+                            pap = head - (
+                                self.num_reviewers + self.num_papers + 2
+                            )
                             rev = tail
                             assert self.solution[rev, pap] == 0.0
                             self.solution[rev, pap] = 1.0
@@ -471,16 +477,16 @@ class FairFlow(object):
                     if self.min_cost_flow.Flow(arc) > 0:
                         rev = self.min_cost_flow.Tail(arc)
                         pap = self.min_cost_flow.Head(arc) - self.num_reviewers
-                        assert(self.solution[rev, pap] == 0.0)
+                        assert self.solution[rev, pap] == 0.0
                         self.solution[rev, pap] = 1.0
 
             if not (np.all(np.sum(self.solution, axis=0) == self.demands)):
                 raise SolverException(
-                    'Invalid solution. Constructed graph does not match the required review demands for all the papers.'
+                    "Invalid solution. Constructed graph does not match the required review demands for all the papers."
                 )
             if not (np.all(np.sum(self.solution, axis=1) <= self.maximums)):
                 raise SolverException(
-                    'Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers.'
+                    "Invalid solution. Constructed graph does not satisfy the maximum paper limit for all the reviewers."
                 )
 
             self.valid = True
@@ -539,9 +545,9 @@ class FairFlow(object):
             # Checks: the bottom group should never grow in size.
             g1, g2, g3 = self._grp_paps_by_ms()
 
-            if (len(g3) > len(old_g3)):
+            if len(g3) > len(old_g3):
                 raise SolverException(
-                    'The negative paper group should never grow in size'
+                    "The negative paper group should never grow in size"
                 )
 
             return np.size(g1), np.size(g3)

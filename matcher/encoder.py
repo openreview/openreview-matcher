@@ -20,6 +20,7 @@ def _score_to_cost(score, scaling_factor=100):
 
 class EncoderError(Exception):
     """Exception wrapper class for errors related to Encoder"""
+
     pass
 
 
@@ -71,10 +72,10 @@ class Encoder:
         self.logger = logger
 
         if len(reviewers) == 0:
-            raise EncoderError('Reviewers List can not be empty.')
+            raise EncoderError("Reviewers List can not be empty.")
 
         if len(papers) == 0:
-            raise EncoderError('Papers List can not be empty.')
+            raise EncoderError("Papers List can not be empty.")
 
         self.reviewers = reviewers
         self.papers = papers

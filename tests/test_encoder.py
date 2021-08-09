@@ -23,8 +23,8 @@ def encoder_context():
         num_reviewers = n_reviewers
         num_papers = n_papers
 
-        papers = ['paper{}'.format(i) for i in range(num_papers)]
-        reviewers = ['reviewer{}'.format(i) for i in range(num_reviewers)]
+        papers = ["paper{}".format(i) for i in range(num_papers)]
+        reviewers = ["reviewer{}".format(i) for i in range(num_reviewers)]
 
         matrix_shape = (num_papers, num_reviewers)
 
@@ -72,11 +72,7 @@ def test_encoder_basic(encoder_context):
     assert encoded_score_matrix.shape == correct_score_matrix.shape
     assert (encoded_score_matrix == correct_score_matrix).all()
 
-    mock_solution = np.asarray([
-        [1, 0, 0, 0],
-        [0, 1, 0, 1],
-        [0, 0, 1, 0]
-    ])
+    mock_solution = np.asarray([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 1, 0]])
 
     assignments_by_forum = encoder.decode_assignments(mock_solution)
 
@@ -137,11 +133,7 @@ def test_encoder_no_scores(encoder_context):
         reviewers, papers, constraints, scores_by_type, weight_by_type
     )
 
-    mock_solution = np.asarray([
-        [1, 0, 0, 0],
-        [0, 1, 0, 1],
-        [0, 0, 1, 0]
-    ])
+    mock_solution = np.asarray([[1, 0, 0, 0], [0, 1, 0, 1], [0, 0, 1, 0]])
 
     assignments_by_forum = encoder.decode_assignments(mock_solution)
 
@@ -257,6 +249,7 @@ def test_encoder_weighting(encoder_context):
     assert encoded_aggregate_matrix.shape == correct_aggregate_matrix.shape
     assert (encoded_aggregate_matrix == correct_aggregate_matrix).all()
 
+
 def test_encoder_constraints(encoder_context):
     """Ensure that constraints are being encoded properly"""
     papers, reviewers, matrix_shape = encoder_context()
@@ -362,12 +355,8 @@ def test_encoder_average_weighting(encoder_context):
 
     encoded_aggregate_matrix = encoder.aggregate_score_matrix
     print(encoded_aggregate_matrix)
-    expected_matrix = [
-        [0, 2, 2, 2],
-        [0.7, 0, 2, 0.5],
-        [0.6, 2, 1.4, 1.15]
-    ]
-    print('expected', expected_matrix)
+    expected_matrix = [[0, 2, 2, 2], [0.7, 0, 2, 0.5], [0.6, 2, 1.4, 1.15]]
+    print("expected", expected_matrix)
 
     for a in range(0, 3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
@@ -378,12 +367,9 @@ def test_encoder_score_use_correct_default(encoder_context):
     papers = [1, 2, 3]
 
     scores_by_type = {
-        'Bid': {
-            'default': 0.25,
-            'edges': [
-                (1, 1, 0.7),
-                (2, 2, 0.5),
-                (3, 2, 0.1)]
+        "Bid": {
+            "default": 0.25,
+            "edges": [(1, 1, 0.7), (2, 2, 0.5), (3, 2, 0.1)],
         }
     }
 
@@ -403,11 +389,7 @@ def test_encoder_score_use_correct_default(encoder_context):
     encoded_aggregate_matrix = encoder.aggregate_score_matrix
 
     # Following expected matrix assumes a default of 0.25 for bid scores
-    expected_matrix = [
-        [0.7, 0.25],
-        [0.25, 0.5],
-        [0.25, 0.1]
-    ]
+    expected_matrix = [[0.7, 0.25], [0.25, 0.5], [0.25, 0.1]]
 
     for a in range(0, 3):
         assert_arrays(encoded_aggregate_matrix[a], expected_matrix[a])
@@ -523,51 +505,45 @@ def test_encoder_no_reviewers(encoder_context):
     papers, reviewers, matrix_shape = encoder_context(n_reviewers=0)
 
     scores_by_type = {
-        'mock/-/score_edge': {
-            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        "mock/-/score_edge": {
+            "edges": [
+                (forum, reviewer, 0.5)
+                for forum, reviewer in itertools.product(papers, reviewers)
+            ]
         }
     }
 
-    weight_by_type = {
-        'mock/-/score_edge': 1
-    }
+    weight_by_type = {"mock/-/score_edge": 1}
 
     constraints = []
 
     with pytest.raises(EncoderError) as exc:
         encoder = Encoder(
-            reviewers,
-            papers,
-            constraints,
-            scores_by_type,
-            weight_by_type
+            reviewers, papers, constraints, scores_by_type, weight_by_type
         )
 
-    assert 'Reviewers List can not be empty.' == str(exc.value)
+    assert "Reviewers List can not be empty." == str(exc.value)
 
 
 def test_encoder_no_papers(encoder_context):
     papers, reviewers, matrix_shape = encoder_context(n_papers=0)
 
     scores_by_type = {
-        'mock/-/score_edge': {
-            'edges': [(forum, reviewer, 0.5) for forum, reviewer in itertools.product(papers, reviewers)]
+        "mock/-/score_edge": {
+            "edges": [
+                (forum, reviewer, 0.5)
+                for forum, reviewer in itertools.product(papers, reviewers)
+            ]
         }
     }
 
-    weight_by_type = {
-        'mock/-/score_edge': 1
-    }
+    weight_by_type = {"mock/-/score_edge": 1}
 
     constraints = []
 
     with pytest.raises(EncoderError) as exc:
         encoder = Encoder(
-            reviewers,
-            papers,
-            constraints,
-            scores_by_type,
-            weight_by_type
+            reviewers, papers, constraints, scores_by_type, weight_by_type
         )
 
-    assert 'Papers List can not be empty.' == str(exc.value)
+    assert "Papers List can not be empty." == str(exc.value)
