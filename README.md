@@ -47,7 +47,7 @@ For more information, see [this paper](https://arxiv.org/abs/1905.11924v1)
 
 ### Randomized Solver
 
-The randomized solver (`--solver Randomized` on the command line) implements a randomized assignment algorithm. It takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. The solver then finds a randomized assignment that maximizes expected total affinity, subject to the given probability limits. This randomized assignment is found with an LP, implemented in `matcher/solvers/randomized_solver.py`. 
+The randomized solver (`--solver Randomized` on the command line) implements a randomized assignment algorithm. It takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. The solver then finds a randomized assignment that maximizes expected total affinity, subject to the given probability limits. This randomized assignment is found with an LP, implemented in `matcher/solvers/randomized_solver.py`.
 
 The solver returns a deterministic assignment which was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn_extension`.
 
@@ -112,5 +112,3 @@ Individual test modules can be run by passing in the module file as the argument
 
 	export OPENREVIEW_HOME=<path_to_openreview>
 	python -m pytest tests/test_integration.py
-
-

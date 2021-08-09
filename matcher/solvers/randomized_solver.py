@@ -1,4 +1,4 @@
-'''
+"""
 A paper-reviewer assignment solver that maximizes expected total affinity,
 obeying limits on the marginal probabilities of each paper-reviewer assignment.
 
@@ -10,7 +10,7 @@ the CFFI library. This algorithm is detailed in Jecmen et al 2020.
 
 Alternates are also selected probabilistically so that the probability limits
 are maintained even if all alternates are used.
-'''
+"""
 
 from .minmax_solver import MinMaxSolver
 from .core import SolverException
@@ -21,16 +21,17 @@ import logging
 import numpy as np
 from itertools import product
 
-class RandomizedSolver():
+
+class RandomizedSolver:
     def __init__(
-            self,
-            minimums,
-            maximums,
-            demands,
-            encoder,
-            allow_zero_score_assignments=False,
-            logger=logging.getLogger(__name__)
-        ):
+        self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        allow_zero_score_assignments=False,
+        logger=logging.getLogger(__name__),
+    ):
         self.minimums = minimums
         self.maximums = maximums
         self.demands = demands
@@ -38,7 +39,9 @@ class RandomizedSolver():
         self.num_paps, self.num_revs = self.cost_matrix.shape
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.logger = logger
-        self.encoder = encoder # for passing cost and constraint matrices to MinMaxSolver
+        self.encoder = (
+            encoder  # for passing cost and constraint matrices to MinMaxSolver
+        )
 
         if not self.cost_matrix.any():
             self.cost_matrix = np.random.rand(*encoder.cost_matrix.shape)
@@ -48,151 +51,225 @@ class RandomizedSolver():
         self.prob_limit_matrix = encoder.prob_limit_matrix
 
         if not self.allow_zero_score_assignments:
-            bad_affinity_reviewers = np.where(np.all((self.cost_matrix * (self.constraint_matrix == 0)) == 0,
-                                                     axis=0))[0]
-            self.logger.debug("Setting minimum load for {} reviewers to 0 because "
-                          "they do not have known affinity with any paper".format(len(bad_affinity_reviewers)))
+            bad_affinity_reviewers = np.where(
+                np.all(
+                    (self.cost_matrix * (self.constraint_matrix == 0)) == 0,
+                    axis=0,
+                )
+            )[0]
+            self.logger.debug(
+                "Setting minimum load for {} reviewers to 0 because "
+                "they do not have known affinity with any paper".format(
+                    len(bad_affinity_reviewers)
+                )
+            )
             for rev_id in bad_affinity_reviewers:
                 self.minimums[rev_id] = 0
 
         self.solved = False
         self.fractional_assignment_matrix = None
-        self.expected_cost = None # expected cost of the fractional assignment
+        self.expected_cost = None  # expected cost of the fractional assignment
         self.flow_matrix = None
-        self.cost = None # actual cost of the sampled assignment
-        self.alternate_probability_matrix = None # marginal probability for each alternate
+        self.cost = None  # actual cost of the sampled assignment
+        self.alternate_probability_matrix = (
+            None  # marginal probability for each alternate
+        )
         self.opt_solved = False
-        self.opt_cost = None # cost of the optimal deterministic assignment
+        self.opt_cost = None  # cost of the optimal deterministic assignment
 
-        self.integer_fractional_assignment_matrix = None # actual solution to LP
-        self.one = 100000 # precision of fractional assignment
+        self.integer_fractional_assignment_matrix = (
+            None  # actual solution to LP
+        )
+        self.one = 100000  # precision of fractional assignment
 
         self._check_inputs()
-        self.fractional_assignment_solver = self.construct_solver(self.prob_limit_matrix, self.one)
-        self.deterministic_assignment_solver = self.construct_solver(np.ones_like(self.prob_limit_matrix), 1)
-
+        self.fractional_assignment_solver = self.construct_solver(
+            self.prob_limit_matrix, self.one
+        )
+        self.deterministic_assignment_solver = self.construct_solver(
+            np.ones_like(self.prob_limit_matrix), 1
+        )
 
     def _check_inputs(self):
-        '''Validate inputs (e.g. that matrix and array dimensions are correct)'''
-        self.logger.debug('Checking graph inputs')
+        """Validate inputs (e.g. that matrix and array dimensions are correct)"""
+        self.logger.debug("Checking graph inputs")
 
-        for matrix in [self.cost_matrix, self.constraint_matrix, self.prob_limit_matrix]:
+        for matrix in [
+            self.cost_matrix,
+            self.constraint_matrix,
+            self.prob_limit_matrix,
+        ]:
             if not isinstance(matrix, np.ndarray):
                 raise SolverException(
-                    'cost, constraint, and probability limit matrices must be of type numpy.ndarray')
+                    "cost, constraint, and probability limit matrices must be of type numpy.ndarray"
+                )
 
-        if (not np.shape(self.cost_matrix) == (self.num_paps, self.num_revs) or
-                not np.shape(self.constraint_matrix) == (self.num_paps, self.num_revs) or
-                not np.shape(self.prob_limit_matrix) == (self.num_paps, self.num_revs)):
+        if (
+            not np.shape(self.cost_matrix) == (self.num_paps, self.num_revs)
+            or not np.shape(self.constraint_matrix)
+            == (self.num_paps, self.num_revs)
+            or not np.shape(self.prob_limit_matrix)
+            == (self.num_paps, self.num_revs)
+        ):
             raise SolverException(
-                'cost {}, constraint {}, and probability limit {} matrices must be the same shape'.format(
-                    np.shape(self.cost_matrix), np.shape(self.constraint_matrix), np.shape(self.prob_limit_matrix)))
+                "cost {}, constraint {}, and probability limit {} matrices must be the same shape".format(
+                    np.shape(self.cost_matrix),
+                    np.shape(self.constraint_matrix),
+                    np.shape(self.prob_limit_matrix),
+                )
+            )
 
-        if not len(self.minimums) == self.num_revs or not len(self.maximums) == self.num_revs:
+        if (
+            not len(self.minimums) == self.num_revs
+            or not len(self.maximums) == self.num_revs
+        ):
             raise SolverException(
-                'minimums ({}) and maximums ({}) must be same length as number of reviewers ({})'.format(
-                    len(self.minimums), len(self.maximums), self.num_revs))
+                "minimums ({}) and maximums ({}) must be same length as number of reviewers ({})".format(
+                    len(self.minimums), len(self.maximums), self.num_revs
+                )
+            )
 
         if not len(self.demands) == self.num_paps:
             raise SolverException(
-                'self.demands array must be same length ({}) as number of papers ({})'.format(
-                    len(self.demands), self.num_paps))
+                "self.demands array must be same length ({}) as number of papers ({})".format(
+                    len(self.demands), self.num_paps
+                )
+            )
 
         # check that probabilities are legal
-        if np.any(np.logical_or(self.prob_limit_matrix > 1, self.prob_limit_matrix < 0)):
-            raise SolverException('Some probability limits are not in [0, 1]')
+        if np.any(
+            np.logical_or(
+                self.prob_limit_matrix > 1, self.prob_limit_matrix < 0
+            )
+        ):
+            raise SolverException("Some probability limits are not in [0, 1]")
 
-        self.logger.debug('Finished checking graph inputs')
-
+        self.logger.debug("Finished checking graph inputs")
 
     def _validate_input_range(self):
-        '''Validate if demand is in the range of min supply and max supply'''
-        self.logger.debug('Checking if demand is in range')
+        """Validate if demand is in the range of min supply and max supply"""
+        self.logger.debug("Checking if demand is in range")
 
         min_supply = sum(self.minimums)
         max_supply = sum(self.maximums)
         demand = sum(self.demands)
 
-        self.logger.debug('Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply, max_supply))
+        self.logger.debug(
+            "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
+                demand, min_supply, max_supply
+            )
+        )
 
         if demand > max_supply or demand < min_supply:
-            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})'.format(demand, min_supply, max_supply))
+            raise SolverException(
+                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                    demand, min_supply, max_supply
+                )
+            )
 
-        self.logger.debug('Finished checking if demand is in range')
+        self.logger.debug("Finished checking if demand is in range")
 
     def construct_solver(self, limit_matrix, scale):
-        ''' LP is solved with all probabilities scaled up by scale. Solution is assumed to be integral. '''
-        self.logger.debug('construct_solver')
+        """LP is solved with all probabilities scaled up by scale. Solution is assumed to be integral."""
+        self.logger.debug("construct_solver")
 
         scaled_minimums = scale * np.array(self.minimums)
         scaled_maximums = scale * np.array(self.maximums)
         scaled_demands = scale * np.array(self.demands)
         scaled_limits = scale * limit_matrix
-        solver = MinMaxSolver(scaled_minimums, scaled_maximums, scaled_demands, self.encoder, self.allow_zero_score_assignments, self.logger, scaled_limits)
+        solver = MinMaxSolver(
+            scaled_minimums,
+            scaled_maximums,
+            scaled_demands,
+            self.encoder,
+            self.allow_zero_score_assignments,
+            self.logger,
+            scaled_limits,
+        )
 
-        self.logger.debug('Finished construct_solver')
+        self.logger.debug("Finished construct_solver")
         return solver
 
-
     def solve(self):
-        self.logger.debug('solve')
+        self.logger.debug("solve")
 
         self._validate_input_range()
 
-        assert hasattr(self, 'fractional_assignment_solver'), \
-            'Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first.'
+        assert hasattr(
+            self, "fractional_assignment_solver"
+        ), "Solver not constructed. Run self.construct_solver(self.probability_limit_matrix) first."
 
-        self.logger.debug('start fractional_assignment_solver')
+        self.logger.debug("start fractional_assignment_solver")
 
         result_matrix = self.fractional_assignment_solver.solve()
         self.solved = self.fractional_assignment_solver.solved
         self.expected_cost = self.fractional_assignment_solver.cost / self.one
         if not self.solved:
-            self.logger.debug('fractional_assignment solving failed')
+            self.logger.debug("fractional_assignment solving failed")
             return
 
-        self.logger.debug('start iterating papers and reviewers')
-        self.integer_fractional_assignment_matrix = np.zeros((self.num_paps, self.num_revs), dtype=np.intc)
+        self.logger.debug("start iterating papers and reviewers")
+        self.integer_fractional_assignment_matrix = np.zeros(
+            (self.num_paps, self.num_revs), dtype=np.intc
+        )
         for i, j in product(range(self.num_paps), range(self.num_revs)):
             actual_value = result_matrix[i, j]
             if np.round(actual_value) - actual_value > 1e-5:
-                self.logger.debug('LP solution not integral at ' + str(i) + ',' + str(j) + ' with value of ' + str(actual_value))
-            self.integer_fractional_assignment_matrix[i, j] = np.round(actual_value) # assumes that round does not ruin paper load integrality
-        if not np.all(np.sum(self.integer_fractional_assignment_matrix, axis=1) % self.one == 0):
-            self.logger.debug('Paper loads rounded')
+                self.logger.debug(
+                    "LP solution not integral at "
+                    + str(i)
+                    + ","
+                    + str(j)
+                    + " with value of "
+                    + str(actual_value)
+                )
+            self.integer_fractional_assignment_matrix[i, j] = np.round(
+                actual_value
+            )  # assumes that round does not ruin paper load integrality
+        if not np.all(
+            np.sum(self.integer_fractional_assignment_matrix, axis=1)
+            % self.one
+            == 0
+        ):
+            self.logger.debug("Paper loads rounded")
             self.solved = False
             return
 
-        self.fractional_assignment_matrix = self.integer_fractional_assignment_matrix / self.one
+        self.fractional_assignment_matrix = (
+            self.integer_fractional_assignment_matrix / self.one
+        )
 
-        self.logger.debug('start deterministic_assignment_solver')
+        self.logger.debug("start deterministic_assignment_solver")
 
         result_matrix = self.deterministic_assignment_solver.solve()
         self.opt_solved = self.deterministic_assignment_solver.solved
         self.opt_cost = self.deterministic_assignment_solver.cost
 
-
-        self.logger.debug('set alternate_probability_matrix')
+        self.logger.debug("set alternate_probability_matrix")
         # set alternate probability to guarantee that
         # P[(p, r) assigned OR alternate] <= self.prob_limit_matrix[p, r]
         # by setting P[alternate] = (prob_limit - P[assign]) / (1 - P[assign])
-        self.alternate_probability_matrix = np.divide(self.prob_limit_matrix - self.fractional_assignment_matrix,
-                1 - self.fractional_assignment_matrix,
-                out=(np.zeros_like(self.prob_limit_matrix)), # if fractional assignment is 1, alternate probability is 0
-                where=(self.fractional_assignment_matrix != 1))
+        self.alternate_probability_matrix = np.divide(
+            self.prob_limit_matrix - self.fractional_assignment_matrix,
+            1 - self.fractional_assignment_matrix,
+            out=(
+                np.zeros_like(self.prob_limit_matrix)
+            ),  # if fractional assignment is 1, alternate probability is 0
+            where=(self.fractional_assignment_matrix != 1),
+        )
 
         self.sample_assignment()
-        self.logger.debug('Finished solve')
+        self.logger.debug("Finished solve")
 
         return self.flow_matrix
 
-
     def sample_assignment(self):
-        ''' Sample a deterministic assignment from the fractional assignment '''
-        self.logger.debug('sample_assignment')
+        """Sample a deterministic assignment from the fractional assignment"""
+        self.logger.debug("sample_assignment")
 
-        assert self.solved, \
-            'Solver not solved. Run self.solve() before sampling.'
+        assert (
+            self.solved
+        ), "Solver not solved. Run self.solve() before sampling."
 
         # construct CFFI interface to the sampling extension in C
         ffi = FFI()
@@ -216,20 +293,26 @@ class RandomizedSolver():
         # check that sampled assignment is valid
         pap_loads = np.sum(self.flow_matrix, axis=1)
         rev_loads = np.sum(self.flow_matrix, axis=0)
-        if not (np.all(pap_loads == np.array(self.demands)) and
-                np.all(np.logical_and(rev_loads <= np.array(self.maximums), rev_loads >= np.array(self.minimums)))):
-            raise SolverException('Sampled assignment is invalid')
+        if not (
+            np.all(pap_loads == np.array(self.demands))
+            and np.all(
+                np.logical_and(
+                    rev_loads <= np.array(self.maximums),
+                    rev_loads >= np.array(self.minimums),
+                )
+            )
+        ):
+            raise SolverException("Sampled assignment is invalid")
 
-        self.logger.debug('Finished sample_assignment')
-
-
+        self.logger.debug("Finished sample_assignment")
 
     def get_alternates(self, num_alternates):
-        ''' Sample alternates in order to respect probability guarantees '''
-        self.logger.debug('get_alternates')
+        """Sample alternates in order to respect probability guarantees"""
+        self.logger.debug("get_alternates")
 
-        assert self.solved, \
-            'Solver not solved. Run self.solve() before sampling.'
+        assert (
+            self.solved
+        ), "Solver not solved. Run self.solve() before sampling."
 
         rng = np.random.default_rng()
 
@@ -238,21 +321,27 @@ class RandomizedSolver():
             unassigned = []
             for j in range(self.num_revs):
                 # only allow j as an alternate with limited probability
-                if self.flow_matrix[i, j] == 0 and rng.random() < self.alternate_probability_matrix[i, j]:
+                if (
+                    self.flow_matrix[i, j] == 0
+                    and rng.random() < self.alternate_probability_matrix[i, j]
+                ):
                     unassigned.append((self.cost_matrix[i, j], j))
             unassigned.sort()
-            alternates_by_index[i] = [entry[1] for entry in unassigned[:num_alternates]]
-        self.logger.debug('Finished get_alternates')
+            alternates_by_index[i] = [
+                entry[1] for entry in unassigned[:num_alternates]
+            ]
+        self.logger.debug("Finished get_alternates")
         return alternates_by_index
 
     def get_fraction_of_opt(self):
-        '''
+        """
         Return the fraction of the optimal score achieved by the randomized assignment (in expectation).
         This is sensible as long as costs = score * -scale.
-        '''
-        self.logger.debug('get_fraction_of_opt')
+        """
+        self.logger.debug("get_fraction_of_opt")
 
-        assert self.solved and self.opt_solved, \
-            'Fractional and optimal solvers not solved. Run self.solve() before sampling.'
+        assert (
+            self.solved and self.opt_solved
+        ), "Fractional and optimal solvers not solved. Run self.solve() before sampling."
 
         return self.expected_cost / self.opt_cost if self.opt_cost != 0 else 1
