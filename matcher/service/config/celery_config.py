@@ -8,8 +8,8 @@ task_queues = (
 )
 # CELERY_IMPORTS = ('tasks')
 task_ignore_result = False
-# broker_url = 'redis://localhost:6379/0'
-broker_url = 'amqp://openreview:openreview@localhost:5672/localhost'
+broker_url = 'redis://localhost:6379'
+# broker_url = 'amqp://openreview:openreview@localhost:5672/localhost'
 result_backend = 'redis://localhost:6379/0'
 # CELERY_DEFAULT_EXCHANGE_TYPE = 'direct'
 task_serializer = 'pickle'

@@ -16,7 +16,7 @@ import openreview
 import matcher.service
 
 AFFINITY_SCORE_FILE = './affinity_scores'
-pytest_plugins = ['celery.contrib.pytest']
+# pytest_plugins = ['celery.contrib.pytest']
 
 
 def ping_url(url):
@@ -161,7 +161,8 @@ def openreview_context():
 @pytest.fixture(scope='session')
 def celery_config():
     return {
-        'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
+        # 'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
+        'broker_url': 'redis://localhost:6379',
         'result_backend': 'redis://localhost:6379/0',
         'task_track_started': True,
         'task_serializer': 'pickle',
@@ -183,7 +184,8 @@ def celery_includes():
 def celery_worker_parameters():
     return {
         'queues':  ('default', 'matching', 'deployment'),
-        'perform_ping_check': False
+        'perform_ping_check': False,
+        'concurrency': 4,
     }
 
 
