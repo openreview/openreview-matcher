@@ -16,7 +16,7 @@ import openreview
 import matcher.service
 
 AFFINITY_SCORE_FILE = './affinity_scores'
-# pytest_plugins = ['celery.contrib.pytest']
+pytest_plugins = ['celery.contrib.pytest']
 
 
 def ping_url(url):

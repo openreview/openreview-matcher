@@ -6,12 +6,10 @@ import json
 import time
 
 import openreview
-import pytest
 
 from conftest import clean_start_conference, wait_for_status
 
-# @pytest.mark.usefixtures('celery_session_app')
-# @pytest.mark.usefixtures('celery_session_worker')
+
 def test_integration_basic(openreview_context, celery_app, celery_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
