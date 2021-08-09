@@ -1,8 +1,8 @@
-'''
+"""
 Responsible for:
 1) encoding OpenReview objects into a compatible format for the matcher.
 2) decoding the result of the matcher and translating into OpenReview objects.
-'''
+"""
 
 from collections import defaultdict, namedtuple
 import numpy as np
@@ -25,48 +25,48 @@ class EncoderError(Exception):
 
 class Encoder:
     """
-    Responsible for keeping track of paper and reviewer indexes.
+     Responsible for keeping track of paper and reviewer indexes.
 
-    Arguments:
-    - `reviewers`:
-        a list of IDs, each representing a reviewer.
+     Arguments:
+     - `reviewers`:
+         a list of IDs, each representing a reviewer.
 
-    - `papers`:
-        a list of IDs, each representing a paper.
+     - `papers`:
+         a list of IDs, each representing a paper.
 
-    - `constraints`:
-        a list of triples, formatted as follows:
-        (<str paper_ID>, <str reviewer_ID>, <int [-1, 0, or 1]>)
+     - `constraints`:
+         a list of triples, formatted as follows:
+         (<str paper_ID>, <str reviewer_ID>, <int [-1, 0, or 1]>)
 
-    - `scores_by_type`:
-        a dict, keyed on string IDs representing score 'types',
-        where each value is a list of triples, formatted as follows:
-        (<str paper_ID>, <str reviewer_ID>, <float score>)
+     - `scores_by_type`:
+         a dict, keyed on string IDs representing score 'types',
+         where each value is a list of triples, formatted as follows:
+         (<str paper_ID>, <str reviewer_ID>, <float score>)
 
-   - `weight_by_type`:
-        a dict, keyed on string IDs that match those in `scores_by_type`,
-        where each value is a float, indicating the relative weight of the corresponding
-        score type.
+    - `weight_by_type`:
+         a dict, keyed on string IDs that match those in `scores_by_type`,
+         where each value is a float, indicating the relative weight of the corresponding
+         score type.
 
-    - `normalization_types`:
-        an array of score types where we need to apply normalization.
+     - `normalization_types`:
+         an array of score types where we need to apply normalization.
 
-    - `probability_limits`:
-        a list of triples, formatted as follows:
-        (<str paper_ID>, <str reviewer_ID>, <float limit>)
-        OR a float, indicating the probability limit for all reviewer-paper pairs
+     - `probability_limits`:
+         a list of triples, formatted as follows:
+         (<str paper_ID>, <str reviewer_ID>, <float limit>)
+         OR a float, indicating the probability limit for all reviewer-paper pairs
     """
 
     def __init__(
-            self,
-            reviewers,
-            papers,
-            constraints,
-            scores_by_type,
-            weight_by_type,
-            normalization_types=[],
-            probability_limits=[],
-            logger=logging.getLogger(__name__)
+        self,
+        reviewers,
+        papers,
+        constraints,
+        scores_by_type,
+        weight_by_type,
+        normalization_types=[],
+        probability_limits=[],
+        logger=logging.getLogger(__name__),
     ):
         self.logger = logger
 
@@ -82,16 +82,14 @@ class Encoder:
         self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
         self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
 
-        self.logger.debug('Init encoding')
-        self.logger.info('Use normalization={}'.format(normalization_types))
+        self.logger.debug("Init encoding")
+        self.logger.info("Use normalization={}".format(normalization_types))
 
-        self.matrix_shape = (
-            len(self.papers),
-            len(self.reviewers)
-        )
+        self.matrix_shape = (len(self.papers), len(self.reviewers))
 
         self.score_matrices = {
-            score_type: self._encode_scores(scores) for score_type, scores in scores_by_type.items()
+            score_type: self._encode_scores(scores)
+            for score_type, scores in scores_by_type.items()
         }
 
         with_normalization_matrices = {}
@@ -104,41 +102,62 @@ class Encoder:
                 without_normalization_matrices[score_type] = scores
 
         self.constraint_matrix = self._encode_constraints(constraints)
-        self.prob_limit_matrix = self._encode_probability_limits(probability_limits)
+        self.prob_limit_matrix = self._encode_probability_limits(
+            probability_limits
+        )
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
-        self.aggregate_score_matrix = np.full(self.matrix_shape, 0, dtype=float)
+        self.aggregate_score_matrix = np.full(
+            self.matrix_shape, 0, dtype=float
+        )
 
         if without_normalization_matrices:
-            self.aggregate_score_matrix = sum([
-                scores * weight_by_type[score_type] for score_type, scores in without_normalization_matrices.items()
-            ])
+            self.aggregate_score_matrix = sum(
+                [
+                    scores * weight_by_type[score_type]
+                    for score_type, scores in without_normalization_matrices.items()
+                ]
+            )
 
         if with_normalization_matrices:
-            self.aggregate_score_matrix += self._normalize(weight_by_type, with_normalization_matrices)
+            self.aggregate_score_matrix += self._normalize(
+                weight_by_type, with_normalization_matrices
+            )
 
         self.cost_matrix = _score_to_cost(self.aggregate_score_matrix)
 
     def _normalize(self, weight_by_type, with_normalization_matrices):
 
-        indicator = {score_type: scores != 0.0 for score_type, scores in with_normalization_matrices.items()}
-        sum_of_weights = sum([
-            indicator * weight_by_type[score_type] for score_type, indicator in indicator.items()
-        ])
+        indicator = {
+            score_type: scores != 0.0
+            for score_type, scores in with_normalization_matrices.items()
+        }
+        sum_of_weights = sum(
+            [
+                indicator * weight_by_type[score_type]
+                for score_type, indicator in indicator.items()
+            ]
+        )
         normalizer = np.where(sum_of_weights == 0, 0, 1 / sum_of_weights)
 
-        return (normalizer * sum([
-            scores * weight_by_type[score_type] for score_type, scores in with_normalization_matrices.items()
-        ]))
+        return normalizer * sum(
+            [
+                scores * weight_by_type[score_type]
+                for score_type, scores in with_normalization_matrices.items()
+            ]
+        )
 
     def _encode_scores(self, scores):
         """return a matrix containing unweighted scores."""
-        default = scores.get('default', 0)
-        edges = scores.get('edges', [])
+        default = scores.get("default", 0)
+        edges = scores.get("edges", [])
         score_matrix = np.full(self.matrix_shape, default, dtype=float)
 
         for forum, user, score in edges:
-            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            coordinates = (
+                self.index_by_forum[forum],
+                self.index_by_user[user],
+            )
             score_matrix[coordinates] = score
 
         return score_matrix
@@ -149,7 +168,10 @@ class Encoder:
         """
         constraint_matrix = np.full(self.matrix_shape, 0, dtype=int)
         for forum, user, constraint in constraints:
-            coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+            coordinates = (
+                self.index_by_forum[forum],
+                self.index_by_user[user],
+            )
             constraint_matrix[coordinates] = constraint
 
         return constraint_matrix
@@ -159,11 +181,18 @@ class Encoder:
         return a matrix containing probability limits
         """
         if isinstance(probability_limits, float):
-            prob_limit_matrix = np.full(self.matrix_shape, probability_limits, dtype=float)
+            prob_limit_matrix = np.full(
+                self.matrix_shape, probability_limits, dtype=float
+            )
         else:  # list of tuples
-            prob_limit_matrix = np.full(self.matrix_shape, 1, dtype=float)  # default to no limit
+            prob_limit_matrix = np.full(
+                self.matrix_shape, 1, dtype=float
+            )  # default to no limit
             for forum, user, limit in probability_limits:
-                coordinates = (self.index_by_forum[forum], self.index_by_user[user])
+                coordinates = (
+                    self.index_by_forum[forum],
+                    self.index_by_user[user],
+                )
                 prob_limit_matrix[coordinates] = limit
         return prob_limit_matrix
 
@@ -182,8 +211,10 @@ class Encoder:
                 if flow:
                     coordinates = (paper_index, reviewer_index)
                     paper_user_entry = {
-                        'aggregate_score': self.aggregate_score_matrix[coordinates],
-                        'user': reviewer
+                        "aggregate_score": self.aggregate_score_matrix[
+                            coordinates
+                        ],
+                        "user": reviewer,
                     }
                     assignments_by_forum[paper_id].append(paper_user_entry)
 
@@ -207,12 +238,16 @@ class Encoder:
                 if not flow:
                     coordinates = (paper_index, reviewer_index)
                     paper_user_entry = {
-                        'aggregate_score': self.aggregate_score_matrix[coordinates],
-                        'user': reviewer
+                        "aggregate_score": self.aggregate_score_matrix[
+                            coordinates
+                        ],
+                        "user": reviewer,
                     }
                     unassigned.append(paper_user_entry)
 
-            unassigned.sort(key=lambda entry: entry['aggregate_score'], reverse=True)
+            unassigned.sort(
+                key=lambda entry: entry["aggregate_score"], reverse=True
+            )
 
             alternates_by_forum[paper_id] = unassigned[:num_alternates]
 
@@ -232,8 +267,10 @@ class Encoder:
             for reviewer_index in reviewer_indices:
                 reviewer_id = self.reviewers[reviewer_index]
                 entry = {
-                    'aggregate_score': self.aggregate_score_matrix[(paper_index, reviewer_index)],
-                    'user': reviewer_id
+                    "aggregate_score": self.aggregate_score_matrix[
+                        (paper_index, reviewer_index)
+                    ],
+                    "user": reviewer_id,
                 }
                 reviewer_list.append(entry)
             alternates_by_forum[paper_id] = reviewer_list
