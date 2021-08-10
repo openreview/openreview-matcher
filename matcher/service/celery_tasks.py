@@ -18,6 +18,11 @@ def run_matching(
     solver_class: str,
     logger: logging.Logger,
 ):
+    logger.debug(
+        "{} task received for config note {}".format(
+            self.name, interface.config_note.id
+        )
+    )
     matcher = Matcher(
         datasource=interface, solver_class=solver_class, logger=logger
     )

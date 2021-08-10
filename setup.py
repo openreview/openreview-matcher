@@ -25,5 +25,8 @@ setup(
         "celery",
         "redis",
     ],
+    extras_require={
+        "full": ["flower"],
+    },
     zip_safe=False,
 )

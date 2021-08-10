@@ -290,7 +290,9 @@ class ConfigNoteInterface:
 
         self.config_note = self.client.post_note(self.config_note)
         self.logger.debug(
-            "status set to: {}".format(self.config_note.content["status"])
+            "Config Note {} status set to: {}".format(
+                self.config_note.id, self.config_note.content["status"]
+            )
         )
 
     def set_assignments(self, assignments_by_forum):
