@@ -3,15 +3,9 @@ End-to-end integration tests with OpenReview server.
 """
 
 import json
-import time
-import requests
-import pytest
-import openreview
-import logging
-import datetime
 
-from matcher.service.openreview_interface import ConfigNoteInterface
-from matcher.solvers import SolverException
+import openreview
+import pytest
 
 from conftest import clean_start_conference, wait_for_status
 
@@ -803,7 +797,9 @@ def test_routes_already_running_or_complete(
     assert config_note.content["status"] == "Complete"
 
 
-def test_integration_empty_reviewers_list_error(openreview_context):
+def test_integration_empty_reviewers_list_error(
+    openreview_context, celery_app, celery_worker
+):
     """
     Test to check en exception is thrown when the reviewers list is empty.
     """

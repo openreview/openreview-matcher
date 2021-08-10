@@ -8,7 +8,7 @@ task_queues = (
         "deployment", routing_key="matcher.service.celery_tasks.run_deployment"
     ),
 )
-# CELERY_IMPORTS = ('tasks')
+# celery_imports = 'matcher.service.celery_tasks'
 task_ignore_result = False
 broker_url = "redis://localhost:6379"
 # broker_url = 'amqp://openreview:openreview@localhost:5672/localhost'
