@@ -797,6 +797,92 @@ def test_routes_already_running_or_complete(
     assert config_note.content["status"] == "Complete"
 
 
+def test_routes_already_queued(openreview_context, celery_app, celery_worker):
+    """should return 400 if the match is already queued"""
+
+    openreview_client = openreview_context["openreview_client"]
+    test_client = openreview_context["test_client"]
+
+    conference_id = "AKBC.ws/2019/Conference"
+    num_reviewers = 1
+    num_papers = 1
+    reviews_per_paper = 1
+    max_papers = 1
+    min_papers = 0
+    alternates = 0
+
+    conference = clean_start_conference(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper,
+    )
+
+    reviewers_id = conference.get_reviewers_id()
+
+    config = {
+        "title": "integration-test",
+        "user_demand": str(reviews_per_paper),
+        "max_papers": str(max_papers),
+        "min_papers": str(min_papers),
+        "alternates": str(alternates),
+        "config_invitation": "{}/-/Assignment_Configuration".format(
+            reviewers_id
+        ),
+        "paper_invitation": conference.get_blind_submission_id(),
+        "assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id
+        ),
+        "deployed_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, deployed=True
+        ),
+        "invite_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, invite=True
+        ),
+        "aggregate_score_invitation": "{}/-/Aggregate_Score".format(
+            reviewers_id
+        ),
+        "conflicts_invitation": conference.get_conflict_score_id(reviewers_id),
+        "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
+            reviewers_id
+        ),
+        "match_group": reviewers_id,
+        "scores_specification": {
+            conference.get_affinity_score_id(reviewers_id): {
+                "weight": 1.0,
+                "default": 0.0,
+            }
+        },
+        "status": "Queued",
+        "solver": "FairFlow",
+    }
+
+    config_note = openreview.Note(
+        **{
+            "invitation": "{}/-/Assignment_Configuration".format(reviewers_id),
+            "readers": [conference.get_id()],
+            "writers": [conference.get_id()],
+            "signatures": [conference.get_id()],
+            "content": config,
+        }
+    )
+
+    config_note = openreview_client.post_note(config_note)
+    assert config_note
+
+    already_queued_response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note.id}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert already_queued_response.status_code == 400
+
+    config_note = openreview_client.get_note(config_note.id)
+    assert config_note.content["status"] == "Queued"
+
+
 def test_integration_empty_reviewers_list_error(
     openreview_context, celery_app, celery_worker
 ):

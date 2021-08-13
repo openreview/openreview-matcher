@@ -4,13 +4,11 @@ Implements the Flask API endpoints.
 TODO: could error handling be cleaner?
 """
 import flask
-from flask_cors import CORS
-import threading
 import openreview
+from flask_cors import CORS
 
-from matcher import Matcher
 from .openreview_interface import ConfigNoteInterface
-from .openreview_interface import Deployment
+from ..core import MatcherStatus
 
 BLUEPRINT = flask.Blueprint("match", __name__)
 CORS(BLUEPRINT, supports_credentials=True)
@@ -80,6 +78,12 @@ def match():
                     config_note_id
                 )
             )
+        if interface.config_note.content["status"] == "Queued":
+            raise MatcherStatusException(
+                "Match configured by {} is already in queue.".format(
+                    config_note_id
+                )
+            )
 
         solver_class = interface.config_note.content.get("solver", "MinMax")
 
@@ -89,17 +93,25 @@ def match():
             )
         )
 
+        interface.set_status(MatcherStatus.QUEUED)
+
         from .celery_tasks import run_matching
 
         run_matching.apply_async(
-            (interface, solver_class, flask.current_app.logger),
+            kwargs={
+                "interface": interface,
+                "solver_class": solver_class,
+                "logger": flask.current_app.logger,
+            },
             queue="matching",
             ignore_result=False,
             task_id=config_note_id,
         )
 
         flask.current_app.logger.debug(
-            "Match for configuration has started: {}".format(config_note_id)
+            "Match for configuration has been queued: {}".format(
+                config_note_id
+            )
         )
 
     except openreview.OpenReviewException as error_handle:
@@ -174,7 +186,10 @@ def deploy():
         from .celery_tasks import run_deployment
 
         run_deployment.apply_async(
-            (interface, flask.current_app.logger),
+            kwargs={
+                "interface": interface,
+                "logger": flask.current_app.logger,
+            },
             queue="deployment",
             ignore_result=False,
             task_id=config_note_id,

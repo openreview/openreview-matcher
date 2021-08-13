@@ -43,7 +43,11 @@ def wait_for_status(client, config_note_id):
     interval_duration = 0.5
     for _ in range(max_iterations):
         config_note = client.get_note(config_note_id)
-        if config_note.content["status"] in ["Initialized", "Running"]:
+        if config_note.content["status"] in [
+            "Initialized",
+            "Running",
+            "Queued",
+        ]:
             time.sleep(interval_duration)
         else:
             return config_note
@@ -188,7 +192,7 @@ def openreview_context():
 def celery_config():
     return {
         # 'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
-        "broker_url": "redis://localhost:6379",
+        "broker_url": "redis://localhost:6379/0",
         "result_backend": "redis://localhost:6379/0",
         "task_track_started": True,
         "task_serializer": "pickle",
@@ -206,7 +210,7 @@ def celery_includes():
 @pytest.fixture(scope="session")
 def celery_worker_parameters():
     return {
-        "queues": ("default", "matching", "deployment"),
+        "queues": ("default", "matching", "deployment", "failure"),
         "perform_ping_check": False,
         "concurrency": 4,
     }
