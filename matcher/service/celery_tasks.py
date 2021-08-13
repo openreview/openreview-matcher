@@ -70,6 +70,7 @@ def run_matching(
     )
     try:
         matcher.run()
+        return matcher.get_status()
     except (
         ConnectionError,
         ConnectTimeoutError,
@@ -77,7 +78,7 @@ def run_matching(
         ConnectionRefusedError,
     ) as exc:
         raise self.retry(
-            exc=exc, countdown=300 * (self.request.retries + 1), max_retries=1
+            exc=exc, countdown=300 * (self.request.retries + 1), max_retries=3
         )
 
 
@@ -94,6 +95,7 @@ def run_deployment(
     deployment = Deployment(config_note_interface=interface, logger=logger)
     try:
         deployment.run()
+        return interface.config_note.content["status"]
     except (
         ConnectionError,
         ConnectTimeoutError,

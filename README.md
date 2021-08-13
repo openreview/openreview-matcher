@@ -71,6 +71,7 @@ To start multiple workers, run the same command with the name option for each wo
 ```
 celery --app matcher.service.server.celery_app worker -n worker_name
 ```
+For more options you may check the celery-worker documentation [here](https://docs.celeryproject.org/en/stable/reference/cli.html#celery-worker).
 
 There's also an option to monitor the celery workers using `flower`. Make sure to install the full package:
 ```
@@ -78,8 +79,9 @@ pip install ./openreview-matcher[full]
 ```
 and the flower dashboard can be started after that using
 ```
-celery --app matcher.service.server.celery_app flower
+celery --app matcher.service.server.celery_app flower --persistent=True --state_save_interval=60000
 ```
+For more options you may check the flower documentation [here](https://flower.readthedocs.io/en/latest/config.html).
 
 By default, the flower dashboard will run on `http://localhost:5555`
 ### Configuration
