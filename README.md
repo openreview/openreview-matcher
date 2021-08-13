@@ -127,9 +127,9 @@ Integration tests use the `test_context` [pytest fixture](https://docs.pytest.or
 The entire suite of tests can be run with the following commands from the top level project directory:
 
     export OPENREVIEW_HOME=<path_to_openreview>
-    python -m pytest -s tests
+    python -m pytest tests
 
 Individual test modules can be run by passing in the module file as the argument:
 
 	export OPENREVIEW_HOME=<path_to_openreview>
-	python -m pytest -s tests/test_integration.py
+	python -m pytest tests/test_integration.py

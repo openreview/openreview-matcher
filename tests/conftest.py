@@ -191,13 +191,13 @@ def openreview_context():
 @pytest.fixture(scope="session")
 def celery_config():
     return {
-        # 'broker_url': 'amqp://openreview:openreview@localhost:5672/localhost',
-        "broker_url": "redis://localhost:6379/0",
-        "result_backend": "redis://localhost:6379/0",
+        "broker_url": "redis://localhost:6379/10",
+        "result_backend": "redis://localhost:6379/10",
         "task_track_started": True,
         "task_serializer": "pickle",
         "result_serializer": "pickle",
         "accept_content": ["pickle", "application/x-python-serialize"],
+        "result_accept_content": ["pickle", "application/x-python-serialize"],
         "task_create_missing_queues": True,
     }
 

@@ -99,7 +99,6 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
             headers=openreview_client.headers,
         )
         assert response.status_code == 200
-        time.sleep(1)
 
     for note_id in note_ids:
         matcher_status = wait_for_status(openreview_client, note_id)
