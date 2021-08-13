@@ -12,17 +12,6 @@ jobs:
       environment:
         xpack.security.enabled: false
         transport.host: localhost
-    - image: rabbitmq:3.8.19
-      environment:
-        - RABBITMQ_DEFAULT_USER=openreview
-        - RABBITMQ_DEFAULT_PASS=openreview
-        - RABBITMQ_DEFAULT_VHOST=localhost
-      ports:
-        - "5672:5672"
-        - "15672:15672"
-      volumes:
-        - ./matcher/service/config/rabbitmq.config:/etc/rabbitmq/rabbitmq.config:ro
-        - ./matcher/service/config/definitions.json:/etc/rabbitmq/definitions.json:ro
     steps:
     - checkout
     - run:
