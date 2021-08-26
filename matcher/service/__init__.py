@@ -5,6 +5,13 @@ import os
 import flask
 
 
+from celery import Celery
+
+os.environ.setdefault(
+    "CELERY_CONFIG_MODULE", "matcher.service.config.celery_default"
+)
+
+
 def configure_logger(app):
     """
     Configures the app's logger object.
@@ -66,3 +73,17 @@ def create_app(config=None):
     app.register_blueprint(routes.BLUEPRINT)
 
     return app
+
+
+def create_celery(app):
+    """
+    Initializes a celery application using Flask App
+    """
+
+    celery = Celery(
+        app.import_name,
+        include=["matcher.service.celery_tasks"],
+    )
+    celery.config_from_envvar("CELERY_CONFIG_MODULE")
+
+    return celery

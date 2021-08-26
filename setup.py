@@ -22,6 +22,11 @@ setup(
         "flask-cors==3.0.9",
         "cffi>=1.0.0",
         "pre-commit",
+        "celery",
+        "redis",
     ],
+    extras_require={
+        "full": ["flower"],
+    },
     zip_safe=False,
 )

@@ -3,20 +3,14 @@ End-to-end integration tests with OpenReview server.
 """
 
 import json
-import time
-import requests
-import pytest
-import openreview
-import logging
-import datetime
 
-from matcher.service.openreview_interface import ConfigNoteInterface
-from matcher.solvers import SolverException
+import openreview
+import pytest
 
 from conftest import clean_start_conference, wait_for_status
 
 
-def test_integration_basic(openreview_context):
+def test_integration_basic(openreview_context, celery_app, celery_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
@@ -112,7 +106,9 @@ def test_integration_basic(openreview_context):
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
 
-def test_integration_supply_mismatch_error(openreview_context):
+def test_integration_supply_mismatch_error(
+    openreview_context, celery_app, celery_worker
+):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
@@ -212,7 +208,9 @@ def test_integration_supply_mismatch_error(openreview_context):
     assert len(paper_assignment_edges) == 0
 
 
-def test_integration_demand_out_of_supply_range_error(openreview_context):
+def test_integration_demand_out_of_supply_range_error(
+    openreview_context, celery_app, celery_worker
+):
     """
     Test to check that a No Solution is observed when demand is not in the range of min and max supply
     """
@@ -312,7 +310,7 @@ def test_integration_demand_out_of_supply_range_error(openreview_context):
     assert len(paper_assignment_edges) == 0
 
 
-def test_integration_no_scores(openreview_context):
+def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
@@ -405,7 +403,9 @@ def test_integration_no_scores(openreview_context):
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
 
-def test_routes_invalid_invitation(openreview_context):
+def test_routes_invalid_invitation(
+    openreview_context, celery_app, celery_worker
+):
     """"""
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
@@ -491,7 +491,7 @@ def test_routes_invalid_invitation(openreview_context):
     assert config_note.content["status"] == "Error"
 
 
-def test_routes_missing_header(openreview_context):
+def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     """request with missing header should response with 400"""
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
@@ -572,7 +572,7 @@ def test_routes_missing_header(openreview_context):
     assert missing_header_response.status_code == 400
 
 
-def test_routes_missing_config(openreview_context):
+def test_routes_missing_config(openreview_context, celery_app, celery_worker):
     """should return 404 if config note doesn't exist"""
 
     openreview_client = openreview_context["openreview_client"]
@@ -588,7 +588,7 @@ def test_routes_missing_config(openreview_context):
 
 
 @pytest.mark.skip  # TODO: fix the authorization so that this test passes.
-def test_routes_bad_token(openreview_context):
+def test_routes_bad_token(openreview_context, celery_app, celery_worker):
     """should return 400 if token is bad"""
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
@@ -604,7 +604,9 @@ def test_routes_bad_token(openreview_context):
 
 
 @pytest.mark.skip  # TODO: fix authorization so that this test passes.
-def test_routes_forbidden_config(openreview_context):
+def test_routes_forbidden_config(
+    openreview_context, celery_app, celery_worker
+):
     """should return 403 if user does not have permission on config note"""
 
     openreview_client = openreview_context["openreview_client"]
@@ -692,7 +694,9 @@ def test_routes_forbidden_config(openreview_context):
     assert forbidden_response.status_code == 403
 
 
-def test_routes_already_running_or_complete(openreview_context):
+def test_routes_already_running_or_complete(
+    openreview_context, celery_app, celery_worker
+):
     """should return 400 if the match is already running or complete"""
 
     openreview_client = openreview_context["openreview_client"]
@@ -793,7 +797,95 @@ def test_routes_already_running_or_complete(openreview_context):
     assert config_note.content["status"] == "Complete"
 
 
-def test_integration_empty_reviewers_list_error(openreview_context):
+def test_routes_already_queued(openreview_context, celery_app, celery_worker):
+    """should return 400 if the match is already queued"""
+
+    openreview_client = openreview_context["openreview_client"]
+    test_client = openreview_context["test_client"]
+
+    conference_id = "AKBC.ws/2019/Conference"
+    num_reviewers = 1
+    num_papers = 1
+    reviews_per_paper = 1
+    max_papers = 1
+    min_papers = 0
+    alternates = 0
+
+    conference = clean_start_conference(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper,
+    )
+
+    reviewers_id = conference.get_reviewers_id()
+
+    config = {
+        "title": "integration-test",
+        "user_demand": str(reviews_per_paper),
+        "max_papers": str(max_papers),
+        "min_papers": str(min_papers),
+        "alternates": str(alternates),
+        "config_invitation": "{}/-/Assignment_Configuration".format(
+            reviewers_id
+        ),
+        "paper_invitation": conference.get_blind_submission_id(),
+        "assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id
+        ),
+        "deployed_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, deployed=True
+        ),
+        "invite_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, invite=True
+        ),
+        "aggregate_score_invitation": "{}/-/Aggregate_Score".format(
+            reviewers_id
+        ),
+        "conflicts_invitation": conference.get_conflict_score_id(reviewers_id),
+        "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
+            reviewers_id
+        ),
+        "match_group": reviewers_id,
+        "scores_specification": {
+            conference.get_affinity_score_id(reviewers_id): {
+                "weight": 1.0,
+                "default": 0.0,
+            }
+        },
+        "status": "Queued",
+        "solver": "FairFlow",
+    }
+
+    config_note = openreview.Note(
+        **{
+            "invitation": "{}/-/Assignment_Configuration".format(reviewers_id),
+            "readers": [conference.get_id()],
+            "writers": [conference.get_id()],
+            "signatures": [conference.get_id()],
+            "content": config,
+        }
+    )
+
+    config_note = openreview_client.post_note(config_note)
+    assert config_note
+
+    already_queued_response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note.id}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert already_queued_response.status_code == 400
+
+    config_note = openreview_client.get_note(config_note.id)
+    assert config_note.content["status"] == "Queued"
+
+
+def test_integration_empty_reviewers_list_error(
+    openreview_context, celery_app, celery_worker
+):
     """
     Test to check en exception is thrown when the reviewers list is empty.
     """

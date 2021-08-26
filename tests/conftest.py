@@ -16,6 +16,7 @@ import openreview
 import matcher.service
 
 AFFINITY_SCORE_FILE = "./affinity_scores"
+pytest_plugins = ["celery.contrib.pytest"]
 
 
 def ping_url(url):
@@ -42,7 +43,11 @@ def wait_for_status(client, config_note_id):
     interval_duration = 0.5
     for _ in range(max_iterations):
         config_note = client.get_note(config_note_id)
-        if config_note.content["status"] in ["Initialized", "Running"]:
+        if config_note.content["status"] in [
+            "Initialized",
+            "Running",
+            "Queued",
+        ]:
             time.sleep(interval_duration)
         else:
             return config_note
@@ -148,8 +153,8 @@ def assert_arrays(array_A, array_B, is_string=False):
         )
 
 
-@pytest.fixture
-def openreview_context(scope="function"):
+@pytest.fixture()
+def openreview_context():
     """
     A pytest fixture for setting up a clean OpenReview test instance:
 
@@ -183,8 +188,35 @@ def openreview_context(scope="function"):
         }
 
 
-if __name__ == "__main__":
+@pytest.fixture(scope="session")
+def celery_config():
+    return {
+        "broker_url": "redis://localhost:6379/10",
+        "result_backend": "redis://localhost:6379/10",
+        "task_track_started": True,
+        "task_serializer": "pickle",
+        "result_serializer": "pickle",
+        "accept_content": ["pickle", "application/x-python-serialize"],
+        "result_accept_content": ["pickle", "application/x-python-serialize"],
+        "task_create_missing_queues": True,
+    }
 
+
+@pytest.fixture(scope="session")
+def celery_includes():
+    return ["matcher.service.celery_tasks", "tests.tasks"]
+
+
+@pytest.fixture(scope="session")
+def celery_worker_parameters():
+    return {
+        "queues": ("default", "matching", "deployment", "failure"),
+        "perform_ping_check": False,
+        "concurrency": 4,
+    }
+
+
+if __name__ == "__main__":
     config = {
         "OPENREVIEW_USERNAME": "openreview.net",
         "OPENREVIEW_PASSWORD": "1234",

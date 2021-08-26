@@ -1,7 +1,5 @@
 import argparse
-from matcher.service import create_app
-
-app = create_app()
+from matcher.service.server import app
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -54,13 +54,36 @@ The solver returns a deterministic assignment which was sampled from this random
 For more information, see [this paper](https://arxiv.org/abs/2006.16437).
 
 ## Running the Server
-The server is implemented in Flask and can be started from the command line:
+The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:
 ```
 python -m matcher.service --host localhost --port 5000
 ```
 
 By default, the app will run on `http://localhost:5000`. The endpoint `/match/test` should show a simple page indicating that Flask is running.
 
+The celery worker can be installed using:
+```
+ celery --app matcher.service.server.celery_app worker
+```
+
+To start multiple workers, run the same command with the name option for each worker as follows:
+
+```
+celery --app matcher.service.server.celery_app worker -n worker_name
+```
+For more options you may check the celery-worker documentation [here](https://docs.celeryproject.org/en/stable/reference/cli.html#celery-worker).
+
+There's also an option to monitor the celery workers using `flower`. Make sure to install the full package:
+```
+pip install ./openreview-matcher[full]
+```
+and the flower dashboard can be started after that using
+```
+celery --app matcher.service.server.celery_app flower --persistent=True --state_save_interval=60000
+```
+For more options you may check the flower documentation [here](https://flower.readthedocs.io/en/latest/config.html).
+
+By default, the flower dashboard will run on `http://localhost:5555`
 ### Configuration
 Configuration files are located in `/matcher/service/config`. When started, the server will search for a `.cfg` file in `/matcher/service/config` that matches the environment variable `FLASK_ENV`, and will default to the values in `default.cfg`.
 
