@@ -63,19 +63,23 @@ class ConfigNoteInterface:
                 self.logger.debug("GET invitation id={}".format(invitation_id))
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
-                self.set_status(MatcherStatus.ERROR)
+                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
 
     def validate_match_group(self):
-        self.logger.debug("GET group id={}".format(self.match_group))
-        match_group = self.client.get_group(self.match_group)
-        for member in match_group.members:
-            if not member.startswith("~"):
-                raise openreview.OpenReviewException(
-                    "All members of the group {group} must have OpenReview Profile".format(
-                        group=self.match_group
+        try:
+            self.logger.debug("GET group id={}".format(self.match_group))
+            match_group = self.client.get_group(self.match_group)
+            for member in match_group.members:
+                if not member.startswith("~"):
+                    raise openreview.OpenReviewException(
+                        "All members of the group {group} must have OpenReview Profile".format(
+                            group=self.match_group
+                        )
                     )
-                )
+        except openreview.OpenReviewException as error_handle:
+            self.set_status(MatcherStatus.ERROR, message=str(error_handle))
+            raise error_handle
 
     @property
     def normalization_types(self):

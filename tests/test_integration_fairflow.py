@@ -1169,7 +1169,7 @@ def test_integration_group_not_found_error(
         content_type="application/json",
         headers=openreview_client.headers,
     )
-    assert response.status_code == 200
+    assert response.status_code == 404
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content["status"] == "Error"
