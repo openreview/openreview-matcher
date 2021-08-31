@@ -122,7 +122,7 @@ def clean_start_conference(
             posted_submission = client.post_note(submission)
 
             for index in range(1, num_reviewers + 1):
-                reviewer = "test_reviewer{0}@mail.com".format(index)
+                reviewer = "~test_reviewer{0}".format(index)
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [

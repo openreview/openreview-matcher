@@ -53,6 +53,7 @@ class ConfigNoteInterface:
         self._constraints = None
 
         self.validate_score_spec()
+        self.validate_match_group()
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get(
@@ -64,6 +65,17 @@ class ConfigNoteInterface:
             except openreview.OpenReviewException as error_handle:
                 self.set_status(MatcherStatus.ERROR)
                 raise error_handle
+
+    def validate_match_group(self):
+        self.logger.debug("GET group id={}".format(self.match_group))
+        match_group = self.client.get_group(self.match_group)
+        for member in match_group.members:
+            if not member.startswith("~"):
+                raise openreview.OpenReviewException(
+                    "All members of the group {group} must have OpenReview Profile".format(
+                        group=self.match_group
+                    )
+                )
 
     @property
     def normalization_types(self):
