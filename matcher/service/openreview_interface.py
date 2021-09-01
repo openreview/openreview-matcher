@@ -73,7 +73,7 @@ class ConfigNoteInterface:
             for member in match_group.members:
                 if not member.startswith("~"):
                     raise openreview.OpenReviewException(
-                        "All members of the group {group} must have OpenReview Profile".format(
+                        "All members of the group, {group}, must have an OpenReview Profile".format(
                             group=self.match_group
                         )
                     )

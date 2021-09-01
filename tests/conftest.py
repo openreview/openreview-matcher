@@ -122,7 +122,7 @@ def clean_start_conference(
             posted_submission = client.post_note(submission)
 
             for index in range(0, num_reviewers):
-                reviewer = "~user{0}_reviewer1".format(chr(97 + index))
+                reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [
@@ -183,8 +183,8 @@ def openreview_context():
         openreview.tools.create_profile(
             superuser_client,
             "user{0}_reviewer@mail.com".format(chr(97 + index)),
-            "user{0}".format(chr(97 + index)),
-            "reviewer",
+            "User{0}".format(chr(97 + index)),
+            "Reviewer",
         )
     with app.app_context():
         yield {
