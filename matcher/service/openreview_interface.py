@@ -53,7 +53,7 @@ class ConfigNoteInterface:
         self._constraints = None
 
         self.validate_score_spec()
-        self.validate_match_group()
+        self.validate_group(self.match_group)
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get(
@@ -66,15 +66,15 @@ class ConfigNoteInterface:
                 self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
 
-    def validate_match_group(self):
+    def validate_group(self, group_id):
         try:
-            self.logger.debug("GET group id={}".format(self.match_group))
-            match_group = self.client.get_group(self.match_group)
-            for member in match_group.members:
+            self.logger.debug("GET group id={}".format(group_id))
+            group = self.client.get_group(group_id)
+            for member in group.members:
                 if not member.startswith("~"):
                     raise openreview.OpenReviewException(
                         "All members of the group, {group}, must have an OpenReview Profile".format(
-                            group=self.match_group
+                            group=group_id
                         )
                     )
         except openreview.OpenReviewException as error_handle:
@@ -137,7 +137,7 @@ class ConfigNoteInterface:
                     "Count of notes found: {}".format(len(self._papers))
                 )
             else:
-                self.logger.debug("GET group id={}".format(paper_invitation))
+                self.validate_group(paper_invitation)
                 group = self.client.get_group(paper_invitation)
                 self._papers = group.members
                 self.paper_numbers = {n: 1 for n in group.members}
