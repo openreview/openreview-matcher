@@ -185,7 +185,7 @@ def test_solver_fairflow_no_0_score_assignment():
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 1, max: 3 papers.
     Each paper needs 2 reviews.
-    No constraints.
+    Reviewer 0 cannot review paper 1.
     Purpose: Assert that an assignment is never made for 0 or less score
     """
     aggregate_score_matrix = np.transpose(
@@ -405,10 +405,10 @@ def test_solver_fairflow_respect_minimums():
 
     # make sure every reviewer is reviewing 2 papers
     nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
-    for rix in range(nrows):
+    for rix in range(ncols):
         reviewer_count_reviews = 0
-        for pix in range(ncols):
-            if res[rix, pix] != 0:
+        for pix in range(nrows):
+            if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews == 2
 
@@ -449,10 +449,10 @@ def test_solver_fairflow_respect_minimums_2():
     assert solver.solved
     # make sure every reviewer has at least 1 paper
     nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
-    for rix in range(nrows):
+    for rix in range(ncols):
         reviewer_count_reviews = 0
-        for pix in range(ncols):
-            if res[rix, pix] != 0:
+        for pix in range(nrows):
+            if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews >= 1
 
@@ -493,12 +493,12 @@ def test_solver_fairflow_respect_minimums_3():
     assert solver.solved
     # make sure every reviewer has at least 1 paper
     nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
-    for rix in range(nrows):
+    for rix in range(ncols):
         reviewer_count_reviews = 0
-        for pix in range(ncols):
-            if res[rix, pix] != 0:
+        for pix in range(nrows):
+            if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
-        assert reviewer_count_reviews >= 1
+        assert reviewer_count_reviews >= 2
 
 
 def test_solver_fairflow_respects_one_minimum():
@@ -538,10 +538,10 @@ def test_solver_fairflow_respects_one_minimum():
     assert solver.solved
     # make sure every reviewer has at least 1 paper
     nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
-    for rix in range(nrows):
+    for rix in range(ncols):
         reviewer_count_reviews = 0
-        for pix in range(ncols):
-            if res[rix, pix] != 0:
+        for pix in range(nrows):
+            if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews >= 1
 
@@ -582,12 +582,12 @@ def test_solver_fairflow_respects_two_minimum():
     assert solver.solved
     # make sure every reviewer has at least 1 paper
     nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
-    for rix in range(nrows):
+    for rix in range(ncols):
         reviewer_count_reviews = 0
-        for pix in range(ncols):
-            if res[rix, pix] != 0:
+        for pix in range(nrows):
+            if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
-        assert reviewer_count_reviews >= 1
+        assert reviewer_count_reviews >= 2
 
 
 def test_solver_fairflow_avoid_zero_scores_get_no_solution():
