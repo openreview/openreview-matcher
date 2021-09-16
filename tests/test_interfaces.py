@@ -2055,7 +2055,7 @@ def test_confignote_interface_matching_users():
     """Test of basic ConfigNoteInterface functionality."""
 
     mock_openreview_data = {
-        "paper_ids": ["ac0", "ac1", "ac2"],
+        "paper_ids": ["~ac0", "~ac1", "~ac2"],
         "reviewer_ids": ["~sac0", "~sac1", "~sac2", "~sac3"],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
@@ -2115,7 +2115,7 @@ def test_confignote_interface_matching_users():
                 readers=[],
                 writers=[],
                 signatures=[],
-                members=["ac0", "ac1", "ac2"],
+                members=["~ac0", "~ac1", "~ac2"],
                 signatories=[],
             ),
         },
@@ -2153,7 +2153,7 @@ def test_confignote_interface_matching_users():
         "mock_grouped_edges": {
             "<affinity_score_invitation>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
                         {"tail": "~sac0", "weight": random.random()},
                         {"tail": "~sac1", "weight": random.random()},
@@ -2162,7 +2162,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
                         {"tail": "~sac0", "weight": random.random()},
                         {"tail": "~sac1", "weight": random.random()},
@@ -2171,7 +2171,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
                         {"tail": "~sac0", "weight": random.random()},
                         {"tail": "~sac1", "weight": random.random()},
@@ -2182,7 +2182,7 @@ def test_confignote_interface_matching_users():
             ],
             "<bid_invitation>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
                         {"tail": "~sac0", "weight": None, "label": "High"},
                         {"tail": "~sac2", "weight": None, "label": "Very Low"},
@@ -2190,7 +2190,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
                         {"tail": "~sac0", "weight": None, "label": "High"},
                         {"tail": "~sac1", "weight": None, "label": "High"},
@@ -2198,7 +2198,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
                         {"tail": "~sac0", "weight": None, "label": "Very Low"},
                         {"tail": "~sac1", "weight": None, "label": "High"},
@@ -2209,7 +2209,7 @@ def test_confignote_interface_matching_users():
             ],
             "<conflicts_invitation_id>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
                         {"tail": "~sac0", "weight": 0},
                         {"tail": "~sac1", "weight": 1},
@@ -2218,7 +2218,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
                         {"tail": "~sac0", "weight": 0},
                         {"tail": "~sac1", "weight": 0},
@@ -2227,7 +2227,7 @@ def test_confignote_interface_matching_users():
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
                         {"tail": "~sac0", "weight": 0},
                         {"tail": "~sac1", "weight": 0},
@@ -2258,15 +2258,15 @@ def test_confignote_interface_matching_users():
         ["~sac0", "~sac1", "~sac2", "~sac3"],
         is_string=True,
     )
-    assert_arrays(interface.papers, ["ac0", "ac1", "ac2"], is_string=True)
+    assert_arrays(interface.papers, ["~ac0", "~ac1", "~ac2"], is_string=True)
     assert_arrays(interface.minimums, [1, 1, 1, 1])
     assert_arrays(interface.maximums, [1, 2, 2, 2])
     assert_arrays(interface.demands, [1, 1, 1])
     assert interface.constraints
     valid_constraint_pairs = [
-        ("ac0", "~sac1"),
-        ("ac1", "~sac2"),
-        ("ac2", "~sac3"),
+        ("~ac0", "~sac1"),
+        ("~ac1", "~sac2"),
+        ("~ac2", "~sac3"),
     ]
     for (ac, sac, constraint) in interface.constraints:
         if (ac, sac) in valid_constraint_pairs:
@@ -2285,14 +2285,14 @@ def test_confignote_interface_matching_users():
             "<affinity_score_invitation>",
         ]
 
-    very_low_bids = [("ac0", "~sac2"), ("ac1", "~sac3"), ("ac2", "~sac0")]
+    very_low_bids = [("~ac0", "~sac2"), ("~ac1", "~sac3"), ("~ac2", "~sac0")]
     high_bids = [
         ("acr0", "~sac0"),
-        ("ac0", "~sac3"),
-        ("ac1", "~sac0"),
-        ("ac1", "~sac1"),
-        ("ac2", "~sac1"),
-        ("ac2", "~sac2"),
+        ("~ac0", "~sac3"),
+        ("~ac1", "~sac0"),
+        ("~ac1", "~sac1"),
+        ("~ac2", "~sac1"),
+        ("~ac2", "~sac2"),
     ]
     for ac, sac, bid in interface.scores_by_type["<bid_invitation>"]["edges"]:
         if (ac, sac) in very_low_bids:
