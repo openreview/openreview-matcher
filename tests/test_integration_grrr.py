@@ -17,7 +17,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -69,7 +69,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -115,7 +115,7 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2049/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10  # impossible!
@@ -167,7 +167,7 @@ def test_integration_supply_mismatch_error(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -269,7 +269,7 @@ def test_integration_demand_out_of_supply_range_error(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -317,7 +317,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2020/Conference"
+    conference_id = "NIPS.cc/2020/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -363,7 +363,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         ),
         "match_group": reviewers_id,
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
         "allow_zero_score_assignments": "Yes",
     }
 
@@ -410,7 +410,7 @@ def test_routes_invalid_invitation(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -463,7 +463,7 @@ def test_routes_invalid_invitation(
             "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -496,7 +496,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -548,7 +548,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -613,7 +613,7 @@ def test_routes_forbidden_config(
     test_client = openreview_context["test_client"]
     app = openreview_context["app"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -665,7 +665,7 @@ def test_routes_forbidden_config(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -702,7 +702,7 @@ def test_routes_already_running_or_complete(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -754,7 +754,7 @@ def test_routes_already_running_or_complete(
             }
         },
         "status": "Running",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -803,7 +803,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "NIPS.cc/2019/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -855,7 +855,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Queued",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -892,7 +892,7 @@ def test_integration_empty_reviewers_list_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2021/Conference"
+    conference_id = "NIPS.cc/2021/Conference"
     num_reviewers = 0
     num_papers = 10
     reviews_per_paper = 3
@@ -944,7 +944,7 @@ def test_integration_empty_reviewers_list_error(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -993,7 +993,7 @@ def test_integration_empty_papers_list_error(openreview_context):
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2022/Conference"
+    conference_id = "NIPS.cc/2022/Conference"
     num_reviewers = 15
     num_papers = 0
     reviews_per_paper = 3
@@ -1045,7 +1045,7 @@ def test_integration_empty_papers_list_error(openreview_context):
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -1095,7 +1095,7 @@ def test_integration_group_not_found_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2029/Conference"
+    conference_id = "NIPS.cc/2029/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -1139,7 +1139,7 @@ def test_integration_group_not_found_error(
         "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
             reviewers_id
         ),
-        "match_group": "AKBC.ws/2029/Conference/NoReviewers",
+        "match_group": "NIPS.cc/2029/Conference/NoReviewers",
         "scores_specification": {
             conference.get_affinity_score_id(reviewers_id): {
                 "weight": 1.0,
@@ -1147,7 +1147,7 @@ def test_integration_group_not_found_error(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "GRRR",
     }
 
     config_note = openreview.Note(
@@ -1175,5 +1175,5 @@ def test_integration_group_not_found_error(
     assert matcher_status.content["status"] == "Error"
     assert (
         matcher_status.content["error_message"]
-        == "['Group Not Found: AKBC.ws/2029/Conference/NoReviewers']"
+        == "['Group Not Found: NIPS.cc/2029/Conference/NoReviewers']"
     )

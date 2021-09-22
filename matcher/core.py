@@ -4,13 +4,20 @@ import threading
 import time
 import json
 from enum import Enum
-from .solvers import SolverException, MinMaxSolver, FairFlow, RandomizedSolver
+from .solvers import (
+    SolverException,
+    MinMaxSolver,
+    FairFlow,
+    RandomizedSolver,
+    GRRR,
+)
 from .encoder import Encoder
 
 SOLVER_MAP = {
     "MinMax": MinMaxSolver,
     "FairFlow": FairFlow,
     "Randomized": RandomizedSolver,
+    "GRRR": GRRR,
 }
 
 
