@@ -53,7 +53,9 @@ jobs:
         name: install the local openreview-py as a dependency
         command: |
           cd ~/openreview-py
+          echo $OPENREVIEW_PY
           git checkout $OPENREVIEW_PY
+          cd ~/openreview-matcher-repo
           source matcher/bin/activate
           pip install -e ~/openreview-py
     - run:
