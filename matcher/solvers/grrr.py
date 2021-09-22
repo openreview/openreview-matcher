@@ -23,11 +23,20 @@ class GRRR(object):
     optimal tie-breaking order (using the specified number of samples at each step). Some constraints
     apply to the selection process - most importantly, no paper can choose a
     reviewer that would cause a WEF1 violation. If this procedure fails to discover a WEF1 allocation,
-    we try the picking sequence again, allowing WEF1 violations during the process. 
+    we try the picking sequence again, allowing WEF1 violations during the process.
     """
 
-    def __init__(self, minimums, maximums, demands, encoder, allow_zero_score_assignments=False, solution=None,
-                 sample_size=1, logger=logging.getLogger(__name__)):
+    def __init__(
+        self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        allow_zero_score_assignments=False,
+        solution=None,
+        sample_size=1,
+        logger=logging.getLogger(__name__),
+    ):
         """
         Initialize a GRRR matcher
 
@@ -43,10 +52,9 @@ class GRRR(object):
         """
         self.logger = logger
         self.allow_zero_score_assignments = allow_zero_score_assignments
-        self.logger.debug('Init GRRR')
+        self.logger.debug("Init GRRR")
         self.constraint_matrix = encoder.constraint_matrix.transpose()
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
-
 
         # The number of papers to consider in each step of _select_ordering().
         # Higher sample_size can improve objective score at the cost of increased runtime.
@@ -86,30 +94,40 @@ class GRRR(object):
                 self.minimums[rev_id] = 0
 
         self.id = uuid.uuid4()
-        self.solution = solution if solution else np.zeros((self.num_reviewers, self.num_papers))
-        assert (self.affinity_matrix.shape == self.solution.shape)
+        self.solution = (
+            solution
+            if solution
+            else np.zeros((self.num_reviewers, self.num_papers))
+        )
+        assert self.affinity_matrix.shape == self.solution.shape
 
         self.solved = False
-        self.logger.debug('End Init GRRR')
+        self.logger.debug("End Init GRRR")
 
     def _validate_input_range(self):
         """Validate if demand is in the range of min supply and max supply,
         and forbids currently unsupported settings."""
-        self.logger.debug('Checking if demand is in range')
+        self.logger.debug("Checking if demand is in range")
 
         min_supply = np.sum(self.minimums)
         max_supply = np.sum(self.maximums)
         demand = np.sum(self.demands)
 
         self.logger.debug(
-            'Total demand is ({}), min review supply is ({}), and max review supply is ({})'.format(demand, min_supply,
-                                                                                                    max_supply))
+            "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
+                demand, min_supply, max_supply
+            )
+        )
 
         if demand > max_supply or demand < min_supply:
-            raise SolverException('Total demand ({}) is out of range when min review supply is ({}) '
-                                  'and max review supply is ({})'.format(demand, min_supply, max_supply))
+            raise SolverException(
+                "Total demand ({}) is out of range when min review supply is ({}) "
+                "and max review supply is ({})".format(
+                    demand, min_supply, max_supply
+                )
+            )
 
-        self.logger.debug('Finished checking input ranges')
+        self.logger.debug("Finished checking input ranges")
 
     def objective_val(self):
         """Get the objective value of the RAP."""
@@ -120,9 +138,18 @@ class GRRR(object):
             return self.solution
         else:
             raise SolverException(
-                'You must have executed solve() before calling this function')
+                "You must have executed solve() before calling this function"
+            )
 
-    def is_safe_choice(self, r, p, order_idx_map, matrix_alloc, papers_who_tried_revs, first_reviewer):
+    def is_safe_choice(
+        self,
+        r,
+        p,
+        order_idx_map,
+        matrix_alloc,
+        papers_who_tried_revs,
+        first_reviewer,
+    ):
         """Ensure that we can assign reviewer r to paper p without breaking weighted envy-freeness up to 1 item.
 
         If we are assigning the first reviewer to each paper, then WEF1 cannot be broken. Otherwise,
@@ -160,17 +187,29 @@ class GRRR(object):
         for q in papers_who_tried_revs[r]:
             if q != p:
                 # Check that they will not envy a if we add r to a.
-                _p = p_alloc_proposed if (order_idx_map[q] < p_idx) else p_alloc_proposed_reduced
+                _p = (
+                    p_alloc_proposed
+                    if (order_idx_map[q] < p_idx)
+                    else p_alloc_proposed_reduced
+                )
 
-                q_value_for_p_proposed = np.sum(_p * self.affinity_matrix[:, q]) / self.demands[p]
-                q_value_for_q = np.sum(matrix_alloc[:, q] * self.affinity_matrix[:, q]) / self.demands[q]
+                q_value_for_p_proposed = (
+                    np.sum(_p * self.affinity_matrix[:, q]) / self.demands[p]
+                )
+                q_value_for_q = (
+                    np.sum(matrix_alloc[:, q] * self.affinity_matrix[:, q])
+                    / self.demands[q]
+                )
 
-                if q_value_for_q < q_value_for_p_proposed \
-                        and not np.isclose(q_value_for_p_proposed, q_value_for_q):
+                if q_value_for_q < q_value_for_p_proposed and not np.isclose(
+                    q_value_for_p_proposed, q_value_for_q
+                ):
                     return False
         return True
 
-    def _restrict_if_necessary(self, reviewers_remaining, matrix_alloc, paper_list):
+    def _restrict_if_necessary(
+        self, reviewers_remaining, matrix_alloc, paper_list
+    ):
         """Determine the number of papers we can still assign to each reviewer
 
         If we have exactly enough remaining reviewer slots to satisfy reviewer
@@ -187,10 +226,16 @@ class GRRR(object):
             New reviewers_remaining - either the same as the input if we have enough papers to satisfy
             reviewer minima, or the exact assignments required to meet minima otherwise.
         """
-        remaining_demand = np.sum(self.demands[paper_list]) - np.sum(matrix_alloc)
+        remaining_demand = np.sum(self.demands[paper_list]) - np.sum(
+            matrix_alloc
+        )
         required_for_min = self.minimums - np.sum(matrix_alloc, axis=1)
         required_for_min[required_for_min < 0] = 0
-        return required_for_min if np.sum(required_for_min) >= remaining_demand else reviewers_remaining
+        return (
+            required_for_min
+            if np.sum(required_for_min) >= remaining_demand
+            else reviewers_remaining
+        )
 
     def _select_next_paper(self, matrix_alloc, order_idx_map):
         """Select the next paper to pick a reviewer
@@ -210,7 +255,9 @@ class GRRR(object):
             The index of the next paper to pick a reviewer
         """
         priorities = np.sum(matrix_alloc, axis=0) / self.demands
-        return sorted(order_idx_map.items(), key=lambda x: (priorities[x[0]], x[1]))[0][0]
+        return sorted(
+            order_idx_map.items(), key=lambda x: (priorities[x[0]], x[1])
+        )[0][0]
 
     def rr(self, ordering):
         """Compute round-robin assignment with the papers in this ordering.
@@ -232,15 +279,22 @@ class GRRR(object):
         order_idx_map = {p: idx for idx, p in enumerate(ordering)}
 
         while np.sum(matrix_alloc) < np.sum(self.demands[ordering]):
-            maximums_copy = self._restrict_if_necessary(maximums_copy, matrix_alloc, ordering)
+            maximums_copy = self._restrict_if_necessary(
+                maximums_copy, matrix_alloc, ordering
+            )
             a = self._select_next_paper(matrix_alloc, order_idx_map)
 
             new_assn = False
             for r in self.best_revs[:, a]:
-                if maximums_copy[r] > 0 \
-                        and r not in np.where(matrix_alloc[:, a])[0] \
-                        and self.constraint_matrix[r, a] == 0 \
-                        and (self.allow_zero_score_assignments or self.affinity_matrix[r, a]):
+                if (
+                    maximums_copy[r] > 0
+                    and r not in np.where(matrix_alloc[:, a])[0]
+                    and self.constraint_matrix[r, a] == 0
+                    and (
+                        self.allow_zero_score_assignments
+                        or self.affinity_matrix[r, a]
+                    )
+                ):
 
                     maximums_copy[r] -= 1
                     matrix_alloc[r, a] = 1
@@ -275,16 +329,30 @@ class GRRR(object):
         order_idx_map = {p: idx for idx, p in enumerate(ordering)}
 
         while np.sum(matrix_alloc) < np.sum(self.demands[ordering]):
-            maximums_copy = self._restrict_if_necessary(maximums_copy, matrix_alloc, ordering)
+            maximums_copy = self._restrict_if_necessary(
+                maximums_copy, matrix_alloc, ordering
+            )
             a = self._select_next_paper(matrix_alloc, order_idx_map)
 
             new_assn = False
             for r in self.best_revs[:, a]:
-                if maximums_copy[r] > 0 \
-                        and r not in np.where(matrix_alloc[:, a])[0] \
-                        and self.constraint_matrix[r, a] == 0 \
-                        and (self.allow_zero_score_assignments or self.affinity_matrix[r, a]):
-                    if self.is_safe_choice(r, a, order_idx_map, matrix_alloc, papers_who_tried_revs, first_reviewer):
+                if (
+                    maximums_copy[r] > 0
+                    and r not in np.where(matrix_alloc[:, a])[0]
+                    and self.constraint_matrix[r, a] == 0
+                    and (
+                        self.allow_zero_score_assignments
+                        or self.affinity_matrix[r, a]
+                    )
+                ):
+                    if self.is_safe_choice(
+                        r,
+                        a,
+                        order_idx_map,
+                        matrix_alloc,
+                        papers_who_tried_revs,
+                        first_reviewer,
+                    ):
                         maximums_copy[r] -= 1
                         matrix_alloc[r, a] = 1
                         if a not in first_reviewer:
@@ -309,7 +377,11 @@ class GRRR(object):
             USW, as a float.
         """
         matrix_alloc = self.safe_rr(ordering)
-        return np.sum(matrix_alloc * self.affinity_matrix) if matrix_alloc is not None else None
+        return (
+            np.sum(matrix_alloc * self.affinity_matrix)
+            if matrix_alloc is not None
+            else None
+        )
 
     def _select_ordering(self):
         """Greedily select a paper ordering for round-robin.
@@ -330,7 +402,9 @@ class GRRR(object):
         ordering = []
 
         curr_usw = 0
-        mg_upper_bound = np.max(self.demands) * np.max(self.affinity_matrix * (1 - self.constraint_matrix))
+        mg_upper_bound = np.max(self.demands) * np.max(
+            self.affinity_matrix * (1 - self.constraint_matrix)
+        )
 
         if self.sample_size == 1:
             return sorted(list(range(n)), key=lambda x: random.random())
@@ -340,7 +414,9 @@ class GRRR(object):
             best_usw = -np.inf
 
             sample_size = min(self.sample_size, len(available_agents))
-            sorted_agents = sorted(random.sample(list(available_agents), sample_size))
+            sorted_agents = sorted(
+                random.sample(list(available_agents), sample_size)
+            )
             for a in sorted_agents:
                 usw = self._compute_usw(ordering + [a])
                 if usw is not None:
@@ -386,18 +462,21 @@ class GRRR(object):
             self.num_papers = self.num_papers - proper_papers.size
 
         ordering = self._select_ordering()
-        self.logger.debug('Ordering is {}'.format(ordering))
+        self.logger.debug("Ordering is {}".format(ordering))
 
         self.solution = self.safe_rr(ordering)
 
         if self.solution is None:
-            self.logger.debug('GRRR was unable to find a WEF1 allocation satisfying all papers\' demands. '
-                              'Falling back to picking sequence without WEF1 guarantees.')
+            self.logger.debug(
+                "GRRR was unable to find a WEF1 allocation satisfying all papers' demands. "
+                "Falling back to picking sequence without WEF1 guarantees."
+            )
             self.solution = self.rr(ordering)
 
             if self.solution is None:
                 raise SolverException(
-                    'Solver could not find a solution. Adjust your parameters.')
+                    "Solver could not find a solution. Adjust your parameters."
+                )
 
         if improper_papers:
             self.demands = saved_demands
@@ -413,7 +492,9 @@ class GRRR(object):
                     idx += 1
             self.solution = soln
 
-        self.logger.debug('USW: {}'.format(np.sum(self.affinity_matrix * self.solution)))
+        self.logger.debug(
+            "USW: {}".format(np.sum(self.affinity_matrix * self.solution))
+        )
 
         self.solved = True
         return self.sol_as_mat().transpose()

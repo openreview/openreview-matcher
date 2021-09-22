@@ -4,49 +4,47 @@ import numpy as np
 from matcher.solvers import SolverException, GRRR
 from conftest import assert_arrays
 
-encoder = namedtuple('Encoder', ['aggregate_score_matrix', 'constraint_matrix'])
+encoder = namedtuple(
+    "Encoder", ["aggregate_score_matrix", "constraint_matrix"]
+)
 
 
 def test_solvers_grrr_random():
-    '''When affinities are all zero, compute random assignments'''
-    aggregate_score_matrix_A = np.transpose(np.array([
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0]
-    ]))
+    """When affinities are all zero, compute random assignments"""
+    aggregate_score_matrix_A = np.transpose(
+        np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
+    )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
-    demands = [2,2,2]
+    demands = [2, 2, 2]
     solver_A = GRRR(
-        [0,0,0,0],
-        [2,2,2,2],
+        [0, 0, 0, 0],
+        [2, 2, 2, 2],
         demands,
-        encoder(aggregate_score_matrix_A, constraint_matrix)
+        encoder(aggregate_score_matrix_A, constraint_matrix),
     )
     res_A = solver_A.solve()
-    assert res_A.shape == (3,4)
+    assert res_A.shape == (3, 4)
     assert solver_A.solved
 
-    aggregate_score_matrix_B = np.transpose(np.array([
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0],
-        [0, 0, 0]
-    ]))
+    aggregate_score_matrix_B = np.transpose(
+        np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
+    )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_B))
     solver_B = GRRR(
-        [0,0,0,0],
-        [2,2,2,2],
+        [0, 0, 0, 0],
+        [2, 2, 2, 2],
         demands,
-        encoder(aggregate_score_matrix_B, constraint_matrix)
+        encoder(aggregate_score_matrix_B, constraint_matrix),
     )
     res_B = solver_B.solve()
-    assert res_B.shape == (3,4)
+    assert res_B.shape == (3, 4)
     assert solver_B.solved
 
     # ensure that the affinity matrices are random
     # (i.e. overwhelmingly likely to be different)
-    assert not np.array_equal(solver_A.affinity_matrix, solver_B.affinity_matrix)
+    assert not np.array_equal(
+        solver_A.affinity_matrix, solver_B.affinity_matrix
+    )
     result_A = [assignments for assignments in np.sum(res_A, axis=1)]
     assert_arrays(result_A, demands)
     result_B = [assignments for assignments in np.sum(res_B, axis=1)]
@@ -54,14 +52,14 @@ def test_solvers_grrr_random():
 
 
 def test_solver_grrr_increased_sample_size():
-    '''
+    """
     Tests 10 papers, 15 reviewers.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 3 reviews.
     No constraints.
     Purpose: Ensure that the GRRR solver returns valid allocations when we greedily search for
         improved picking sequence orders using sample_size > 1.
-    '''
+    """
     num_papers = 10
     num_reviewers = 15
 
@@ -77,7 +75,7 @@ def test_solver_grrr_increased_sample_size():
         maximums,
         demands,
         encoder(aggregate_score_matrix, constraint_matrix),
-        sample_size=5
+        sample_size=5,
     )
     res = solver.solve()
 
@@ -86,34 +84,38 @@ def test_solver_grrr_increased_sample_size():
 
 
 def test_solvers_grrr_custom_supply():
-    '''
+    """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 0, max: [3,2,3,2] papers respectively.
     Each papers needs 2 reviews.
     No constraints.
     Purpose: Assert that reviewers are assigned papers correctly based on their supply.
-    '''
-    aggregate_score_matrix_A = np.transpose(np.array([
-        [0.2, 0.1, 0.4],
-        [0.5, 0.2, 0.3],
-        [0.2, 0.0, 0.6],
-        [0.7, 0.9, 0.3]
-    ]))
+    """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4],
+                [0.5, 0.2, 0.3],
+                [0.2, 0.0, 0.6],
+                [0.7, 0.9, 0.3],
+            ]
+        )
+    )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
-    demands = [2,2,2]
+    demands = [2, 2, 2]
     solver_A = GRRR(
-        [0,0,0,0],
-        [3,2,3,2],
+        [0, 0, 0, 0],
+        [3, 2, 3, 2],
         demands,
         encoder(aggregate_score_matrix_A, constraint_matrix),
-        allow_zero_score_assignments=True
+        allow_zero_score_assignments=True,
     )
     res_A = solver_A.solve()
-    assert res_A.shape == (3,4)
+    assert res_A.shape == (3, 4)
     result_demands = [assignments for assignments in np.sum(res_A, axis=1)]
     assert_arrays(result_demands, demands)
     result_supply = [assignments for assignments in np.sum(res_A, axis=0)]
-    for (i, j) in zip(result_supply, [3,2,3,2]):
+    for (i, j) in zip(result_supply, [3, 2, 3, 2]):
         assert i <= j
 
 
@@ -265,16 +267,18 @@ def test_solver_grrr_no_0_score_assignment():
 
 
 def test_solver_grrr_impossible_constraints():
-    '''
+    """
     Test to ensure that the GRRR solver's 'solved' attribute is correctly set
     when no solution is possible due to constraints.
-    '''
+    """
 
     # 20 papers, 5 reviewers
     num_papers = 20
     num_reviewers = 5
     aggregate_score_matrix = np.zeros((num_papers, num_reviewers))
-    constraint_matrix = -1 * np.ones((num_papers, num_reviewers)) # all pairs are constrained! should be impossible
+    constraint_matrix = -1 * np.ones(
+        (num_papers, num_reviewers)
+    )  # all pairs are constrained! should be impossible
 
     minimums = [0] * 5
     maximums = [20] * 5
@@ -284,7 +288,7 @@ def test_solver_grrr_impossible_constraints():
         minimums,
         maximums,
         demands,
-        encoder(aggregate_score_matrix, constraint_matrix)
+        encoder(aggregate_score_matrix, constraint_matrix),
     )
 
     with pytest.raises(SolverException):
@@ -294,7 +298,7 @@ def test_solver_grrr_impossible_constraints():
 
 
 def test_solver_grrr_respects_constraints():
-    '''
+    """
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 0, max: 5 papers.
     Each paper needs 2 reviews.
@@ -305,37 +309,49 @@ def test_solver_grrr_respects_constraints():
              3: cannot review papers 0,1
     All scores set to 1 so that any match that does not violate constraints is optimal.
     Purpose:  Honors constraints in its solution
-    '''
-    aggregate_score_matrix = np.transpose(np.array([
-        [1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1]]))
-    constraint_matrix = np.transpose(np.array([
-        [0, 0, 0, 0, 0],
-        [0, 0, -1, -1, 0],
-        [0, 0, -1, -1, 0],
-        [-1, -1, 0, 0, 0]]))
+    """
+    aggregate_score_matrix = np.transpose(
+        np.array(
+            [
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1],
+            ]
+        )
+    )
+    constraint_matrix = np.transpose(
+        np.array(
+            [
+                [0, 0, 0, 0, 0],
+                [0, 0, -1, -1, 0],
+                [0, 0, -1, -1, 0],
+                [-1, -1, 0, 0, 0],
+            ]
+        )
+    )
 
     solver = GRRR(
-        [0,0,0,0],
-        [5,5,5,5],
-        [2,2,2,2,2],
-        encoder(aggregate_score_matrix, constraint_matrix)
+        [0, 0, 0, 0],
+        [5, 5, 5, 5],
+        [2, 2, 2, 2, 2],
+        encoder(aggregate_score_matrix, constraint_matrix),
     )
 
     res = solver.solve()
     assert res.shape == (5, 4)
     assert solver.solved
     # make sure result does not violate constraints
-    nrows, ncols = res.shape if len(res.shape) == 2 else (0,0)
+    nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
     for i in range(nrows):
         for j in range(ncols):
-            assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
+            assert not (
+                constraint_matrix[i, j] == -1 and res[i, j] > 0
+            ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
 def test_solver_grrr_respect_constraints_2():
-    '''
+    """
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 2 reviews.
@@ -345,36 +361,48 @@ def test_solver_grrr_respect_constraints_2():
              2: cannot review papers 3,4
              3: cannot review papers 1,2
     Purpose: Honors constraints in its solution
-    '''
-    aggregate_score_matrix = np.transpose(np.array([
-        [-10, 1, 1, -10, -10],
-        [-100, -10, -10, -100, 1],
-        [1, -10, -10, -100, -100],
-        [-10, -100, -100, -10, -10]]))
-    constraint_matrix = np.transpose(np.array([
-        [0, 0, 0, 0, 0],
-        [-1, 0, 0, -1, 0],
-        [0, 0 , 0, -1, -1],
-        [0, -1,-1, 0, 0]]))
+    """
+    aggregate_score_matrix = np.transpose(
+        np.array(
+            [
+                [-10, 1, 1, -10, -10],
+                [-100, -10, -10, -100, 1],
+                [1, -10, -10, -100, -100],
+                [-10, -100, -100, -10, -10],
+            ]
+        )
+    )
+    constraint_matrix = np.transpose(
+        np.array(
+            [
+                [0, 0, 0, 0, 0],
+                [-1, 0, 0, -1, 0],
+                [0, 0, 0, -1, -1],
+                [0, -1, -1, 0, 0],
+            ]
+        )
+    )
 
     solver = GRRR(
-        [0,0,0,0],
-        [3,3,3,3],
-        [2,2,2,2,2],
-        encoder(aggregate_score_matrix, constraint_matrix)
+        [0, 0, 0, 0],
+        [3, 3, 3, 3],
+        [2, 2, 2, 2, 2],
+        encoder(aggregate_score_matrix, constraint_matrix),
     )
     res = solver.solve()
     assert res.shape == (5, 4)
     assert solver.solved
     # make sure result does not violate constraints
-    nrows, ncols = res.shape if len(res.shape) == 2 else (0,0)
+    nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
     for i in range(nrows):
         for j in range(ncols):
-            assert not (constraint_matrix[i,j] == -1 and res[i,j] > 0), "Solution violates constraint at [{},{}]".format(i,j)
+            assert not (
+                constraint_matrix[i, j] == -1 and res[i, j] > 0
+            ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
 def wef1(allocation, affinities, demands):
-    '''
+    """
     Not a test, but is a criterion for tests.
 
     Checks if the allocation is weighted envy-free up to 1 item (WEF1).
@@ -388,33 +416,38 @@ def wef1(allocation, affinities, demands):
 
     Returns:
         True if the allocation satisfies the WEF1 criterion, otherwise False.
-    '''
+    """
     n = allocation.shape[0]
     for i in range(n):
         # i's value for self
         i_value_i = np.sum(allocation[i, :] * affinities[i, :]) / demands[i]
-        i_value_others = np.sum(affinities[i, :] * allocation, axis=1) / demands
+        i_value_others = (
+            np.sum(affinities[i, :] * allocation, axis=1) / demands
+        )
         possible_envy = i_value_others > i_value_i
         possible_envy = np.where(possible_envy)[0]
         for j in possible_envy:
             # i's lowest value for j, minus a good
-            i_value_j_up_to_1 = np.sum(allocation[j, :] * affinities[i, :]) - np.max(
-                allocation[j, :] * affinities[i, :])
+            i_value_j_up_to_1 = np.sum(
+                allocation[j, :] * affinities[i, :]
+            ) - np.max(allocation[j, :] * affinities[i, :])
             i_value_j_up_to_1 /= demands[j]
-            if i_value_j_up_to_1 > i_value_i and not np.isclose(i_value_j_up_to_1, i_value_i):
+            if i_value_j_up_to_1 > i_value_i and not np.isclose(
+                i_value_j_up_to_1, i_value_i
+            ):
                 return False
     return True
 
 
 def test_solver_grrr_envy_free_up_to_one_item():
-    '''
+    """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 3 reviews.
     No constraints.
     Purpose: Ensure that the GRRR solver returns allocations that are envy-free up to 1 item
         when paper demands are uniform.
-    '''
+    """
     num_papers = 10
     num_reviewers = 15
 
@@ -430,7 +463,7 @@ def test_solver_grrr_envy_free_up_to_one_item():
             minimums,
             maximums,
             demands,
-            encoder(aggregate_score_matrix, constraint_matrix)
+            encoder(aggregate_score_matrix, constraint_matrix),
         )
         res = solver.solve()
 
@@ -440,14 +473,14 @@ def test_solver_grrr_envy_free_up_to_one_item():
 
 
 def test_solver_grrr_envy_free_up_to_one_item_constrained():
-    '''
+    """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 3 reviews.
     Constraints chosen at random, with a 10% chance of any given constraint.
     Purpose: Ensure that the GRRR solver returns allocations that are envy-free up to 1 item and satisfy constraints
         when paper demands are uniform.
-    '''
+    """
     num_papers = 10
     num_reviewers = 15
 
@@ -462,13 +495,14 @@ def test_solver_grrr_envy_free_up_to_one_item_constrained():
         constraint_matrix = np.where(
             np.random.rand(shape[0], shape[1]) > 0.1,
             np.zeros(shape),
-            -1 * np.ones(shape))
+            -1 * np.ones(shape),
+        )
 
         solver = GRRR(
             minimums,
             maximums,
             demands,
-            encoder(aggregate_score_matrix, constraint_matrix)
+            encoder(aggregate_score_matrix, constraint_matrix),
         )
         res = solver.solve()
 
@@ -479,18 +513,19 @@ def test_solver_grrr_envy_free_up_to_one_item_constrained():
         nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
         for i in range(nrows):
             for j in range(ncols):
-                assert not (constraint_matrix[i, j] == -1 and res[
-                    i, j] > 0), "Solution violates constraint at [{},{}]".format(i, j)
+                assert not (
+                    constraint_matrix[i, j] == -1 and res[i, j] > 0
+                ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
 def test_solver_grrr_weighted_envy_free_up_to_one_item():
-    '''
+    """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 1, max: 6 papers.
     Each paper needs between 1 and 6 reviews.
     No constraints.
     Purpose: Ensure that the GRRR solver returns allocations that are weighted envy-free up to 1 item.
-    '''
+    """
     num_papers = 10
     num_reviewers = 15
 
@@ -507,7 +542,7 @@ def test_solver_grrr_weighted_envy_free_up_to_one_item():
             minimums,
             maximums,
             demands,
-            encoder(aggregate_score_matrix, constraint_matrix)
+            encoder(aggregate_score_matrix, constraint_matrix),
         )
         res = solver.solve()
 
@@ -515,15 +550,16 @@ def test_solver_grrr_weighted_envy_free_up_to_one_item():
         assert solver.solved
         assert wef1(res, solver.affinity_matrix.transpose(), demands)
 
+
 def test_solver_grrr_weighted_envy_free_up_to_one_item_constrained():
-    '''
+    """
     Tests 10 papers, 20 reviewers, for 10 random affinity matrices.
     Reviewers review min: 1, max: 6 papers.
     Each paper needs between 1 and 6 reviews.
     Constraints chosen at random, with a 10% chance of any given constraint.
     Purpose: Ensure that the GRRR solver returns allocations that are weighted
      envy-free up to 1 item and satisfy constraints.
-    '''
+    """
     num_papers = 10
     num_reviewers = 20
 
@@ -539,13 +575,14 @@ def test_solver_grrr_weighted_envy_free_up_to_one_item_constrained():
         constraint_matrix = np.where(
             np.random.rand(shape[0], shape[1]) > 0.1,
             np.zeros(shape),
-            -1 * np.ones(shape))
+            -1 * np.ones(shape),
+        )
 
         solver = GRRR(
             minimums,
             maximums,
             demands,
-            encoder(aggregate_score_matrix, constraint_matrix)
+            encoder(aggregate_score_matrix, constraint_matrix),
         )
         res = solver.solve()
 
@@ -556,8 +593,9 @@ def test_solver_grrr_weighted_envy_free_up_to_one_item_constrained():
         nrows, ncols = res.shape if len(res.shape) == 2 else (0, 0)
         for i in range(nrows):
             for j in range(ncols):
-                assert not (constraint_matrix[i, j] == -1 and res[
-                    i, j] > 0), "Solution violates constraint at [{},{}]".format(i, j)
+                assert not (
+                    constraint_matrix[i, j] == -1 and res[i, j] > 0
+                ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
 def test_solver_grrr_respect_minimums():
@@ -607,6 +645,8 @@ def test_solver_grrr_respect_minimums():
             if res[pix, rix] != 0:
                 reviewer_count_reviews += 1
         assert reviewer_count_reviews == 2
+
+
 #
 #
 def test_solver_grrr_respect_minimums_2():
@@ -818,14 +858,7 @@ def test_solver_grrr_avoid_zero_scores_get_no_solution():
     )
 
     with pytest.raises(
-        SolverException, match=r"Solver could not find a solution. Adjust your parameters."
+        SolverException,
+        match=r"Solver could not find a solution. Adjust your parameters.",
     ):
         res = solver.solve()
-
-
-
-
-
-
-
-
