@@ -115,7 +115,7 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2019/Conference"
+    conference_id = "AKBC.ws/2049/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10  # impossible!

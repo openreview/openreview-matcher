@@ -217,7 +217,7 @@ def test_integration_demand_out_of_supply_range_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "ICLR.cc/2035/Conference"
+    conference_id = "NIPS.cc/2035/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
