@@ -12,6 +12,7 @@ jobs:
       environment:
         xpack.security.enabled: false
         transport.host: localhost
+        OPENREVIEW_PY: feature/matcher
     steps:
     - checkout
     - run:
@@ -51,7 +52,8 @@ jobs:
     - run:
         name: install the local openreview-py as a dependency
         command: |
-          cd ~/openreview-matcher-repo
+          cd ~/openreview-py
+          git checkout $OPENREVIEW_PY
           source matcher/bin/activate
           pip install -e ~/openreview-py
     - run:
