@@ -893,7 +893,7 @@ def test_integration_empty_reviewers_list_error(
     test_client = openreview_context["test_client"]
 
     conference_id = "AKBC.ws/2021/Conference"
-    num_reviewers = 0
+    num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
@@ -959,6 +959,11 @@ def test_integration_empty_reviewers_list_error(
 
     config_note = openreview_client.post_note(config_note)
     assert config_note
+
+    # Empty the list of reviewers before calling the matching
+    reviewers_group = openreview_client.get_group(reviewers_id)
+    reviewers_group.members = []
+    openreview_client.post_group(openreview_client)
 
     response = test_client.post(
         "/match",
