@@ -1178,8 +1178,7 @@ def test_integration_group_not_found_error(
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content["status"] == "Error"
-    assert matcher_status.content["error_message"] == {
-        "name": "NotFoundError",
-        "message": "Group Not Found: AKBC.ws/2029/Conference/NoReviewers",
-        "status": 404,
-    }
+    assert (
+        "Group Not Found: AKBC.ws/2029/Conference/NoReviewers"
+        in matcher_status.content["error_message"]
+    )
