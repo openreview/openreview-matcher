@@ -52,7 +52,12 @@ def test_confignote_interface():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -104,7 +109,12 @@ def test_confignote_interface():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -169,28 +179,28 @@ def test_confignote_interface():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
             ],
@@ -198,22 +208,38 @@ def test_confignote_interface():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
                         {
-                            "tail": "reviewer2",
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
                             "weight": None,
                             "label": "Very Low",
                         },
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
                         {
-                            "tail": "reviewer3",
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
                             "weight": None,
                             "label": "Very Low",
                         },
@@ -223,13 +249,25 @@ def test_confignote_interface():
                     "id": {"head": "paper2"},
                     "values": [
                         {
-                            "tail": "reviewer0",
+                            "tail": "~reviewer0",
                             "weight": None,
                             "label": "Very Low",
                         },
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -237,28 +275,28 @@ def test_confignote_interface():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
@@ -266,8 +304,8 @@ def test_confignote_interface():
                 {
                     "id": {"head": "<match_group_id>"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 1},
-                        {"tail": "reviewer3", "weight": 3},
+                        {"tail": "~reviewer0", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 3},
                     ],
                 }
             ],
@@ -281,7 +319,7 @@ def test_confignote_interface():
     assert interface.config_note
     assert_arrays(
         interface.reviewers,
-        ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        ["~reviewer0", "~reviewer1", "~reviewer2", "~reviewer3"],
         is_string=True,
     )
     assert_arrays(
@@ -292,9 +330,9 @@ def test_confignote_interface():
     assert_arrays(interface.demands, [1, 1, 1])
     assert interface.constraints
     valid_constraint_pairs = [
-        ("paper0", "reviewer1"),
-        ("paper1", "reviewer2"),
-        ("paper2", "reviewer3"),
+        ("paper0", "~reviewer1"),
+        ("paper1", "~reviewer2"),
+        ("paper2", "~reviewer3"),
     ]
     for (paper, reviewer, constraint) in interface.constraints:
         if (paper, reviewer) in valid_constraint_pairs:
@@ -314,17 +352,17 @@ def test_confignote_interface():
         ]
 
     very_low_bids = [
-        ("paper0", "reviewer2"),
-        ("paper1", "reviewer3"),
-        ("paper2", "reviewer0"),
+        ("paper0", "~reviewer2"),
+        ("paper1", "~reviewer3"),
+        ("paper2", "~reviewer0"),
     ]
     high_bids = [
-        ("paper0", "reviewer0"),
-        ("paper0", "reviewer3"),
-        ("paper1", "reviewer0"),
-        ("paper1", "reviewer1"),
-        ("paper2", "reviewer1"),
-        ("paper2", "reviewer2"),
+        ("paper0", "~reviewer0"),
+        ("paper0", "~reviewer3"),
+        ("paper1", "~reviewer0"),
+        ("paper1", "~reviewer1"),
+        ("paper2", "~reviewer1"),
+        ("paper2", "~reviewer2"),
     ]
     for paper, reviewer, bid in interface.scores_by_type["<bid_invitation>"][
         "edges"
@@ -354,7 +392,12 @@ def test_confignote_interface_backward_compat_max_users():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -406,7 +449,12 @@ def test_confignote_interface_backward_compat_max_users():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -471,28 +519,28 @@ def test_confignote_interface_backward_compat_max_users():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
             ],
@@ -500,22 +548,38 @@ def test_confignote_interface_backward_compat_max_users():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
                         {
-                            "tail": "reviewer2",
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
                             "weight": None,
                             "label": "Very Low",
                         },
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
                         {
-                            "tail": "reviewer3",
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
                             "weight": None,
                             "label": "Very Low",
                         },
@@ -525,13 +589,25 @@ def test_confignote_interface_backward_compat_max_users():
                     "id": {"head": "paper2"},
                     "values": [
                         {
-                            "tail": "reviewer0",
+                            "tail": "~reviewer0",
                             "weight": None,
                             "label": "Very Low",
                         },
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -539,28 +615,28 @@ def test_confignote_interface_backward_compat_max_users():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
@@ -568,8 +644,8 @@ def test_confignote_interface_backward_compat_max_users():
                 {
                     "id": {"head": "<match_group_id>"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 1},
-                        {"tail": "reviewer3", "weight": 3},
+                        {"tail": "~reviewer0", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 3},
                     ],
                 }
             ],
@@ -583,7 +659,7 @@ def test_confignote_interface_backward_compat_max_users():
     assert interface.config_note
     assert_arrays(
         interface.reviewers,
-        ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        ["~reviewer0", "~reviewer1", "~reviewer2", "~reviewer3"],
         is_string=True,
     )
     assert_arrays(
@@ -594,9 +670,9 @@ def test_confignote_interface_backward_compat_max_users():
     assert_arrays(interface.demands, [1, 1, 1])
     assert interface.constraints
     valid_constraint_pairs = [
-        ("paper0", "reviewer1"),
-        ("paper1", "reviewer2"),
-        ("paper2", "reviewer3"),
+        ("paper0", "~reviewer1"),
+        ("paper1", "~reviewer2"),
+        ("paper2", "~reviewer3"),
     ]
     for (paper, reviewer, constraint) in interface.constraints:
         if (paper, reviewer) in valid_constraint_pairs:
@@ -616,17 +692,17 @@ def test_confignote_interface_backward_compat_max_users():
         ]
 
     very_low_bids = [
-        ("paper0", "reviewer2"),
-        ("paper1", "reviewer3"),
-        ("paper2", "reviewer0"),
+        ("paper0", "~reviewer2"),
+        ("paper1", "~reviewer3"),
+        ("paper2", "~reviewer0"),
     ]
     high_bids = [
-        ("paper0", "reviewer0"),
-        ("paper0", "reviewer3"),
-        ("paper1", "reviewer0"),
-        ("paper1", "reviewer1"),
-        ("paper2", "reviewer1"),
-        ("paper2", "reviewer2"),
+        ("paper0", "~reviewer0"),
+        ("paper0", "~reviewer3"),
+        ("paper1", "~reviewer0"),
+        ("paper1", "~reviewer1"),
+        ("paper2", "~reviewer1"),
+        ("paper2", "~reviewer2"),
     ]
     for paper, reviewer, bid in interface.scores_by_type["<bid_invitation>"][
         "edges"
@@ -656,7 +732,12 @@ def test_confignote_interface_custom_demand_edges():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -715,7 +796,12 @@ def test_confignote_interface_custom_demand_edges():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -780,28 +866,28 @@ def test_confignote_interface_custom_demand_edges():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
             ],
@@ -809,28 +895,76 @@ def test_confignote_interface_custom_demand_edges():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -838,28 +972,28 @@ def test_confignote_interface_custom_demand_edges():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
@@ -867,10 +1001,10 @@ def test_confignote_interface_custom_demand_edges():
                 {
                     "id": {"head": "<match_group_id>"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 1},
-                        {"tail": "reviewer1", "weight": 2},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 1},
+                        {"tail": "~reviewer1", "weight": 2},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 }
             ],
@@ -916,7 +1050,12 @@ def test_confignote_missing_edges_spec():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -968,7 +1107,12 @@ def test_confignote_missing_edges_spec():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -1036,22 +1180,22 @@ def test_confignote_missing_edges_spec():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
                     ],
                 },
             ],
@@ -1059,22 +1203,46 @@ def test_confignote_missing_edges_spec():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -1082,35 +1250,35 @@ def test_confignote_missing_edges_spec():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
             "<custom_max_papers_invitation_id>": [
                 {
                     "id": {"head": "<match_group_id>"},
-                    "values": [{"tail": "reviewer0", "weight": 1}],
+                    "values": [{"tail": "~reviewer0", "weight": 1}],
                 }
             ],
         },
@@ -1146,7 +1314,12 @@ def test_confignote_interface_no_scores_spec():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -1184,7 +1357,12 @@ def test_confignote_interface_no_scores_spec():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -1241,35 +1419,35 @@ def test_confignote_interface_no_scores_spec():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
             "<custom_max_papers_invitation_id>": [
                 {
                     "id": {"head": "<match_group_id>"},
-                    "values": [{"tail": "reviewer0", "weight": 1}],
+                    "values": [{"tail": "~reviewer0", "weight": 1}],
                 }
             ],
         },
@@ -1304,7 +1482,12 @@ def test_confignote_interface_custom_load_negative():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -1356,7 +1539,12 @@ def test_confignote_interface_custom_load_negative():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -1420,28 +1608,28 @@ def test_confignote_interface_custom_load_negative():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
             ],
@@ -1449,28 +1637,76 @@ def test_confignote_interface_custom_load_negative():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -1478,35 +1714,35 @@ def test_confignote_interface_custom_load_negative():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
             "<custom_max_papers_invitation_id>": [
                 {
                     "id": {"head": "<match_group_id>"},
-                    "values": [{"tail": "reviewer0", "weight": -9.4}],
+                    "values": [{"tail": "~reviewer0", "weight": -9.4}],
                 }
             ],
         },
@@ -1517,7 +1753,7 @@ def test_confignote_interface_custom_load_negative():
     interface = ConfigNoteInterface(client, "<config_note_id>")
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
-        if reviewer == "reviewer0":
+        if reviewer == "~reviewer0":
             assert interface.maximums[reviewer_index] == 0
         else:
             assert (
@@ -1535,7 +1771,12 @@ def test_confignote_interface_custom_overload():
 
     mock_openreview_data = {
         "paper_ids": ["paper0", "paper1", "paper2"],
-        "reviewer_ids": ["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+        "reviewer_ids": [
+            "~reviewer0",
+            "~reviewer1",
+            "~reviewer2",
+            "~reviewer3",
+        ],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -1587,7 +1828,12 @@ def test_confignote_interface_custom_overload():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["reviewer0", "reviewer1", "reviewer2", "reviewer3"],
+                members=[
+                    "~reviewer0",
+                    "~reviewer1",
+                    "~reviewer2",
+                    "~reviewer3",
+                ],
             )
         },
         "mock_notes": {
@@ -1651,28 +1897,28 @@ def test_confignote_interface_custom_overload():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": random.random()},
-                        {"tail": "reviewer1", "weight": random.random()},
-                        {"tail": "reviewer2", "weight": random.random()},
-                        {"tail": "reviewer3", "weight": random.random()},
+                        {"tail": "~reviewer0", "weight": random.random()},
+                        {"tail": "~reviewer1", "weight": random.random()},
+                        {"tail": "~reviewer2", "weight": random.random()},
+                        {"tail": "~reviewer3", "weight": random.random()},
                     ],
                 },
             ],
@@ -1680,28 +1926,76 @@ def test_confignote_interface_custom_overload():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": None, "label": "High"},
-                        {"tail": "reviewer1", "weight": None, "label": "High"},
-                        {"tail": "reviewer2", "weight": None, "label": "High"},
-                        {"tail": "reviewer3", "weight": None, "label": "High"},
+                        {
+                            "tail": "~reviewer0",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer1",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer2",
+                            "weight": None,
+                            "label": "High",
+                        },
+                        {
+                            "tail": "~reviewer3",
+                            "weight": None,
+                            "label": "High",
+                        },
                     ],
                 },
             ],
@@ -1709,35 +2003,35 @@ def test_confignote_interface_custom_overload():
                 {
                     "id": {"head": "paper0"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 1},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 1},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper1"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 1},
-                        {"tail": "reviewer3", "weight": 0},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 1},
+                        {"tail": "~reviewer3", "weight": 0},
                     ],
                 },
                 {
                     "id": {"head": "paper2"},
                     "values": [
-                        {"tail": "reviewer0", "weight": 0},
-                        {"tail": "reviewer1", "weight": 0},
-                        {"tail": "reviewer2", "weight": 0},
-                        {"tail": "reviewer3", "weight": 1},
+                        {"tail": "~reviewer0", "weight": 0},
+                        {"tail": "~reviewer1", "weight": 0},
+                        {"tail": "~reviewer2", "weight": 0},
+                        {"tail": "~reviewer3", "weight": 1},
                     ],
                 },
             ],
             "<custom_max_papers_invitation_id>": [
                 {
                     "id": {"head": "<match_group_id>"},
-                    "values": [{"tail": "reviewer3", "weight": 3}],
+                    "values": [{"tail": "~reviewer3", "weight": 3}],
                 }
             ],
         },
@@ -1748,7 +2042,7 @@ def test_confignote_interface_custom_overload():
     interface = ConfigNoteInterface(client, "<config_note_id>")
 
     for reviewer_index, reviewer in enumerate(interface.reviewers):
-        if reviewer == "reviewer3":
+        if reviewer == "~reviewer3":
             assert interface.maximums[reviewer_index] == 1
         else:
             assert (
@@ -1761,8 +2055,8 @@ def test_confignote_interface_matching_users():
     """Test of basic ConfigNoteInterface functionality."""
 
     mock_openreview_data = {
-        "paper_ids": ["ac0", "ac1", "ac2"],
-        "reviewer_ids": ["sac0", "sac1", "sac2", "sac3"],
+        "paper_ids": ["~ac0", "~ac1", "~ac2"],
+        "reviewer_ids": ["~sac0", "~sac1", "~sac2", "~sac3"],
         "mock_invitations": {
             "<assignment_invitation_id>": openreview.Invitation(
                 id="<assignment_invitation_id>",
@@ -1814,14 +2108,14 @@ def test_confignote_interface_matching_users():
                 readers=[],
                 signatures=[],
                 signatories=[],
-                members=["sac0", "sac1", "sac2", "sac3"],
+                members=["~sac0", "~sac1", "~sac2", "~sac3"],
             ),
             "<ac_group_id>": openreview.Group(
                 id="<ac_group_id>",
                 readers=[],
                 writers=[],
                 signatures=[],
-                members=["ac0", "ac1", "ac2"],
+                members=["~ac0", "~ac1", "~ac2"],
                 signatories=[],
             ),
         },
@@ -1859,86 +2153,86 @@ def test_confignote_interface_matching_users():
         "mock_grouped_edges": {
             "<affinity_score_invitation>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
-                        {"tail": "sac0", "weight": random.random()},
-                        {"tail": "sac1", "weight": random.random()},
-                        {"tail": "sac2", "weight": random.random()},
-                        {"tail": "sac3", "weight": random.random()},
+                        {"tail": "~sac0", "weight": random.random()},
+                        {"tail": "~sac1", "weight": random.random()},
+                        {"tail": "~sac2", "weight": random.random()},
+                        {"tail": "~sac3", "weight": random.random()},
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
-                        {"tail": "sac0", "weight": random.random()},
-                        {"tail": "sac1", "weight": random.random()},
-                        {"tail": "sac2", "weight": random.random()},
-                        {"tail": "sac3", "weight": random.random()},
+                        {"tail": "~sac0", "weight": random.random()},
+                        {"tail": "~sac1", "weight": random.random()},
+                        {"tail": "~sac2", "weight": random.random()},
+                        {"tail": "~sac3", "weight": random.random()},
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
-                        {"tail": "sac0", "weight": random.random()},
-                        {"tail": "sac1", "weight": random.random()},
-                        {"tail": "sac2", "weight": random.random()},
-                        {"tail": "sac3", "weight": random.random()},
+                        {"tail": "~sac0", "weight": random.random()},
+                        {"tail": "~sac1", "weight": random.random()},
+                        {"tail": "~sac2", "weight": random.random()},
+                        {"tail": "~sac3", "weight": random.random()},
                     ],
                 },
             ],
             "<bid_invitation>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
-                        {"tail": "sac0", "weight": None, "label": "High"},
-                        {"tail": "sac2", "weight": None, "label": "Very Low"},
-                        {"tail": "sac3", "weight": None, "label": "High"},
+                        {"tail": "~sac0", "weight": None, "label": "High"},
+                        {"tail": "~sac2", "weight": None, "label": "Very Low"},
+                        {"tail": "~sac3", "weight": None, "label": "High"},
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
-                        {"tail": "sac0", "weight": None, "label": "High"},
-                        {"tail": "sac1", "weight": None, "label": "High"},
-                        {"tail": "sac3", "weight": None, "label": "Very Low"},
+                        {"tail": "~sac0", "weight": None, "label": "High"},
+                        {"tail": "~sac1", "weight": None, "label": "High"},
+                        {"tail": "~sac3", "weight": None, "label": "Very Low"},
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
-                        {"tail": "sac0", "weight": None, "label": "Very Low"},
-                        {"tail": "sac1", "weight": None, "label": "High"},
-                        {"tail": "sac2", "weight": None, "label": "High"},
-                        {"tail": "sac3", "weight": None, "label": "High"},
+                        {"tail": "~sac0", "weight": None, "label": "Very Low"},
+                        {"tail": "~sac1", "weight": None, "label": "High"},
+                        {"tail": "~sac2", "weight": None, "label": "High"},
+                        {"tail": "~sac3", "weight": None, "label": "High"},
                     ],
                 },
             ],
             "<conflicts_invitation_id>": [
                 {
-                    "id": {"head": "ac0"},
+                    "id": {"head": "~ac0"},
                     "values": [
-                        {"tail": "sac0", "weight": 0},
-                        {"tail": "sac1", "weight": 1},
-                        {"tail": "sac2", "weight": 0},
-                        {"tail": "sac3", "weight": 0},
+                        {"tail": "~sac0", "weight": 0},
+                        {"tail": "~sac1", "weight": 1},
+                        {"tail": "~sac2", "weight": 0},
+                        {"tail": "~sac3", "weight": 0},
                     ],
                 },
                 {
-                    "id": {"head": "ac1"},
+                    "id": {"head": "~ac1"},
                     "values": [
-                        {"tail": "sac0", "weight": 0},
-                        {"tail": "sac1", "weight": 0},
-                        {"tail": "sac2", "weight": 1},
-                        {"tail": "sac3", "weight": 0},
+                        {"tail": "~sac0", "weight": 0},
+                        {"tail": "~sac1", "weight": 0},
+                        {"tail": "~sac2", "weight": 1},
+                        {"tail": "~sac3", "weight": 0},
                     ],
                 },
                 {
-                    "id": {"head": "ac2"},
+                    "id": {"head": "~ac2"},
                     "values": [
-                        {"tail": "sac0", "weight": 0},
-                        {"tail": "sac1", "weight": 0},
-                        {"tail": "sac2", "weight": 0},
-                        {"tail": "sac3", "weight": 1},
+                        {"tail": "~sac0", "weight": 0},
+                        {"tail": "~sac1", "weight": 0},
+                        {"tail": "~sac2", "weight": 0},
+                        {"tail": "~sac3", "weight": 1},
                     ],
                 },
             ],
@@ -1946,8 +2240,8 @@ def test_confignote_interface_matching_users():
                 {
                     "id": {"head": "<match_group_id>"},
                     "values": [
-                        {"tail": "sac0", "weight": 1},
-                        {"tail": "sac3", "weight": 3},
+                        {"tail": "~sac0", "weight": 1},
+                        {"tail": "~sac3", "weight": 3},
                     ],
                 }
             ],
@@ -1960,17 +2254,19 @@ def test_confignote_interface_matching_users():
 
     assert interface.config_note
     assert_arrays(
-        interface.reviewers, ["sac0", "sac1", "sac2", "sac3"], is_string=True
+        interface.reviewers,
+        ["~sac0", "~sac1", "~sac2", "~sac3"],
+        is_string=True,
     )
-    assert_arrays(interface.papers, ["ac0", "ac1", "ac2"], is_string=True)
+    assert_arrays(interface.papers, ["~ac0", "~ac1", "~ac2"], is_string=True)
     assert_arrays(interface.minimums, [1, 1, 1, 1])
     assert_arrays(interface.maximums, [1, 2, 2, 2])
     assert_arrays(interface.demands, [1, 1, 1])
     assert interface.constraints
     valid_constraint_pairs = [
-        ("ac0", "sac1"),
-        ("ac1", "sac2"),
-        ("ac2", "sac3"),
+        ("~ac0", "~sac1"),
+        ("~ac1", "~sac2"),
+        ("~ac2", "~sac3"),
     ]
     for (ac, sac, constraint) in interface.constraints:
         if (ac, sac) in valid_constraint_pairs:
@@ -1989,14 +2285,14 @@ def test_confignote_interface_matching_users():
             "<affinity_score_invitation>",
         ]
 
-    very_low_bids = [("ac0", "sac2"), ("ac1", "sac3"), ("ac2", "sac0")]
+    very_low_bids = [("~ac0", "~sac2"), ("~ac1", "~sac3"), ("~ac2", "~sac0")]
     high_bids = [
-        ("acr0", "sac0"),
-        ("ac0", "sac3"),
-        ("ac1", "sac0"),
-        ("ac1", "sac1"),
-        ("ac2", "sac1"),
-        ("ac2", "sac2"),
+        ("acr0", "~sac0"),
+        ("~ac0", "~sac3"),
+        ("~ac1", "~sac0"),
+        ("~ac1", "~sac1"),
+        ("~ac2", "~sac1"),
+        ("~ac2", "~sac2"),
     ]
     for ac, sac, bid in interface.scores_by_type["<bid_invitation>"]["edges"]:
         if (ac, sac) in very_low_bids:
