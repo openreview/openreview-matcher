@@ -893,7 +893,7 @@ def test_integration_empty_reviewers_list_error(
     test_client = openreview_context["test_client"]
 
     conference_id = "AKBC.ws/2021/Conference"
-    num_reviewers = 0
+    num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
@@ -959,6 +959,11 @@ def test_integration_empty_reviewers_list_error(
 
     config_note = openreview_client.post_note(config_note)
     assert config_note
+
+    # Empty the list of reviewers before calling the matching
+    reviewers_group = openreview_client.get_group(reviewers_id)
+    reviewers_group.members = []
+    openreview_client.post_group(reviewers_group)
 
     response = test_client.post(
         "/match",
@@ -1174,8 +1179,8 @@ def test_integration_group_not_found_error(
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content["status"] == "Error"
     assert (
-        matcher_status.content["error_message"]
-        == "['Group Not Found: AKBC.ws/2029/Conference/NoReviewers']"
+        "Group Not Found: AKBC.ws/2029/Conference/NoReviewers"
+        in matcher_status.content["error_message"]
     )
 
 

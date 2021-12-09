@@ -114,18 +114,25 @@ def match():
             )
         )
 
-    except openreview.OpenReviewException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
+    except openreview.OpenReviewException as exception:
+        flask.current_app.logger.error(str(exception))
 
-        error_type = str(error_handle)
-        status = 500
+        error = exception.args[0]
 
-        if "not found" in error_type.lower():
-            status = 404
-        elif "forbidden" in error_type.lower():
-            status = 403
+        if isinstance(error, dict):
+            status = error.get("status", 500)
+            result = error
+        else:
+            status = 500
 
-        result["error"] = error_type
+            if "not found" in error.lower():
+                status = 404
+                result["name"] = "NotFoundError"
+            elif "forbidden" in error.lower():
+                status = 403
+                result["name"] = "ForbiddenError"
+
+            result["message"] = error
         return flask.jsonify(result), status
 
     except MatcherStatusException as error_handle:
@@ -201,18 +208,25 @@ def deploy():
             )
         )
 
-    except openreview.OpenReviewException as error_handle:
-        flask.current_app.logger.error(str(error_handle))
+    except openreview.OpenReviewException as exception:
+        flask.current_app.logger.error(str(exception))
 
-        error_type = str(error_handle)
-        status = 500
+        error = exception.args[0]
 
-        if "not found" in error_type.lower():
-            status = 404
-        elif "forbidden" in error_type.lower():
-            status = 403
+        if isinstance(error, dict):
+            status = error.get("status", 500)
+            result = error
+        else:
+            status = 500
 
-        result["error"] = error_type
+            if "not found" in error.lower():
+                status = 404
+                result["name"] = "NotFoundError"
+            elif "forbidden" in error.lower():
+                status = 403
+                result["name"] = "ForbiddenError"
+
+            result["message"] = error
         return flask.jsonify(result), status
 
     except MatcherStatusException as error_handle:
