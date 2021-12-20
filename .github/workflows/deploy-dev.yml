@@ -32,4 +32,4 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run deploy script
         run: |
-          gcloud compute ssh openreview@instance-matching-server --command 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && mkdir test' --quiet
+          gcloud compute ssh openreview@instance-matching-server --command 'mkdir test && pwd' --quiet
