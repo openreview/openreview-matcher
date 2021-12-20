@@ -4,10 +4,6 @@ name: dev-deployment
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push events but only for the master branch
-  push:
-    branches: [ github-actions-deploy ]
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -15,6 +11,9 @@ on:
         description: 'Branch to deploy'
         required: false
         default: 'master'
+  # Triggers the workflow on push events but only for the master branch
+  push:
+    branches: [ github-actions-deploy ]
 env:
   BRANCH: ${{ github.event.inputs.branch }}
 jobs:
@@ -33,4 +32,4 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run deploy script
         run: |
-          gcloud compute ssh instance-matching-server --command="sudo mkdir test"
+          gcloud compute ssh openreview@instance-matching-server --command 'export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" && mkdir test' --quiet
