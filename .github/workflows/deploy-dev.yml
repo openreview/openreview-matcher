@@ -4,6 +4,8 @@ name: dev-deployment
 
 # Controls when the workflow will run
 on:
+  workflow_run:
+    
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -13,7 +15,7 @@ on:
         default: 'master'
   # Triggers the workflow on push events but only for the master branch
   push:
-    branches: [ github-actions-deploy ]
+    branches: [ master ]
 env:
   BRANCH: ${{ github.event.inputs.branch }}
 jobs:
@@ -29,7 +31,6 @@ jobs:
           export_default_credentials: true
       - name: Configure gcloud
         run: gcloud config set compute/zone us-central1-c
-      # Runs a set of commands using the runners shell
       - name: Run deploy script
         run: |
-          gcloud compute ssh openreview@instance-matching-server --command 'mkdir test && pwd' --quiet
+          gcloud compute ssh openreview@instance-matching-server --command '/bin/matcher_build_dev.sh ${{ github.event.inputs.branch }}' --quiet
