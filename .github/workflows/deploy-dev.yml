@@ -14,8 +14,6 @@ on:
   # Triggers the workflow on push events but only for the master branch
   push:
     branches: [ github-actions-deploy ]
-env:
-  BRANCH: ${{ github.event.inputs.branch }}
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -31,4 +29,4 @@ jobs:
         run: gcloud config set compute/zone us-central1-c
       - name: Run deploy script
         run: |
-          gcloud compute ssh openreview@instance-matching-server --command '/bin/matcher_build_dev.sh ${{ github.event.inputs.branch }}' --quiet
+          gcloud compute ssh openreview@instance-matching-server --command '/bin/matcher_build_dev.sh -b ${{ github.event.inputs.branch }}' --quiet
