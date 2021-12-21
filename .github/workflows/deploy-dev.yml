@@ -4,8 +4,6 @@ name: dev-deployment
 
 # Controls when the workflow will run
 on:
-  workflow_run:
-    
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
