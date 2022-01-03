@@ -8,7 +8,11 @@ from matcher.core import MatcherError, MatcherStatus
 
 class ConfigNoteInterface:
     def __init__(
-        self, client, config_note_id, logger=logging.getLogger(__name__)
+        self,
+        client,
+        config_note_id,
+        logger=logging.getLogger(__name__),
+        task=None,
     ):
         self.client = client
         self.logger = logger
@@ -42,6 +46,7 @@ class ConfigNoteInterface:
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
+        self._task = task
 
         # Lazy variables
         self._reviewers = None
@@ -67,6 +72,12 @@ class ConfigNoteInterface:
                 raise error_handle
 
     def validate_group(self, group_id):
+        if self._task == "deploy":
+            self.logger.info(
+                "Deploying assignments, group validation skipped."
+            )
+            return
+
         try:
             self.logger.debug("GET group id={}".format(group_id))
             group = self.client.get_group(group_id)

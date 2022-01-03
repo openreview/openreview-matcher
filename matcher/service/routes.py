@@ -180,6 +180,7 @@ def deploy():
             client=openreview_client,
             config_note_id=config_note_id,
             logger=flask.current_app.logger,
+            task="deploy",
         )
 
         if interface.config_note.content["status"] not in [
