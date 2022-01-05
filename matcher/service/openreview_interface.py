@@ -12,7 +12,6 @@ class ConfigNoteInterface:
         client,
         config_note_id,
         logger=logging.getLogger(__name__),
-        task=None,
     ):
         self.client = client
         self.logger = logger
@@ -46,7 +45,6 @@ class ConfigNoteInterface:
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
-        self._task = task
 
         # Lazy variables
         self._reviewers = None
@@ -58,7 +56,6 @@ class ConfigNoteInterface:
         self._constraints = None
 
         self.validate_score_spec()
-        self.validate_group(self.match_group)
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get(
@@ -72,12 +69,6 @@ class ConfigNoteInterface:
                 raise error_handle
 
     def validate_group(self, group_id):
-        if self._task == "deploy":
-            self.logger.info(
-                "Deploying assignments, group validation skipped."
-            )
-            return
-
         try:
             self.logger.debug("GET group id={}".format(group_id))
             group = self.client.get_group(group_id)
