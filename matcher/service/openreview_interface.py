@@ -8,7 +8,10 @@ from matcher.core import MatcherError, MatcherStatus
 
 class ConfigNoteInterface:
     def __init__(
-        self, client, config_note_id, logger=logging.getLogger(__name__)
+        self,
+        client,
+        config_note_id,
+        logger=logging.getLogger(__name__),
     ):
         self.client = client
         self.logger = logger
@@ -53,7 +56,6 @@ class ConfigNoteInterface:
         self._constraints = None
 
         self.validate_score_spec()
-        self.validate_group(self.match_group)
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get(
