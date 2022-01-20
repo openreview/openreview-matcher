@@ -459,7 +459,7 @@ class GRRR(object):
             self.constraint_matrix = self.constraint_matrix[:, proper_papers]
             self.affinity_matrix = self.affinity_matrix[:, proper_papers]
             self.best_revs = self.best_revs[:, proper_papers]
-            self.num_papers = self.num_papers - proper_papers.size
+            self.num_papers = proper_papers.size
 
         ordering = self._select_ordering()
         self.logger.debug("Ordering is {}".format(ordering))

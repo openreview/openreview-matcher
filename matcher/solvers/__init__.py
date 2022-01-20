@@ -6,3 +6,4 @@ from .simple_solver import SimpleSolver
 from .randomized_solver import RandomizedSolver
 from .fairflow import FairFlow
 from .grrr import GRRR
+from .gwef1 import GWEF1
