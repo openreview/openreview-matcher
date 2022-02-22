@@ -53,11 +53,11 @@ The solver returns a deterministic assignment which was sampled from this random
 
 For more information, see [this paper](https://arxiv.org/abs/2006.16437).
 
-### Reviewer Round Robin
+### GWEF1 Solver
 
-Greedy reviewer round robin (`--solver GRRR` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. Papers pick reviewers one-by-one, with priority given to the papers with the lowest ratio of allocation size to demand. By default, ties in priority are resolved in a randomly selected, fixed order. If a sample size greater than 1 is specified, the algorithm will perform a greedy search for an optimal tie-breaking order (using the specified number of samples at each step).
+Greedy WEF1 (`--solver GWEF1` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the lowest ratio of allocation size to demand. Ties in priority are resolved by assigning the reviewer-paper pair with the highest affinity. Some constraints apply to the selection process - most importantly, no paper can be assigned a reviewer that would cause a WEF1 violation.
 
-For more information about the WEF1 fairness criterion, see [this paper](https://ifaamas.org/Proceedings/aamas2020/pdfs/p231.pdf), and for more information about the greedy search procedure, see [this paper](https://arxiv.org/abs/2108.02126).
+For more information about the WEF1 fairness criterion, see [this paper](https://dl.acm.org/doi/abs/10.1145/3457166), and for more information about the adaptation to reviewer assignment, see [this paper](https://arxiv.org/abs/2108.02126).
 
 ## Running the Server
 The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:

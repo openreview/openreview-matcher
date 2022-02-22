@@ -1,10 +1,8 @@
-from collections import defaultdict
-from ortools.graph import pywrapgraph
+import math
 import numpy as np
-import random
 import uuid
-import time
 from .core import SolverException
+from sortedcontainers import SortedList
 import logging
 
 
@@ -13,15 +11,16 @@ class GWEF1(object):
     Assign reviewers using a modified version of the Greedy Reviewer Round-Robin algorithm
     from I Will Have Order! Optimizing Orders for Fair Reviewer Assignment
     (https://arxiv.org/abs/2108.02126). This algorithm outputs an assignment that satisfies
-    the weighted envy-free up to 1 item (WEF1) criterion.
+    the weighted envy-free up to 1 item (WEF1) criterion. Each paper i has a "weight" equal to
+    its demand for reviewers (k_i), and for all i, i's score for its own reviewers (v_i(A_i))
+    is greater than or equal to (k_i/k_j)*v_i(A_j - r) for any paper j and some r given to j.
 
-    Reviewer Round-Robin (RRR) attempts to create an allocation of reviewers that is fair
-    according to the weighted envy-free up to 1 item (WEF1) criterion. Papers pick reviewers
-    one-by-one, with priority given to the papers with the lowest ratio of allocation size to demand.
-    Ties in priority are resolved by selecting the paper which can select the highest-affinity reviewer.
-    Some constraints apply to the selection process - most importantly, no paper can choose a
-    reviewer that would cause a WEF1 violation. If this procedure fails to discover a complete, WEF1 allocation,
-    we try the picking sequence again, allowing WEF1 violations during the process.
+    Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the
+    lowest ratio of allocation size to demand. Ties in priority are resolved by assigning the reviewer-paper
+    pair with the highest affinity. Some constraints apply to the selection process - most importantly,
+    no paper can be assigned a reviewer that would cause a WEF1 violation. If this procedure fails to
+    discover a complete, WEF1 allocation, we try the picking sequence again, allowing WEF1 violations
+    during the process.
     """
 
     def __init__(
@@ -32,7 +31,6 @@ class GWEF1(object):
             encoder,
             allow_zero_score_assignments=False,
             solution=None,
-            sample_size=1,
             logger=logging.getLogger(__name__),
     ):
         """
@@ -54,10 +52,6 @@ class GWEF1(object):
         self.constraint_matrix = encoder.constraint_matrix.transpose()
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
 
-        # The number of papers to consider in each step of _select_ordering().
-        # Higher sample_size can improve objective score at the cost of increased runtime.
-        self.sample_size = sample_size
-
         self.maximums = np.array(maximums)
         self.minimums = np.array(minimums)
         self.demands = np.array(demands)
@@ -65,9 +59,6 @@ class GWEF1(object):
         self.affinity_matrix = affinity_matrix.copy()
         if not self.affinity_matrix.any():
             self.affinity_matrix = np.random.rand(*affinity_matrix.shape)
-
-        self.best_revs = np.argsort(-1 * self.affinity_matrix, axis=0)
-        self.max_affinity = np.max(self.affinity_matrix)
 
         self.orig_affinities = self.affinity_matrix.copy()
 
@@ -98,14 +89,23 @@ class GWEF1(object):
             if solution
             else np.zeros((self.num_reviewers, self.num_papers))
         )
-        assert self.affinity_matrix.shape == self.solution.shape
+
+        if self.affinity_matrix.shape != self.solution.shape:
+            raise SolverException(
+                "Affinity Matrix shape does not match the required shape. Affinity Matrix shape {}, expected shape {}".format(
+                    self.affinity_matrix.shape, self.solution.shape
+                )
+            )
+
+        self.best_revs = np.argsort(-1 * self.affinity_matrix, axis=0)
+        self.max_affinity = np.max(self.affinity_matrix)
+        self.safe_mode = True
 
         self.solved = False
         self.logger.debug("End Init GWEF1")
 
     def _validate_input_range(self):
-        """Validate if demand is in the range of min supply and max supply,
-        and forbids currently unsupported settings."""
+        """Validate if demand is in the range of min supply and max supply."""
         self.logger.debug("Checking if demand is in range")
 
         min_supply = np.sum(self.minimums)
@@ -120,8 +120,7 @@ class GWEF1(object):
 
         if demand > max_supply or demand < min_supply:
             raise SolverException(
-                "Total demand ({}) is out of range when min review supply is ({}) "
-                "and max review supply is ({})".format(
+                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
                     demand, min_supply, max_supply
                 )
             )
@@ -140,112 +139,100 @@ class GWEF1(object):
                 "You must have executed solve() before calling this function"
             )
 
-    def _is_valid_assignment(self, r, p, matrix_alloc, previous_attained_scores):
-        """Ensure that we can assign reviewer r to paper p without breaking weighted envy-freeness up to 1 item.
+    def _is_valid_assignment(self, r, p, dict_alloc, previous_attained_scores):
+        """Ensure that we can assign reviewer r to paper p without breaking WEF1.
 
-        We have to check any paper p_prime that has chosen a reviewer which is worth less to it than the value
-        of r to p_prime. If p_prime has only chosen better reviewers, then it will necessarily be WEF1.
+        We have to check any paper p_prime that has chosen a reviewer which is worth
+        less to it than the value of r to p_prime. If p_prime has only chosen better
+        reviewers, then it will necessarily be WEF1.
 
         Args:
             r - (int) the id of the reviewer we want to add
             p - (int) the id of the paper to which we are adding r
-            matrix_alloc - (2d numpy array) the current allocation
-            previous_attained_scores - (1d numpy array) maps each paper to the lowest affinity for any reviewer it holds
+            dict_alloc - (dict) the current allocation, maps papers to lists of reviewers
+            previous_attained_scores - (1d numpy array) maps each paper to the lowest affinity
+                                        for any reviewer it has been assigned
 
         Returns:
             True if r can be assigned to p without violating WEF1, False otherwise.
         """
         papers_to_check_against = set()
-        for rev in np.where(matrix_alloc[:, p])[0].tolist() + [r]:
+        for rev in dict_alloc[p] + [r]:
             papers_to_check_against |= set(
                 np.where(previous_attained_scores < self.affinity_matrix[rev, :])[0].tolist())
 
         for p_prime in papers_to_check_against:
-            # p_prime's normalized value for p's bundle, if we add r and remove the max value
-            other = np.sum(matrix_alloc[:, p] * self.affinity_matrix[:, p_prime])
-            other += self.affinity_matrix[r, p_prime]
-            max_val = np.max(matrix_alloc[:, p] * self.affinity_matrix[:, p_prime])
-            max_val = max(max_val, self.affinity_matrix[r, p_prime])
+            # p_prime's value for p's bundle, if we add r and remove the max value, then divide by p_prime's demand
+            p_alloc_r = dict_alloc[p] + [r]
+            p_alloc_r_affin = self.affinity_matrix[p_alloc_r, [p_prime] * len(p_alloc_r)].tolist()
+            other = sum(p_alloc_r_affin)
+            max_val = max(p_alloc_r_affin)
             other -= max_val
             other /= self.demands[p]
 
-            # p_prime's normalized value for own bundle
-            curr = np.sum(matrix_alloc[:, p_prime] * self.affinity_matrix[:, p_prime])
+            # p_prime's value for own bundle, divided by p_prime's demand
+            p_prime_alloc = dict_alloc[p_prime]
+            p_prime_affin = self.affinity_matrix[p_prime_alloc, [p_prime] * len(p_prime_alloc)].tolist()
+            curr = sum(p_prime_affin)
             curr /= self.demands[p_prime]
 
             # check wef1
-            if other > curr and not np.isclose(other, curr):
+            if other > curr and not math.isclose(other, curr):
                 return False
 
         return True
 
-    def _restrict_if_necessary(
-            self, reviewers_remaining, matrix_alloc
-    ):
-        """Determine the number of papers we can still assign to each reviewer
+    def _select_next_paper(
+            self,
+            matrix_alloc,
+            dict_alloc,
+            best_revs_map,
+            current_reviewer_maximums,
+            previous_attained_scores,
+            paper_priorities):
+        """Select the next paper to be assigned a reviewer
 
-        If we have exactly enough remaining reviewer slots to satisfy reviewer
-        minima, then we set the remaining reviewers to be exactly the reviewers
-        that need their minima satisfied.
-
-        Args:
-            reviewers_remaining - (1d numpy array) maximum number of papers each reviewer can
-                still be assigned
-            matrix_alloc - (2d numpy array) the assignment of reviewers to papers (papers are the rows)
-
-        Returns:
-            New reviewers_remaining - either the same as the input if we have enough papers to satisfy
-            reviewer minima, or the exact assignments required to meet minima otherwise.
-        """
-        remaining_demand = np.sum(self.demands) - np.sum(
-            matrix_alloc
-        )
-        required_for_min = self.minimums - np.sum(matrix_alloc, axis=1)
-        required_for_min[required_for_min < 0] = 0
-        return (
-            required_for_min
-            if np.sum(required_for_min) >= remaining_demand
-            else reviewers_remaining
-        )
-
-    def _select_next_paper(self, matrix_alloc, best_revs_map, current_reviewer_maximums, previous_attained_scores, safe_mode):
-        """Select the next paper to pick a reviewer
-
-        Each paper i has priority t_i/w_i, where t_i is the number of reviewers already
-        assigned to paper i, and w_i is the total demand of paper i. The
+        Each paper i has priority |A_i|/k_i, where A_i is the set of reviewers already
+        assigned to paper i, and k_i is the total demand of paper i. The
         paper with lowest priority is chosen, with ties broken by selecting the paper which
         will select a reviewer with the highest affinity.
         For rationale, please see:
-        Weighted Envy-Freeness in Indivisible Item Allocation by Chakraborty et al. 2020.
+        Weighted Envy-Freeness in Indivisible Item Allocation by Chakraborty et al. 2020 and
+        I Will Have Order! Optimizing Orders for Fair Reviewer Assignment by Payan and Zick 2021.
 
         Args:
-            matrix_alloc - (2d numpy array) the assignment of reviewers to papers (papers are the columns)
+            matrix_alloc - (2d numpy array) the assignment of reviewers to papers
+            dict_alloc - (dict) the current allocation, maps papers to lists of reviewers
+            best_revs_map - (dict) maps from papers to lists of reviewers in decreasing affinity order
+            current_reviewer_maximums - (1d numpy array) number of papers a reviewer can still be assigned
+            previous_attained_scores - (1d numpy array) maps each paper to the lowest affinity
+                                        for any reviewer it has been assigned
+            paper_priorities - (SortedList) list of tuples (priority, paper_id), sorted by increasing priority
 
         Returns:
-            The index of the next paper to pick a reviewer
+            The index of the next paper to assign a reviewer, the index of the reviewer,
+            and the updated map to the best remaining reviewers per paper.
         """
-        priorities = np.sum(matrix_alloc, axis=0) / self.demands
-
-        # Pick the papers which have the lowest priority, and then find the one with the best mg.
-        choice_set = np.where(np.isclose(priorities, np.min(priorities)))[0].tolist()
+        min_priority = paper_priorities[0][0]
+        choice_set = paper_priorities.irange(minimum=(min_priority, -1), maximum=(min_priority, self.num_papers))
 
         next_paper = None
         next_rev = None
         next_mg = -10000
 
-        for p in choice_set:
+        for _, p in choice_set:
             removal_set = []
             for r in best_revs_map[p]:
                 if current_reviewer_maximums[r] <= 0 or \
                         matrix_alloc[r, p] > 0.5 or \
                         self.constraint_matrix[r, p] != 0 or \
-                        (np.isclose(self.affinity_matrix[r, p], 0) and not self.allow_zero_score_assignments):
+                        (math.isclose(self.affinity_matrix[r, p], 0) and not self.allow_zero_score_assignments):
                     removal_set.append(r)
                 elif self.affinity_matrix[r, p] > next_mg:
                     # This agent might be the greedy choice.
                     # Check if this is a valid assignment, then make it the greedy choice if so.
                     # If not a valid assignment, go to the next reviewer for this agent.
-                    if not safe_mode or self._is_valid_assignment(r, p, matrix_alloc, previous_attained_scores):
+                    if not self.safe_mode or self._is_valid_assignment(r, p, dict_alloc, previous_attained_scores):
                         next_paper = p
                         next_rev = r
                         next_mg = self.affinity_matrix[r, p]
@@ -261,17 +248,8 @@ class GWEF1(object):
                 return next_paper, next_rev, best_revs_map
         return next_paper, next_rev, best_revs_map
 
-    def greedy_wef1(self, safe_mode=True):
-        """Compute a WEF1 assignment via a picking sequence. Papers select reviewers in order of the
-        picking sequence defined by the paper:
-        Weighted Envy-Freeness in Indivisible Item Allocation by Chakraborty et al. 2021.
-        Ties in selection order are resolved by picking the paper which can achieve the highest affinity
-        by selecting a new reviewer.
-
-        Papers select their favorite remaining reviewer in each step,
-        subject to constraints - papers cannot pick a reviewer which would
-        cause another paper to have weighted envy up to more than 1 reviewer, and they
-        cannot pick a reviewer which is forbidden by the predefined constraint_matrix.
+    def greedy_wef1(self):
+        """Compute a WEF1 assignment via a picking sequence.
 
         Args:
             None
@@ -282,6 +260,7 @@ class GWEF1(object):
             entry when reviewer i is assigned to paper j (and 0 otherwise).
         """
         matrix_alloc = np.zeros(self.affinity_matrix.shape, dtype=bool)
+        dict_alloc = {p: list() for p in range(self.num_papers)}
         maximums_copy = self.maximums.copy()
 
         best_revs_map = {}
@@ -290,19 +269,39 @@ class GWEF1(object):
 
         previous_attained_scores = np.ones(self.num_papers) * 1000
 
-        while np.sum(matrix_alloc) < np.sum(self.demands):
-            maximums_copy = self._restrict_if_necessary(maximums_copy, matrix_alloc)
+        paper_priorities = SortedList([(0.0, p) for p in range(self.num_papers)])
 
+        remaining_demand = np.sum(self.demands)
+        required_for_min = np.copy(self.minimums)
+        demand_required_for_min = np.sum(required_for_min)
+        been_restricted = False
+
+        while remaining_demand:
             next_paper, next_rev, best_revs_map = \
-                self._select_next_paper(matrix_alloc, best_revs_map, maximums_copy, previous_attained_scores, safe_mode)
+                self._select_next_paper(matrix_alloc,
+                                        dict_alloc,
+                                        best_revs_map,
+                                        maximums_copy,
+                                        previous_attained_scores,
+                                        paper_priorities)
 
             if next_paper is None:
                 return None
 
+            remaining_demand -= 1
             maximums_copy[next_rev] -= 1
             matrix_alloc[next_rev, next_paper] = 1
+            dict_alloc[next_paper].append(next_rev)
             previous_attained_scores[next_paper] = min(self.affinity_matrix[next_rev, next_paper],
                                                        previous_attained_scores[next_paper])
+            paper_priorities.remove((paper_priorities[0][0], next_paper))
+            paper_priorities.add((len(dict_alloc[next_paper])/self.demands[next_paper], next_paper))
+
+            if required_for_min[next_rev] > 0.1:
+                required_for_min[next_rev] -= 1
+                demand_required_for_min -= 1
+            if not been_restricted and demand_required_for_min >= remaining_demand:
+                maximums_copy = np.copy(required_for_min)
 
         return matrix_alloc
 
@@ -339,7 +338,8 @@ class GWEF1(object):
                 "Unable to find a WEF1 allocation satisfying all papers' demands. "
                 "Falling back to picking sequence without WEF1 guarantees."
             )
-            self.solution = self.greedy_wef1(safe_mode=False)
+            self.safe_mode = False
+            self.solution = self.greedy_wef1()
 
             if self.solution is None:
                 raise SolverException(
