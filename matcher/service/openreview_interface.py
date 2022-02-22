@@ -8,7 +8,10 @@ from matcher.core import MatcherError, MatcherStatus
 
 class ConfigNoteInterface:
     def __init__(
-        self, client, config_note_id, logger=logging.getLogger(__name__)
+        self,
+        client,
+        config_note_id,
+        logger=logging.getLogger(__name__),
     ):
         self.client = client
         self.logger = logger
@@ -62,8 +65,23 @@ class ConfigNoteInterface:
                 self.logger.debug("GET invitation id={}".format(invitation_id))
                 self.client.get_invitation(invitation_id)
             except openreview.OpenReviewException as error_handle:
-                self.set_status(MatcherStatus.ERROR)
+                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
+
+    def validate_group(self, group_id):
+        try:
+            self.logger.debug("GET group id={}".format(group_id))
+            group = self.client.get_group(group_id)
+            for member in group.members:
+                if not member.startswith("~"):
+                    raise openreview.OpenReviewException(
+                        "All members of the group, {group}, must have an OpenReview Profile".format(
+                            group=group_id
+                        )
+                    )
+        except openreview.OpenReviewException as error_handle:
+            self.set_status(MatcherStatus.ERROR, message=str(error_handle))
+            raise error_handle
 
     @property
     def normalization_types(self):
@@ -121,7 +139,7 @@ class ConfigNoteInterface:
                     "Count of notes found: {}".format(len(self._papers))
                 )
             else:
-                self.logger.debug("GET group id={}".format(paper_invitation))
+                self.validate_group(paper_invitation)
                 group = self.client.get_group(paper_invitation)
                 self._papers = group.members
                 self.paper_numbers = {n: 1 for n in group.members}

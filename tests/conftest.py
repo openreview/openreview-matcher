@@ -121,8 +121,8 @@ def clean_start_conference(
 
             posted_submission = client.post_note(submission)
 
-            for index in range(1, num_reviewers + 1):
-                reviewer = "test_reviewer{0}@mail.com".format(index)
+            for index in range(0, num_reviewers):
+                reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
                 reviewers.add(reviewer)
                 score = random.random()
                 row = [
@@ -153,7 +153,7 @@ def assert_arrays(array_A, array_B, is_string=False):
         )
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def openreview_context():
     """
     A pytest fixture for setting up a clean OpenReview test instance:
@@ -179,7 +179,13 @@ def openreview_context():
     )
 
     superuser_client = initialize_superuser()
-
+    for index in range(0, 26):
+        openreview.tools.create_profile(
+            superuser_client,
+            "user{0}_reviewer@mail.com".format(chr(97 + index)),
+            "User{0}".format(chr(97 + index)),
+            "Reviewer",
+        )
     with app.app_context():
         yield {
             "app": app,
