@@ -24,14 +24,14 @@ class GWEF1(object):
     """
 
     def __init__(
-            self,
-            minimums,
-            maximums,
-            demands,
-            encoder,
-            allow_zero_score_assignments=False,
-            solution=None,
-            logger=logging.getLogger(__name__),
+        self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        allow_zero_score_assignments=False,
+        solution=None,
+        logger=logging.getLogger(__name__),
     ):
         """
         Initialize a GWEF1 matcher
@@ -159,12 +159,17 @@ class GWEF1(object):
         papers_to_check_against = set()
         for rev in dict_alloc[p] + [r]:
             papers_to_check_against |= set(
-                np.where(previous_attained_scores < self.affinity_matrix[rev, :])[0].tolist())
+                np.where(
+                    previous_attained_scores < self.affinity_matrix[rev, :]
+                )[0].tolist()
+            )
 
         for p_prime in papers_to_check_against:
             # p_prime's value for p's bundle, if we add r and remove the max value, then divide by p_prime's demand
             p_alloc_r = dict_alloc[p] + [r]
-            p_alloc_r_affin = self.affinity_matrix[p_alloc_r, [p_prime] * len(p_alloc_r)].tolist()
+            p_alloc_r_affin = self.affinity_matrix[
+                p_alloc_r, [p_prime] * len(p_alloc_r)
+            ].tolist()
             other = sum(p_alloc_r_affin)
             max_val = max(p_alloc_r_affin)
             other -= max_val
@@ -172,7 +177,9 @@ class GWEF1(object):
 
             # p_prime's value for own bundle, divided by p_prime's demand
             p_prime_alloc = dict_alloc[p_prime]
-            p_prime_affin = self.affinity_matrix[p_prime_alloc, [p_prime] * len(p_prime_alloc)].tolist()
+            p_prime_affin = self.affinity_matrix[
+                p_prime_alloc, [p_prime] * len(p_prime_alloc)
+            ].tolist()
             curr = sum(p_prime_affin)
             curr /= self.demands[p_prime]
 
@@ -183,13 +190,14 @@ class GWEF1(object):
         return True
 
     def _select_next_paper(
-            self,
-            matrix_alloc,
-            dict_alloc,
-            best_revs_map,
-            current_reviewer_maximums,
-            previous_attained_scores,
-            paper_priorities):
+        self,
+        matrix_alloc,
+        dict_alloc,
+        best_revs_map,
+        current_reviewer_maximums,
+        previous_attained_scores,
+        paper_priorities,
+    ):
         """Select the next paper to be assigned a reviewer
 
         Each paper i has priority |A_i|/k_i, where A_i is the set of reviewers already
@@ -214,7 +222,9 @@ class GWEF1(object):
             and the updated map to the best remaining reviewers per paper.
         """
         min_priority = paper_priorities[0][0]
-        choice_set = paper_priorities.irange(minimum=(min_priority, -1), maximum=(min_priority, self.num_papers))
+        choice_set = paper_priorities.irange(
+            minimum=(min_priority, -1), maximum=(min_priority, self.num_papers)
+        )
 
         next_paper = None
         next_rev = None
@@ -223,16 +233,23 @@ class GWEF1(object):
         for _, p in choice_set:
             removal_set = []
             for r in best_revs_map[p]:
-                if current_reviewer_maximums[r] <= 0 or \
-                        matrix_alloc[r, p] > 0.5 or \
-                        self.constraint_matrix[r, p] != 0 or \
-                        (math.isclose(self.affinity_matrix[r, p], 0) and not self.allow_zero_score_assignments):
+                if (
+                    current_reviewer_maximums[r] <= 0
+                    or matrix_alloc[r, p] > 0.5
+                    or self.constraint_matrix[r, p] != 0
+                    or (
+                        math.isclose(self.affinity_matrix[r, p], 0)
+                        and not self.allow_zero_score_assignments
+                    )
+                ):
                     removal_set.append(r)
                 elif self.affinity_matrix[r, p] > next_mg:
                     # This agent might be the greedy choice.
                     # Check if this is a valid assignment, then make it the greedy choice if so.
                     # If not a valid assignment, go to the next reviewer for this agent.
-                    if not self.safe_mode or self._is_valid_assignment(r, p, dict_alloc, previous_attained_scores):
+                    if not self.safe_mode or self._is_valid_assignment(
+                        r, p, dict_alloc, previous_attained_scores
+                    ):
                         next_paper = p
                         next_rev = r
                         next_mg = self.affinity_matrix[r, p]
@@ -269,7 +286,9 @@ class GWEF1(object):
 
         previous_attained_scores = np.ones(self.num_papers) * 1000
 
-        paper_priorities = SortedList([(0.0, p) for p in range(self.num_papers)])
+        paper_priorities = SortedList(
+            [(0.0, p) for p in range(self.num_papers)]
+        )
 
         remaining_demand = np.sum(self.demands)
         required_for_min = np.copy(self.minimums)
@@ -277,13 +296,14 @@ class GWEF1(object):
         been_restricted = False
 
         while remaining_demand:
-            next_paper, next_rev, best_revs_map = \
-                self._select_next_paper(matrix_alloc,
-                                        dict_alloc,
-                                        best_revs_map,
-                                        maximums_copy,
-                                        previous_attained_scores,
-                                        paper_priorities)
+            next_paper, next_rev, best_revs_map = self._select_next_paper(
+                matrix_alloc,
+                dict_alloc,
+                best_revs_map,
+                maximums_copy,
+                previous_attained_scores,
+                paper_priorities,
+            )
 
             if next_paper is None:
                 return None
@@ -292,15 +312,25 @@ class GWEF1(object):
             maximums_copy[next_rev] -= 1
             matrix_alloc[next_rev, next_paper] = 1
             dict_alloc[next_paper].append(next_rev)
-            previous_attained_scores[next_paper] = min(self.affinity_matrix[next_rev, next_paper],
-                                                       previous_attained_scores[next_paper])
+            previous_attained_scores[next_paper] = min(
+                self.affinity_matrix[next_rev, next_paper],
+                previous_attained_scores[next_paper],
+            )
             paper_priorities.remove((paper_priorities[0][0], next_paper))
-            paper_priorities.add((len(dict_alloc[next_paper])/self.demands[next_paper], next_paper))
+            paper_priorities.add(
+                (
+                    len(dict_alloc[next_paper]) / self.demands[next_paper],
+                    next_paper,
+                )
+            )
 
             if required_for_min[next_rev] > 0.1:
                 required_for_min[next_rev] -= 1
                 demand_required_for_min -= 1
-            if not been_restricted and demand_required_for_min >= remaining_demand:
+            if (
+                not been_restricted
+                and demand_required_for_min >= remaining_demand
+            ):
                 maximums_copy = np.copy(required_for_min)
 
         return matrix_alloc
