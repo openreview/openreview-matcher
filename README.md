@@ -53,9 +53,9 @@ The solver returns a deterministic assignment which was sampled from this random
 
 For more information, see [this paper](https://arxiv.org/abs/2006.16437).
 
-### GWEF1 Solver
+### FairSequence Solver
 
-Greedy WEF1 (`--solver GWEF1` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the lowest ratio of allocation size to demand. Ties in priority are resolved by assigning the reviewer-paper pair with the highest affinity. Some constraints apply to the selection process - most importantly, no paper can be assigned a reviewer that would cause a WEF1 violation.
+FairSequence (`--solver FairSequence` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. This criterion implies that when one paper has a higher average affinity for another papers' reviewers, it is only due to a single reviewer rather than a larger overall imbalance in affinity scores. Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the lowest ratio of allocation size to demand. Ties in priority are resolved to favor reviewer-paper assignments with higher affinity.
 
 For more information about the WEF1 fairness criterion, see [this paper](https://dl.acm.org/doi/abs/10.1145/3457166), and for more information about the adaptation to reviewer assignment, see [this paper](https://arxiv.org/abs/2108.02126).
 

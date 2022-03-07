@@ -7,7 +7,7 @@ from .core import SolverException
 import logging
 
 
-class GWEF1(object):
+class FairSequence(object):
     """
     Assign reviewers using a modified version of the Greedy Reviewer Round-Robin algorithm
     from I Will Have Order! Optimizing Orders for Fair Reviewer Assignment
@@ -35,7 +35,7 @@ class GWEF1(object):
         logger=logging.getLogger(__name__),
     ):
         """
-        Initialize a GWEF1 matcher
+        Initialize a FairSequence matcher
 
         :param minimums: a list of integers specifying the minimum number of papers for each reviewer.
         :param maximums: a list of integers specifying the maximum number of papers for each reviewer.
@@ -45,11 +45,11 @@ class GWEF1(object):
             unknown matching scores default to 0. set to True to allow zero (unknown) affinity in solution.
         :param solution: a matrix of assignments (same shape as encoder.affinity_matrix)
 
-        :return: initialized GWEF1 matcher.
+        :return: initialized FairSequence matcher.
         """
         self.logger = logger
         self.allow_zero_score_assignments = allow_zero_score_assignments
-        self.logger.debug("Init GWEF1")
+        self.logger.debug("Init FairSequence")
         self.constraint_matrix = encoder.constraint_matrix.transpose()
         affinity_matrix = encoder.aggregate_score_matrix.transpose()
 
@@ -103,7 +103,7 @@ class GWEF1(object):
         self.safe_mode = True
 
         self.solved = False
-        self.logger.debug("End Init GWEF1")
+        self.logger.debug("End Init FairSequence")
 
     def _validate_input_range(self):
         """Validate if demand is in the range of min supply and max supply."""
@@ -296,13 +296,13 @@ class GWEF1(object):
         demand_required_for_min = np.sum(required_for_min)
         been_restricted = False
 
-        self.logger.debug("#info GWEF1:total paper demand is %d" % remaining_demand)
+        self.logger.debug("#info FairSequence:total paper demand is %d" % remaining_demand)
         start = time.time()
 
         while remaining_demand:
             if remaining_demand % 1000 == 0:
-                self.logger.debug("#info GWEF1:remaining paper demand is %d" % remaining_demand)
-                self.logger.debug("#info GWEF1:total time elapsed: %s s" % (time.time() - start))
+                self.logger.debug("#info FairSequence:remaining paper demand is %d" % remaining_demand)
+                self.logger.debug("#info FairSequence:total time elapsed: %s s" % (time.time() - start))
 
             next_paper, next_rev, best_revs_map = self._select_next_paper(
                 matrix_alloc,
@@ -339,7 +339,7 @@ class GWEF1(object):
                 not been_restricted
                 and demand_required_for_min >= remaining_demand
             ):
-                self.logger.debug("#info GWEF1:remaining paper demand (%d) equals total remaining reviewer load LBs ("
+                self.logger.debug("#info FairSequence:remaining paper demand (%d) equals total remaining reviewer load LBs ("
                                   "%d), restricting reviewer supply" % (remaining_demand, demand_required_for_min))
                 maximums_copy = np.copy(required_for_min)
 
@@ -361,7 +361,7 @@ class GWEF1(object):
         if improper_papers:
             proper_papers = np.where(self.demands > 0)[0]
 
-            self.logger.debug("#info GWEF1:Found %d papers with 0 demand, removing them for now" % (self.num_papers - proper_papers.shape[0]))
+            self.logger.debug("#info FairSequence:Found %d papers with 0 demand, removing them for now" % (self.num_papers - proper_papers.shape[0]))
 
             saved_demands = np.copy(self.demands)
             saved_constraint_matrix = np.copy(self.constraint_matrix)
@@ -375,7 +375,7 @@ class GWEF1(object):
 
         start = time.time()
         self.solution = self.greedy_wef1()
-        self.logger.debug("#info GWEF1:greedy_wef1 took %s s" % (time.time() - start))
+        self.logger.debug("#info FairSequence:greedy_wef1 took %s s" % (time.time() - start))
 
         if self.solution is None:
             self.logger.debug(
@@ -386,7 +386,7 @@ class GWEF1(object):
 
             start = time.time()
             self.solution = self.greedy_wef1()
-            self.logger.debug("#info GWEF1:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
+            self.logger.debug("#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
 
             if self.solution is None:
                 raise SolverException(
@@ -394,7 +394,7 @@ class GWEF1(object):
                 )
 
         if improper_papers:
-            self.logger.debug("#info GWEF1:Adding back papers with 0 demand")
+            self.logger.debug("#info FairSequence:Adding back papers with 0 demand")
             self.demands = saved_demands
             self.constraint_matrix = saved_constraint_matrix
             self.affinity_matrix = saved_affinity_matrix
@@ -409,7 +409,7 @@ class GWEF1(object):
             self.solution = soln
 
         self.logger.debug(
-            "#info GWEF1:objective score of solution is {}".format(np.sum(self.affinity_matrix * self.solution))
+            "#info FairSequence:objective score of solution is {}".format(np.sum(self.affinity_matrix * self.solution))
         )
 
         self.solved = True

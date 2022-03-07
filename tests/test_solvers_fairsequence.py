@@ -1,7 +1,7 @@
 from collections import namedtuple
 import pytest
 import numpy as np
-from matcher.solvers import SolverException, GWEF1
+from matcher.solvers import SolverException, FairSequence
 from conftest import assert_arrays
 
 encoder = namedtuple(
@@ -9,14 +9,14 @@ encoder = namedtuple(
 )
 
 
-def test_solvers_gwef1_random():
+def test_solvers_fairsequence_random():
     """When affinities are all zero, compute random assignments"""
     aggregate_score_matrix_A = np.transpose(
         np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     demands = [2, 2, 2]
-    solver_A = GWEF1(
+    solver_A = FairSequence(
         [0, 0, 0, 0],
         [2, 2, 2, 2],
         demands,
@@ -30,7 +30,7 @@ def test_solvers_gwef1_random():
         np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_B))
-    solver_B = GWEF1(
+    solver_B = FairSequence(
         [0, 0, 0, 0],
         [2, 2, 2, 2],
         demands,
@@ -51,7 +51,7 @@ def test_solvers_gwef1_random():
     assert_arrays(result_B, demands)
 
 
-def test_solvers_gwef1_custom_supply():
+def test_solvers_fairsequence_custom_supply():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 0, max: [3,2,3,2] papers respectively.
@@ -71,7 +71,7 @@ def test_solvers_gwef1_custom_supply():
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     demands = [2, 2, 2]
-    solver_A = GWEF1(
+    solver_A = FairSequence(
         [0, 0, 0, 0],
         [3, 2, 3, 2],
         demands,
@@ -87,7 +87,7 @@ def test_solvers_gwef1_custom_supply():
         assert i <= j
 
 
-def test_solvers_gwef1_custom_demands():
+def test_solvers_fairsequence_custom_demands():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 1, max: 2 papers.
@@ -107,7 +107,7 @@ def test_solvers_gwef1_custom_demands():
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     demands = [2, 1, 3]
-    solver_A = GWEF1(
+    solver_A = FairSequence(
         [1, 1, 1, 1],
         [2, 2, 2, 2],
         demands,
@@ -119,7 +119,7 @@ def test_solvers_gwef1_custom_demands():
     assert_arrays(result, demands)
 
 
-def test_solvers_gwef1_custom_demand_and_supply():
+def test_solvers_fairsequence_custom_demand_and_supply():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 0, max: [2,2,3,2] papers.
@@ -139,7 +139,7 @@ def test_solvers_gwef1_custom_demand_and_supply():
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     demands = [2, 1, 3]
-    solver_A = GWEF1(
+    solver_A = FairSequence(
         [0, 0, 0, 0],
         [2, 2, 3, 2],
         demands,
@@ -154,7 +154,7 @@ def test_solvers_gwef1_custom_demand_and_supply():
         assert i <= j
 
 
-def test_solvers_gwef1_custom_demands_paper_with_0_demand():
+def test_solvers_fairsequence_custom_demands_paper_with_0_demand():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 0, max: 2 papers.
@@ -174,7 +174,7 @@ def test_solvers_gwef1_custom_demands_paper_with_0_demand():
     )
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     demands = [2, 1, 0]
-    solver_A = GWEF1(
+    solver_A = FairSequence(
         [0, 0, 0, 0],
         [2, 2, 2, 2],
         demands,
@@ -186,7 +186,7 @@ def test_solvers_gwef1_custom_demands_paper_with_0_demand():
     assert_arrays(result, demands)
 
 
-def test_solver_gwef1_no_0_score_assignment():
+def test_solver_fairsequence_no_0_score_assignment():
     """
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 1, max: 3 papers.
@@ -215,7 +215,7 @@ def test_solver_gwef1_no_0_score_assignment():
         )
     )
 
-    solver = GWEF1(
+    solver = FairSequence(
         [1, 1, 1, 1],
         [3, 3, 3, 3],
         [2, 2, 2, 2, 2],
@@ -234,9 +234,9 @@ def test_solver_gwef1_no_0_score_assignment():
             )
 
 
-def test_solver_gwef1_impossible_constraints():
+def test_solver_fairsequence_impossible_constraints():
     """
-    Test to ensure that the GWEF1 solver's 'solved' attribute is correctly set
+    Test to ensure that the FairSequence solver's 'solved' attribute is correctly set
     when no solution is possible due to constraints.
     """
 
@@ -252,7 +252,7 @@ def test_solver_gwef1_impossible_constraints():
     maximums = [20] * 5
     demands = [3] * 20
 
-    solver = GWEF1(
+    solver = FairSequence(
         minimums,
         maximums,
         demands,
@@ -265,7 +265,7 @@ def test_solver_gwef1_impossible_constraints():
     assert not solver.solved
 
 
-def test_solver_gwef1_respects_constraints():
+def test_solver_fairsequence_respects_constraints():
     """
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 0, max: 5 papers.
@@ -299,7 +299,7 @@ def test_solver_gwef1_respects_constraints():
         )
     )
 
-    solver = GWEF1(
+    solver = FairSequence(
         [0, 0, 0, 0],
         [5, 5, 5, 5],
         [2, 2, 2, 2, 2],
@@ -318,7 +318,7 @@ def test_solver_gwef1_respects_constraints():
             ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
-def test_solver_gwef1_respect_constraints_2():
+def test_solver_fairsequence_respect_constraints_2():
     """
     Tests 5 papers, 4 reviewers.
     Reviewers review min: 0, max: 3 papers.
@@ -351,7 +351,7 @@ def test_solver_gwef1_respect_constraints_2():
         )
     )
 
-    solver = GWEF1(
+    solver = FairSequence(
         [0, 0, 0, 0],
         [3, 3, 3, 3],
         [2, 2, 2, 2, 2],
@@ -407,13 +407,13 @@ def wef1(allocation, affinities, demands):
     return True
 
 
-def test_solver_gwef1_envy_free_up_to_one_item():
+def test_solver_fairsequence_envy_free_up_to_one_item():
     """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 3 reviews.
     No constraints.
-    Purpose: Ensure that the GWEF1 solver returns allocations that are envy-free up to 1 item
+    Purpose: Ensure that the FairSequence solver returns allocations that are envy-free up to 1 item
         when paper demands are uniform.
     """
     num_papers = 10
@@ -427,7 +427,7 @@ def test_solver_gwef1_envy_free_up_to_one_item():
     demands = [3] * num_papers
 
     for _ in range(10):
-        solver = GWEF1(
+        solver = FairSequence(
             minimums,
             maximums,
             demands,
@@ -440,13 +440,13 @@ def test_solver_gwef1_envy_free_up_to_one_item():
         assert wef1(res, solver.affinity_matrix.transpose(), demands)
 
 
-def test_solver_gwef1_envy_free_up_to_one_item_constrained():
+def test_solver_fairsequence_envy_free_up_to_one_item_constrained():
     """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 0, max: 3 papers.
     Each paper needs 3 reviews.
     Constraints chosen at random, with a 10% chance of any given constraint.
-    Purpose: Ensure that the GWEF1 solver returns allocations that are envy-free up to 1 item and satisfy constraints
+    Purpose: Ensure that the FairSequence solver returns allocations that are envy-free up to 1 item and satisfy constraints
         when paper demands are uniform.
     """
     num_papers = 10
@@ -466,7 +466,7 @@ def test_solver_gwef1_envy_free_up_to_one_item_constrained():
             -1 * np.ones(shape),
         )
 
-        solver = GWEF1(
+        solver = FairSequence(
             minimums,
             maximums,
             demands,
@@ -486,13 +486,13 @@ def test_solver_gwef1_envy_free_up_to_one_item_constrained():
                 ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
-def test_solver_gwef1_weighted_envy_free_up_to_one_item():
+def test_solver_fairsequence_weighted_envy_free_up_to_one_item():
     """
     Tests 10 papers, 15 reviewers, for 10 random affinity matrices.
     Reviewers review min: 1, max: 6 papers.
     Each paper needs between 1 and 6 reviews.
     No constraints.
-    Purpose: Ensure that the GWEF1 solver returns allocations that are weighted envy-free up to 1 item.
+    Purpose: Ensure that the FairSequence solver returns allocations that are weighted envy-free up to 1 item.
     """
     num_papers = 10
     num_reviewers = 15
@@ -506,7 +506,7 @@ def test_solver_gwef1_weighted_envy_free_up_to_one_item():
     for _ in range(10):
         demands = np.random.randint(1, 7, size=num_papers)
 
-        solver = GWEF1(
+        solver = FairSequence(
             minimums,
             maximums,
             demands,
@@ -519,13 +519,13 @@ def test_solver_gwef1_weighted_envy_free_up_to_one_item():
         assert wef1(res, solver.affinity_matrix.transpose(), demands)
 
 
-def test_solver_gwef1_weighted_envy_free_up_to_one_item_constrained():
+def test_solver_fairsequence_weighted_envy_free_up_to_one_item_constrained():
     """
     Tests 10 papers, 20 reviewers, for 10 random affinity matrices.
     Reviewers review min: 1, max: 6 papers.
     Each paper needs between 1 and 6 reviews.
     Constraints chosen at random, with a 10% chance of any given constraint.
-    Purpose: Ensure that the GWEF1 solver returns allocations that are weighted
+    Purpose: Ensure that the FairSequence solver returns allocations that are weighted
      envy-free up to 1 item and satisfy constraints.
     """
     num_papers = 10
@@ -546,7 +546,7 @@ def test_solver_gwef1_weighted_envy_free_up_to_one_item_constrained():
             -1 * np.ones(shape),
         )
 
-        solver = GWEF1(
+        solver = FairSequence(
             minimums,
             maximums,
             demands,
@@ -566,7 +566,7 @@ def test_solver_gwef1_weighted_envy_free_up_to_one_item_constrained():
                 ), "Solution violates constraint at [{},{}]".format(i, j)
 
 
-def test_solver_gwef1_respect_minimums():
+def test_solver_fairsequence_respect_minimums():
     """
     Tests 6 papers, 6 reviewers.
     Reviewers review min: 2, max: 3 papers.
@@ -595,7 +595,7 @@ def test_solver_gwef1_respect_minimums():
         ]
     )
 
-    solver = GWEF1(
+    solver = FairSequence(
         [2, 2, 2, 2, 2, 2],
         [3, 3, 3, 3, 3, 3],
         [2, 2, 2, 2, 2, 2],
@@ -615,7 +615,7 @@ def test_solver_gwef1_respect_minimums():
         assert reviewer_count_reviews == 2
 
 
-def test_solver_gwef1_respect_minimums_2():
+def test_solver_fairsequence_respect_minimums_2():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 1, max: 3 papers.
@@ -639,7 +639,7 @@ def test_solver_gwef1_respect_minimums_2():
     rev_mins = [min_papers_per_reviewer] * num_reviewers
     rev_maxs = [max_papers_per_reviewer] * num_reviewers
     papers_reqd = [paper_revs_reqd] * num_papers
-    solver = GWEF1(
+    solver = FairSequence(
         rev_mins,
         rev_maxs,
         papers_reqd,
@@ -659,7 +659,7 @@ def test_solver_gwef1_respect_minimums_2():
         assert reviewer_count_reviews >= 1
 
 
-def test_solver_gwef1_respect_minimums_3():
+def test_solver_fairsequence_respect_minimums_3():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 2, max: 3 papers.
@@ -683,7 +683,7 @@ def test_solver_gwef1_respect_minimums_3():
     rev_mins = [min_papers_per_reviewer] * num_reviewers
     rev_maxs = [max_papers_per_reviewer] * num_reviewers
     papers_reqd = [paper_revs_reqd] * num_papers
-    solver = GWEF1(
+    solver = FairSequence(
         rev_mins,
         rev_maxs,
         papers_reqd,
@@ -703,7 +703,7 @@ def test_solver_gwef1_respect_minimums_3():
         assert reviewer_count_reviews >= 2
 
 
-def test_solver_gwef1_respects_one_minimum():
+def test_solver_fairsequence_respects_one_minimum():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 1, max: 3 papers.
@@ -728,7 +728,7 @@ def test_solver_gwef1_respects_one_minimum():
     rev_mins = [min_papers_per_reviewer] * num_reviewers
     rev_maxs = [max_papers_per_reviewer] * num_reviewers
     papers_reqd = [paper_revs_reqd] * num_papers
-    solver = GWEF1(
+    solver = FairSequence(
         rev_mins,
         rev_maxs,
         papers_reqd,
@@ -748,7 +748,7 @@ def test_solver_gwef1_respects_one_minimum():
         assert reviewer_count_reviews >= 1
 
 
-def test_solver_gwef1_respects_two_minimum():
+def test_solver_fairsequence_respects_two_minimum():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 2, max: 3 papers.
@@ -772,7 +772,7 @@ def test_solver_gwef1_respects_two_minimum():
     rev_mins = [min_papers_per_reviewer] * num_reviewers
     rev_maxs = [max_papers_per_reviewer] * num_reviewers
     papers_reqd = [paper_revs_reqd] * num_papers
-    solver = GWEF1(
+    solver = FairSequence(
         rev_mins,
         rev_maxs,
         papers_reqd,
@@ -792,7 +792,7 @@ def test_solver_gwef1_respects_two_minimum():
         assert reviewer_count_reviews >= 2
 
 
-def test_solver_gwef1_avoid_zero_scores_get_no_solution():
+def test_solver_fairsequence_avoid_zero_scores_get_no_solution():
     """
     Tests 3 papers, 4 reviewers.
     Reviewers review min: 2, max: 3 papers.
@@ -815,7 +815,7 @@ def test_solver_gwef1_avoid_zero_scores_get_no_solution():
     rev_mins = [min_papers_per_reviewer] * num_reviewers
     rev_maxs = [max_papers_per_reviewer] * num_reviewers
     papers_reqd = [paper_revs_reqd] * num_papers
-    solver = GWEF1(
+    solver = FairSequence(
         rev_mins,
         rev_maxs,
         papers_reqd,
