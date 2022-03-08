@@ -2,7 +2,7 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/openreview-matcher-repo
+    working_directory: ~/
     docker:
     - image: circleci/python:3.7-node
     - image: circleci/redis:6.0.0
@@ -13,7 +13,8 @@ jobs:
         xpack.security.enabled: false
         transport.host: localhost
     steps:
-    - checkout
+    - checkout:
+        path: ~/openreview-matcher-repo
     - run:
         name: Initialize Replica Set
         command: |
@@ -23,21 +24,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mongodb-org=4.4.5 mongodb-org-server=4.4.5 mongodb-org-shell=4.4.5 mongodb-org-mongos=4.4.5 mongodb-org-tools=4.4.5
           mongo mongodb://localhost:27017 --eval "rs.initiate()"
-    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview.git ~/openreview
-    - run: git clone https://$OPENREVIEW_GITHUB@github.com/iesl/openreview-py.git ~/openreview-py
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api-v1.git ~/openreview
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api.git ~/openreview-v2
+    - run: git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-py.git ~/openreview-py
     - run: mkdir ~/openreview/logs
-    - run:
-        name: install openreview
-        command: |
-          cd ~/openreview
-          npm install
-          mkdir files
-    - run:
-        name: run app
-        command: |
-          cd ~/openreview
-          NODE_ENV=circleci node scripts/clean_start_app.js
-        background: true
+    - run: mkdir ~/openreview/files
+    - run: mkdir ~/openreview/files/attachments
+    - run: mkdir ~/openreview/files/pdfs
+    - run: mkdir ~/openreview-v2/logs
+    - run: mkdir ~/openreview-v2/files
+    - run: mkdir ~/openreview-v2/files/attachments
+    - run: mkdir ~/openreview-v2/files/pdfs
     - run:
         name: setup virtual environment
         command: |
@@ -45,25 +42,44 @@ jobs:
     - run:
         name: install dependencies
         command: |
-          cd ~/openreview-matcher-repo
           source matcher/bin/activate
+          cd ~/openreview-matcher-repo
           pip install -e .
     - run:
         name: install the local openreview-py as a dependency
         command: |
-          cd ~/openreview-py
-          echo $OPENREVIEW_PY
-          git checkout $OPENREVIEW_PY
-          cd ~/openreview-matcher-repo
           source matcher/bin/activate
+          cd ~/openreview-matcher-repo
           pip install -e ~/openreview-py
-        environment:
-          OPENREVIEW_PY: feature/matcher
+    - run:
+        name: install api-v1
+        command: |
+          cd ~/openreview
+          npm install
+    - run:
+        name: run api-v1
+        command: |
+          source matcher/bin/activate
+          cd ~/openreview
+          NODE_ENV=circleci node scripts/clean_start_app.js
+        background: true
+    - run:
+        name: install api-v2
+        command: |
+          cd ~/openreview-v2
+          npm install
+    - run:
+        name: run api-v2
+        command: |
+          source matcher/bin/activate
+          cd ~/openreview-v2
+          NODE_ENV=circleci node scripts/setup_app.js
+        background: true
     - run:
         name: run tests
         command: |
-          cd ~/openreview-matcher-repo
           source matcher/bin/activate
+          cd ~/openreview-matcher-repo
           mkdir reports
           mkdir reports/pytest
           python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
