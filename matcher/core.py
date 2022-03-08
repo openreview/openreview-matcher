@@ -9,7 +9,7 @@ from .solvers import (
     MinMaxSolver,
     FairFlow,
     RandomizedSolver,
-    GRRR,
+    FairSequence,
 )
 from .encoder import Encoder
 
@@ -17,7 +17,7 @@ SOLVER_MAP = {
     "MinMax": MinMaxSolver,
     "FairFlow": FairFlow,
     "Randomized": RandomizedSolver,
-    "GRRR": GRRR,
+    "FairSequence": FairSequence,
 }
 
 
