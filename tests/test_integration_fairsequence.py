@@ -69,7 +69,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -167,7 +167,7 @@ def test_integration_supply_mismatch_error(
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -269,7 +269,7 @@ def test_integration_demand_out_of_supply_range_error(
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -363,7 +363,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         ),
         "match_group": reviewers_id,
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
         "allow_zero_score_assignments": "Yes",
     }
 
@@ -463,7 +463,7 @@ def test_routes_invalid_invitation(
             "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -548,7 +548,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -665,7 +665,7 @@ def test_routes_forbidden_config(
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -754,7 +754,7 @@ def test_routes_already_running_or_complete(
             }
         },
         "status": "Running",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -855,7 +855,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
             }
         },
         "status": "Queued",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -944,7 +944,7 @@ def test_integration_empty_reviewers_list_error(
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -1045,7 +1045,7 @@ def test_integration_empty_papers_list_error(openreview_context):
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -1147,7 +1147,7 @@ def test_integration_group_not_found_error(
             }
         },
         "status": "Initialized",
-        "solver": "GRRR",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
