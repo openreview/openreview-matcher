@@ -115,7 +115,7 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBC.ws/2049/Conference"
+    conference_id = "AKBC.ws/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10  # impossible!
@@ -195,7 +195,7 @@ def test_integration_supply_mismatch_error(
     assert matcher_status.content["status"] == "No Solution"
     assert (
         matcher_status.content["error_message"]
-        == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
+        == "Total demand (200) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
     paper_assignment_edges = openreview_client.get_edges(
