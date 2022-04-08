@@ -109,7 +109,7 @@ class FairFlow(object):
 
         self.max_affinities = np.max(self.affinity_matrix)
         self.big_c = 10000
-        self.bigger_c = self.big_c ** 2
+        self.bigger_c = self.big_c**2
 
         self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
         self.start_inds = []
