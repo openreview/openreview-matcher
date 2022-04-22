@@ -7,6 +7,14 @@ from .core import SolverException
 import logging
 
 
+class AStarException(Exception):
+    pass
+
+
+class PickingSequenceException(Exception):
+    pass
+
+
 class FairSequence(object):
     """
     Assign reviewers using a modified version of the Greedy Reviewer Round-Robin algorithm
@@ -51,7 +59,7 @@ class FairSequence(object):
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.logger.debug("Init FairSequence")
         self.constraint_matrix = encoder.constraint_matrix.transpose()
-        affinity_matrix = encoder.aggregate_score_matrix.transpose()
+        affinity_matrix = encoder.aggregate_score_matrix.transpose().astype(np.float64)
 
         self.maximums = np.array(maximums)
         self.minimums = np.array(minimums)
@@ -101,6 +109,10 @@ class FairSequence(object):
         self.best_revs = np.argsort(-1 * self.affinity_matrix, axis=0)
         self.max_affinity = np.max(self.affinity_matrix)
         self.safe_mode = True
+        self.alpha = 1
+
+        # This can be set True during some unit tests, but should not be set True in real settings.
+        self.fixed_alpha = False
 
         self.solved = False
         self.logger.debug("End Init FairSequence")
@@ -266,6 +278,153 @@ class FairSequence(object):
                 return next_paper, next_rev, best_revs_map
         return next_paper, next_rev, best_revs_map
 
+    def _a_star(self, available_reviewers, choice_set, matrix_alloc):
+        """Perform A* to determine the shortest sequence of swaps that will get us to a paper that needs a new reviewer.
+
+        This function runs as a subroutine of _trade_and_assign. If there are multiple valid
+        shortest sequences of swaps, break ties by selecting the least-cost sequence.
+
+        Args:
+            available_reviewers - (list) the reviewers that can still be assigned
+            choice_set - (list) the papers which we wanted to assign a new reviewer to, but none of
+                          them can directly receive any remaining reviewer
+            matrix_alloc - (2d numpy array) the current assignment of reviewers to papers
+
+        Returns:
+            A tuple end_node=(final_reviewer, final_paper), the paper in the choice_set
+            which will receive a new reviewer, and the A_star predecessor graph.
+            final_paper will trade final_reviewer to the paper in the choice set, and receive
+            a new reviewer from another paper or the pool of unassigned reviewers, and the swaps
+            will continue down the chain.
+        """
+        open_set_pq = SortedList()
+        open_set = set()
+        parents = {}
+        dists = {}
+
+        for r in available_reviewers:
+            open_set_pq.add((0, r, -1))
+            open_set.add((r, -1))
+            dists[(r, -1)] = 0
+
+        while len(open_set_pq):
+            curr = open_set_pq.pop(0)
+
+            # The next nodes are any paper, reviewer pair where the
+            # paper could swap out the reviewer with the current.
+            curr_dist, curr_rev, curr_pap = curr
+            open_set.remove((curr_rev, curr_pap))
+
+            # Check if this reviewer can be assigned to any paper
+            # in the choice set. If so, we are done
+            for p in choice_set:
+                if (
+                    matrix_alloc[curr_rev, p] < 0.5
+                    and self.constraint_matrix[curr_rev, p] == 0
+                    and (
+                         not math.isclose(self.affinity_matrix[curr_rev, p], 0)
+                         or self.allow_zero_score_assignments
+                         )
+                ):
+                    end_node = curr[1], curr[2]
+                    paper_in_choice_set = p
+                    return end_node, paper_in_choice_set, parents
+
+            # Only let papers swap out reviewers for curr_rev if:
+            # 1) They are different than curr_rev
+            # 2) The paper isn't in the choice_set
+            # 3) The paper does not have the curr_rev already
+            # 4) There are no other constraints restricting that assignment
+            allowed_edges = matrix_alloc.copy()
+            allowed_edges[curr_rev, :] = 0
+            allowed_edges[:, choice_set] = 0
+            if curr_pap > -1:
+                allowed_edges[:, curr_pap] = 0
+            allowed_edges[np.where(self.constraint_matrix)] = 0
+            if not self.allow_zero_score_assignments:
+                allowed_edges[np.isclose(self.affinity_matrix, 0)] = 0
+
+            # Only let papers swap reviewers for curr_rev if they value
+            # curr_rev at least alpha * the value they're losing
+            attained_scores = matrix_alloc * self.affinity_matrix
+            attained_scores[curr_rev, :] = np.nan
+            score_could_get_from_rev = self.affinity_matrix[curr_rev, :]
+
+            w = np.where((score_could_get_from_rev >= self.alpha * attained_scores) * allowed_edges)
+
+            for tup in zip(w[0], w[1]):
+                d_tup = self.affinity_matrix[tup] - self.affinity_matrix[curr_rev, tup[1]] + np.max(self.affinity_matrix)
+                if tup not in dists or d_tup + dists[(curr_rev, curr_pap)] < dists[tup]:
+                    if tup not in open_set:
+                        open_set.add(tup)
+                        open_set_pq.add((d_tup, tup[0], tup[1]))
+                    elif tup in open_set:
+                        open_set.remove(tup)
+                        open_set_pq.remove((dists[tup], tup[0], tup[1]))
+                        open_set.add(tup)
+                        open_set_pq.add((d_tup, tup[0], tup[1]))
+                    parents[tup] = (curr_rev, curr_pap)
+                    dists[tup] = d_tup + dists[(curr_rev, curr_pap)]
+
+        raise AStarException("Could not find sequence of swaps to assign a new reviewer. Alpha=%.2f" % self.alpha)
+
+    def _trade_and_assign(
+        self,
+        matrix_alloc,
+        dict_alloc,
+        current_reviewer_maximums,
+        paper_priorities,
+    ):
+        """Select the next paper to assign a reviewer, potentially making trades with other papers to do so.
+
+        This function is intended to run when _select_next_paper fails. It determines if, starting
+        at any paper in the choice_set, there is a chain of papers such that each paper can pass
+        a reviewer to its predecessor in the chain and receive a paper from its successor in the chain.
+        The chain should end with the pool of remaining reviewers, so that a new reviewer is assigned.
+
+        Args:
+            matrix_alloc - (2d numpy array) the assignment of reviewers to papers
+            dict_alloc - (dict) the current allocation, maps papers to lists of reviewers
+            current_reviewer_maximums - (1d numpy array) number of papers a reviewer can still be assigned
+            paper_priorities - (SortedList) list of tuples (priority, paper_id), sorted by increasing priority
+
+        Returns:
+            The updated allocation in both matrix and dict format, the (unique) paper whose bundle size
+            increased by 1, and the reviewer assigned from the pool of unassigned reviewers.
+        """
+        min_priority = paper_priorities[0][0]
+        choice_set = paper_priorities.irange(
+            minimum=(min_priority, -1), maximum=(min_priority, self.num_papers)
+        )
+        choice_set = [p[1] for p in choice_set]
+        available_reviewers = np.where(current_reviewer_maximums > 0)[0].tolist()
+
+        end_node, paper_in_choice_set, parents = self._a_star(available_reviewers, choice_set, matrix_alloc)
+
+        # Reconstruct the path
+        path = []
+        curr = end_node
+        path.append(curr)
+        while curr in parents:
+            curr = parents[curr]
+            path.append(curr)
+
+        # Make the reviewer transfers
+        path = path[::-1]
+        new_reviewer = path[0][0]
+        for curr_rev, curr_pap in path[1:]:
+            assert matrix_alloc[curr_rev, curr_pap] > 0.5
+            assert curr_rev in dict_alloc[curr_pap]
+            matrix_alloc[curr_rev, curr_pap] = 0
+            dict_alloc[curr_pap].remove(curr_rev)
+
+            matrix_alloc[new_reviewer, curr_pap] = 1
+            dict_alloc[curr_pap].append(curr_rev)
+
+            new_reviewer = curr_rev
+
+        return matrix_alloc, dict_alloc, paper_in_choice_set, new_reviewer
+
     def greedy_wef1(self):
         """Compute a WEF1 assignment via a picking sequence.
 
@@ -314,10 +473,19 @@ class FairSequence(object):
             )
 
             if next_paper is None:
-                return None
+                if self.safe_mode:
+                    raise PickingSequenceException("Could not find a WEF1 picking sequence.")
+                else:
+                    try:
+                        matrix_alloc, dict_alloc, next_paper, next_rev = self._trade_and_assign(
+                            matrix_alloc,
+                            dict_alloc,
+                            maximums_copy,
+                            paper_priorities,
+                        )
+                    except AStarException as e:
+                        raise PickingSequenceException("Could not find a picking sequence with transfers:\n%s" % e)
 
-            remaining_demand -= 1
-            maximums_copy[next_rev] -= 1
             matrix_alloc[next_rev, next_paper] = 1
             dict_alloc[next_paper].append(next_rev)
             previous_attained_scores[next_paper] = min(
@@ -332,6 +500,8 @@ class FairSequence(object):
                 )
             )
 
+            maximums_copy[next_rev] -= 1
+            remaining_demand -= 1
             if required_for_min[next_rev] > 0.1:
                 required_for_min[next_rev] -= 1
                 demand_required_for_min -= 1
@@ -373,25 +543,41 @@ class FairSequence(object):
             self.best_revs = self.best_revs[:, proper_papers]
             self.num_papers = proper_papers.size
 
-        start = time.time()
-        self.solution = self.greedy_wef1()
-        self.logger.debug("#info FairSequence:greedy_wef1 took %s s" % (time.time() - start))
-
-        if self.solution is None:
+        try:
+            start = time.time()
+            self.solution = self.greedy_wef1()
+            self.logger.debug("#info FairSequence:greedy_wef1 took %s s" % (time.time() - start))
+        except PickingSequenceException:
             self.logger.debug(
                 "Unable to find a WEF1 allocation satisfying all papers' demands. "
                 "Falling back to picking sequence without WEF1 guarantees."
             )
             self.safe_mode = False
 
-            start = time.time()
-            self.solution = self.greedy_wef1()
-            self.logger.debug("#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
-
-            if self.solution is None:
-                raise SolverException(
-                    "Solver could not find a solution. Adjust your parameters."
-                )
+            if self.fixed_alpha:
+                try:
+                    start = time.time()
+                    self.solution = self.greedy_wef1()
+                    self.logger.debug("#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
+                except PickingSequenceException:
+                    raise SolverException(
+                        "Solver could not find a solution. Adjust your parameters."
+                    )
+            else:
+                for alpha in [1.0, 0.75, 0.5, 0.25, 0.0]:
+                    try:
+                        self.alpha = alpha
+                        start = time.time()
+                        self.solution = self.greedy_wef1()
+                        self.logger.debug(
+                            "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
+                        break
+                    except PickingSequenceException as e:
+                        self.logger.debug(e)
+                        if self.alpha == 0.0:
+                            raise SolverException(
+                                "Solver could not find a solution. Adjust your parameters."
+                            )
 
         if improper_papers:
             self.logger.debug("#info FairSequence:Adding back papers with 0 demand")

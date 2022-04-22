@@ -828,3 +828,176 @@ def test_solver_fairsequence_avoid_zero_scores_get_no_solution():
         match=r"Solver could not find a solution. Adjust your parameters.",
     ):
         res = solver.solve()
+
+
+def test_solvers_fairsequence_make_trades():
+    """
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 0, max: [2,1,1,3] papers.
+    The 3 Papers need 2,1,3 reviews.
+    No constraints.
+    Purpose: The original WEF1 picking sequence should fail.
+    Then we ensure that by trading around reviewers,
+    we can still return an allocation.
+    """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4],
+                [0.5, 0.2, 0.4],
+                [0.7, 0.9, 0.1],
+                [0.2, 0.9, 0.6],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2, 1, 3]
+    solver_A = FairSequence(
+        [0, 0, 0, 0],
+        [2, 1, 1, 3],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3, 4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+    expected_solution = np.array(
+        [
+            [1, 1, 0, 0],
+            [0, 0, 0, 1],
+            [1, 0, 1, 1],
+        ]
+    )
+    assert np.all(res_A == expected_solution)
+    assert solver_A.alpha == 1.0
+
+
+def test_solvers_fairsequence_make_trades_alpha_blocking():
+    """
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 0, max: [2,1,1,3] papers.
+    The 3 Papers need 2,1,3 reviews.
+    No constraints.
+    Purpose: The original WEF1 picking sequence should fail.
+    We try to see if we can trade around reviewers that papers consider
+    equivalent up to a factor of alpha and still return an allocation.
+    When we set alpha too high, we should fail to find a sequence of trades.
+    """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4],
+                [0.5, 0.2, 0.4],
+                [0.7, 0.9, 0.1],
+                [0.2, 0.8, 0.6],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2, 1, 3]
+    solver_A = FairSequence(
+        [0, 0, 0, 0],
+        [2, 1, 1, 3],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+    )
+    solver_A.fixed_alpha = True
+    solver_A.alpha = (8/9) + 0.001
+
+    with pytest.raises(
+        SolverException,
+        match=r"Solver could not find a solution. Adjust your parameters.",
+    ):
+        res = solver_A.solve()
+
+
+def test_solvers_fairsequence_make_trades_alpha_blocking_2():
+    """
+     Tests 3 papers, 4 reviewers.
+     Reviewers review min: 0, max: [2,1,1,3] papers.
+     The 3 Papers need 2,1,3 reviews.
+     No constraints.
+     Purpose: The original WEF1 picking sequence should fail.
+     We try to see if we can trade around reviewers that papers consider
+     equivalent up to a factor of alpha and still return an allocation.
+     When we set alpha just low enough, we find the right sequence of trades.
+     """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4],
+                [0.5, 0.2, 0.4],
+                [0.7, 0.9, 0.1],
+                [0.2, 0.8, 0.6],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2, 1, 3]
+    solver_A = FairSequence(
+        [0, 0, 0, 0],
+        [2, 1, 1, 3],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+    )
+    solver_A.fixed_alpha = True
+    solver_A.alpha = (8/9) - 0.001
+    res_A = solver_A.solve()
+    assert res_A.shape == (3, 4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+    expected_solution = np.array(
+        [
+            [1, 1, 0, 0],
+            [0, 0, 0, 1],
+            [1, 0, 1, 1],
+        ]
+    )
+    assert np.all(res_A == expected_solution)
+
+
+def test_solvers_fairsequence_make_trades_alpha_blocking_3():
+    """
+     Tests 3 papers, 4 reviewers.
+     Reviewers review min: 0, max: [2,1,1,3] papers.
+     The 3 Papers need 2,1,3 reviews.
+     No constraints.
+     Purpose: The original WEF1 picking sequence should fail.
+     We try to see if we can trade around reviewers that papers consider
+     equivalent up to a factor of alpha and still return an allocation.
+     The algorithm tries alpha = 1.0, 0.75, 0.5, 0.25, and 0.0, in that
+     order. So we should succeed when alpha is the highest possible out of
+     those options (0.5 for this example).
+     """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.3, 0.1, 0.4],
+                [0.5, 0.2, 0.4],
+                [0.7, 0.9, 0.0],
+                [0.3, 0.6, 0.6],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2, 1, 3]
+    solver_A = FairSequence(
+        [0, 0, 0, 0],
+        [2, 1, 1, 3],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (3, 4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+    expected_solution = np.array(
+        [
+            [1, 0, 0, 1],
+            [0, 0, 1, 0],
+            [1, 1, 0, 1],
+        ]
+    )
+    assert np.all(res_A == expected_solution)
+    assert solver_A.alpha == 0.5
