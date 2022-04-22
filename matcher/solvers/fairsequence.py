@@ -455,13 +455,21 @@ class FairSequence(object):
         demand_required_for_min = np.sum(required_for_min)
         been_restricted = False
 
-        self.logger.debug("#info FairSequence:total paper demand is %d" % remaining_demand)
+        self.logger.debug(
+            "#info FairSequence:total paper demand is %d" % remaining_demand
+        )
         start = time.time()
 
         while remaining_demand:
             if remaining_demand % 1000 == 0:
-                self.logger.debug("#info FairSequence:remaining paper demand is %d" % remaining_demand)
-                self.logger.debug("#info FairSequence:total time elapsed: %s s" % (time.time() - start))
+                self.logger.debug(
+                    "#info FairSequence:remaining paper demand is %d"
+                    % remaining_demand
+                )
+                self.logger.debug(
+                    "#info FairSequence:total time elapsed: %s s"
+                    % (time.time() - start)
+                )
 
             next_paper, next_rev, best_revs_map = self._select_next_paper(
                 matrix_alloc,
@@ -509,8 +517,11 @@ class FairSequence(object):
                 not been_restricted
                 and demand_required_for_min >= remaining_demand
             ):
-                self.logger.debug("#info FairSequence:remaining paper demand (%d) equals total remaining reviewer load LBs ("
-                                  "%d), restricting reviewer supply" % (remaining_demand, demand_required_for_min))
+                self.logger.debug(
+                    "#info FairSequence:remaining paper demand (%d) equals total remaining reviewer load LBs ("
+                    "%d), restricting reviewer supply"
+                    % (remaining_demand, demand_required_for_min)
+                )
                 maximums_copy = np.copy(required_for_min)
 
         return matrix_alloc
@@ -531,7 +542,10 @@ class FairSequence(object):
         if improper_papers:
             proper_papers = np.where(self.demands > 0)[0]
 
-            self.logger.debug("#info FairSequence:Found %d papers with 0 demand, removing them for now" % (self.num_papers - proper_papers.shape[0]))
+            self.logger.debug(
+                "#info FairSequence:Found %d papers with 0 demand, removing them for now"
+                % (self.num_papers - proper_papers.shape[0])
+            )
 
             saved_demands = np.copy(self.demands)
             saved_constraint_matrix = np.copy(self.constraint_matrix)
@@ -546,7 +560,9 @@ class FairSequence(object):
         try:
             start = time.time()
             self.solution = self.greedy_wef1()
-            self.logger.debug("#info FairSequence:greedy_wef1 took %s s" % (time.time() - start))
+            self.logger.debug(
+                "#info FairSequence:greedy_wef1 took %s s" % (time.time() - start)
+            )
         except PickingSequenceException:
             self.logger.debug(
                 "Unable to find a WEF1 allocation satisfying all papers' demands. "
@@ -558,7 +574,9 @@ class FairSequence(object):
                 try:
                     start = time.time()
                     self.solution = self.greedy_wef1()
-                    self.logger.debug("#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
+                    self.logger.debug(
+                        "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start)
+                    )
                 except PickingSequenceException:
                     raise SolverException(
                         "Solver could not find a solution. Adjust your parameters."
@@ -570,7 +588,8 @@ class FairSequence(object):
                         start = time.time()
                         self.solution = self.greedy_wef1()
                         self.logger.debug(
-                            "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start))
+                            "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start)
+                        )
                         break
                     except PickingSequenceException as e:
                         self.logger.debug(e)
@@ -580,7 +599,9 @@ class FairSequence(object):
                             )
 
         if improper_papers:
-            self.logger.debug("#info FairSequence:Adding back papers with 0 demand")
+            self.logger.debug(
+                "#info FairSequence:Adding back papers with 0 demand"
+            )
             self.demands = saved_demands
             self.constraint_matrix = saved_constraint_matrix
             self.affinity_matrix = saved_affinity_matrix
@@ -595,7 +616,9 @@ class FairSequence(object):
             self.solution = soln
 
         self.logger.debug(
-            "#info FairSequence:objective score of solution is {}".format(np.sum(self.affinity_matrix * self.solution))
+            "#info FairSequence:objective score of solution is {}".format(
+                np.sum(self.affinity_matrix * self.solution)
+            )
         )
 
         self.solved = True
