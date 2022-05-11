@@ -248,7 +248,6 @@ class FairSequence(object):
             for r in best_revs_map[p]:
                 if (
                     current_reviewer_maximums[r] <= 0
-                    or matrix_alloc[r, p] > 0.5
                     or self.constraint_matrix[r, p] != 0
                     or (
                         math.isclose(self.affinity_matrix[r, p], 0)
@@ -256,6 +255,10 @@ class FairSequence(object):
                     )
                 ):
                     removal_set.append(r)
+                elif matrix_alloc[r, p] > 0.5:
+                    # We don't want to remove this reviewer from consideration forever, but
+                    # we also cannot currently assign them again.
+                    pass
                 elif self.affinity_matrix[r, p] > next_mg:
                     # This agent might be the greedy choice.
                     # Check if this is a valid assignment, then make it the greedy choice if so.
@@ -419,11 +422,11 @@ class FairSequence(object):
             dict_alloc[curr_pap].remove(curr_rev)
 
             matrix_alloc[new_reviewer, curr_pap] = 1
-            dict_alloc[curr_pap].append(curr_rev)
+            dict_alloc[curr_pap].append(new_reviewer)
 
             new_reviewer = curr_rev
 
-        return matrix_alloc, dict_alloc, paper_in_choice_set, new_reviewer
+        return matrix_alloc, dict_alloc, paper_in_choice_set, new_reviewer, path[0][0]
 
     def greedy_wef1(self):
         """Compute a WEF1 assignment via a picking sequence.
@@ -480,17 +483,29 @@ class FairSequence(object):
                 paper_priorities,
             )
 
-            if next_paper is None:
+            if next_paper is not None:
+                maximums_copy[next_rev] -= 1
+                remaining_demand -= 1
+                if required_for_min[next_rev] > 0.1:
+                    required_for_min[next_rev] -= 1
+                    demand_required_for_min -= 1
+            else:
                 if self.safe_mode:
                     raise PickingSequenceException("Could not find a WEF1 picking sequence.")
                 else:
                     try:
-                        matrix_alloc, dict_alloc, next_paper, next_rev = self._trade_and_assign(
+                        matrix_alloc, dict_alloc, next_paper, next_rev, rev_from_pool = self._trade_and_assign(
                             matrix_alloc,
                             dict_alloc,
                             maximums_copy,
                             paper_priorities,
                         )
+                        maximums_copy[rev_from_pool] -= 1
+                        remaining_demand -= 1
+                        if required_for_min[rev_from_pool] > 0.1:
+                            required_for_min[rev_from_pool] -= 1
+                            demand_required_for_min -= 1
+
                     except AStarException as e:
                         raise PickingSequenceException("Could not find a picking sequence with transfers:\n%s" % e)
 
@@ -508,11 +523,6 @@ class FairSequence(object):
                 )
             )
 
-            maximums_copy[next_rev] -= 1
-            remaining_demand -= 1
-            if required_for_min[next_rev] > 0.1:
-                required_for_min[next_rev] -= 1
-                demand_required_for_min -= 1
             if (
                 not been_restricted
                 and demand_required_for_min >= remaining_demand
@@ -523,6 +533,7 @@ class FairSequence(object):
                     % (remaining_demand, demand_required_for_min)
                 )
                 maximums_copy = np.copy(required_for_min)
+                been_restricted = True
 
         return matrix_alloc
 
