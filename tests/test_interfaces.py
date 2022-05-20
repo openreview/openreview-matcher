@@ -14,6 +14,7 @@ def mock_client(
     mock_groups,
     mock_notes,
     mock_grouped_edges,
+    mock_profiles,
 ):
 
     client = mock.MagicMock(openreview.Client)
@@ -37,12 +38,19 @@ def mock_client(
     def get_grouped_edges(invitation, limit=1000, offset=0, **kwargs):
         return mock_grouped_edges[invitation][offset : offset + limit]
 
+    def search_profiles(ids):
+        profiles = []
+        for id in ids:
+            profiles.append(mock_profiles[id])
+        return profiles
+
     client.get_invitation = mock.MagicMock(side_effect=get_invitation)
     client.get_group = mock.MagicMock(side_effect=get_group)
     client.get_note = mock.MagicMock(side_effect=get_note)
     client.get_notes = mock.MagicMock(side_effect=get_notes)
     client.post_note = mock.MagicMock(side_effect=post_note)
     client.get_grouped_edges = mock.MagicMock(side_effect=get_grouped_edges)
+    client.search_profiles = mock.MagicMock(side_effect=search_profiles)
 
     return client
 
@@ -309,6 +317,9 @@ def test_confignote_interface():
                     ],
                 }
             ],
+        },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
         },
     }
 
@@ -649,6 +660,9 @@ def test_confignote_interface_backward_compat_max_users():
                     ],
                 }
             ],
+        },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
         },
     }
 
@@ -1019,6 +1033,9 @@ def test_confignote_interface_custom_demand_edges():
                 }
             ],
         },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
+        },
     }
 
     client = mock_client(**mock_openreview_data)
@@ -1282,6 +1299,9 @@ def test_confignote_missing_edges_spec():
                 }
             ],
         },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
+        },
     }
 
     client = mock_client(**mock_openreview_data)
@@ -1450,6 +1470,9 @@ def test_confignote_interface_no_scores_spec():
                     "values": [{"tail": "~reviewer0", "weight": 1}],
                 }
             ],
+        },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
         },
     }
 
@@ -1746,6 +1769,9 @@ def test_confignote_interface_custom_load_negative():
                 }
             ],
         },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
+        },
     }
 
     client = mock_client(**mock_openreview_data)
@@ -2035,6 +2061,9 @@ def test_confignote_interface_custom_overload():
                 }
             ],
         },
+        "mock_profiles": {
+            "<profile_id>": openreview.Profile(id="<profile_id>")
+        },
     }
 
     client = mock_client(**mock_openreview_data)
@@ -2245,6 +2274,17 @@ def test_confignote_interface_matching_users():
                     ],
                 }
             ],
+        },
+        "mock_profiles": {
+            "~ac0": openreview.Profile(
+                id="~ac0", content={"names": [{"username": "~ac0"}]}
+            ),
+            "~ac1": openreview.Profile(
+                id="~ac1", content={"names": [{"username": "~ac1"}]}
+            ),
+            "~ac2": openreview.Profile(
+                id="~ac2", content={"names": [{"username": "~ac2"}]}
+            ),
         },
     }
 
