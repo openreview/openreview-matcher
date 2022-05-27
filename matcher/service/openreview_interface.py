@@ -72,6 +72,9 @@ class ConfigNoteInterface:
         try:
             self.logger.debug("GET group id={}".format(group_id))
             group = self.client.get_group(group_id)
+            group = openreview.tools.replace_members_with_ids(
+                self.client, group
+            )
             for member in group.members:
                 if not member.startswith("~"):
                     raise openreview.OpenReviewException(
