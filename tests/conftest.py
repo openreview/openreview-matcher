@@ -72,7 +72,9 @@ def initialize_superuser():
 def clean_start_conference(
     client, conference_id, num_reviewers, num_papers, reviews_per_paper
 ):
-    builder = openreview.conference.ConferenceBuilder(client)
+    builder = openreview.conference.ConferenceBuilder(
+        client, "openreview.net/Support"
+    )
     builder.set_conference_id(conference_id)
     now = datetime.datetime.utcnow()
     builder.set_submission_stage(
