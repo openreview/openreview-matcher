@@ -59,7 +59,9 @@ class FairSequence(object):
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.logger.debug("Init FairSequence")
         self.constraint_matrix = encoder.constraint_matrix.transpose()
-        affinity_matrix = encoder.aggregate_score_matrix.transpose().astype(np.float64)
+        affinity_matrix = encoder.aggregate_score_matrix.transpose().astype(
+            np.float64
+        )
 
         self.maximums = np.array(maximums)
         self.minimums = np.array(minimums)
@@ -325,9 +327,9 @@ class FairSequence(object):
                     matrix_alloc[curr_rev, p] < 0.5
                     and self.constraint_matrix[curr_rev, p] == 0
                     and (
-                         not math.isclose(self.affinity_matrix[curr_rev, p], 0)
-                         or self.allow_zero_score_assignments
-                         )
+                        not math.isclose(self.affinity_matrix[curr_rev, p], 0)
+                        or self.allow_zero_score_assignments
+                    )
                 ):
                     end_node = curr[1], curr[2]
                     paper_in_choice_set = p
@@ -353,11 +355,21 @@ class FairSequence(object):
             attained_scores[curr_rev, :] = np.nan
             score_could_get_from_rev = self.affinity_matrix[curr_rev, :]
 
-            w = np.where((score_could_get_from_rev >= self.alpha * attained_scores) * allowed_edges)
+            w = np.where(
+                (score_could_get_from_rev >= self.alpha * attained_scores)
+                * allowed_edges
+            )
 
             for tup in zip(w[0], w[1]):
-                d_tup = self.affinity_matrix[tup] - self.affinity_matrix[curr_rev, tup[1]] + np.max(self.affinity_matrix)
-                if tup not in dists or d_tup + dists[(curr_rev, curr_pap)] < dists[tup]:
+                d_tup = (
+                    self.affinity_matrix[tup]
+                    - self.affinity_matrix[curr_rev, tup[1]]
+                    + np.max(self.affinity_matrix)
+                )
+                if (
+                    tup not in dists
+                    or d_tup + dists[(curr_rev, curr_pap)] < dists[tup]
+                ):
                     if tup not in open_set:
                         open_set.add(tup)
                         open_set_pq.add((d_tup, tup[0], tup[1]))
@@ -369,7 +381,10 @@ class FairSequence(object):
                     parents[tup] = (curr_rev, curr_pap)
                     dists[tup] = d_tup + dists[(curr_rev, curr_pap)]
 
-        raise AStarException("Could not find sequence of swaps to assign a new reviewer. Alpha=%.2f" % self.alpha)
+        raise AStarException(
+            "Could not find sequence of swaps to assign a new reviewer. Alpha=%.2f"
+            % self.alpha
+        )
 
     def _trade_and_assign(
         self,
@@ -400,9 +415,13 @@ class FairSequence(object):
             minimum=(min_priority, -1), maximum=(min_priority, self.num_papers)
         )
         choice_set = [p[1] for p in choice_set]
-        available_reviewers = np.where(current_reviewer_maximums > 0)[0].tolist()
+        available_reviewers = np.where(current_reviewer_maximums > 0)[
+            0
+        ].tolist()
 
-        end_node, paper_in_choice_set, parents = self._a_star(available_reviewers, choice_set, matrix_alloc)
+        end_node, paper_in_choice_set, parents = self._a_star(
+            available_reviewers, choice_set, matrix_alloc
+        )
 
         # Reconstruct the path
         path = []
@@ -426,7 +445,13 @@ class FairSequence(object):
 
             new_reviewer = curr_rev
 
-        return matrix_alloc, dict_alloc, paper_in_choice_set, new_reviewer, path[0][0]
+        return (
+            matrix_alloc,
+            dict_alloc,
+            paper_in_choice_set,
+            new_reviewer,
+            path[0][0],
+        )
 
     def greedy_wef1(self):
         """Compute a WEF1 assignment via a picking sequence.
@@ -491,10 +516,18 @@ class FairSequence(object):
                     demand_required_for_min -= 1
             else:
                 if self.safe_mode:
-                    raise PickingSequenceException("Could not find a WEF1 picking sequence.")
+                    raise PickingSequenceException(
+                        "Could not find a WEF1 picking sequence."
+                    )
                 else:
                     try:
-                        matrix_alloc, dict_alloc, next_paper, next_rev, rev_from_pool = self._trade_and_assign(
+                        (
+                            matrix_alloc,
+                            dict_alloc,
+                            next_paper,
+                            next_rev,
+                            rev_from_pool,
+                        ) = self._trade_and_assign(
                             matrix_alloc,
                             dict_alloc,
                             maximums_copy,
@@ -507,7 +540,10 @@ class FairSequence(object):
                             demand_required_for_min -= 1
 
                     except AStarException as e:
-                        raise PickingSequenceException("Could not find a picking sequence with transfers:\n%s" % e)
+                        raise PickingSequenceException(
+                            "Could not find a picking sequence with transfers:\n%s"
+                            % e
+                        )
 
             matrix_alloc[next_rev, next_paper] = 1
             dict_alloc[next_paper].append(next_rev)
@@ -572,7 +608,8 @@ class FairSequence(object):
             start = time.time()
             self.solution = self.greedy_wef1()
             self.logger.debug(
-                "#info FairSequence:greedy_wef1 took %s s" % (time.time() - start)
+                "#info FairSequence:greedy_wef1 took %s s"
+                % (time.time() - start)
             )
         except PickingSequenceException:
             self.logger.debug(
@@ -586,7 +623,8 @@ class FairSequence(object):
                     start = time.time()
                     self.solution = self.greedy_wef1()
                     self.logger.debug(
-                        "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start)
+                        "#info FairSequence:greedy_wef1 (safe_mode off) took %s s"
+                        % (time.time() - start)
                     )
                 except PickingSequenceException:
                     raise SolverException(
@@ -599,7 +637,8 @@ class FairSequence(object):
                         start = time.time()
                         self.solution = self.greedy_wef1()
                         self.logger.debug(
-                            "#info FairSequence:greedy_wef1 (safe_mode off) took %s s" % (time.time() - start)
+                            "#info FairSequence:greedy_wef1 (safe_mode off) took %s s"
+                            % (time.time() - start)
                         )
                         break
                     except PickingSequenceException as e:

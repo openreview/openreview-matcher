@@ -903,7 +903,7 @@ def test_solvers_fairsequence_make_trades_alpha_blocking():
         encoder(aggregate_score_matrix_A, constraint_matrix),
     )
     solver_A.fixed_alpha = True
-    solver_A.alpha = (8/9) + 0.001
+    solver_A.alpha = (8 / 9) + 0.001
 
     with pytest.raises(
         SolverException,
@@ -914,15 +914,15 @@ def test_solvers_fairsequence_make_trades_alpha_blocking():
 
 def test_solvers_fairsequence_make_trades_alpha_blocking_2():
     """
-     Tests 3 papers, 4 reviewers.
-     Reviewers review min: 0, max: [2,1,1,3] papers.
-     The 3 Papers need 2,1,3 reviews.
-     No constraints.
-     Purpose: The original WEF1 picking sequence should fail.
-     We try to see if we can trade around reviewers that papers consider
-     equivalent up to a factor of alpha and still return an allocation.
-     When we set alpha just low enough, we find the right sequence of trades.
-     """
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 0, max: [2,1,1,3] papers.
+    The 3 Papers need 2,1,3 reviews.
+    No constraints.
+    Purpose: The original WEF1 picking sequence should fail.
+    We try to see if we can trade around reviewers that papers consider
+    equivalent up to a factor of alpha and still return an allocation.
+    When we set alpha just low enough, we find the right sequence of trades.
+    """
     aggregate_score_matrix_A = np.transpose(
         np.array(
             [
@@ -942,7 +942,7 @@ def test_solvers_fairsequence_make_trades_alpha_blocking_2():
         encoder(aggregate_score_matrix_A, constraint_matrix),
     )
     solver_A.fixed_alpha = True
-    solver_A.alpha = (8/9) - 0.001
+    solver_A.alpha = (8 / 9) - 0.001
     res_A = solver_A.solve()
     assert res_A.shape == (3, 4)
     result = [assignments for assignments in np.sum(res_A, axis=1)]
@@ -959,17 +959,17 @@ def test_solvers_fairsequence_make_trades_alpha_blocking_2():
 
 def test_solvers_fairsequence_make_trades_alpha_blocking_3():
     """
-     Tests 3 papers, 4 reviewers.
-     Reviewers review min: 0, max: [2,1,1,3] papers.
-     The 3 Papers need 2,1,3 reviews.
-     No constraints.
-     Purpose: The original WEF1 picking sequence should fail.
-     We try to see if we can trade around reviewers that papers consider
-     equivalent up to a factor of alpha and still return an allocation.
-     The algorithm tries alpha = 1.0, 0.75, 0.5, 0.25, and 0.0, in that
-     order. So we should succeed when alpha is the highest possible out of
-     those options (0.5 for this example).
-     """
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 0, max: [2,1,1,3] papers.
+    The 3 Papers need 2,1,3 reviews.
+    No constraints.
+    Purpose: The original WEF1 picking sequence should fail.
+    We try to see if we can trade around reviewers that papers consider
+    equivalent up to a factor of alpha and still return an allocation.
+    The algorithm tries alpha = 1.0, 0.75, 0.5, 0.25, and 0.0, in that
+    order. So we should succeed when alpha is the highest possible out of
+    those options (0.5 for this example).
+    """
     aggregate_score_matrix_A = np.transpose(
         np.array(
             [
