@@ -41,7 +41,7 @@ Basic implementation using the Minimum Cost function implemented in the Google [
 
 ### FairFlow Solver
 
-Fairlfow solver tries to more fairly assign reviewers to papers in a way that each paper has at least some minimum affinity with the reviewers to which it is assigned.
+Fairflow solver tries to more fairly assign reviewers to papers in a way that each paper has at least some minimum affinity with the reviewers to which it is assigned.
 
 For more information, see [this paper](https://arxiv.org/abs/1905.11924v1)
 
@@ -52,6 +52,12 @@ The randomized solver (`--solver Randomized` on the command line) implements a r
 The solver returns a deterministic assignment which was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn_extension`.
 
 For more information, see [this paper](https://arxiv.org/abs/2006.16437).
+
+### FairSequence Solver
+
+FairSequence (`--solver FairSequence` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. This criterion implies that when one paper has a higher average affinity for another papers' reviewers, it is only due to a single reviewer rather than a larger overall imbalance in affinity scores. Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the lowest ratio of allocation size to demand. Ties in priority are resolved to favor reviewer-paper assignments with higher affinity.
+
+For more information about the WEF1 fairness criterion, see [this paper](https://dl.acm.org/doi/abs/10.1145/3457166), and for more information about the adaptation to reviewer assignment, see [this paper](https://arxiv.org/abs/2108.02126).
 
 ## Running the Server
 The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:
