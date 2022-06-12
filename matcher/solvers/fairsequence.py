@@ -335,16 +335,16 @@ class FairSequence(object):
                     paper_in_choice_set = p
                     return end_node, paper_in_choice_set, parents
 
-            # Only let papers swap out reviewers for curr_rev if:
-            # 1) They are different than curr_rev
-            # 2) The paper isn't in the choice_set
-            # 3) The paper does not have the curr_rev already
-            # 4) There are no other constraints restricting that assignment
             allowed_edges = matrix_alloc.copy()
+            # Only let papers swap out reviewer r for curr_rev if:
+            # 1) r is not curr_rev
             allowed_edges[curr_rev, :] = 0
+            # 2) The paper isn't in the choice_set
             allowed_edges[:, choice_set] = 0
-            if curr_pap > -1:
-                allowed_edges[:, curr_pap] = 0
+            # 3) The paper does not have the curr_rev already
+            papers_with_curr_rev = np.where(matrix_alloc[curr_rev, :])[0]
+            allowed_edges[:, papers_with_curr_rev] = 0
+            # 4) There are no other constraints restricting that assignment
             allowed_edges[np.where(self.constraint_matrix)] = 0
             if not self.allow_zero_score_assignments:
                 allowed_edges[np.isclose(self.affinity_matrix, 0)] = 0
@@ -352,7 +352,6 @@ class FairSequence(object):
             # Only let papers swap reviewers for curr_rev if they value
             # curr_rev at least alpha * the value they're losing
             attained_scores = matrix_alloc * self.affinity_matrix
-            attained_scores[curr_rev, :] = np.nan
             score_could_get_from_rev = self.affinity_matrix[curr_rev, :]
 
             w = np.where(
@@ -360,11 +359,12 @@ class FairSequence(object):
                 * allowed_edges
             )
 
+            max_drop = np.max(self.affinity_matrix) - np.min(self.affinity_matrix)
             for tup in zip(w[0], w[1]):
                 d_tup = (
                     self.affinity_matrix[tup]
                     - self.affinity_matrix[curr_rev, tup[1]]
-                    + np.max(self.affinity_matrix)
+                    + max_drop
                 )
                 if (
                     tup not in dists
