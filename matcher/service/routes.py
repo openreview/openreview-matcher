@@ -5,6 +5,7 @@ TODO: could error handling be cleaner?
 """
 import flask
 import openreview
+import redis
 from flask_cors import CORS
 
 from .openreview_interface import ConfigNoteInterface
@@ -57,30 +58,30 @@ def match():
             logger=flask.current_app.logger,
         )
 
-        interface.validate_group(interface.match_group)
         openreview_client.impersonate(interface.venue_id)
+        config_note_status = interface.config_note.content["status"]
 
-        if interface.config_note.content["status"] == "Running":
+        if config_note_status == "Running":
             raise MatcherStatusException("Matcher is already running")
-        if interface.config_note.content["status"] == "Complete":
+        if config_note_status == "Complete":
             raise MatcherStatusException(
                 "Match configured by {} is already complete".format(
                     config_note_id
                 )
             )
-        if interface.config_note.content["status"] == "Deploying":
+        if config_note_status == "Deploying":
             raise MatcherStatusException(
                 "Match configured by {} is being deployed".format(
                     config_note_id
                 )
             )
-        if interface.config_note.content["status"] == "Deployed":
+        if config_note_status == "Deployed":
             raise MatcherStatusException(
                 "Match configured by {} is already deployed".format(
                     config_note_id
                 )
             )
-        if interface.config_note.content["status"] == "Queued":
+        if config_note_status == "Queued":
             raise MatcherStatusException(
                 "Match configured by {} is already in queue.".format(
                     config_note_id
@@ -96,6 +97,8 @@ def match():
         )
 
         interface.set_status(MatcherStatus.QUEUED)
+
+        interface.validate_group(interface.match_group)
 
         from .celery_tasks import run_matching
 

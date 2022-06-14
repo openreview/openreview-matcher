@@ -31,6 +31,7 @@ class MatcherStatus(Enum):
     DEPLOYED = "Deployed"
     DEPLOYMENT_ERROR = "Deployment Error"
     QUEUED = "Queued"
+    CANCELLED = "Cancelled"
 
 
 class MatcherError(Exception):
