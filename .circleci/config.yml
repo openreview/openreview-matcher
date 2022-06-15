@@ -36,6 +36,7 @@ jobs:
     - run: mkdir ~/openreview-v2/files
     - run: mkdir ~/openreview-v2/files/attachments
     - run: mkdir ~/openreview-v2/files/pdfs
+    - run: mkdir ~/openreview-v2/files/temp
     - run:
         name: setup virtual environment
         command: |
