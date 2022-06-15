@@ -52,6 +52,10 @@ def match():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL"]
         )
 
+        from matcher.service.server import redis_pool
+
+        redis_conn = redis.Redis(connection_pool=redis_pool)
+
         interface = ConfigNoteInterface(
             client=openreview_client,
             config_note_id=config_note_id,
@@ -59,7 +63,12 @@ def match():
         )
 
         openreview_client.impersonate(interface.venue_id)
-        config_note_status = interface.config_note.content["status"]
+
+        config_note_status = redis_conn.hget(
+            name="config_notes", key=config_note_id
+        )
+        if not config_note_status:
+            config_note_status = interface.config_note.content["status"]
 
         if config_note_status == "Running":
             raise MatcherStatusException("Matcher is already running")
