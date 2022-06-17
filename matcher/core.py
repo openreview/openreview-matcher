@@ -74,6 +74,7 @@ class KeywordDatasource:
         self.assignments_output = assignments_output
         self.alternates_output = alternates_output
         self.logger = logger
+        self.match_group = None
 
     def set_assignments(self, assignments):
         self.logger.info("Writing assignments to file")
@@ -91,6 +92,9 @@ class KeywordDatasource:
                 status.value, message, additional_status_info
             )
         )
+
+    def validate_group(self, group_id):
+        pass
 
 
 class Matcher:
