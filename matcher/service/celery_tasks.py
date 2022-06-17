@@ -132,6 +132,9 @@ def cancel_stale_notes(
                 value=MatcherStatus.CANCELLED.value,
             )
             config_note.content["status"] = MatcherStatus.CANCELLED.value
+            config_note.content[
+                "error_message"
+            ] = "Matching run was cancelled, please try again or contact support."
             openreview_client.post_note(config_note)
             print(
                 "Config Note {} status set to: {}".format(

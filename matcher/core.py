@@ -145,6 +145,9 @@ class Matcher:
         The config note's status field will be set to reflect completion or errors.
         """
         try:
+            self.logger.info("Validating Match Group")
+            self.datasource.validate_group(self.datasource.match_group)
+
             self.set_status(MatcherStatus.RUNNING)
 
             self.logger.debug("Start encoding")
