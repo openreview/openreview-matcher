@@ -312,8 +312,24 @@ class FairSequence(object):
             open_set.add((r, -1))
             dists[(r, -1)] = 0
 
+        st = time.time()
+        self.logger.debug(
+            "#info FairSequence:Starting main A* loop.\n open_set_pq: %s\nopen_set: %s"
+            % (list(open_set_pq), open_set)
+        )
+
         while len(open_set_pq):
             curr = open_set_pq.pop(0)
+
+            self.logger.debug(
+                "#info FairSequence:Expanding %s. Time elapsed: %s s"
+                % (curr, time.time() - st)
+            )
+
+            self.logger.debug(
+                "#info FairSequence:open_set_pq: %s\nopen_set: %s"
+                % (list(open_set_pq), open_set)
+            )
 
             # The next nodes are any paper, reviewer pair where the
             # paper could swap out the reviewer with the current.
@@ -334,6 +350,11 @@ class FairSequence(object):
                     end_node = curr[1], curr[2]
                     paper_in_choice_set = p
                     return end_node, paper_in_choice_set, parents
+
+            self.logger.debug(
+                "#info FairSequence:No assignments possible to choice papers. Time elapsed: %s s"
+                % (time.time() - st)
+            )
 
             allowed_edges = matrix_alloc.copy()
             # Only let papers swap out reviewer r for curr_rev if:
@@ -361,9 +382,14 @@ class FairSequence(object):
 
             max_drop = np.max(self.affinity_matrix) - np.min(self.affinity_matrix)
             for tup in zip(w[0], w[1]):
+                self.logger.debug(
+                    "#info FairSequence:Compute d_tup for giving %d to %d instead of %d. "
+                    "Score decrease (should be negative) is %.5f"
+                    % (curr_rev, tup[1], tup[0], (self.affinity_matrix[curr_rev, tup[1]])- self.affinity_matrix[tup])
+                )
                 d_tup = (
-                    self.affinity_matrix[tup]
-                    - self.affinity_matrix[curr_rev, tup[1]]
+                    self.affinity_matrix[curr_rev, tup[1]]
+                    - self.affinity_matrix[tup]
                     + max_drop
                 )
                 if (
@@ -379,7 +405,16 @@ class FairSequence(object):
                         open_set.add(tup)
                         open_set_pq.add((d_tup, tup[0], tup[1]))
                     parents[tup] = (curr_rev, curr_pap)
+
+                    if tup in dists:
+                        old_dist = dists[tup]
+                    else:
+                        old_dist = np.infty
                     dists[tup] = d_tup + dists[(curr_rev, curr_pap)]
+                    self.logger.debug(
+                        "#info FairSequence:Updating dists[%s]. Was: %.5f, Now: %.5f"
+                        % (tup, old_dist, dists[tup])
+                    )
 
         raise AStarException(
             "Could not find sequence of swaps to assign a new reviewer. Alpha=%.2f"
@@ -419,10 +454,24 @@ class FairSequence(object):
             0
         ].tolist()
 
+        st = time.time()
+        self.logger.debug(
+            "#info FairSequence:Starting A*. Available reviewers: %s, Papers who can be assigned to: %s"
+            % (available_reviewers, choice_set)
+        )
         end_node, paper_in_choice_set, parents = self._a_star(
             available_reviewers, choice_set, matrix_alloc
         )
+        self.logger.debug(
+            "#info FairSequence:A* completed in %s s"
+            % (time.time() - st)
+        )
 
+        st = time.time()
+        self.logger.debug(
+            "#info FairSequence:Beginning path reconstruction. Parents map: %s, End node: %s"
+            % (parents, end_node)
+        )
         # Reconstruct the path
         path = []
         curr = end_node
@@ -430,6 +479,15 @@ class FairSequence(object):
         while curr in parents:
             curr = parents[curr]
             path.append(curr)
+        self.logger.debug(
+            "#info FairSequence:Path reconstruction completed in %s s"
+            % (time.time() - st)
+        )
+
+        self.logger.debug(
+            "#info FairSequence:Transfer path: %s"
+            % (path[::-1])
+        )
 
         # Make the reviewer transfers
         path = path[::-1]
@@ -520,6 +578,11 @@ class FairSequence(object):
                         "Could not find a WEF1 picking sequence."
                     )
                 else:
+                    self.logger.debug(
+                        "#info FairSequence:Failed to find a reviewer to assign directly to a paper. "
+                        "Searching for chain of assignment..."
+                    )
+                    st = time.time()
                     try:
                         (
                             matrix_alloc,
@@ -532,6 +595,14 @@ class FairSequence(object):
                             dict_alloc,
                             maximums_copy,
                             paper_priorities,
+                        )
+                        self.logger.debug(
+                            "#info FairSequence:Found chain of assignment in %s s"
+                            % (time.time() - st)
+                        )
+                        self.logger.debug(
+                            "#info FairSequence:Assigning %d to %d. Took %d from pool"
+                            % (next_rev, next_paper, rev_from_pool)
                         )
                         maximums_copy[rev_from_pool] -= 1
                         remaining_demand -= 1
