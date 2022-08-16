@@ -16,7 +16,7 @@ class ConfigNoteInterface:
         self.client = client
         self.logger = logger
         self.logger.debug("GET note id={}".format(config_note_id))
-        self.config_note = self.client.get_note(config_note_id)
+        self.config_note = self._cast_content_values(self.client.get_note(config_note_id))
         self.venue_id = self.config_note.signatures[0]
         self.label = self.config_note.content["title"]
         self.match_group = self.config_note.content["match_group"]
@@ -166,6 +166,16 @@ class ConfigNoteInterface:
             self._maximums = maximums
 
         return self._maximums
+
+    def _cast_content_values(self, note):
+        new_content = {}
+        for key, val in note.content.items():
+            if isinstance(val, dict) and 'values' in val.keys():
+                new_content[key] = val['values']
+            else:
+                new_content[key] = val
+        note.content = new_content
+        return note
 
     def _get_custom_demand_edges(self):
         """Helper function to get all the custom demand edges"""
