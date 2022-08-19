@@ -13,6 +13,13 @@ import pytest
 
 import openreview
 
+from openreview.api import OpenReviewClient
+from openreview.api import Note
+from openreview.api import Group
+from openreview.api import Invitation
+from openreview.api import Edge
+from openreview.venue import Venue
+
 import matcher.service
 
 AFFINITY_SCORE_FILE = "./affinity_scores"
@@ -66,8 +73,114 @@ def initialize_superuser():
         username="openreview.net",
         password="1234",
     )
-    return client
+    client_v2 = OpenReviewClient(
+        baseurl="http://localhost:3001",
+        username="openreview.net",
+        password="1234",
+    )
+    return client, client_v2
 
+def create_user(email, first, last, alternates=[], institution=None):
+        client = openreview.Client(baseurl = 'http://localhost:3000')
+        assert client is not None, "Client is none"
+        res = client.register_user(email = email, first = first, last = last, password = '1234')
+        username = res.get('id')
+        assert res, "Res i none"
+        profile_content={
+            'names': [
+                    {
+                        'first': first,
+                        'last': last,
+                        'username': username
+                    }
+                ],
+            'emails': [email] + alternates,
+            'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email
+        }
+        if institution:
+            profile_content['history'] = [{
+                'position': 'PhD Student',
+                'start': 2017,
+                'end': None,
+                'institution': {
+                    'domain': institution
+                }
+            }]
+        res = client.activate_user(email, profile_content)
+        assert res, "Res i none"
+        return client
+
+def clean_start_conference_v2(
+    openreview_client, conference_id, num_reviewers, num_papers, reviews_per_paper
+):
+    
+    venue = Venue(openreview_client, conference_id)
+    venue.use_area_chairs = True
+    venue.setup()
+
+    now = datetime.datetime.utcnow()
+    '''
+    venue.set_submission_stage(
+        openreview.builder.SubmissionStage(
+            readers=[openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED],
+            due_date=now + datetime.timedelta(minutes=10),
+            withdrawn_submission_reveal_authors=True,
+            desk_rejected_submission_reveal_authors=True,
+        )
+    )
+    '''
+    venue.set_submission_stage(openreview.builder.SubmissionStage(double_blind=True, readers=[openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED]))
+
+    create_user('celeste@mailnine.com', 'Celeste', 'Martinez')
+    author_client = OpenReviewClient(username='celeste@mailnine.com', password='1234')
+
+    reviewers = set()
+
+    # TODO: is there a better way to handle affinity scores?
+    # Maybe conference.setup_matching() should allow a score matrix as input
+    with open(AFFINITY_SCORE_FILE, "w") as file_handle:
+        for paper_number in range(num_papers):
+
+            authorids = [
+                "testauthor{0}{1}@test.com".format(paper_number, author_code)
+                for author_code in ["a", "b", "c"]
+            ]
+            authors = ["Author Author" for _ in ["A", "B", "C"]]
+
+            posted_submission = author_client.post_note_edit(
+                invitation=f'{conference_id}/-/Submission',
+                signatures= ['~Celeste_Martinez1'],
+                note=Note(
+                    content={
+                        'title': { 'value': "Test_Paper_{}".format(paper_number) },
+                        'abstract': { 'value': 'Paper abstract' },
+                        'authors': { 'value': authors},
+                        'authorids': { 'value': authorids},
+                        'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
+                        'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
+                    }
+                )
+            )
+
+            for index in range(0, num_reviewers):
+                reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
+                reviewers.add(reviewer)
+                score = random.random()
+                row = [
+                    posted_submission.forum,
+                    reviewer,
+                    "{:.3f}".format(score),
+                ]
+                file_handle.write(",".join(row) + "\n")
+
+    venue.setup_post_submission_stage()
+
+    reviewer_group = openreview_client.get_group(venue.id + '/Program_Committee')
+    openreview_client.add_members_to_group(reviewer_group, reviewers)
+
+    venue.setup_committee_matching(committee_id=venue.get_reviewers_id(), compute_affinity_scores=AFFINITY_SCORE_FILE, compute_conflicts=True)
+
+    return venue
 
 def clean_start_conference(
     client, conference_id, num_reviewers, num_papers, reviews_per_paper
@@ -142,7 +255,6 @@ def clean_start_conference(
 
     return conference
 
-
 def assert_arrays(array_A, array_B, is_string=False):
     if is_string:
         assert all([a == b for a, b in zip(sorted(array_A), sorted(array_B))])
@@ -173,6 +285,7 @@ def openreview_context():
             "OPENREVIEW_USERNAME": "openreview.net",
             "OPENREVIEW_PASSWORD": "1234",
             "OPENREVIEW_BASEURL": "http://localhost:3000",
+            "OPENREVIEW_BASEURL_V2": "http://localhost:3001",
             "SUPERUSER_FIRSTNAME": "Super",
             "SUPERUSER_LASTNAME": "User",
             "SUPERUSER_TILDE_ID": "~Super_User1",
@@ -180,7 +293,7 @@ def openreview_context():
         }
     )
 
-    superuser_client = initialize_superuser()
+    superuser_client, superuser_v2 = initialize_superuser()
     for index in range(0, 26):
         openreview.tools.create_profile(
             superuser_client,
@@ -193,6 +306,7 @@ def openreview_context():
             "app": app,
             "test_client": app.test_client(),
             "openreview_client": superuser_client,
+            "openreview_client_v2": superuser_v2
         }
 
 
