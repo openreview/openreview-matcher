@@ -50,9 +50,13 @@ def match():
         openreview_client = openreview.Client(
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL"]
         )
+        openreview_client_v2 = openreview.api.OpenReviewClient(
+            token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
+        )
 
         interface = ConfigNoteInterface(
             client=openreview_client,
+            client_v2=openreview_client_v2,
             config_note_id=config_note_id,
             logger=flask.current_app.logger,
         )
@@ -177,9 +181,13 @@ def deploy():
         openreview_client = openreview.Client(
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL"]
         )
+        openreview_client_v2 = openreview.api.OpenReviewClient(
+            token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
+        )
 
         interface = ConfigNoteInterface(
             client=openreview_client,
+            client_v2=openreview_client_v2,
             config_note_id=config_note_id,
             logger=flask.current_app.logger,
         )

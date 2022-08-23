@@ -9,6 +9,7 @@ from tests.conftest import clean_start_conference, wait_for_status
 
 def test_matching_task(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
+    openreview_client_v2 = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
     app = openreview_context["app"]
 
@@ -82,6 +83,7 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
 
     interface = ConfigNoteInterface(
         client=openreview_client,
+        client_v2=openreview_client_v2,
         config_note_id=config_note.id,
         logger=app.logger,
     )

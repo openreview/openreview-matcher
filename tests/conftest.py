@@ -41,7 +41,7 @@ def ping_url(url):
     raise TimeoutError("no response within {} iterations".format(iterations))
 
 
-def wait_for_status(client, config_note_id):
+def wait_for_status(client, config_note_id, api_version = 1):
     """
     Repeatedly requests the configuration note until its status is not 'Initialized' or 'Running',
     then returns the status.
@@ -50,7 +50,13 @@ def wait_for_status(client, config_note_id):
     interval_duration = 0.5
     for _ in range(max_iterations):
         config_note = client.get_note(config_note_id)
-        if config_note.content["status"] in [
+
+        if api_version == 1:
+            status = config_note.content["status"]
+        elif api_version == 2:
+            status = config_note.content["status"]["value"]
+
+        if status in [
             "Initialized",
             "Running",
             "Queued",
@@ -58,6 +64,7 @@ def wait_for_status(client, config_note_id):
             time.sleep(interval_duration)
         else:
             return config_note
+
 
     raise TimeoutError("matcher did not finish")
 
@@ -119,7 +126,7 @@ def clean_start_conference_v2(
     venue.setup()
 
     now = datetime.datetime.utcnow()
-    '''
+    
     venue.set_submission_stage(
         openreview.builder.SubmissionStage(
             readers=[openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED],
@@ -128,57 +135,50 @@ def clean_start_conference_v2(
             desk_rejected_submission_reveal_authors=True,
         )
     )
-    '''
-    venue.set_submission_stage(openreview.builder.SubmissionStage(double_blind=True, readers=[openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED]))
-
-    create_user('celeste@mailnine.com', 'Celeste', 'Martinez')
-    author_client = OpenReviewClient(username='celeste@mailnine.com', password='1234')
-
+    
     reviewers = set()
 
-    # TODO: is there a better way to handle affinity scores?
-    # Maybe conference.setup_matching() should allow a score matrix as input
-    with open(AFFINITY_SCORE_FILE, "w") as file_handle:
-        for paper_number in range(num_papers):
+    scores_string = ''
+    for paper_number in range(num_papers):
 
-            authorids = [
-                "testauthor{0}{1}@test.com".format(paper_number, author_code)
-                for author_code in ["a", "b", "c"]
-            ]
-            authors = ["Author Author" for _ in ["A", "B", "C"]]
+        authorids = [
+            "~Test_Author{1}{0}".format(paper_number, author_code)
+            for author_code in ["a", "b", "c"]
+        ]
+        authors = ["Author Author" for _ in ["A", "B", "C"]]
 
-            posted_submission = author_client.post_note_edit(
-                invitation=f'{conference_id}/-/Submission',
-                signatures= ['~Celeste_Martinez1'],
-                note=Note(
-                    content={
-                        'title': { 'value': "Test_Paper_{}".format(paper_number) },
-                        'abstract': { 'value': 'Paper abstract' },
-                        'authors': { 'value': authors},
-                        'authorids': { 'value': authorids},
-                        'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
-                        'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
-                    }
-                )
+        posted_submission = openreview_client.post_note_edit(
+            invitation=f'{conference_id}/-/Submission',
+            signatures= ['~Super_User1'],
+            note=Note(
+                content={
+                    'title': { 'value': "Test_Paper_{}".format(paper_number) },
+                    'abstract': { 'value': 'Paper abstract' },
+                    'authors': { 'value': authors},
+                    'authorids': { 'value': authorids},
+                    'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
+                    'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
+                }
             )
+        )
 
-            for index in range(0, num_reviewers):
-                reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
-                reviewers.add(reviewer)
-                score = random.random()
-                row = [
-                    posted_submission.forum,
-                    reviewer,
-                    "{:.3f}".format(score),
-                ]
-                file_handle.write(",".join(row) + "\n")
+        for index in range(0, num_reviewers):
+            reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
+            reviewers.add(reviewer)
+            score = random.random()
+            row = [
+                posted_submission['id'],
+                reviewer,
+                "{:.3f}".format(score),
+            ]
+            scores_string += ",".join(row) + "\n"
 
     venue.setup_post_submission_stage()
 
-    reviewer_group = openreview_client.get_group(venue.id + '/Program_Committee')
-    openreview_client.add_members_to_group(reviewer_group, reviewers)
+    reviewer_group = openreview_client.get_group(venue.id + '/Reviewers')
+    openreview_client.add_members_to_group(reviewer_group, list(reviewers))
 
-    venue.setup_committee_matching(committee_id=venue.get_reviewers_id(), compute_affinity_scores=AFFINITY_SCORE_FILE, compute_conflicts=True)
+    venue.setup_committee_matching(committee_id=venue.get_reviewers_id(), compute_affinity_scores=scores_string.encode('utf-8'), compute_conflicts=True)
 
     return venue
 

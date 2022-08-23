@@ -4,38 +4,67 @@ import logging
 from tqdm import tqdm
 from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
+from openreview.api import Note
 
 
 class ConfigNoteInterface:
     def __init__(
         self,
         client,
+        client_v2,
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
         self.client = client
+        self.client_v2 = client_v2
         self.logger = logger
         self.logger.debug("GET note id={}".format(config_note_id))
-        self.config_note = self._cast_content_values(self.client.get_note(config_note_id))
+        try:
+            config_note = self.client.get_note(config_note_id)
+            self.api_version = 1
+        except:
+            config_note = self.client_v2.get_note(config_note_id)
+            self.api_version = 2
+
+        self.config_note = self._cast_content_values(config_note)
         self.venue_id = self.config_note.signatures[0]
         self.label = self.config_note.content["title"]
         self.match_group = self.config_note.content["match_group"]
+
         self.logger.debug(
             "GET invitation id={}".format(
                 self.config_note.content["assignment_invitation"]
             )
         )
-        self.assignment_invitation = self.client.get_invitation(
-            self.config_note.content["assignment_invitation"]
+        if self.api_version == 1:
+            self.assignment_invitation = self.client.get_invitation(
+                self.config_note.content["assignment_invitation"]
+            )
+        elif self.api_version == 2:
+            self.assignment_invitation = self.client_v2.get_invitation(
+                self.config_note.content["assignment_invitation"]
+            )
+
+        self.logger.debug(
+            "API version={}".format(
+                self.api_version
+            )
         )
+
         self.logger.debug(
             "GET invitation id={}".format(
                 self.config_note.content["aggregate_score_invitation"]
             )
         )
-        self.aggregate_score_invitation = self.client.get_invitation(
-            self.config_note.content["aggregate_score_invitation"]
-        )
+        if self.api_version == 1:
+            self.aggregate_score_invitation = self.client.get_invitation(
+                self.config_note.content["aggregate_score_invitation"]
+            )
+        elif self.api_version == 2:
+            self.aggregate_score_invitation = self.client_v2.get_invitation(
+                self.config_note.content["aggregate_score_invitation"]
+            )
+
         self.num_alternates = int(self.config_note.content["alternates"])
         self.paper_numbers = {}
         self.allow_zero_score_assignments = (
@@ -62,9 +91,13 @@ class ConfigNoteInterface:
             "scores_specification", {}
         ):
             try:
-                self.logger.debug("GET invitation id={}".format(invitation_id))
-                self.client.get_invitation(invitation_id)
-            except openreview.OpenReviewException as error_handle:
+                if self.api_version == 1:
+                    self.logger.debug("GET invitation id={}".format(invitation_id))
+                    self.client.get_invitation(invitation_id)
+                elif self.api_version == 2:
+                    self.logger.debug("GET invitation id={}".format(invitation_id))
+                    self.client_v2.get_invitation(invitation_id)
+            except Exception as error_handle:
                 self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
 
@@ -72,6 +105,7 @@ class ConfigNoteInterface:
         try:
             self.logger.debug("GET group id={}".format(group_id))
             group = self.client.get_group(group_id)
+            self.logger.debug("GET group ={}".format(group))
             group = openreview.tools.replace_members_with_ids(
                 self.client, group
             )
@@ -129,13 +163,24 @@ class ConfigNoteInterface:
                                 )
                             )
             if "/-/" in paper_invitation:
-                paper_notes = list(
-                    openreview.tools.iterget_notes(
-                        self.client,
-                        invitation=paper_invitation,
-                        content=content_dict,
+                if self.api_version == 1:
+                    paper_notes = list(
+                        openreview.tools.iterget_notes(
+                            self.client,
+                            invitation=paper_invitation,
+                            content=content_dict,
+                        )
                     )
-                )
+                elif self.api_version == 2:
+                    paper_notes = list(
+                        openreview.tools.iterget_notes(
+                            self.client_v2,
+                            invitation=paper_invitation,
+                            content=content_dict,
+                        )
+                    )
+
+                paper_notes = [self._cast_content_values(n) for n in paper_notes]
                 self._papers = [n.id for n in paper_notes]
                 self.paper_numbers = {n.id: n.number for n in paper_notes}
                 self.logger.debug(
@@ -170,8 +215,18 @@ class ConfigNoteInterface:
     def _cast_content_values(self, note):
         new_content = {}
         for key, val in note.content.items():
-            if isinstance(val, dict) and 'values' in val.keys():
-                new_content[key] = val['values']
+            if isinstance(val, dict) and 'value' in val.keys():
+                new_content[key] = val['value']
+            else:
+                new_content[key] = val
+        note.content = new_content
+        return note
+
+    def _uncast_content_values(self, note):
+        new_content = {}
+        for key, val in note.content.items():
+            if not (isinstance(val, dict) and 'value' in val.keys()):
+                new_content[key] = {'value': val}
             else:
                 new_content[key] = val
         note.content = new_content
@@ -189,12 +244,22 @@ class ConfigNoteInterface:
                     custom_demand_invitation
                 )
             )
-            custom_demand_edges = self.client.get_grouped_edges(
-                invitation=custom_demand_invitation,
-                groupby="tail",
-                tail=self.match_group,
-                select="head,weight",
-            )
+
+            if self.api_version == 1:
+                custom_demand_edges = self.client.get_grouped_edges(
+                    invitation=custom_demand_invitation,
+                    groupby="tail",
+                    tail=self.match_group,
+                    select="head,weight",
+                )
+            elif self.api_version == 2:
+                custom_demand_edges = self.client_v2.get_grouped_edges(
+                    invitation=custom_demand_invitation,
+                    groupby="tail",
+                    tail=self.match_group,
+                    select="head,weight",
+                )
+
         return custom_demand_edges
 
     def _get_custom_supply_edges(self):
@@ -209,12 +274,22 @@ class ConfigNoteInterface:
                     custom_supply_invitation
                 )
             )
-            custom_supply_edges = self.client.get_grouped_edges(
-                invitation=custom_supply_invitation,
-                groupby="head",
-                head=self.match_group,
-                select="tail,weight",
-            )
+
+            if self.api_version == 1:
+                custom_supply_edges = self.client.get_grouped_edges(
+                    invitation=custom_supply_invitation,
+                    groupby="head",
+                    head=self.match_group,
+                    select="tail,weight",
+                )
+            elif self.api_version == 2:
+                custom_supply_edges = self.client_v2.get_grouped_edges(
+                    invitation=custom_supply_invitation,
+                    groupby="head",
+                    head=self.match_group,
+                    select="tail,weight",
+                )
+
         return custom_supply_edges
 
     @property
@@ -313,13 +388,27 @@ class ConfigNoteInterface:
 
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
+
+        # Catch none message
+        if message is None:
+            message = ''
+
         self.config_note.content["status"] = status.value
         self.config_note.content["error_message"] = message
         for key, value in additional_status_info.items():
             print("Save property", key, value)
             self.config_note.content[key] = value
 
-        self.config_note = self.client.post_note(self.config_note)
+        if self.api_version == 1:
+            self.config_note = self.client.post_note(self.config_note)
+        elif self.api_version == 2:
+            config_note_v2 = self.client_v2.post_note_edit(
+                invitation="{}/-/Assignment_Configuration".format(self.match_group),
+                signatures=[self.venue_id],
+                note=Note(id=self.config_note.id, content=self._uncast_content_values(self.config_note).content)
+            )
+            self.config_note = self._cast_content_values(self.client_v2.get_note(self.config_note.id))
+
         self.logger.debug(
             "Config Note {} status set to: {}".format(
                 self.config_note.id, self.config_note.content["status"]
@@ -364,8 +453,16 @@ class ConfigNoteInterface:
                     )
                 )
 
-        openreview.tools.post_bulk_edges(self.client, assignment_edges)
-        openreview.tools.post_bulk_edges(self.client, score_edges)
+        # Find the API1/2 invitation
+        if self.api_version == 1:
+            self.client.get_invitation(self.assignment_invitation.id)
+            openreview.tools.post_bulk_edges(self.client, assignment_edges)
+            openreview.tools.post_bulk_edges(self.client, score_edges)
+        elif self.api_version == 2:
+            self.client_v2.get_invitation(self.assignment_invitation.id)
+            openreview.tools.post_bulk_edges(self.client_v2, assignment_edges)
+            openreview.tools.post_bulk_edges(self.client_v2, score_edges)
+
         self.logger.debug(
             "posted {} assignment edges".format(len(assignment_edges))
         )
@@ -394,8 +491,11 @@ class ConfigNoteInterface:
                         paper_number,
                     )
                 )
+        if self.api_version == 1:
+            openreview.tools.post_bulk_edges(self.client, score_edges)
+        elif self.api_version == 2:
+            openreview.tools.post_bulk_edges(self.client_v2, score_edges)
 
-        openreview.tools.post_bulk_edges(self.client, score_edges)
         self.logger.debug(
             "posted {} aggregate score edges for alternates".format(
                 len(score_edges)
@@ -444,11 +544,18 @@ class ConfigNoteInterface:
         all_reviewers = {r: r for r in self.reviewers}
         self.logger.debug("GET invitation id={}".format(edge_invitation_id))
 
-        edges_grouped_by_paper = self.client.get_grouped_edges(
-            invitation=edge_invitation_id,
-            groupby="head",
-            select="tail,label,weight",
-        )
+        if self.api_version == 1:
+            edges_grouped_by_paper = self.client.get_grouped_edges(
+                invitation=edge_invitation_id,
+                groupby="head",
+                select="tail,label,weight",
+            )
+        elif self.api_version == 2:
+            edges_grouped_by_paper = self.client_v2.get_grouped_edges(
+                invitation=edge_invitation_id,
+                groupby="head",
+                select="tail,label,weight",
+            )
 
         self.logger.debug(
             "GET grouped edges invitation id={}".format(edge_invitation_id)
@@ -487,25 +594,62 @@ class ConfigNoteInterface:
         Helper function for constructing an openreview.Edge object.
         Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
         """
-        return openreview.Edge(
-            head=forum_id,
-            tail=reviewer,
-            weight=score,
-            label=label,
-            invitation=invitation.id,
-            readers=self._get_values(
-                invitation, number, "readers", forum_id, reviewer
-            ),
-            nonreaders=self._get_values(invitation, number, "nonreaders"),
-            writers=self._get_values(invitation, number, "writers"),
-            signatures=[self.venue_id],
-        )
+        if self.api_version == 1:
+            return openreview.Edge(
+                head=forum_id,
+                tail=reviewer,
+                weight=score,
+                label=label,
+                invitation=invitation.id,
+                readers=self._get_values(
+                    invitation, number, "readers", forum_id, reviewer
+                ),
+                nonreaders=self._get_values(invitation, number, "nonreaders"),
+                writers=self._get_values(invitation, number, "writers"),
+                signatures=[self.venue_id],
+            )
+        elif self.api_version == 2:
+            return openreview.api.Edge(
+                head=forum_id,
+                tail=reviewer,
+                weight=score,
+                label=label,
+                invitation=invitation.id,
+                readers=self._get_values(
+                    invitation, number, "readers", forum_id, reviewer
+                ),
+                nonreaders=self._get_values(invitation, number, "nonreaders"),
+                writers=self._get_values(invitation, number, "writers"),
+                signatures=[self.venue_id],
+            )
 
     def _get_values(self, invitation, number, property, head=None, tail=None):
         """Return values compatible with the field `property` in invitation.reply.content"""
         values = []
 
-        property_params = invitation.reply.get(property, {})
+        # Perform API2 check
+        if getattr(invitation, "reply", None) is not None:
+            property_params = invitation.reply.get(property, {})
+        elif getattr(invitation, "edit", None) is not None:
+            property_params = invitation.edit.get(property, {})
+        else:
+            raise openreview.OpenReviewException('Reply/Edge attribute not present in invitation')
+
+        parsed_params = []
+        if isinstance(property_params, list):
+            for param in property_params:
+                if '$' not in param:
+                    parsed_params.append(param)
+                else:
+                    new_param = param.replace("${{2/head}/number}", str(number))
+                    if head:
+                        new_param = new_param.replace("${2/tail}", tail)
+                    if tail:
+                        new_param = new_param.replace("${2/head}", head)
+                    parsed_params.append(new_param)
+            return parsed_params
+
+
         if "values" in property_params:
             values = property_params.get("values", [])
         elif "values-regex" in property_params:
@@ -576,27 +720,49 @@ class Deployment:
         try:
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
-            notes = self.config_note_interface.client.get_notes(
-                invitation="OpenReview.net/Support/-/Request_Form",
-                content={"venue_id": self.config_note_interface.venue_id},
-            )
+            if self.config_note_interface.api_version == 1:
+                notes = self.config_note_interface.client.get_notes(
+                    invitation="OpenReview.net/Support/-/Request_Form",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+
+                conference = openreview.helpers.get_conference(
+                    self.config_note_interface.client, notes[0].id
+                )
+
+                # impersonate user to get all the permissions to deploy the groups
+                conference.client.impersonate(self.config_note_interface.venue_id)
+                conference.set_assignments(
+                    assignment_title=self.config_note_interface.label,
+                    committee_id=self.config_note_interface.match_group,
+                    overwrite=True,
+                    enable_reviewer_reassignment=True,
+                )
+
+                self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
+            elif self.config_note_interface.api_version == 2:
+                notes = self.config_note_interface.client_v2.get_notes(
+                    invitation="OpenReview.net/Support/-/Request_Form",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+
+                venue = openreview.helpers.get_conference(
+                    self.config_note_interface.client_v2, notes[0].id
+                )
+
+                # impersonate user to get all the permissions to deploy the groups
+                venue.client.impersonate(self.config_note_interface.venue_id)
+                venue.set_assignments(
+                    assignment_title=self.config_note_interface.label,
+                    committee_id=self.config_note_interface.match_group,
+                    overwrite=True,
+                    enable_reviewer_reassignment=True,
+                )
+
+                self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
             if not notes:
                 raise openreview.OpenReviewException("Venue request not found")
 
-            conference = openreview.helpers.get_conference(
-                self.config_note_interface.client, notes[0].id
-            )
-
-            # impersonate user to get all the permissions to deploy the groups
-            conference.client.impersonate(self.config_note_interface.venue_id)
-            conference.set_assignments(
-                assignment_title=self.config_note_interface.label,
-                committee_id=self.config_note_interface.match_group,
-                overwrite=True,
-                enable_reviewer_reassignment=True,
-            )
-
-            self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
         except Exception as e:
             self.logger.error(str(e))
             self.config_note_interface.set_status(
