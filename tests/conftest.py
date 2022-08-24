@@ -139,46 +139,61 @@ def clean_start_conference_v2(
     reviewers = set()
 
     scores_string = ''
-    for paper_number in range(num_papers):
+    with open(AFFINITY_SCORE_FILE, "w") as file_handle:
+        for paper_number in range(num_papers):
 
-        authorids = [
-            "~Test_Author{1}{0}".format(paper_number, author_code)
-            for author_code in ["a", "b", "c"]
-        ]
-        authors = ["Author Author" for _ in ["A", "B", "C"]]
-
-        posted_submission = openreview_client.post_note_edit(
-            invitation=f'{conference_id}/-/Submission',
-            signatures= ['~Super_User1'],
-            note=Note(
-                content={
-                    'title': { 'value': "Test_Paper_{}".format(paper_number) },
-                    'abstract': { 'value': 'Paper abstract' },
-                    'authors': { 'value': authors},
-                    'authorids': { 'value': authorids},
-                    'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
-                    'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
-                }
-            )
-        )
-
-        for index in range(0, num_reviewers):
-            reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
-            reviewers.add(reviewer)
-            score = random.random()
-            row = [
-                posted_submission['id'],
-                reviewer,
-                "{:.3f}".format(score),
+            authorids = [
+                "~Test_Author{1}{0}".format(paper_number, author_code)
+                for author_code in ["a", "b", "c"]
             ]
-            scores_string += ",".join(row) + "\n"
+            authors = ["Author Author" for _ in ["A", "B", "C"]]
+
+            posted_submission = openreview_client.post_note_edit(
+                invitation=f'{conference_id}/-/Submission',
+                signatures= ['~Super_User1'],
+                note=Note(
+                    content={
+                        'title': { 'value': "Test_Paper_{}".format(paper_number) },
+                        'abstract': { 'value': 'Paper abstract' },
+                        'authors': { 'value': authors},
+                        'authorids': { 'value': authorids},
+                        'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
+                        'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
+                    }
+                )
+            )
+
+            for index in range(0, num_reviewers):
+                reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
+                reviewers.add(reviewer)
+                score = random.random()
+                row = [
+                    posted_submission['note']['id'],
+                    reviewer,
+                    "{:.3f}".format(score),
+                ]
+                scores_string += ",".join(row) + "\n"
+                file_handle.write(",".join(row) + "\n")
 
     venue.setup_post_submission_stage()
 
     reviewer_group = openreview_client.get_group(venue.id + '/Reviewers')
     openreview_client.add_members_to_group(reviewer_group, list(reviewers))
 
-    venue.setup_committee_matching(committee_id=venue.get_reviewers_id(), compute_affinity_scores=scores_string.encode('utf-8'), compute_conflicts=True)
+    with open(AFFINITY_SCORE_FILE, 'r') as file:
+        data = file.read()
+    byte_stream = data.encode()
+
+    venue.setup_committee_matching(committee_id=venue.get_reviewers_id(), compute_affinity_scores=byte_stream, compute_conflicts=True)
+    edges = openreview_client.get_edges(
+                invitation=venue.get_affinity_score_id(venue.get_reviewers_id())
+            )
+    print('AFFINITY SCORES TEXT')
+    print(scores_string.encode())
+    print('AFFINITY SCORES')
+    print(edges)
+    print('---')
+    print('DONE PRINTING AFFINITY EDGES')
 
     return venue
 

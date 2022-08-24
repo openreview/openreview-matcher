@@ -202,9 +202,14 @@ class Matcher:
                     )
                 additional_status_info = {}
                 if hasattr(solver, "get_fraction_of_opt"):
-                    additional_status_info[
-                        "randomized_fraction_of_opt"
-                    ] = solver.get_fraction_of_opt()
+                    if self.datasource.api_version == 1:
+                        additional_status_info[
+                            "randomized_fraction_of_opt"
+                        ] = solver.get_fraction_of_opt()
+                    elif self.datasource.api_version == 2:
+                        additional_status_info[
+                            "randomized_fraction_of_opt"
+                        ] = str(solver.get_fraction_of_opt())
                 self.set_status(
                     MatcherStatus.COMPLETE,
                     message="",

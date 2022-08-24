@@ -19,7 +19,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "ICLS.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -71,7 +71,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -103,6 +103,116 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
 
+def test_integration_no_solution_due_to_conflicts(
+    openreview_context, celery_app, celery_worker
+):
+    """
+    Basic integration test. Makes use of the OpenReview Builder
+    """
+    openreview_client = openreview_context["openreview_client_v2"]
+    test_client = openreview_context["test_client"]
+
+    conference_id = "ICLS.cca/2020/Conference"
+    num_reviewers = 3
+    num_papers = 1
+    reviews_per_paper = 3
+    max_papers = 1
+    min_papers = 1
+    alternates = 0
+
+    venue = clean_start_conference_v2(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper,
+    )
+
+    reviewers_id = venue.get_reviewers_id()
+
+    config = {
+        "title": { "value": "integration-test" },
+        "user_demand": { "value": str(reviews_per_paper) },
+        "max_papers": { "value": str(max_papers) },
+        "min_papers": { "value": str(min_papers) },
+        "alternates": { "value": str(alternates) },
+        "config_invitation": { "value": "{}/-/Assignment_Configuration".format(
+            reviewers_id
+        ) },
+        "paper_invitation": { "value": venue.get_submission_id() },
+        "assignment_invitation": { "value": venue.get_paper_assignment_id(
+            reviewers_id
+        ) },
+        "deployed_assignment_invitation": { "value": venue.get_paper_assignment_id(
+            reviewers_id, deployed=True
+        ) },
+        "invite_assignment_invitation": { "value": venue.get_paper_assignment_id(
+            reviewers_id, invite=True
+        ) },
+        "aggregate_score_invitation": { "value": "{}/-/Aggregate_Score".format(
+            reviewers_id
+        ) },
+        "conflicts_invitation": { "value": venue.get_conflict_score_id(reviewers_id) },
+        "custom_max_papers_invitation": { "value": "{}/-/Custom_Max_Papers".format(
+            reviewers_id
+        ) },
+        "match_group": { "value": reviewers_id },
+        "scores_specification": { "value": {
+            venue.get_affinity_score_id(reviewers_id): {
+                "weight": 1.0,
+                "default": 0.0,
+            }
+        } },
+        "status": { "value": "Initialized" },
+        "solver": { "value": "MinMax" },
+    }
+
+    for reviewer in openreview_client.get_group(reviewers_id).members:
+        openreview_client.post_edge(
+            openreview.api.Edge(
+                invitation=venue.get_conflict_score_id(reviewers_id),
+                label="Personal",
+                weight=-1,
+                head=venue.get_submissions()[-1].id,
+                tail=reviewer,
+                signatures=[venue.id],
+                readers=[venue.id, venue.get_area_chairs_id(), reviewer],
+                writers=[venue.id],
+            )
+        )
+
+    config_note = openreview_client.post_note_edit(
+        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
+        signatures=[venue.get_id()],
+        note=Note(
+            content=config
+        )
+    )
+    assert config_note
+
+    response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
+    assert matcher_status.content["status"]["value"] == "No Solution"
+    assert (
+        matcher_status.content["error_message"]["value"]
+        == "Solver could not find a solution. Adjust your parameters"
+    )
+
+    paper_assignment_edges = openreview_client.get_edges(
+        label="integration-test",
+        invitation=venue.get_paper_assignment_id(
+            venue.get_reviewers_id()
+        ),
+    )
+
+    assert len(paper_assignment_edges) == 0
 
 def test_integration_supply_mismatch_error(
     openreview_context, celery_app, celery_worker
@@ -113,7 +223,7 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "ICLS.cc/2020/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10  # impossible!
@@ -165,7 +275,7 @@ def test_integration_supply_mismatch_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -189,7 +299,7 @@ def test_integration_supply_mismatch_error(
     assert matcher_status.content["status"]["value"] == "No Solution"
     assert (
         matcher_status.content["error_message"]["value"]
-        == "Total demand (200) is out of range when min review supply is (10) and max review supply is (10)"
+        == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
     paper_assignment_edges = openreview_client.get_edges(
@@ -211,7 +321,7 @@ def test_integration_demand_out_of_supply_range_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "ICLS.cc/2035/Conference"
+    conference_id = "ICLS.cc/2030/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -263,7 +373,7 @@ def test_integration_demand_out_of_supply_range_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -307,7 +417,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2020/Conference"
+    conference_id = "ICLS.cc/2021/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -353,7 +463,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         ) },
         "match_group":  { 'value': reviewers_id },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
         "allow_zero_score_assignments":  { 'value': "Yes" },
     }
 
@@ -396,7 +506,7 @@ def test_routes_invalid_invitation(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "ICLS.cc/2022/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -449,7 +559,7 @@ def test_routes_invalid_invitation(
             "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -478,7 +588,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "ICLS.cc/2023/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -530,7 +640,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -643,7 +753,7 @@ def test_routes_forbidden_config(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "MinMax",
     }
 
     config_note = openreview.Note(
@@ -680,7 +790,7 @@ def test_routes_already_running_or_complete(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "ICLS.cc/2024/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -732,7 +842,7 @@ def test_routes_already_running_or_complete(
             }
         } },
         "status":  { 'value': "Running" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "MinMax" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -773,472 +883,3 @@ def test_routes_already_running_or_complete(
     assert already_complete_response.status_code == 400
     config_note = openreview_client.get_note(config_note['note']['id'])
     assert config_note.content["status"]["value"] == "Complete"
-
-
-def test_routes_already_queued(openreview_context, celery_app, celery_worker):
-    """should return 400 if the match is already queued"""
-
-    openreview_client = openreview_context["openreview_client_v2"]
-    test_client = openreview_context["test_client"]
-
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 1
-    num_papers = 1
-    reviews_per_paper = 1
-    max_papers = 1
-    min_papers = 0
-    alternates = 0
-
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
-    reviewers_id = venue.get_reviewers_id()
-
-    config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
-            }
-        } },
-        "status":  { 'value': "Queued" },
-        "solver":  { 'value': "FairFlow" },
-    }
-
-    config_note = openreview_client.post_note_edit(
-        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
-        signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
-    )
-    assert config_note
-
-    already_queued_response = test_client.post(
-        "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
-        content_type="application/json",
-        headers=openreview_client.headers,
-    )
-    assert already_queued_response.status_code == 400
-
-    config_note = openreview_client.get_note(config_note['note']['id'])
-    assert config_note.content["status"]["value"] == "Queued"
-
-
-def test_integration_empty_reviewers_list_error(
-    openreview_context, celery_app, celery_worker
-):
-    """
-    Test to check en exception is thrown when the reviewers list is empty.
-    """
-    openreview_client = openreview_context["openreview_client_v2"]
-    test_client = openreview_context["test_client"]
-
-    conference_id = "AKBD.ws/2021/Conference"
-    num_reviewers = 10
-    num_papers = 10
-    reviews_per_paper = 3
-    max_papers = 5
-    min_papers = 1
-    alternates = 0
-
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
-    reviewers_id = venue.get_reviewers_id()
-
-    config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
-            }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
-    }
-
-    config_note = openreview_client.post_note_edit(
-        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
-        signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
-    )
-    assert config_note
-
-    # Empty the list of reviewers before calling the matching
-    reviewers_group = openreview_client.get_group(reviewers_id)
-    reviewers_group.members = []
-    openreview_client.post_group(reviewers_group)
-
-    response = test_client.post(
-        "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
-        content_type="application/json",
-        headers=openreview_client.headers,
-    )
-    assert response.status_code == 200
-
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
-    assert matcher_status.content["status"]["value"] == "Error"
-    assert (
-        matcher_status.content["error_message"]["value"]
-        == "Reviewers List can not be empty."
-    )
-
-    paper_assignment_edges = openreview_client.get_edges(
-        label="integration-test",
-        invitation=venue.get_paper_assignment_id(
-            venue.get_reviewers_id()
-        ),
-    )
-
-    assert len(paper_assignment_edges) == 0
-
-
-@pytest.mark.skip  # TODO: how to set number of papers passed as zero
-def test_integration_empty_papers_list_error(openreview_context):
-    """
-    Test to check en exception is thrown when the reviewers list is empty.
-    """
-    openreview_client = openreview_context["openreview_client"]
-    test_client = openreview_context["test_client"]
-
-    conference_id = "AKBB.ws/2022/Conference"
-    num_reviewers = 15
-    num_papers = 0
-    reviews_per_paper = 3
-    max_papers = 5
-    min_papers = 1
-    alternates = 0
-
-    conference = clean_start_conference(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
-    reviewers_id = conference.get_reviewers_id()
-
-    config = {
-        "title": "integration-test",
-        "user_demand": str(reviews_per_paper),
-        "max_papers": str(max_papers),
-        "min_papers": str(min_papers),
-        "alternates": str(alternates),
-        "config_invitation": "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ),
-        "paper_invitation": conference.get_blind_submission_id(),
-        "assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id
-        ),
-        "deployed_assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ),
-        "invite_assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ),
-        "aggregate_score_invitation": "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ),
-        "conflicts_invitation": conference.get_conflict_score_id(reviewers_id),
-        "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ),
-        "match_group": reviewers_id,
-        "scores_specification": {
-            conference.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
-            }
-        },
-        "status": "Initialized",
-        "solver": "FairFlow",
-    }
-
-    config_note = openreview.Note(
-        **{
-            "invitation": "{}/-/Assignment_Configuration".format(reviewers_id),
-            "readers": [conference.get_id()],
-            "writers": [conference.get_id()],
-            "signatures": [conference.get_id()],
-            "content": config,
-        }
-    )
-
-    config_note = openreview_client.post_note(config_note)
-    assert config_note
-
-    response = test_client.post(
-        "/match",
-        data=json.dumps({"configNoteId": config_note.id}),
-        content_type="application/json",
-        headers=openreview_client.headers,
-    )
-    assert response.status_code == 200
-
-    matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status.content["status"] == "Error"
-    assert (
-        matcher_status.content["error_message"]
-        == "Papers List can not be empty."
-    )
-
-    paper_assignment_edges = openreview_client.get_edges(
-        label="integration-test",
-        invitation=conference.get_paper_assignment_id(
-            conference.get_reviewers_id()
-        ),
-    )
-
-    assert len(paper_assignment_edges) == 0
-
-# Change the error and remove the check for status - status is unable to be updated
-# because the invitation will be incorrect
-# TODO: How to update this test?
-@pytest.mark.skip
-def test_integration_group_not_found_error(
-    openreview_context, celery_app, celery_worker
-):
-    """
-    Basic integration test. Makes use of the OpenReview Builder
-    """
-    openreview_client = openreview_context["openreview_client_v2"]
-    test_client = openreview_context["test_client"]
-
-    conference_id = "AKBB.ws/2029/Conference"
-    num_reviewers = 10
-    num_papers = 10
-    reviews_per_paper = 3
-    max_papers = 5
-    min_papers = 1
-    alternates = 0
-
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
-    reviewers_id = venue.get_reviewers_id()
-
-    config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group": { 'value': "AKBB.ws/2029/Conference/NoReviewers" },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
-            }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
-    }
-
-    config_note = openreview_client.post_note_edit(
-        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
-        signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
-    )
-    assert config_note
-
-    response = test_client.post(
-        "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
-        content_type="application/json",
-        headers=openreview_client.headers,
-    )
-    assert response.status_code == 404
-
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'])
-    assert (
-        "The Invitation AKBB.ws/2029/Conference/NoReviewers/-/Assignment_Configuration was not found"
-        in matcher_status.content["error_message"]["value"]
-    )
-
-
-def test_integration_group_validity_error(
-    openreview_context, celery_app, celery_worker
-):
-    """
-    Basic integration test. Makes use of the OpenReview Builder
-    """
-    openreview_client = openreview_context["openreview_client_v2"]
-    test_client = openreview_context["test_client"]
-
-    conference_id = "AKBD.ws/2029/Conference"
-    num_reviewers = 10
-    num_papers = 10
-    reviews_per_paper = 3
-    max_papers = 5
-    min_papers = 1
-    alternates = 0
-
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
-    openreview_client.add_members_to_group(
-        conference_id + "/Reviewers", "reviewer@mail.com"
-    )
-    reviewers_id = venue.get_reviewers_id()
-
-    config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
-            }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
-    }
-
-    config_note = openreview_client.post_note_edit(
-        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
-        signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
-    )
-    assert config_note
-
-    response = test_client.post(
-        "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
-        content_type="application/json",
-        headers=openreview_client.headers,
-    )
-    assert response.status_code == 500
-
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'])
-    assert matcher_status.content["status"]["value"] == "Error"
-    assert (
-        matcher_status.content["error_message"]["value"]
-        == "All members of the group, AKBD.ws/2029/Conference/Reviewers, must have an OpenReview Profile"
-    )

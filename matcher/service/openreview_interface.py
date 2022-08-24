@@ -105,7 +105,6 @@ class ConfigNoteInterface:
         try:
             self.logger.debug("GET group id={}".format(group_id))
             group = self.client.get_group(group_id)
-            self.logger.debug("GET group ={}".format(group))
             group = openreview.tools.replace_members_with_ids(
                 self.client, group
             )

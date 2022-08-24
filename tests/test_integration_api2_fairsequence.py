@@ -19,7 +19,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -71,7 +71,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -113,7 +113,7 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2049/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 10  # impossible!
@@ -165,7 +165,7 @@ def test_integration_supply_mismatch_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -189,7 +189,7 @@ def test_integration_supply_mismatch_error(
     assert matcher_status.content["status"]["value"] == "No Solution"
     assert (
         matcher_status.content["error_message"]["value"]
-        == "Total demand (200) is out of range when min review supply is (10) and max review supply is (10)"
+        == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
     paper_assignment_edges = openreview_client.get_edges(
@@ -211,7 +211,7 @@ def test_integration_demand_out_of_supply_range_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "ICLS.cc/2035/Conference"
+    conference_id = "NIPR.cc/2035/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -263,7 +263,7 @@ def test_integration_demand_out_of_supply_range_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -307,7 +307,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2020/Conference"
+    conference_id = "NIPR.cc/2020/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -353,7 +353,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         ) },
         "match_group":  { 'value': reviewers_id },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
         "allow_zero_score_assignments":  { 'value': "Yes" },
     }
 
@@ -396,7 +396,7 @@ def test_routes_invalid_invitation(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -449,7 +449,7 @@ def test_routes_invalid_invitation(
             "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -478,7 +478,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2019/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -530,7 +530,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -643,7 +643,7 @@ def test_routes_forbidden_config(
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -680,7 +680,7 @@ def test_routes_already_running_or_complete(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2019/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -732,7 +732,7 @@ def test_routes_already_running_or_complete(
             }
         } },
         "status":  { 'value': "Running" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -781,7 +781,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
+    conference_id = "NIPR.cc/2019/Conference"
     num_reviewers = 1
     num_papers = 1
     reviews_per_paper = 1
@@ -833,7 +833,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
             }
         } },
         "status":  { 'value': "Queued" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -866,7 +866,7 @@ def test_integration_empty_reviewers_list_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2021/Conference"
+    conference_id = "NIPR.cc/2021/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -918,7 +918,7 @@ def test_integration_empty_reviewers_list_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -1020,7 +1020,7 @@ def test_integration_empty_papers_list_error(openreview_context):
             }
         },
         "status": "Initialized",
-        "solver": "FairFlow",
+        "solver": "FairSequence",
     }
 
     config_note = openreview.Note(
@@ -1125,7 +1125,7 @@ def test_integration_group_not_found_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -1161,7 +1161,7 @@ def test_integration_group_validity_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2029/Conference"
+    conference_id = "NIPS.cc/2029/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -1216,7 +1216,7 @@ def test_integration_group_validity_error(
             }
         } },
         "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "FairFlow" },
+        "solver":  { 'value': "FairSequence" },
     }
 
     config_note = openreview_client.post_note_edit(
@@ -1240,5 +1240,5 @@ def test_integration_group_validity_error(
     assert matcher_status.content["status"]["value"] == "Error"
     assert (
         matcher_status.content["error_message"]["value"]
-        == "All members of the group, AKBD.ws/2029/Conference/Reviewers, must have an OpenReview Profile"
+        == "All members of the group, NIPS.cc/2029/Conference/Reviewers, must have an OpenReview Profile"
     )
