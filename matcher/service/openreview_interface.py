@@ -5,6 +5,7 @@ from tqdm import tqdm
 from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
 from openreview.api import Note
+from openreview.venue import Venue
 
 
 class ConfigNoteInterface:
@@ -392,19 +393,27 @@ class ConfigNoteInterface:
         if message is None:
             message = ''
 
-        self.config_note.content["status"] = status.value
-        self.config_note.content["error_message"] = message
-        for key, value in additional_status_info.items():
-            print("Save property", key, value)
-            self.config_note.content[key] = value
-
         if self.api_version == 1:
+            self.config_note.content["status"] = status.value
+            self.config_note.content["error_message"] = message
+            for key, value in additional_status_info.items():
+                print("Save property", key, value)
+                self.config_note.content[key] = value
             self.config_note = self.client.post_note(self.config_note)
+
         elif self.api_version == 2:
+            curr_venue = Venue(self.client_v2, self.venue_id)
+
+            casted_info = {}
+            for key, value in additional_status_info.items():
+                casted_info[key] = { "value": value }
+            casted_info["status"] = { "value": status.value }
+            casted_info["error_message"] = { "value": message }
+
             config_note_v2 = self.client_v2.post_note_edit(
-                invitation="{}/-/Assignment_Configuration".format(self.match_group),
+                invitation=curr_venue.get_meta_invitation_id(),
                 signatures=[self.venue_id],
-                note=Note(id=self.config_note.id, content=self._content_to_api2(self.config_note).content)
+                note=Note(id=self.config_note.id, content=casted_info)
             )
             self.config_note = self._content_to_api1(self.client_v2.get_note(self.config_note.id))
 

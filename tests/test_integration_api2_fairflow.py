@@ -1060,10 +1060,6 @@ def test_integration_empty_papers_list_error(openreview_context):
 
     assert len(paper_assignment_edges) == 0
 
-# Change the error and remove the check for status - status is unable to be updated
-# because the invitation will be incorrect
-# TODO: How to update this test?
-@pytest.mark.skip
 def test_integration_group_not_found_error(
     openreview_context, celery_app, celery_worker
 ):
@@ -1073,7 +1069,7 @@ def test_integration_group_not_found_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBB.ws/2029/Conference"
+    conference_id = "AKBD.ws/2029/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -1117,7 +1113,7 @@ def test_integration_group_not_found_error(
         "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
             reviewers_id
         ) },
-        "match_group": { 'value': "AKBB.ws/2029/Conference/NoReviewers" },
+        "match_group": { 'value': "AKBD.ws/2029/Conference/NoReviewers" },
         "scores_specification":  { 'value': {
             venue.get_affinity_score_id(reviewers_id): {
                 "weight": 1.0,
@@ -1147,7 +1143,7 @@ def test_integration_group_not_found_error(
 
     matcher_status = wait_for_status(openreview_client, config_note['note']['id'])
     assert (
-        "The Invitation AKBB.ws/2029/Conference/NoReviewers/-/Assignment_Configuration was not found"
+        "Group Not Found: AKBD.ws/2029/Conference/NoReviewers"
         in matcher_status.content["error_message"]["value"]
     )
 

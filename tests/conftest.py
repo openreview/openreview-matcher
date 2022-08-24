@@ -188,12 +188,6 @@ def clean_start_conference_v2(
     edges = openreview_client.get_edges(
                 invitation=venue.get_affinity_score_id(venue.get_reviewers_id())
             )
-    print('AFFINITY SCORES TEXT')
-    print(scores_string.encode())
-    print('AFFINITY SCORES')
-    print(edges)
-    print('---')
-    print('DONE PRINTING AFFINITY EDGES')
 
     return venue
 
