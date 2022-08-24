@@ -26,7 +26,7 @@ class ConfigNoteInterface:
             config_note = self.client_v2.get_note(config_note_id)
             self.api_version = 2
 
-        self.config_note = self._cast_content_values(config_note)
+        self.config_note = self._content_to_api1(config_note)
         self.venue_id = self.config_note.signatures[0]
         self.label = self.config_note.content["title"]
         self.match_group = self.config_note.content["match_group"]
@@ -179,7 +179,7 @@ class ConfigNoteInterface:
                         )
                     )
 
-                paper_notes = [self._cast_content_values(n) for n in paper_notes]
+                paper_notes = [self._content_to_api1(n) for n in paper_notes]
                 self._papers = [n.id for n in paper_notes]
                 self.paper_numbers = {n.id: n.number for n in paper_notes}
                 self.logger.debug(
@@ -211,7 +211,7 @@ class ConfigNoteInterface:
 
         return self._maximums
 
-    def _cast_content_values(self, note):
+    def _content_to_api1(self, note):
         new_content = {}
         for key, val in note.content.items():
             if isinstance(val, dict) and 'value' in val.keys():
@@ -221,7 +221,7 @@ class ConfigNoteInterface:
         note.content = new_content
         return note
 
-    def _uncast_content_values(self, note):
+    def _content_to_api2(self, note):
         new_content = {}
         for key, val in note.content.items():
             if not (isinstance(val, dict) and 'value' in val.keys()):
@@ -404,9 +404,9 @@ class ConfigNoteInterface:
             config_note_v2 = self.client_v2.post_note_edit(
                 invitation="{}/-/Assignment_Configuration".format(self.match_group),
                 signatures=[self.venue_id],
-                note=Note(id=self.config_note.id, content=self._uncast_content_values(self.config_note).content)
+                note=Note(id=self.config_note.id, content=self._content_to_api2(self.config_note).content)
             )
-            self.config_note = self._cast_content_values(self.client_v2.get_note(self.config_note.id))
+            self.config_note = self._content_to_api1(self.client_v2.get_note(self.config_note.id))
 
         self.logger.debug(
             "Config Note {} status set to: {}".format(
