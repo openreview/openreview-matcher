@@ -11,7 +11,6 @@ import logging
 import datetime
 from openreview.api import Note
 
-from matcher.service.openreview_interface import ConfigNoteInterface
 from matcher.solvers import SolverException
 
 from conftest import clean_start_conference_v2, wait_for_status

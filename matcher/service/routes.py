@@ -7,7 +7,7 @@ import flask
 import openreview
 from flask_cors import CORS
 
-from .openreview_interface import ConfigNoteInterface
+from .openreview_interface import ConfigNoteInterfaceV1, ConfigNoteInterfaceV2
 from ..core import MatcherStatus
 
 BLUEPRINT = flask.Blueprint("match", __name__)
@@ -54,12 +54,23 @@ def match():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
         )
 
-        interface = ConfigNoteInterface(
-            client=openreview_client,
-            client_v2=openreview_client_v2,
-            config_note_id=config_note_id,
-            logger=flask.current_app.logger,
-        )
+        try:
+            openreview_client.get_note(config_note_id)
+            interface = ConfigNoteInterfaceV1(
+                client=openreview_client,
+                client_v2=openreview_client_v2,
+                config_note_id=config_note_id,
+                logger=flask.current_app.logger,
+            )
+        except openreview.OpenReviewException as e:
+            if 'notfound' in str(e).lower():
+                openreview_client_v2.get_note(config_note_id)
+                interface = ConfigNoteInterfaceV2(
+                    client=openreview_client,
+                    client_v2=openreview_client_v2,
+                    config_note_id=config_note_id,
+                    logger=flask.current_app.logger,
+                )
 
         interface.validate_group(interface.match_group)
         openreview_client.impersonate(interface.venue_id)
@@ -185,12 +196,23 @@ def deploy():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
         )
 
-        interface = ConfigNoteInterface(
-            client=openreview_client,
-            client_v2=openreview_client_v2,
-            config_note_id=config_note_id,
-            logger=flask.current_app.logger,
-        )
+        try:
+            openreview_client.get_note(config_note_id)
+            interface = ConfigNoteInterfaceV1(
+                client=openreview_client,
+                client_v2=openreview_client_v2,
+                config_note_id=config_note_id,
+                logger=flask.current_app.logger,
+            )
+        except openreview.OpenReviewException as e:
+            if 'notfound' in str(e).lower():
+                openreview_client_v2.get_note(config_note_id)
+                interface = ConfigNoteInterfaceV2(
+                    client=openreview_client,
+                    client_v2=openreview_client_v2,
+                    config_note_id=config_note_id,
+                    logger=flask.current_app.logger,
+                )
 
         if interface.config_note.content["status"] not in [
             "Complete",
