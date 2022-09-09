@@ -2,9 +2,11 @@ runtime: python37
 
 instance_class: B2
 
-entrypoint: python -m matcher.service --host localhost --port 8080
+env_variables:
+  PORT: 8080
+  FLASK_ENV: appengine
 
-# service: matcher-service
+entrypoint: gunicorn -b :$PORT "matcher.service:create_app()"
 
 basic_scaling:
   max_instances: 5
