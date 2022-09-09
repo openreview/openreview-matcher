@@ -25,6 +25,8 @@ setup(
         "pre-commit==2.*",
         "celery==5.*",
         "redis==3.*",
+        "MarkupSafe==1.*",
+        "gunicorn==19.*",
     ],
     extras_require={
         "full": ["flower"],
