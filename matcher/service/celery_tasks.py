@@ -38,7 +38,7 @@ def on_task_failure(self, exc, task_id, args, kwargs, einfo):
     max_retries=15,
     retry_jitter=True,
 )
-def set_error_status(self, interface: BaseConfigNoteInterface, logger, exc):
+def set_error_status(self, interface, logger, exc):
     logger.info(
         "Setting status for config note {} to Error.".format(
             interface.config_note.id
@@ -90,7 +90,7 @@ def run_matching(
     on_failure=on_task_failure,
 )
 def run_deployment(
-    self, interface: BaseConfigNoteInterface, logger: logging.Logger
+    self, interface, logger
 ):
     deployment = Deployment(config_note_interface=interface, logger=logger)
     try:
