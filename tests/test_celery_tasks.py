@@ -82,8 +82,7 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
     assert config_note
 
     interface = ConfigNoteInterfaceV1(
-        client=openreview_client,
-        client_v2=openreview_client_v2,
+        client_v1=openreview_client,
         config_note_id=config_note.id,
         logger=app.logger,
     )

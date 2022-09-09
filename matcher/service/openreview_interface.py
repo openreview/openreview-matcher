@@ -11,20 +11,24 @@ class BaseConfigNoteInterface:
     def __init__(
         self,
         client,
-        client_v2,
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
         self.client = client
-        self.client_v2 = client_v2
         self.logger = logger
         self.logger.debug("GET note id={}".format(config_note_id))
-        try:
-            self.config_note = self.client.get_note(config_note_id)
-            self.api_version = 1
-        except:
-            self.config_note = self.client_v2.get_note(config_note_id)
-            self.api_version = 2
+        self.config_note = self.client.get_note(config_note_id)
+
+    def validate_score_spec(self):
+        for invitation_id in self.config_note.content.get(
+            "scores_specification", {}
+        ):
+            try:
+                self.logger.debug("GET invitation id={}".format(invitation_id))
+                self.client.get_invitation(invitation_id)
+            except Exception as error_handle:
+                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
+                raise error_handle
 
     def validate_group(self, group_id):
         try:
@@ -81,6 +85,50 @@ class BaseConfigNoteInterface:
             self._maximums = maximums
 
         return self._maximums
+
+    def _get_custom_demand_edges(self):
+        """Helper function to get all the custom demand edges"""
+        custom_demand_edges = []
+        custom_demand_invitation = self.config_note.content.get(
+            "custom_user_demand_invitation"
+        )
+        if custom_demand_invitation:
+            self.logger.debug(
+                "GET grouped edges invitation id={}".format(
+                    custom_demand_invitation
+                )
+            )
+
+            custom_demand_edges = self.client.get_grouped_edges(
+                invitation=custom_demand_invitation,
+                groupby="tail",
+                tail=self.match_group,
+                select="head,weight",
+            )
+
+        return custom_demand_edges
+
+    def _get_custom_supply_edges(self):
+        """Helper function to get all the custom supply edges"""
+        custom_supply_edges = []
+        custom_supply_invitation = self.config_note.content.get(
+            "custom_max_papers_invitation"
+        )
+        if custom_supply_invitation:
+            self.logger.debug(
+                "GET grouped edges invitation id={}".format(
+                    custom_supply_invitation
+                )
+            )
+
+            custom_supply_edges = self.client.get_grouped_edges(
+                invitation=custom_supply_invitation,
+                groupby="head",
+                head=self.match_group,
+                select="tail,weight",
+            )
+
+        return custom_supply_edges
 
     def _content_to_api1(self, note):
         new_content = {}
@@ -196,244 +244,6 @@ class BaseConfigNoteInterface:
             }
         return weight_by_type
 
-    def _get_quota_arrays(self):
-        """get `minimum` and `maximum` reviewer load arrays, accounting for custom loads"""
-        minimums = [
-            int(self.config_note.content["min_papers"]) for r in self.reviewers
-        ]
-        maximums = [
-            int(self.config_note.content["max_papers"]) for r in self.reviewers
-        ]
-
-        custom_supply_edges = self._get_custom_supply_edges()
-        if custom_supply_edges:
-            map_reviewers_to_idx = {
-                r: idx for idx, r in enumerate(self.reviewers)
-            }
-
-            count_processed_edges = 0
-            for edge in custom_supply_edges[0].get("values"):
-                reviewer = edge["tail"]
-                index = map_reviewers_to_idx.get(reviewer, -1)
-                if index >= 0:
-                    load = int(edge["weight"])
-                    maximums[index] = min(
-                        maximums[index], load if load > 0 else 0
-                    )
-                    minimums[index] = min(minimums[index], maximums[index])
-                    count_processed_edges += 1
-            self.logger.debug(
-                "Custom supply recorded for {} users".format(
-                    count_processed_edges
-                )
-            )
-
-        return minimums, maximums
-
-    def _edge_to_score(self, edge, translate_map=None):
-        """
-        Given an openreview.Edge, and a mapping defined by `translate_map`,
-        return a numeric score, given an Edge.
-        """
-
-        score = edge["weight"]
-
-        if translate_map:
-            try:
-                score = translate_map[edge["label"]]
-            except KeyError:
-                raise EncoderError(
-                    "Cannot translate label {} to score. Valid labels are: {}".format(
-                        edge["label"], translate_map.keys()
-                    )
-                )
-
-        if not isinstance(score, float) and not isinstance(score, int):
-            try:
-                score = float(score)
-            except ValueError:
-                raise EncoderError(
-                    "Edge has weight that is neither float nor int: {}, type {}".format(
-                        edge["weight"], type(edge["weight"])
-                    )
-                )
-
-        return score
-
-class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
-    def __init__(
-        self,
-        client,
-        client_v2,
-        config_note_id,
-        logger=logging.getLogger(__name__),
-    ):
-        super().__init__(client, client_v2, config_note_id, logger) #api version here?
-
-        self.venue_id = self.config_note.signatures[0]
-        self.label = self.config_note.content["title"]
-        self.match_group = self.config_note.content["match_group"]
-
-        self.logger.debug(
-            "GET invitation id={}".format(
-                self.config_note.content["assignment_invitation"]
-            )
-        )
-        self.assignment_invitation = self.client.get_invitation(
-            self.config_note.content["assignment_invitation"]
-        )
-
-        self.logger.debug(
-            "GET invitation id={}".format(
-                self.config_note.content["aggregate_score_invitation"]
-            )
-        )
-
-        self.aggregate_score_invitation = self.client.get_invitation(
-            self.config_note.content["aggregate_score_invitation"]
-        )
-
-        self.num_alternates = int(self.config_note.content["alternates"])
-        self.paper_numbers = {}
-        self.allow_zero_score_assignments = (
-            self.config_note.content.get("allow_zero_score_assignments", "No")
-            == "Yes"
-        )
-        self.probability_limits = float(
-            self.config_note.content.get("randomized_probability_limits", 1.0)
-        )
-
-        # Lazy variables
-        self._reviewers = None
-        self._papers = None
-        self._scores_by_type = {}
-        self._minimums = None
-        self._maximums = None
-        self._demands = None
-        self._constraints = None
-
-        self.validate_score_spec()
-
-    def validate_score_spec(self):
-        for invitation_id in self.config_note.content.get(
-            "scores_specification", {}
-        ):
-            try:
-                self.logger.debug("GET invitation id={}".format(invitation_id))
-                self.client.get_invitation(invitation_id)
-            except Exception as error_handle:
-                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
-                raise error_handle
-
-    @property
-    def papers(self):
-        if self._papers is None:
-            content_dict = {}
-            paper_invitation = self.config_note.content["paper_invitation"]
-            self.logger.debug(
-                "Getting notes for invitation: {}".format(paper_invitation)
-            )
-            if "&" in paper_invitation:
-                elements = paper_invitation.split("&")
-                paper_invitation = elements[0]
-                for element in elements[1:]:
-                    if element:
-                        if element.startswith("content.") and "=" in element:
-                            key, value = element.split(".")[1].split("=")
-                            content_dict[key] = value
-                        else:
-                            self.logger.debug(
-                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
-                                    element
-                                )
-                            )
-            if "/-/" in paper_invitation:
-                paper_notes = list(
-                    openreview.tools.iterget_notes(
-                        self.client,
-                        invitation=paper_invitation,
-                        content=content_dict,
-                    )
-                )
-
-                paper_notes = [n for n in paper_notes]
-                self._papers = [n.id for n in paper_notes]
-                self.paper_numbers = {n.id: n.number for n in paper_notes}
-                self.logger.debug(
-                    "Count of notes found: {}".format(len(self._papers))
-                )
-            else:
-                self.validate_group(paper_invitation)
-                group = self.client.get_group(paper_invitation)
-                self._papers = group.members
-                self.paper_numbers = {n: 1 for n in group.members}
-
-        return self._papers
-
-    def _get_custom_demand_edges(self):
-        """Helper function to get all the custom demand edges"""
-        custom_demand_edges = []
-        custom_demand_invitation = self.config_note.content.get(
-            "custom_user_demand_invitation"
-        )
-        if custom_demand_invitation:
-            self.logger.debug(
-                "GET grouped edges invitation id={}".format(
-                    custom_demand_invitation
-                )
-            )
-
-            custom_demand_edges = self.client.get_grouped_edges(
-                invitation=custom_demand_invitation,
-                groupby="tail",
-                tail=self.match_group,
-                select="head,weight",
-            )
-
-        return custom_demand_edges
-
-    def _get_custom_supply_edges(self):
-        """Helper function to get all the custom supply edges"""
-        custom_supply_edges = []
-        custom_supply_invitation = self.config_note.content.get(
-            "custom_max_papers_invitation"
-        )
-        if custom_supply_invitation:
-            self.logger.debug(
-                "GET grouped edges invitation id={}".format(
-                    custom_supply_invitation
-                )
-            )
-
-            custom_supply_edges = self.client.get_grouped_edges(
-                invitation=custom_supply_invitation,
-                groupby="head",
-                head=self.match_group,
-                select="tail,weight",
-            )
-
-        return custom_supply_edges
-
-    def set_status(self, status, message="", additional_status_info={}):
-        """Set the status of the config note"""
-
-        # Catch none message
-        if message is None:
-            message = ''
-
-        self.config_note.content["status"] = status.value
-        self.config_note.content["error_message"] = message
-        for key, value in additional_status_info.items():
-            print("Save property", key, value)
-            self.config_note.content[key] = value
-        self.config_note = self.client.post_note(self.config_note)
-
-        self.logger.debug(
-            "Config Note {} status set to: {}".format(
-                self.config_note.id, self.config_note.content["status"]
-            )
-        )
-
     def set_assignments(self, assignments_by_forum):
         """Helper function for posting assignments returned by the Encoder"""
 
@@ -483,7 +293,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self.logger.debug(
             "posted {} aggregate score edges".format(len(score_edges))
         )
-
+    
     def set_alternates(self, alternates_by_forum):
         """Helper function for posting alternates returned by the Encoder"""
 
@@ -513,6 +323,40 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
                 len(score_edges)
             )
         )
+
+    def _get_quota_arrays(self):
+        """get `minimum` and `maximum` reviewer load arrays, accounting for custom loads"""
+        minimums = [
+            int(self.config_note.content["min_papers"]) for r in self.reviewers
+        ]
+        maximums = [
+            int(self.config_note.content["max_papers"]) for r in self.reviewers
+        ]
+
+        custom_supply_edges = self._get_custom_supply_edges()
+        if custom_supply_edges:
+            map_reviewers_to_idx = {
+                r: idx for idx, r in enumerate(self.reviewers)
+            }
+
+            count_processed_edges = 0
+            for edge in custom_supply_edges[0].get("values"):
+                reviewer = edge["tail"]
+                index = map_reviewers_to_idx.get(reviewer, -1)
+                if index >= 0:
+                    load = int(edge["weight"])
+                    maximums[index] = min(
+                        maximums[index], load if load > 0 else 0
+                    )
+                    minimums[index] = min(minimums[index], maximums[index])
+                    count_processed_edges += 1
+            self.logger.debug(
+                "Custom supply recorded for {} users".format(
+                    count_processed_edges
+                )
+            )
+
+        return minimums, maximums
 
     def _get_all_edges(self, edge_invitation_id):
         """Helper function for retrieving and parsing all edges in bulk"""
@@ -557,6 +401,154 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
                     }
                 )
         return all_edges
+
+    def _edge_to_score(self, edge, translate_map=None):
+        """
+        Given an openreview.Edge, and a mapping defined by `translate_map`,
+        return a numeric score, given an Edge.
+        """
+
+        score = edge["weight"]
+
+        if translate_map:
+            try:
+                score = translate_map[edge["label"]]
+            except KeyError:
+                raise EncoderError(
+                    "Cannot translate label {} to score. Valid labels are: {}".format(
+                        edge["label"], translate_map.keys()
+                    )
+                )
+
+        if not isinstance(score, float) and not isinstance(score, int):
+            try:
+                score = float(score)
+            except ValueError:
+                raise EncoderError(
+                    "Edge has weight that is neither float nor int: {}, type {}".format(
+                        edge["weight"], type(edge["weight"])
+                    )
+                )
+
+        return score
+
+class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
+    def __init__(
+        self,
+        client_v1,
+        config_note_id,
+        logger=logging.getLogger(__name__),
+    ):
+        super().__init__(client_v1, config_note_id, logger)
+
+        self.venue_id = self.config_note.signatures[0]
+        self.label = self.config_note.content["title"]
+        self.match_group = self.config_note.content["match_group"]
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["assignment_invitation"]
+            )
+        )
+        self.assignment_invitation = self.client.get_invitation(
+            self.config_note.content["assignment_invitation"]
+        )
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["aggregate_score_invitation"]
+            )
+        )
+
+        self.aggregate_score_invitation = self.client.get_invitation(
+            self.config_note.content["aggregate_score_invitation"]
+        )
+
+        self.num_alternates = int(self.config_note.content["alternates"])
+        self.paper_numbers = {}
+        self.allow_zero_score_assignments = (
+            self.config_note.content.get("allow_zero_score_assignments", "No")
+            == "Yes"
+        )
+        self.probability_limits = float(
+            self.config_note.content.get("randomized_probability_limits", 1.0)
+        )
+
+        # Lazy variables
+        self._reviewers = None
+        self._papers = None
+        self._scores_by_type = {}
+        self._minimums = None
+        self._maximums = None
+        self._demands = None
+        self._constraints = None
+
+        self.validate_score_spec()
+
+    @property
+    def papers(self):
+        if self._papers is None:
+            content_dict = {}
+            paper_invitation = self.config_note.content["paper_invitation"]
+            self.logger.debug(
+                "Getting notes for invitation: {}".format(paper_invitation)
+            )
+            if "&" in paper_invitation:
+                elements = paper_invitation.split("&")
+                paper_invitation = elements[0]
+                for element in elements[1:]:
+                    if element:
+                        if element.startswith("content.") and "=" in element:
+                            key, value = element.split(".")[1].split("=")
+                            content_dict[key] = value
+                        else:
+                            self.logger.debug(
+                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
+                                    element
+                                )
+                            )
+            if "/-/" in paper_invitation:
+                paper_notes = list(
+                    openreview.tools.iterget_notes(
+                        self.client,
+                        invitation=paper_invitation,
+                        content=content_dict,
+                    )
+                )
+
+                paper_notes = [n for n in paper_notes]
+                self._papers = [n.id for n in paper_notes]
+                self.paper_numbers = {n.id: n.number for n in paper_notes}
+                self.logger.debug(
+                    "Count of notes found: {}".format(len(self._papers))
+                )
+            else:
+                self.validate_group(paper_invitation)
+                group = self.client.get_group(paper_invitation)
+                self._papers = group.members
+                self.paper_numbers = {n: 1 for n in group.members}
+
+        return self._papers
+
+    def set_status(self, status, message="", additional_status_info={}):
+        """Set the status of the config note"""
+
+        # Catch none message
+        if message is None:
+            message = ''
+
+        self.config_note.content["status"] = status.value
+        self.config_note.content["error_message"] = message
+        for key, value in additional_status_info.items():
+            print("Save property", key, value)
+            self.config_note.content[key] = value
+        self.config_note = self.client.post_note(self.config_note)
+
+        self.logger.debug(
+            "Config Note {} status set to: {}".format(
+                self.config_note.id, self.config_note.content["status"]
+            )
+        )
 
     def _build_edge(
         self, invitation, forum_id, reviewer, score, label, number
@@ -633,12 +625,11 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
 class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
     def __init__(
         self,
-        client,
         client_v2,
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
-        super().__init__(client, client_v2, config_note_id, logger) #api version here?
+        super().__init__(client_v2, config_note_id, logger) #api version here?
 
         self.config_note = self._content_to_api1(self.config_note)
         self.venue_id = self.config_note.signatures[0]
@@ -650,7 +641,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                 self.config_note.content["assignment_invitation"]
             )
         )
-        self.assignment_invitation = self.client_v2.get_invitation(
+        self.assignment_invitation = self.client.get_invitation(
             self.config_note.content["assignment_invitation"]
         )
 
@@ -660,7 +651,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             )
         )
 
-        self.aggregate_score_invitation = self.client_v2.get_invitation(
+        self.aggregate_score_invitation = self.client.get_invitation(
             self.config_note.content["aggregate_score_invitation"]
         )
 
@@ -684,17 +675,6 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self._constraints = None
 
         self.validate_score_spec()
-
-    def validate_score_spec(self):
-        for invitation_id in self.config_note.content.get(
-            "scores_specification", {}
-        ):
-            try:
-                self.logger.debug("GET invitation id={}".format(invitation_id))
-                self.client_v2.get_invitation(invitation_id)
-            except Exception as error_handle:
-                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
-                raise error_handle
 
     @property
     def papers(self):
@@ -721,7 +701,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             if "/-/" in paper_invitation:
                 paper_notes = list(
                     openreview.tools.iterget_notes(
-                        self.client_v2,
+                        self.client,
                         invitation=paper_invitation,
                         content=content_dict,
                     )
@@ -741,50 +721,6 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
 
         return self._papers
 
-    def _get_custom_demand_edges(self):
-        """Helper function to get all the custom demand edges"""
-        custom_demand_edges = []
-        custom_demand_invitation = self.config_note.content.get(
-            "custom_user_demand_invitation"
-        )
-        if custom_demand_invitation:
-            self.logger.debug(
-                "GET grouped edges invitation id={}".format(
-                    custom_demand_invitation
-                )
-            )
-
-            custom_demand_edges = self.client_v2.get_grouped_edges(
-                invitation=custom_demand_invitation,
-                groupby="tail",
-                tail=self.match_group,
-                select="head,weight",
-            )
-
-        return custom_demand_edges
-
-    def _get_custom_supply_edges(self):
-        """Helper function to get all the custom supply edges"""
-        custom_supply_edges = []
-        custom_supply_invitation = self.config_note.content.get(
-            "custom_max_papers_invitation"
-        )
-        if custom_supply_invitation:
-            self.logger.debug(
-                "GET grouped edges invitation id={}".format(
-                    custom_supply_invitation
-                )
-            )
-
-            custom_supply_edges = self.client_v2.get_grouped_edges(
-                invitation=custom_supply_invitation,
-                groupby="head",
-                head=self.match_group,
-                select="tail,weight",
-            )
-
-        return custom_supply_edges
-
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
 
@@ -792,7 +728,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         if message is None:
             message = ''
 
-        curr_venue = Venue(self.client_v2, self.venue_id)
+        curr_venue = Venue(self.client, self.venue_id)
 
         casted_info = {}
         for key, value in additional_status_info.items():
@@ -800,142 +736,18 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         casted_info["status"] = { "value": status.value }
         casted_info["error_message"] = { "value": message }
 
-        config_note_v2 = self.client_v2.post_note_edit(
+        config_note_v2 = self.client.post_note_edit(
             invitation=curr_venue.get_meta_invitation_id(),
             signatures=[self.venue_id],
             note=Note(id=self.config_note.id, content=casted_info)
         )
-        self.config_note = self._content_to_api1(self.client_v2.get_note(self.config_note.id))
+        self.config_note = self._content_to_api1(self.client.get_note(self.config_note.id))
 
         self.logger.debug(
             "Config Note {} status set to: {}".format(
                 self.config_note.id, self.config_note.content["status"]
             )
         )
-
-    def set_assignments(self, assignments_by_forum):
-        """Helper function for posting assignments returned by the Encoder"""
-
-        self.logger.debug(
-            "saving {} edges".format(self.assignment_invitation.id)
-        )
-
-        assignment_edges = []
-        score_edges = []
-
-        for forum, assignments in assignments_by_forum.items():
-            paper_number = self.paper_numbers[forum]
-            for paper_user_entry in assignments:
-                score = paper_user_entry["aggregate_score"]
-                user = paper_user_entry["user"]
-
-                assignment_edges.append(
-                    self._build_edge(
-                        self.assignment_invitation,
-                        forum,
-                        user,
-                        score,
-                        self.label,
-                        paper_number,
-                    )
-                )
-
-                score_edges.append(
-                    self._build_edge(
-                        self.aggregate_score_invitation,
-                        forum,
-                        user,
-                        score,
-                        self.label,
-                        paper_number,
-                    )
-                )
-
-        # Find the API1/2 invitation
-        self.client_v2.get_invitation(self.assignment_invitation.id)
-        openreview.tools.post_bulk_edges(self.client_v2, assignment_edges)
-        openreview.tools.post_bulk_edges(self.client_v2, score_edges)
-
-        self.logger.debug(
-            "posted {} assignment edges".format(len(assignment_edges))
-        )
-        self.logger.debug(
-            "posted {} aggregate score edges".format(len(score_edges))
-        )
-
-    def set_alternates(self, alternates_by_forum):
-        """Helper function for posting alternates returned by the Encoder"""
-
-        score_edges = []
-        for forum, assignments in alternates_by_forum.items():
-            paper_number = self.paper_numbers[forum]
-
-            for paper_user_entry in assignments:
-                score = paper_user_entry["aggregate_score"]
-                user = paper_user_entry["user"]
-
-                score_edges.append(
-                    self._build_edge(
-                        self.aggregate_score_invitation,
-                        forum,
-                        user,
-                        score,
-                        self.label,
-                        paper_number,
-                    )
-                )
-
-        openreview.tools.post_bulk_edges(self.client_v2, score_edges)
-
-        self.logger.debug(
-            "posted {} aggregate score edges for alternates".format(
-                len(score_edges)
-            )
-        )
-
-    def _get_all_edges(self, edge_invitation_id):
-        """Helper function for retrieving and parsing all edges in bulk"""
-
-        all_edges = []
-        all_papers = {p: p for p in self.papers}
-        all_reviewers = {r: r for r in self.reviewers}
-        self.logger.debug("GET invitation id={}".format(edge_invitation_id))
-
-        edges_grouped_by_paper = self.client_v2.get_grouped_edges(
-            invitation=edge_invitation_id,
-            groupby="head",
-            select="tail,label,weight",
-        )
-
-        self.logger.debug(
-            "GET grouped edges invitation id={}".format(edge_invitation_id)
-        )
-        filtered_edges_groups = list(
-            filter(
-                lambda edge_group: edge_group["id"]["head"] in all_papers,
-                edges_grouped_by_paper,
-            )
-        )
-
-        for group in filtered_edges_groups:
-            forum_id = group["id"]["head"]
-            filtered_edges = list(
-                filter(
-                    lambda group_value: group_value["tail"] in all_reviewers,
-                    group["values"],
-                )
-            )
-            for edge in filtered_edges:
-                all_edges.append(
-                    {
-                        "invitation": edge_invitation_id,
-                        "head": forum_id,
-                        "tail": edge["tail"],
-                        "weight": edge.get("weight"),
-                        "label": edge.get("label"),
-                    }
-                )
-        return all_edges
 
     def _build_edge(
         self, invitation, forum_id, reviewer, score, label, number
@@ -1021,7 +833,7 @@ class Deployment:
         try:
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
-            if self.config_note_interface.api_version == 1:
+            if isinstance(self.config_note_interface, ConfigNoteInterfaceV1):
                 notes = self.config_note_interface.client.get_notes(
                     invitation="OpenReview.net/Support/-/Request_Form",
                     content={"venue_id": self.config_note_interface.venue_id},
@@ -1041,14 +853,14 @@ class Deployment:
                 )
 
                 self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
-            elif self.config_note_interface.api_version == 2:
-                notes = self.config_note_interface.client_v2.get_notes(
+            elif isinstance(self.config_note_interface, ConfigNoteInterfaceV2):
+                notes = self.config_note_interface.client.get_notes(
                     invitation="OpenReview.net/Support/-/Request_Form",
                     content={"venue_id": self.config_note_interface.venue_id},
                 )
 
                 venue = openreview.helpers.get_conference(
-                    self.config_note_interface.client_v2, notes[0].id
+                    self.config_note_interface.client, notes[0].id
                 )
 
                 # impersonate user to get all the permissions to deploy the groups

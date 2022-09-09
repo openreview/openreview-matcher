@@ -57,8 +57,7 @@ def match():
         try:
             openreview_client.get_note(config_note_id)
             interface = ConfigNoteInterfaceV1(
-                client=openreview_client,
-                client_v2=openreview_client_v2,
+                client_v1=openreview_client,
                 config_note_id=config_note_id,
                 logger=flask.current_app.logger,
             )
@@ -66,7 +65,6 @@ def match():
             if 'notfound' in str(e).lower():
                 openreview_client_v2.get_note(config_note_id)
                 interface = ConfigNoteInterfaceV2(
-                    client=openreview_client,
                     client_v2=openreview_client_v2,
                     config_note_id=config_note_id,
                     logger=flask.current_app.logger,
