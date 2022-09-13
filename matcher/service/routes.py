@@ -69,7 +69,8 @@ def match():
                     config_note_id=config_note_id,
                     logger=flask.current_app.logger,
                 )
-
+            else:
+                raise e
         interface.validate_group(interface.match_group)
         openreview_client.impersonate(interface.venue_id)
 
