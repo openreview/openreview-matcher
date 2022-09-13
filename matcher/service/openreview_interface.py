@@ -773,49 +773,27 @@ class Deployment:
         try:
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
-            if isinstance(self.config_note_interface, ConfigNoteInterfaceV1):
-                notes = self.config_note_interface.client.get_notes(
-                    invitation="OpenReview.net/Support/-/Request_Form",
-                    content={"venue_id": self.config_note_interface.venue_id},
-                )
-
-                conference = openreview.helpers.get_conference(
-                    self.config_note_interface.client, notes[0].id
-                )
-
-                # impersonate user to get all the permissions to deploy the groups
-                conference.client.impersonate(self.config_note_interface.venue_id)
-                conference.set_assignments(
-                    assignment_title=self.config_note_interface.label,
-                    committee_id=self.config_note_interface.match_group,
-                    overwrite=True,
-                    enable_reviewer_reassignment=True,
-                )
-
-                self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
-            elif isinstance(self.config_note_interface, ConfigNoteInterfaceV2):
-                notes = self.config_note_interface.client.get_notes(
-                    invitation="OpenReview.net/Support/-/Request_Form",
-                    content={"venue_id": self.config_note_interface.venue_id},
-                )
-
-                venue = openreview.helpers.get_conference(
-                    self.config_note_interface.client, notes[0].id
-                )
-
-                # impersonate user to get all the permissions to deploy the groups
-                venue.client.impersonate(self.config_note_interface.venue_id)
-                venue.set_assignments(
-                    assignment_title=self.config_note_interface.label,
-                    committee_id=self.config_note_interface.match_group,
-                    overwrite=True,
-                    enable_reviewer_reassignment=True,
-                )
-
-                self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
+            notes = self.config_note_interface.client.get_notes(
+                invitation="OpenReview.net/Support/-/Request_Form",
+                content={"venue_id": self.config_note_interface.venue_id},
+            )
             if not notes:
                 raise openreview.OpenReviewException("Venue request not found")
 
+            conference = openreview.helpers.get_conference(
+                self.config_note_interface.client, notes[0].id
+            )
+
+            # impersonate user to get all the permissions to deploy the groups
+            conference.client.impersonate(self.config_note_interface.venue_id)
+            conference.set_assignments(
+                assignment_title=self.config_note_interface.label,
+                committee_id=self.config_note_interface.match_group,
+                overwrite=True,
+                enable_reviewer_reassignment=True,
+            )
+
+            self.config_note_interface.set_status(MatcherStatus.DEPLOYED)
         except Exception as e:
             self.logger.error(str(e))
             self.config_note_interface.set_status(
