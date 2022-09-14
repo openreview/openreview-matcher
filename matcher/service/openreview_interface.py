@@ -434,11 +434,11 @@ class BaseConfigNoteInterface:
 class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def __init__(
         self,
-        client_v1,
+        client,
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
-        super().__init__(client_v1, config_note_id, logger)
+        super().__init__(client, config_note_id, logger)
 
         self.venue_id = self.config_note.signatures[0]
         self.label = self.config_note.content["title"]
@@ -624,11 +624,11 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
 class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
     def __init__(
         self,
-        client_v2,
+        client,
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
-        super().__init__(client_v2, config_note_id, logger) #api version here?
+        super().__init__(client, config_note_id, logger) #api version here?
 
         self.config_note = self._content_to_api1(self.config_note)
         self.venue_id = self.config_note.signatures[0]
@@ -771,22 +771,30 @@ class Deployment:
     def run(self):
 
         try:
+            venue = None
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
             notes = self.config_note_interface.client.get_notes(
                 invitation="OpenReview.net/Support/-/Request_Form",
                 content={"venue_id": self.config_note_interface.venue_id},
             )
-            if not notes:
-                raise openreview.OpenReviewException("Venue request not found")
-
-            conference = openreview.helpers.get_conference(
-                self.config_note_interface.client, notes[0].id
-            )
+            if notes:
+                venue = openreview.helpers.get_conference(
+                    self.config_note_interface.client, notes[0].id
+                )
+            else:
+                notes = self.config_note_interface.client.get_notes(
+                    invitation="OpenReview.net/Support/-/Journal_Request",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+                if notes:
+                    venue = openreview.journal.JournalRequest.get_journal(self.config_note_interface.client, notes[0].id)
+                else:
+                    raise openreview.OpenReviewException("Venue request not found")
 
             # impersonate user to get all the permissions to deploy the groups
-            conference.client.impersonate(self.config_note_interface.venue_id)
-            conference.set_assignments(
+            venue.client.impersonate(self.config_note_interface.venue_id)
+            venue.set_assignments(
                 assignment_title=self.config_note_interface.label,
                 committee_id=self.config_note_interface.match_group,
                 overwrite=True,

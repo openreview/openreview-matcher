@@ -57,7 +57,7 @@ def match():
         try:
             openreview_client.get_note(config_note_id)
             interface = ConfigNoteInterfaceV1(
-                client_v1=openreview_client,
+                client=openreview_client,
                 config_note_id=config_note_id,
                 logger=flask.current_app.logger,
             )
@@ -65,7 +65,7 @@ def match():
             if 'notfound' in str(e).lower():
                 openreview_client_v2.get_note(config_note_id)
                 interface = ConfigNoteInterfaceV2(
-                    client_v2=openreview_client_v2,
+                    client=openreview_client_v2,
                     config_note_id=config_note_id,
                     logger=flask.current_app.logger,
                 )
@@ -195,11 +195,11 @@ def deploy():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
         )
 
+        flask.current_app.logger.debug('try to get configuration note')
         try:
             openreview_client.get_note(config_note_id)
             interface = ConfigNoteInterfaceV1(
                 client=openreview_client,
-                client_v2=openreview_client_v2,
                 config_note_id=config_note_id,
                 logger=flask.current_app.logger,
             )
@@ -207,14 +207,15 @@ def deploy():
             if 'notfound' in str(e).lower():
                 openreview_client_v2.get_note(config_note_id)
                 interface = ConfigNoteInterfaceV2(
-                    client=openreview_client,
-                    client_v2=openreview_client_v2,
+                    client=openreview_client_v2,
                     config_note_id=config_note_id,
                     logger=flask.current_app.logger,
                 )
             else:
                 raise e
 
+        flask.current_app.logger.debug('interface is set')
+        
         if interface.config_note.content["status"] not in [
             "Complete",
             "Deployment Error",
