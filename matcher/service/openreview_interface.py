@@ -758,8 +758,40 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             tail=reviewer,
             weight=score,
             label=label,
-            invitation=invitation.id
+            invitation=invitation.id,
+            readers=self._get_values(
+                invitation, number, "readers", forum_id, reviewer
+            ),
+            nonreaders=self._get_values(invitation, number, "nonreaders"),
+            writers=self._get_values(invitation, number, "writers"),
+            signatures=self._get_values(invitation, number, "signatures")
         )
+
+    def _get_values(self, invitation, number, property, head=None, tail=None):
+        """Return values compatible with the field `property` in invitation.reply.content"""
+        values = []
+
+        # Perform API2 check
+        if getattr(invitation, "edit", None) is not None:
+            property_params = invitation.edit.get(property, {})
+        else:
+            raise openreview.OpenReviewException('Reply/Edge attribute not present in invitation')
+
+        parsed_params = []
+        if isinstance(property_params, list):
+            for param in property_params:
+                if '$' not in param:
+                    parsed_params.append(param)
+                else:
+                    new_param = param.replace("${{2/head}/number}", str(number))
+                    if head:
+                        new_param = new_param.replace("${2/tail}", tail)
+                    if tail:
+                        new_param = new_param.replace("${2/head}", head)
+                    parsed_params.append(new_param)
+            return parsed_params
+
+        return []       
 class Deployment:
     def __init__(
         self, config_note_interface, logger=logging.getLogger(__name__)
