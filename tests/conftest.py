@@ -158,7 +158,7 @@ def clean_start_conference_v2(
                         'authors': { 'value': authors},
                         'authorids': { 'value': authorids},
                         'pdf': {'value': '/pdf/' + 'p' * 40 +'.pdf' },
-                        'submission_length': {'value': 'Regular submission (no more than 12 pages of main content)' }
+                        'keywords': {'value': ['Keyword1', 'Keyword2'] }
                     }
                 )
             )

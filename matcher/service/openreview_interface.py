@@ -790,6 +790,9 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                         new_param = new_param.replace("${2/head}", head)
                     parsed_params.append(new_param)
             return parsed_params
+        
+        if property == "signatures":
+            return property_params.get('param',{}).get('default',[])
 
         return []       
 class Deployment:
