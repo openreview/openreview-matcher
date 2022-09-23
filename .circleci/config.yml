@@ -80,7 +80,12 @@ jobs:
     - run:
         shell: /bin/sh
         command: |
-          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3001
+          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
+          :
+    - run:
+        shell: /bin/sh
+        command: |
+          wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=15 -t 20 http://localhost:3001
           :
     - run:
         name: run tests
