@@ -16,7 +16,7 @@ setup(
     install_requires=[
         "numpy",
         "openreview-py",
-        "ortools>=8.1.8487",
+        "ortools==8.1.8487",
         "pytest",
         "sortedcontainers>=2.4.0",
         "Flask",
