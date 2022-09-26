@@ -6,6 +6,7 @@ from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
 from openreview.api import Note
 
+
 class BaseConfigNoteInterface:
     def __init__(
         self,
@@ -132,8 +133,8 @@ class BaseConfigNoteInterface:
     def _content_to_api1(self, note):
         new_content = {}
         for key, val in note.content.items():
-            if isinstance(val, dict) and 'value' in val.keys():
-                new_content[key] = val['value']
+            if isinstance(val, dict) and "value" in val.keys():
+                new_content[key] = val["value"]
             else:
                 new_content[key] = val
         note.content = new_content
@@ -142,8 +143,8 @@ class BaseConfigNoteInterface:
     def _content_to_api2(self, note):
         new_content = {}
         for key, val in note.content.items():
-            if not (isinstance(val, dict) and 'value' in val.keys()):
-                new_content[key] = {'value': val}
+            if not (isinstance(val, dict) and "value" in val.keys()):
+                new_content[key] = {"value": val}
             else:
                 new_content[key] = val
         note.content = new_content
@@ -292,7 +293,7 @@ class BaseConfigNoteInterface:
         self.logger.debug(
             "posted {} aggregate score edges".format(len(score_edges))
         )
-    
+
     def set_alternates(self, alternates_by_forum):
         """Helper function for posting alternates returned by the Encoder"""
 
@@ -431,6 +432,7 @@ class BaseConfigNoteInterface:
 
         return score
 
+
 class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def __init__(
         self,
@@ -534,7 +536,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
 
         # Catch none message
         if message is None:
-            message = ''
+            message = ""
 
         self.config_note.content["status"] = status.value
         self.config_note.content["error_message"] = message
@@ -578,22 +580,25 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         if getattr(invitation, "reply", None) is not None:
             property_params = invitation.reply.get(property, {})
         else:
-            raise openreview.OpenReviewException('Reply/Edge attribute not present in invitation')
+            raise openreview.OpenReviewException(
+                "Reply/Edge attribute not present in invitation"
+            )
 
         parsed_params = []
         if isinstance(property_params, list):
             for param in property_params:
-                if '$' not in param:
+                if "$" not in param:
                     parsed_params.append(param)
                 else:
-                    new_param = param.replace("${{2/head}/number}", str(number))
+                    new_param = param.replace(
+                        "${{2/head}/number}", str(number)
+                    )
                     if head:
                         new_param = new_param.replace("${2/tail}", tail)
                     if tail:
                         new_param = new_param.replace("${2/head}", head)
                     parsed_params.append(new_param)
             return parsed_params
-
 
         if "values" in property_params:
             values = property_params.get("values", [])
@@ -621,6 +626,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
 
         return [v.replace("{head.number}", str(number)) for v in values]
 
+
 class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
     def __init__(
         self,
@@ -628,7 +634,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         config_note_id,
         logger=logging.getLogger(__name__),
     ):
-        super().__init__(client, config_note_id, logger) #api version here?
+        super().__init__(client, config_note_id, logger)  # api version here?
 
         self.config_note = self._content_to_api1(self.config_note)
         self.venue_id = self.config_note.signatures[0]
@@ -725,20 +731,22 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
 
         # Catch none message
         if message is None:
-            message = ''
+            message = ""
 
         casted_info = {}
         for key, value in additional_status_info.items():
-            casted_info[key] = { "value": value }
-        casted_info["status"] = { "value": status.value }
-        casted_info["error_message"] = { "value": message }
+            casted_info[key] = {"value": value}
+        casted_info["status"] = {"value": status.value}
+        casted_info["error_message"] = {"value": message}
 
         config_note_v2 = self.client.post_note_edit(
-            invitation=f'{self.venue_id}/-/Edit',
+            invitation=f"{self.venue_id}/-/Edit",
             signatures=[self.venue_id],
-            note=Note(id=self.config_note.id, content=casted_info)
+            note=Note(id=self.config_note.id, content=casted_info),
         )
-        self.config_note = self._content_to_api1(self.client.get_note(self.config_note.id))
+        self.config_note = self._content_to_api1(
+            self.client.get_note(self.config_note.id)
+        )
 
         self.logger.debug(
             "Config Note {} status set to: {}".format(
@@ -764,7 +772,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             ),
             nonreaders=self._get_values(invitation, number, "nonreaders"),
             writers=self._get_values(invitation, number, "writers"),
-            signatures=self._get_values(invitation, number, "signatures")
+            signatures=self._get_values(invitation, number, "signatures"),
         )
 
     def _get_values(self, invitation, number, property, head=None, tail=None):
@@ -775,26 +783,32 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         if getattr(invitation, "edit", None) is not None:
             property_params = invitation.edit.get(property, {})
         else:
-            raise openreview.OpenReviewException('Reply/Edge attribute not present in invitation')
+            raise openreview.OpenReviewException(
+                "Reply/Edge attribute not present in invitation"
+            )
 
         parsed_params = []
         if isinstance(property_params, list):
             for param in property_params:
-                if '$' not in param:
+                if "$" not in param:
                     parsed_params.append(param)
                 else:
-                    new_param = param.replace("${{2/head}/number}", str(number))
+                    new_param = param.replace(
+                        "${{2/head}/number}", str(number)
+                    )
                     if head:
                         new_param = new_param.replace("${2/tail}", tail)
                     if tail:
                         new_param = new_param.replace("${2/head}", head)
                     parsed_params.append(new_param)
             return parsed_params
-        
-        if property == "signatures":
-            return property_params.get('param',{}).get('default',[])
 
-        return []       
+        if property == "signatures":
+            return property_params.get("param", {}).get("default", [])
+
+        return []
+
+
 class Deployment:
     def __init__(
         self, config_note_interface, logger=logging.getLogger(__name__)
@@ -823,9 +837,13 @@ class Deployment:
                     content={"venue_id": self.config_note_interface.venue_id},
                 )
                 if notes:
-                    venue = openreview.journal.JournalRequest.get_journal(self.config_note_interface.client, notes[0].id)
+                    venue = openreview.journal.JournalRequest.get_journal(
+                        self.config_note_interface.client, notes[0].id
+                    )
                 else:
-                    raise openreview.OpenReviewException("Venue request not found")
+                    raise openreview.OpenReviewException(
+                        "Venue request not found"
+                    )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)

@@ -89,9 +89,7 @@ def run_matching(
     time_limit=3600 * 24,
     on_failure=on_task_failure,
 )
-def run_deployment(
-    self, interface, logger
-):
+def run_deployment(self, interface, logger):
     deployment = Deployment(config_note_interface=interface, logger=logger)
     try:
         deployment.run()

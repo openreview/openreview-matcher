@@ -43,68 +43,70 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
-        "randomized_probability_limits": { 'value': "0.5" },
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
+        "randomized_probability_limits": {"value": "0.5"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert response.status_code == 200
 
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
     assert matcher_status.content["status"]["value"] == "Complete"
 
     paper_assignment_edges = openreview_client.get_edges(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(
-            venue.get_reviewers_id()
-        ),
+        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
@@ -138,60 +140,64 @@ def test_integration_supply_mismatch_error(
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test-2" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+        "title": {"value": "integration-test-2"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert response.status_code == 200
 
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
     assert matcher_status.content["status"]["value"] == "No Solution"
     assert (
         matcher_status.content["error_message"]["value"]
@@ -200,9 +206,7 @@ def test_integration_supply_mismatch_error(
 
     paper_assignment_edges = openreview_client.get_edges(
         label="integration-test-2",
-        invitation=venue.get_paper_assignment_id(
-            venue.get_reviewers_id()
-        ),
+        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
     )
 
     assert len(paper_assignment_edges) == 0
@@ -236,60 +240,64 @@ def test_integration_demand_out_of_supply_range_error(
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert response.status_code == 200
 
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
     assert matcher_status.content["status"]["value"] == "No Solution"
     assert (
         matcher_status.content["error_message"]["value"]
@@ -298,9 +306,7 @@ def test_integration_demand_out_of_supply_range_error(
 
     paper_assignment_edges = openreview_client.get_edges(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(
-            venue.get_reviewers_id()
-        ),
+        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
     )
 
     assert len(paper_assignment_edges) == 0
@@ -330,66 +336,66 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     )
 
     reviewers_id = venue.get_reviewers_id()
-    
+
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
-        "allow_zero_score_assignments":  { 'value': "Yes" },
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
+        "allow_zero_score_assignments": {"value": "Yes"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert response.status_code == 200
 
-    matcher_status = wait_for_status(openreview_client, config_note['note']['id'], api_version=2)
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
 
-    config_note = openreview_client.get_note(config_note['note']['id'])
+    config_note = openreview_client.get_note(config_note["note"]["id"])
     assert matcher_status.content["status"]["value"] == "Complete"
 
     paper_assignment_edges = openreview_client.get_edges(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(
-            venue.get_reviewers_id()
-        ),
+        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
     )
 
     assert len(paper_assignment_edges) == num_papers * reviews_per_paper
@@ -421,61 +427,63 @@ def test_routes_invalid_invitation(
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification": {'value': {
-            # conference.get_affinity_score_id(reviewers_id): {
-            #     'weight': 1.0,
-            #     'default': 0.0
-            # },
-            "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                # conference.get_affinity_score_id(reviewers_id): {
+                #     'weight': 1.0,
+                #     'default': 0.0
+                # },
+                "<some_invalid_invitation>": {"weight": 1.0, "default": 0.0}
+            }
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     invalid_invitation_response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert invalid_invitation_response.status_code == 404
 
-    config_note = openreview_client.get_note(config_note['note']['id'])
+    config_note = openreview_client.get_note(config_note["note"]["id"])
     assert config_note.content["status"]["value"] == "Error"
 
 
@@ -503,54 +511,56 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
-        } },
-        "status":  { 'value': "Initialized" },
-        "solver":  { 'value': "Randomized" },
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "Randomized"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     missing_header_response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
     )
     assert missing_header_response.status_code == 400
@@ -586,6 +596,7 @@ def test_routes_bad_token(openreview_context, celery_app, celery_worker):
     )
     assert bad_token_response.status_code == 400
 
+
 def test_routes_already_running_or_complete(
     openreview_context, celery_app, celery_worker
 ):
@@ -613,77 +624,82 @@ def test_routes_already_running_or_complete(
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": { 'value': "integration-test" },
-        "user_demand":  { 'value': str(reviews_per_paper) },
-        "max_papers":  { 'value': str(max_papers) },
-        "min_papers":  { 'value': str(min_papers) },
-        "alternates":  { 'value': str(alternates) },
-        "config_invitation":  { 'value': "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ) },
-        "paper_invitation":  { 'value': venue.get_submission_id() },
-        "assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id
-        ) },
-        "deployed_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ) },
-        "invite_assignment_invitation":  { 'value': venue.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ) },
-        "aggregate_score_invitation":  { 'value': "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ) },
-        "conflicts_invitation":  { 'value': venue.get_conflict_score_id(reviewers_id) },
-        "custom_max_papers_invitation":  { 'value': "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ) },
-        "match_group":  { 'value': reviewers_id },
-        "scores_specification":  { 'value': {
-            venue.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
-        } },
-        "status":  { 'value': "Running" },
-        "solver":  { 'value': "Randomized" },
+        },
+        "status": {"value": "Running"},
+        "solver": {"value": "Randomized"},
     }
 
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(
-            content=config
-        )
+        note=Note(content=config),
     )
     assert config_note
 
     already_running_response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert already_running_response.status_code == 400
 
-    config_note = openreview_client.get_note(config_note['note']['id'])
+    config_note = openreview_client.get_note(config_note["note"]["id"])
     assert config_note.content["status"]["value"] == "Running"
 
     config_note.content["status"]["value"] = "Complete"
     config_note = openreview_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
-        note=Note(id=config_note.id, content=config_note.content)
+        note=Note(id=config_note.id, content=config_note.content),
     )
     assert config_note
-    print("config note set to: ", config_note['note']['content']["status"]["value"])
+    print(
+        "config note set to: ",
+        config_note["note"]["content"]["status"]["value"],
+    )
 
     already_complete_response = test_client.post(
         "/match",
-        data=json.dumps({"configNoteId": config_note['note']['id']}),
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
         headers=openreview_client.headers,
     )
     assert already_complete_response.status_code == 400
-    config_note = openreview_client.get_note(config_note['note']['id'])
+    config_note = openreview_client.get_note(config_note["note"]["id"])
     assert config_note.content["status"]["value"] == "Complete"

@@ -51,7 +51,8 @@ def match():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL"]
         )
         openreview_client_v2 = openreview.api.OpenReviewClient(
-            token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
+            token=token,
+            baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"],
         )
 
         try:
@@ -62,7 +63,7 @@ def match():
                 logger=flask.current_app.logger,
             )
         except openreview.OpenReviewException as e:
-            if 'notfound' in str(e).lower():
+            if "notfound" in str(e).lower():
                 openreview_client_v2.get_note(config_note_id)
                 interface = ConfigNoteInterfaceV2(
                     client=openreview_client_v2,
@@ -192,10 +193,11 @@ def deploy():
             token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL"]
         )
         openreview_client_v2 = openreview.api.OpenReviewClient(
-            token=token, baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"]
+            token=token,
+            baseurl=flask.current_app.config["OPENREVIEW_BASEURL_V2"],
         )
 
-        flask.current_app.logger.debug('try to get configuration note')
+        flask.current_app.logger.debug("try to get configuration note")
         try:
             openreview_client.get_note(config_note_id)
             interface = ConfigNoteInterfaceV1(
@@ -204,7 +206,7 @@ def deploy():
                 logger=flask.current_app.logger,
             )
         except openreview.OpenReviewException as e:
-            if 'notfound' in str(e).lower():
+            if "notfound" in str(e).lower():
                 openreview_client_v2.get_note(config_note_id)
                 interface = ConfigNoteInterfaceV2(
                     client=openreview_client_v2,
@@ -214,8 +216,8 @@ def deploy():
             else:
                 raise e
 
-        flask.current_app.logger.debug('interface is set')
-        
+        flask.current_app.logger.debug("interface is set")
+
         if interface.config_note.content["status"] not in [
             "Complete",
             "Deployment Error",

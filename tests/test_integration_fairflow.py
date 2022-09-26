@@ -796,6 +796,7 @@ def test_routes_already_running_or_complete(
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content["status"] == "Complete"
 
+
 def test_routes_already_queued(openreview_context, celery_app, celery_worker):
     """should return 400 if the match is already queued"""
 
