@@ -78,6 +78,16 @@ jobs:
           NODE_ENV=circleci node scripts/setup_app.js
         background: true
     - run:
+        shell: /bin/sh
+        command: |
+          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
+          :
+    - run:
+        shell: /bin/sh
+        command: |
+          wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=15 -t 20 http://localhost:3001
+          :
+    - run:
         name: run tests
         command: |
           source matcher/bin/activate

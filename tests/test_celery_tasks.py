@@ -3,12 +3,13 @@ import json
 from openreview import openreview
 
 from matcher.service.celery_tasks import run_matching
-from matcher.service.openreview_interface import ConfigNoteInterface
+from matcher.service.openreview_interface import ConfigNoteInterfaceV1
 from tests.conftest import clean_start_conference, wait_for_status
 
 
 def test_matching_task(openreview_context, celery_app, celery_worker):
     openreview_client = openreview_context["openreview_client"]
+    openreview_client_v2 = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
     app = openreview_context["app"]
 
@@ -80,7 +81,7 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
     config_note = openreview_client.post_note(config_note)
     assert config_note
 
-    interface = ConfigNoteInterface(
+    interface = ConfigNoteInterfaceV1(
         client=openreview_client,
         config_note_id=config_note.id,
         logger=app.logger,

@@ -6,7 +6,7 @@ from urllib3.exceptions import ConnectTimeoutError, RequestError
 from matcher import Matcher
 from matcher.core import MatcherStatus
 from matcher.service.openreview_interface import (
-    ConfigNoteInterface,
+    BaseConfigNoteInterface,
     Deployment,
 )
 from matcher.service.server import celery_app as celery
@@ -38,7 +38,7 @@ def on_task_failure(self, exc, task_id, args, kwargs, einfo):
     max_retries=15,
     retry_jitter=True,
 )
-def set_error_status(self, interface: ConfigNoteInterface, logger, exc):
+def set_error_status(self, interface, logger, exc):
     logger.info(
         "Setting status for config note {} to Error.".format(
             interface.config_note.id
@@ -56,7 +56,7 @@ def set_error_status(self, interface: ConfigNoteInterface, logger, exc):
 )
 def run_matching(
     self,
-    interface: ConfigNoteInterface,
+    interface: BaseConfigNoteInterface,
     solver_class: str,
     logger: logging.Logger,
 ):
@@ -89,9 +89,7 @@ def run_matching(
     time_limit=3600 * 24,
     on_failure=on_task_failure,
 )
-def run_deployment(
-    self, interface: ConfigNoteInterface, logger: logging.Logger
-):
+def run_deployment(self, interface, logger):
     deployment = Deployment(config_note_interface=interface, logger=logger)
     try:
         deployment.run()

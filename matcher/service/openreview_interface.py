@@ -4,9 +4,10 @@ import logging
 from tqdm import tqdm
 from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
+from openreview.api import Note
 
 
-class ConfigNoteInterface:
+class BaseConfigNoteInterface:
     def __init__(
         self,
         client,
@@ -17,45 +18,6 @@ class ConfigNoteInterface:
         self.logger = logger
         self.logger.debug("GET note id={}".format(config_note_id))
         self.config_note = self.client.get_note(config_note_id)
-        self.venue_id = self.config_note.signatures[0]
-        self.label = self.config_note.content["title"]
-        self.match_group = self.config_note.content["match_group"]
-        self.logger.debug(
-            "GET invitation id={}".format(
-                self.config_note.content["assignment_invitation"]
-            )
-        )
-        self.assignment_invitation = self.client.get_invitation(
-            self.config_note.content["assignment_invitation"]
-        )
-        self.logger.debug(
-            "GET invitation id={}".format(
-                self.config_note.content["aggregate_score_invitation"]
-            )
-        )
-        self.aggregate_score_invitation = self.client.get_invitation(
-            self.config_note.content["aggregate_score_invitation"]
-        )
-        self.num_alternates = int(self.config_note.content["alternates"])
-        self.paper_numbers = {}
-        self.allow_zero_score_assignments = (
-            self.config_note.content.get("allow_zero_score_assignments", "No")
-            == "Yes"
-        )
-        self.probability_limits = float(
-            self.config_note.content.get("randomized_probability_limits", 1.0)
-        )
-
-        # Lazy variables
-        self._reviewers = None
-        self._papers = None
-        self._scores_by_type = {}
-        self._minimums = None
-        self._maximums = None
-        self._demands = None
-        self._constraints = None
-
-        self.validate_score_spec()
 
     def validate_score_spec(self):
         for invitation_id in self.config_note.content.get(
@@ -64,7 +26,7 @@ class ConfigNoteInterface:
             try:
                 self.logger.debug("GET invitation id={}".format(invitation_id))
                 self.client.get_invitation(invitation_id)
-            except openreview.OpenReviewException as error_handle:
+            except Exception as error_handle:
                 self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
 
@@ -107,49 +69,6 @@ class ConfigNoteInterface:
         return self._reviewers
 
     @property
-    def papers(self):
-        if self._papers is None:
-            content_dict = {}
-            paper_invitation = self.config_note.content["paper_invitation"]
-            self.logger.debug(
-                "Getting notes for invitation: {}".format(paper_invitation)
-            )
-            if "&" in paper_invitation:
-                elements = paper_invitation.split("&")
-                paper_invitation = elements[0]
-                for element in elements[1:]:
-                    if element:
-                        if element.startswith("content.") and "=" in element:
-                            key, value = element.split(".")[1].split("=")
-                            content_dict[key] = value
-                        else:
-                            self.logger.debug(
-                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
-                                    element
-                                )
-                            )
-            if "/-/" in paper_invitation:
-                paper_notes = list(
-                    openreview.tools.iterget_notes(
-                        self.client,
-                        invitation=paper_invitation,
-                        content=content_dict,
-                    )
-                )
-                self._papers = [n.id for n in paper_notes]
-                self.paper_numbers = {n.id: n.number for n in paper_notes}
-                self.logger.debug(
-                    "Count of notes found: {}".format(len(self._papers))
-                )
-            else:
-                self.validate_group(paper_invitation)
-                group = self.client.get_group(paper_invitation)
-                self._papers = group.members
-                self.paper_numbers = {n: 1 for n in group.members}
-
-        return self._papers
-
-    @property
     def minimums(self):
         if self._minimums is None:
             minimums, maximums = self._get_quota_arrays()
@@ -179,12 +98,14 @@ class ConfigNoteInterface:
                     custom_demand_invitation
                 )
             )
+
             custom_demand_edges = self.client.get_grouped_edges(
                 invitation=custom_demand_invitation,
                 groupby="tail",
                 tail=self.match_group,
                 select="head,weight",
             )
+
         return custom_demand_edges
 
     def _get_custom_supply_edges(self):
@@ -199,13 +120,35 @@ class ConfigNoteInterface:
                     custom_supply_invitation
                 )
             )
+
             custom_supply_edges = self.client.get_grouped_edges(
                 invitation=custom_supply_invitation,
                 groupby="head",
                 head=self.match_group,
                 select="tail,weight",
             )
+
         return custom_supply_edges
+
+    def _content_to_api1(self, note):
+        new_content = {}
+        for key, val in note.content.items():
+            if isinstance(val, dict) and "value" in val.keys():
+                new_content[key] = val["value"]
+            else:
+                new_content[key] = val
+        note.content = new_content
+        return note
+
+    def _content_to_api2(self, note):
+        new_content = {}
+        for key, val in note.content.items():
+            if not (isinstance(val, dict) and "value" in val.keys()):
+                new_content[key] = {"value": val}
+            else:
+                new_content[key] = val
+        note.content = new_content
+        return note
 
     @property
     def demands(self):
@@ -301,21 +244,6 @@ class ConfigNoteInterface:
             }
         return weight_by_type
 
-    def set_status(self, status, message="", additional_status_info={}):
-        """Set the status of the config note"""
-        self.config_note.content["status"] = status.value
-        self.config_note.content["error_message"] = message
-        for key, value in additional_status_info.items():
-            print("Save property", key, value)
-            self.config_note.content[key] = value
-
-        self.config_note = self.client.post_note(self.config_note)
-        self.logger.debug(
-            "Config Note {} status set to: {}".format(
-                self.config_note.id, self.config_note.content["status"]
-            )
-        )
-
     def set_assignments(self, assignments_by_forum):
         """Helper function for posting assignments returned by the Encoder"""
 
@@ -354,8 +282,11 @@ class ConfigNoteInterface:
                     )
                 )
 
+        # Find the API1/2 invitation
+        self.client.get_invitation(self.assignment_invitation.id)
         openreview.tools.post_bulk_edges(self.client, assignment_edges)
         openreview.tools.post_bulk_edges(self.client, score_edges)
+
         self.logger.debug(
             "posted {} assignment edges".format(len(assignment_edges))
         )
@@ -386,6 +317,7 @@ class ConfigNoteInterface:
                 )
 
         openreview.tools.post_bulk_edges(self.client, score_edges)
+
         self.logger.debug(
             "posted {} aggregate score edges for alternates".format(
                 len(score_edges)
@@ -470,58 +402,6 @@ class ConfigNoteInterface:
                 )
         return all_edges
 
-    def _build_edge(
-        self, invitation, forum_id, reviewer, score, label, number
-    ):
-        """
-        Helper function for constructing an openreview.Edge object.
-        Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
-        """
-        return openreview.Edge(
-            head=forum_id,
-            tail=reviewer,
-            weight=score,
-            label=label,
-            invitation=invitation.id,
-            readers=self._get_values(
-                invitation, number, "readers", forum_id, reviewer
-            ),
-            nonreaders=self._get_values(invitation, number, "nonreaders"),
-            writers=self._get_values(invitation, number, "writers"),
-            signatures=[self.venue_id],
-        )
-
-    def _get_values(self, invitation, number, property, head=None, tail=None):
-        """Return values compatible with the field `property` in invitation.reply.content"""
-        values = []
-
-        property_params = invitation.reply.get(property, {})
-        if "values" in property_params:
-            values = property_params.get("values", [])
-        elif "values-regex" in property_params:
-            regex_pattern = property_params["values-regex"]
-            values = []
-
-            for group_id in regex_pattern.split("|"):
-                group_id = group_id.replace("^", "").replace("$", "")
-                if "Paper.*" in group_id:
-                    group_id = group_id.replace(
-                        "Paper.*", "Paper{}".format(number)
-                    )
-                    values.append(group_id)
-        elif "values-copied" in property_params:
-            values_copied = property_params["values-copied"]
-
-            for value in values_copied:
-                if value == "{tail}":
-                    values.append(tail)
-                elif value == "{head}":
-                    values.append(head)
-                else:
-                    values.append(value)
-
-        return [v.replace("{head.number}", str(number)) for v in values]
-
     def _edge_to_score(self, edge, translate_map=None):
         """
         Given an openreview.Edge, and a mapping defined by `translate_map`,
@@ -553,6 +433,382 @@ class ConfigNoteInterface:
         return score
 
 
+class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
+    def __init__(
+        self,
+        client,
+        config_note_id,
+        logger=logging.getLogger(__name__),
+    ):
+        super().__init__(client, config_note_id, logger)
+
+        self.venue_id = self.config_note.signatures[0]
+        self.label = self.config_note.content["title"]
+        self.match_group = self.config_note.content["match_group"]
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["assignment_invitation"]
+            )
+        )
+        self.assignment_invitation = self.client.get_invitation(
+            self.config_note.content["assignment_invitation"]
+        )
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["aggregate_score_invitation"]
+            )
+        )
+
+        self.aggregate_score_invitation = self.client.get_invitation(
+            self.config_note.content["aggregate_score_invitation"]
+        )
+
+        self.num_alternates = int(self.config_note.content["alternates"])
+        self.paper_numbers = {}
+        self.allow_zero_score_assignments = (
+            self.config_note.content.get("allow_zero_score_assignments", "No")
+            == "Yes"
+        )
+        self.probability_limits = float(
+            self.config_note.content.get("randomized_probability_limits", 1.0)
+        )
+
+        # Lazy variables
+        self._reviewers = None
+        self._papers = None
+        self._scores_by_type = {}
+        self._minimums = None
+        self._maximums = None
+        self._demands = None
+        self._constraints = None
+
+        self.validate_score_spec()
+
+    @property
+    def papers(self):
+        if self._papers is None:
+            content_dict = {}
+            paper_invitation = self.config_note.content["paper_invitation"]
+            self.logger.debug(
+                "Getting notes for invitation: {}".format(paper_invitation)
+            )
+            if "&" in paper_invitation:
+                elements = paper_invitation.split("&")
+                paper_invitation = elements[0]
+                for element in elements[1:]:
+                    if element:
+                        if element.startswith("content.") and "=" in element:
+                            key, value = element.split(".")[1].split("=")
+                            content_dict[key] = value
+                        else:
+                            self.logger.debug(
+                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
+                                    element
+                                )
+                            )
+            if "/-/" in paper_invitation:
+                paper_notes = list(
+                    openreview.tools.iterget_notes(
+                        self.client,
+                        invitation=paper_invitation,
+                        content=content_dict,
+                    )
+                )
+
+                paper_notes = [n for n in paper_notes]
+                self._papers = [n.id for n in paper_notes]
+                self.paper_numbers = {n.id: n.number for n in paper_notes}
+                self.logger.debug(
+                    "Count of notes found: {}".format(len(self._papers))
+                )
+            else:
+                self.validate_group(paper_invitation)
+                group = self.client.get_group(paper_invitation)
+                self._papers = group.members
+                self.paper_numbers = {n: 1 for n in group.members}
+
+        return self._papers
+
+    def set_status(self, status, message="", additional_status_info={}):
+        """Set the status of the config note"""
+
+        # Catch none message
+        if message is None:
+            message = ""
+
+        self.config_note.content["status"] = status.value
+        self.config_note.content["error_message"] = message
+        for key, value in additional_status_info.items():
+            print("Save property", key, value)
+            self.config_note.content[key] = value
+        self.config_note = self.client.post_note(self.config_note)
+
+        self.logger.debug(
+            "Config Note {} status set to: {}".format(
+                self.config_note.id, self.config_note.content["status"]
+            )
+        )
+
+    def _build_edge(
+        self, invitation, forum_id, reviewer, score, label, number
+    ):
+        """
+        Helper function for constructing an openreview.Edge object.
+        Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
+        """
+        return openreview.Edge(
+            head=forum_id,
+            tail=reviewer,
+            weight=score,
+            label=label,
+            invitation=invitation.id,
+            readers=self._get_values(
+                invitation, number, "readers", forum_id, reviewer
+            ),
+            nonreaders=self._get_values(invitation, number, "nonreaders"),
+            writers=self._get_values(invitation, number, "writers"),
+            signatures=[self.venue_id],
+        )
+
+    def _get_values(self, invitation, number, property, head=None, tail=None):
+        """Return values compatible with the field `property` in invitation.reply.content"""
+        values = []
+
+        # Perform API2 check
+        if getattr(invitation, "reply", None) is not None:
+            property_params = invitation.reply.get(property, {})
+        else:
+            raise openreview.OpenReviewException(
+                "Reply/Edge attribute not present in invitation"
+            )
+
+        parsed_params = []
+        if isinstance(property_params, list):
+            for param in property_params:
+                if "$" not in param:
+                    parsed_params.append(param)
+                else:
+                    new_param = param.replace(
+                        "${{2/head}/number}", str(number)
+                    )
+                    if head:
+                        new_param = new_param.replace("${2/tail}", tail)
+                    if tail:
+                        new_param = new_param.replace("${2/head}", head)
+                    parsed_params.append(new_param)
+            return parsed_params
+
+        if "values" in property_params:
+            values = property_params.get("values", [])
+        elif "values-regex" in property_params:
+            regex_pattern = property_params["values-regex"]
+            values = []
+
+            for group_id in regex_pattern.split("|"):
+                group_id = group_id.replace("^", "").replace("$", "")
+                if "Paper.*" in group_id:
+                    group_id = group_id.replace(
+                        "Paper.*", "Paper{}".format(number)
+                    )
+                    values.append(group_id)
+        elif "values-copied" in property_params:
+            values_copied = property_params["values-copied"]
+
+            for value in values_copied:
+                if value == "{tail}":
+                    values.append(tail)
+                elif value == "{head}":
+                    values.append(head)
+                else:
+                    values.append(value)
+
+        return [v.replace("{head.number}", str(number)) for v in values]
+
+
+class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
+    def __init__(
+        self,
+        client,
+        config_note_id,
+        logger=logging.getLogger(__name__),
+    ):
+        super().__init__(client, config_note_id, logger)  # api version here?
+
+        self.config_note = self._content_to_api1(self.config_note)
+        self.venue_id = self.config_note.signatures[0]
+        self.label = self.config_note.content["title"]
+        self.match_group = self.config_note.content["match_group"]
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["assignment_invitation"]
+            )
+        )
+        self.assignment_invitation = self.client.get_invitation(
+            self.config_note.content["assignment_invitation"]
+        )
+
+        self.logger.debug(
+            "GET invitation id={}".format(
+                self.config_note.content["aggregate_score_invitation"]
+            )
+        )
+
+        self.aggregate_score_invitation = self.client.get_invitation(
+            self.config_note.content["aggregate_score_invitation"]
+        )
+
+        self.num_alternates = int(self.config_note.content["alternates"])
+        self.paper_numbers = {}
+        self.allow_zero_score_assignments = (
+            self.config_note.content.get("allow_zero_score_assignments", "No")
+            == "Yes"
+        )
+        self.probability_limits = float(
+            self.config_note.content.get("randomized_probability_limits", 1.0)
+        )
+
+        # Lazy variables
+        self._reviewers = None
+        self._papers = None
+        self._scores_by_type = {}
+        self._minimums = None
+        self._maximums = None
+        self._demands = None
+        self._constraints = None
+
+        self.validate_score_spec()
+
+    @property
+    def papers(self):
+        if self._papers is None:
+            content_dict = {}
+            paper_invitation = self.config_note.content["paper_invitation"]
+            self.logger.debug(
+                "Getting notes for invitation: {}".format(paper_invitation)
+            )
+            if "&" in paper_invitation:
+                elements = paper_invitation.split("&")
+                paper_invitation = elements[0]
+                for element in elements[1:]:
+                    if element:
+                        if element.startswith("content.") and "=" in element:
+                            key, value = element.split(".")[1].split("=")
+                            content_dict[key] = value
+                        else:
+                            self.logger.debug(
+                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
+                                    element
+                                )
+                            )
+            if "/-/" in paper_invitation:
+                paper_notes = list(
+                    openreview.tools.iterget_notes(
+                        self.client,
+                        invitation=paper_invitation,
+                        content=content_dict,
+                    )
+                )
+
+                paper_notes = [self._content_to_api1(n) for n in paper_notes]
+                self._papers = [n.id for n in paper_notes]
+                self.paper_numbers = {n.id: n.number for n in paper_notes}
+                self.logger.debug(
+                    "Count of notes found: {}".format(len(self._papers))
+                )
+            else:
+                self.validate_group(paper_invitation)
+                group = self.client.get_group(paper_invitation)
+                self._papers = group.members
+                self.paper_numbers = {n: 1 for n in group.members}
+
+        return self._papers
+
+    def set_status(self, status, message="", additional_status_info={}):
+        """Set the status of the config note"""
+
+        # Catch none message
+        if message is None:
+            message = ""
+
+        casted_info = {}
+        for key, value in additional_status_info.items():
+            casted_info[key] = {"value": value}
+        casted_info["status"] = {"value": status.value}
+        casted_info["error_message"] = {"value": message}
+
+        config_note_v2 = self.client.post_note_edit(
+            invitation=f"{self.venue_id}/-/Edit",
+            signatures=[self.venue_id],
+            note=Note(id=self.config_note.id, content=casted_info),
+        )
+        self.config_note = self._content_to_api1(
+            self.client.get_note(self.config_note.id)
+        )
+
+        self.logger.debug(
+            "Config Note {} status set to: {}".format(
+                self.config_note.id, self.config_note.content["status"]
+            )
+        )
+
+    def _build_edge(
+        self, invitation, forum_id, reviewer, score, label, number
+    ):
+        """
+        Helper function for constructing an openreview.Edge object.
+        Readers, nonreaders, writers, and signatures are automatically filled based on the invitaiton.
+        """
+        return openreview.api.Edge(
+            head=forum_id,
+            tail=reviewer,
+            weight=score,
+            label=label,
+            invitation=invitation.id,
+            readers=self._get_values(
+                invitation, number, "readers", forum_id, reviewer
+            ),
+            nonreaders=self._get_values(invitation, number, "nonreaders"),
+            writers=self._get_values(invitation, number, "writers"),
+            signatures=self._get_values(invitation, number, "signatures"),
+        )
+
+    def _get_values(self, invitation, number, property, head=None, tail=None):
+        """Return values compatible with the field `property` in invitation.reply.content"""
+        values = []
+
+        # Perform API2 check
+        if getattr(invitation, "edit", None) is not None:
+            property_params = invitation.edit.get(property, {})
+        else:
+            raise openreview.OpenReviewException(
+                "Reply/Edge attribute not present in invitation"
+            )
+
+        parsed_params = []
+        if isinstance(property_params, list):
+            for param in property_params:
+                if "$" not in param:
+                    parsed_params.append(param)
+                else:
+                    new_param = param.replace(
+                        "${{2/head}/number}", str(number)
+                    )
+                    if head:
+                        new_param = new_param.replace("${2/tail}", tail)
+                    if tail:
+                        new_param = new_param.replace("${2/head}", head)
+                    parsed_params.append(new_param)
+            return parsed_params
+
+        if property == "signatures":
+            return property_params.get("param", {}).get("default", [])
+
+        return []
+
+
 class Deployment:
     def __init__(
         self, config_note_interface, logger=logging.getLogger(__name__)
@@ -564,22 +820,34 @@ class Deployment:
     def run(self):
 
         try:
+            venue = None
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
 
             notes = self.config_note_interface.client.get_notes(
                 invitation="OpenReview.net/Support/-/Request_Form",
                 content={"venue_id": self.config_note_interface.venue_id},
             )
-            if not notes:
-                raise openreview.OpenReviewException("Venue request not found")
-
-            conference = openreview.helpers.get_conference(
-                self.config_note_interface.client, notes[0].id
-            )
+            if notes:
+                venue = openreview.helpers.get_conference(
+                    self.config_note_interface.client, notes[0].id
+                )
+            else:
+                notes = self.config_note_interface.client.get_notes(
+                    invitation="OpenReview.net/Support/-/Journal_Request",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+                if notes:
+                    venue = openreview.journal.JournalRequest.get_journal(
+                        self.config_note_interface.client, notes[0].id
+                    )
+                else:
+                    raise openreview.OpenReviewException(
+                        "Venue request not found"
+                    )
 
             # impersonate user to get all the permissions to deploy the groups
-            conference.client.impersonate(self.config_note_interface.venue_id)
-            conference.set_assignments(
+            venue.client.impersonate(self.config_note_interface.venue_id)
+            venue.set_assignments(
                 assignment_title=self.config_note_interface.label,
                 committee_id=self.config_note_interface.match_group,
                 overwrite=True,

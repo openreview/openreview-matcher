@@ -10,7 +10,6 @@ import openreview
 import logging
 import datetime
 
-from matcher.service.openreview_interface import ConfigNoteInterface
 from matcher.solvers import SolverException
 
 from conftest import clean_start_conference, wait_for_status
