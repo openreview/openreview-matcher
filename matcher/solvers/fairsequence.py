@@ -110,7 +110,6 @@ class FairSequence(object):
 
         self.best_revs = np.argsort(-1 * self.affinity_matrix, axis=0)
         self.max_affinity = np.max(self.affinity_matrix)
-        self.trading_depth_limit = 7
         self.safe_mode = True
 
         self.solved = False
@@ -305,7 +304,7 @@ class FairSequence(object):
         ].tolist()
 
         generated_paths = [[(-1, p)] for p in choice_set]
-        nonterminal_nodes = set()
+        visited_nodes = set()
 
         st = time.time()
 
@@ -317,12 +316,15 @@ class FairSequence(object):
         )
 
         curr_depth = 1
-        while curr_depth < self.trading_depth_limit:
+        search_finished = False
+        while not search_finished:
+
             self.logger.debug(
                 "#info FairSequence:Search depth is %d"
                 % curr_depth
             )
 
+            num_visited = len(visited_nodes)
             new_paths = []
 
             for path in generated_paths:
@@ -369,9 +371,10 @@ class FairSequence(object):
                 # For each pair (r_prime, p_prime), figure out if p_prime can take a new reviewer
                 # and end the trading sequence.
                 for (r_prime, p_prime), _ in sorted_pairs:
-                    new_paths.append(path + [(r_prime, p_prime)])
-                    # If we have tried to terminate with this node before and failed, we will fail again
-                    if (r_prime, p_prime) not in nonterminal_nodes:
+                    if (r_prime, p_prime) not in visited_nodes:
+                        visited_nodes.add((r_prime, p_prime))
+                        new_paths.append(path + [(r_prime, p_prime)])
+
                         # Making greedy swaps helps maintain welfare of the solution
                         sorted_available_revs = sorted(available_reviewers,
                                                        key=lambda x: -self.affinity_matrix[x, p_prime])
@@ -400,9 +403,10 @@ class FairSequence(object):
                                        self.constraint_matrix[available_reviewer, p_prime]
                                        )
                                 )
-                        nonterminal_nodes.add((r_prime, p_prime))
             curr_depth += 1
             generated_paths = new_paths
+            if len(visited_nodes) == num_visited:
+                search_finished = True
 
         raise TradingException(
             "Could not find an existing reviewer-paper pair to trade with."
