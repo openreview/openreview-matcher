@@ -29,18 +29,18 @@ class FairSequence(object):
     pair with the highest affinity. Some constraints apply to the selection process - most importantly,
     no paper can be assigned a reviewer that would cause a WEF1 violation. If this procedure fails to
     discover a complete, WEF1 allocation, we try the picking sequence again, allowing WEF1 violations
-    during the process and potentially making some pairwise reviewer trades if necessary.
+    during the process and potentially making some reviewer trades if necessary.
     """
 
     def __init__(
-        self,
-        minimums,
-        maximums,
-        demands,
-        encoder,
-        allow_zero_score_assignments=False,
-        solution=None,
-        logger=logging.getLogger(__name__),
+            self,
+            minimums,
+            maximums,
+            demands,
+            encoder,
+            allow_zero_score_assignments=False,
+            solution=None,
+            logger=logging.getLogger(__name__),
     ):
         """
         Initialize a FairSequence matcher
@@ -110,6 +110,7 @@ class FairSequence(object):
 
         self.best_revs = np.argsort(-1 * self.affinity_matrix, axis=0)
         self.max_affinity = np.max(self.affinity_matrix)
+        self.trading_depth_limit = 7
         self.safe_mode = True
 
         self.solved = False
@@ -201,13 +202,13 @@ class FairSequence(object):
         return True
 
     def _select_next_paper(
-        self,
-        matrix_alloc,
-        dict_alloc,
-        best_revs_map,
-        current_reviewer_maximums,
-        previous_attained_scores,
-        paper_priorities,
+            self,
+            matrix_alloc,
+            dict_alloc,
+            best_revs_map,
+            current_reviewer_maximums,
+            previous_attained_scores,
+            paper_priorities,
     ):
         """Select the next paper to be assigned a reviewer
 
@@ -245,12 +246,12 @@ class FairSequence(object):
             removal_set = []
             for r in best_revs_map[p]:
                 if (
-                    current_reviewer_maximums[r] <= 0
-                    or self.constraint_matrix[r, p] != 0
-                    or (
+                        current_reviewer_maximums[r] <= 0
+                        or self.constraint_matrix[r, p] != 0
+                        or (
                         math.isclose(self.affinity_matrix[r, p], 0)
                         and not self.allow_zero_score_assignments
-                    )
+                )
                 ):
                     removal_set.append(r)
                 elif matrix_alloc[r, p] > 0.5:
@@ -262,7 +263,7 @@ class FairSequence(object):
                     # Check if this is a valid assignment, then make it the greedy choice if so.
                     # If not a valid assignment, go to the next reviewer for this agent.
                     if not self.safe_mode or self._is_valid_assignment(
-                        r, p, dict_alloc, previous_attained_scores
+                            r, p, dict_alloc, previous_attained_scores
                     ):
                         next_paper = p
                         next_rev = r
@@ -280,10 +281,9 @@ class FairSequence(object):
         return next_paper, next_rev, best_revs_map
 
     def _find_trade(self, matrix_alloc, current_reviewer_maximums, paper_priorities):
-        """Find a reviewer-paper pair r_prime, p_prime so that we can give r_prime to a paper p
-        that needs a new reviewer, and give a different available reviewer to p_prime.
-
-        This function runs as a subroutine of _trade_and_assign.
+        """Find a sequence of reviewer-paper pairs so that we can trade reviewers around
+            to assign a reviewer from the set of available reviewers and get a new reviewer
+            assigned to a paper with remaining demand.
 
         Args:
             matrix_alloc - (2d numpy array) the assignment of reviewers to papers
@@ -291,8 +291,9 @@ class FairSequence(object):
             paper_priorities - (SortedList) list of tuples (priority, paper_id), sorted by increasing priority
 
         Returns:
-            A tuple (r_prime, p_prime), the paper in the choice_set which will receive r_prime, and the
-            available_reviewer to assign to p_prime.
+            A sequence [(-1, p), (r1, p1), (r2, p2), ... (rn, -1)]
+            such that we can transfer the reviewers to the left, p is a paper that needs
+            a new reviewer, and rn is a reviewer that has an open reviewing slot.
         """
         min_priority = paper_priorities[0][0]
         choice_set = paper_priorities.irange(
@@ -303,64 +304,105 @@ class FairSequence(object):
             0
         ].tolist()
 
+        generated_paths = [[(-1, p)] for p in choice_set]
+        nonterminal_nodes = set()
+
+        st = time.time()
+
         self.logger.debug(
-            "#info FairSequence:Looking for a paper which can swap an assigned reviewer for an available reviewer. " +
+            "#info FairSequence:Looking for a sequence of papers which can swap an assigned reviewer " +
+            "for an available reviewer. " +
             "Available reviewers: %s, Papers who can be assigned to: %s"
             % (available_reviewers, choice_set)
         )
 
-        st = time.time()
-        # Search over all papers in the choice set
-        for p in choice_set:
+        curr_depth = 1
+        while curr_depth < self.trading_depth_limit:
             self.logger.debug(
-                "#info FairSequence:Checking for swap so that %d gets a new reviewer. Time elapsed: %s s"
-                % (p, time.time() - st)
+                "#info FairSequence:Search depth is %d"
+                % curr_depth
             )
 
-            # Generete a list of reviewer, paper pairs we can swap with.
-            # Sort them in decreasing order of value.
-            # For each pair in that order, sort through the reviewers that could be given to the paper in order.
-            reviewer_paper_pairs = matrix_alloc.copy()
+            new_paths = []
 
-            # Can't make progress if we just swap with another paper in the set of papers we need to assign to
-            reviewer_paper_pairs[:, choice_set] = 0
+            for path in generated_paths:
+                # Take the node at the end of the path and try to expand it
+                (r, p) = path[-1]
 
-            # Can't swap out for a reviewer that we can't assign to p
-            p_revs = np.where(matrix_alloc[:, p])[0]
-            reviewer_paper_pairs[p_revs, :] = 0
-            reviewer_paper_pairs[self.constraint_matrix[:, p].astype(dtype=bool), :] = 0
-            if not self.allow_zero_score_assignments:
-                reviewer_paper_pairs[np.isclose(self.affinity_matrix[:, p], 0), :] = 0
+                self.logger.debug(
+                    "#info FairSequence:Checking the path %s"
+                    % path
+                )
 
-            # Collect the reviewer-paper pairs in decreasing order of utility to p
-            pairs_list = np.where(reviewer_paper_pairs)
-            pairs_list = zip(pairs_list[0], pairs_list[1])
-            sorted_pairs = []
-            for pair in pairs_list:
-                sorted_pairs.append((pair, self.affinity_matrix[pair[0], p]))
-            sorted_pairs = sorted(sorted_pairs, key=lambda x: -x[1])
+                # Generete reviewer-paper pairs (r_prime, p_prime) where paper p can exchange r for r_prime.
+                reviewer_paper_pairs = matrix_alloc.copy()
 
-            self.logger.debug(
-                "#info FairSequence:List of reviewer-paper pairs we might swap with: %s. Time elapsed: %s s"
-                % (sorted_pairs, time.time() - st)
-            )
+                # Can't make progress if we just swap with another paper in the choice_set
+                reviewer_paper_pairs[:, choice_set] = 0
 
-            # For each pair (r_prime, p_prime), sort through the available reviewers in decreasing order of
-            # utility to p_prime, see if can trade.
-            for (r_prime, p_prime), _ in sorted_pairs:
-                sorted_available_revs = sorted(available_reviewers, key=lambda x: -self.affinity_matrix[x, p_prime])
-                for available_reviewer in sorted_available_revs:
-                    if ((self.allow_zero_score_assignments or
-                            not math.isclose(self.affinity_matrix[available_reviewer, p_prime], 0)) and
-                        matrix_alloc[available_reviewer, p_prime] < 0.5 and
-                        self.constraint_matrix[available_reviewer, p_prime] == 0
-                    ):
-                        # We found our trade
-                        self.logger.debug(
-                            "#info FairSequence:Able to trade %d to %d, %d gives %d to %d. Search completed in %s s"
-                            % (available_reviewer, p_prime, p_prime, r_prime, p, time.time() - st)
-                        )
-                        return (r_prime, p_prime), p, available_reviewer
+                # Can't swap out for a reviewer that we can't assign to p
+                reviewer_paper_pairs[self.constraint_matrix[:, p].astype(dtype=bool), :] = 0
+                if not self.allow_zero_score_assignments:
+                    reviewer_paper_pairs[np.isclose(self.affinity_matrix[:, p], 0), :] = 0
+
+                # Can't swap out for a reviewer that p has already been assigned
+                p_revs = np.where(matrix_alloc[:, p])[0].tolist()
+                # Also can't swap out for reviewers that p will be assigned through swaps
+                for pair_idx in range(len(path) - 1):
+                    if path[pair_idx][1] == p:
+                        p_revs.add(path[pair_idx + 1][0])
+                reviewer_paper_pairs[p_revs, :] = 0
+
+                # Collect the reviewer-paper pairs in decreasing order of utility to p
+                pairs_list = np.where(reviewer_paper_pairs)
+                pairs_list = zip(pairs_list[0], pairs_list[1])
+                sorted_pairs = []
+                for pair in pairs_list:
+                    sorted_pairs.append((pair, self.affinity_matrix[pair[0], p]))
+                sorted_pairs = sorted(sorted_pairs, key=lambda x: -x[1])
+
+                self.logger.debug(
+                    "#info FairSequence:List of reviewer-paper pairs we might add to path: %s. Time elapsed: %s s"
+                    % (sorted_pairs, time.time() - st)
+                )
+
+                # For each pair (r_prime, p_prime), figure out if p_prime can take a new reviewer
+                # and end the trading sequence.
+                for (r_prime, p_prime), _ in sorted_pairs:
+                    new_paths.append(path + [(r_prime, p_prime)])
+                    # If we have tried to terminate with this node before and failed, we will fail again
+                    if (r_prime, p_prime) not in nonterminal_nodes:
+                        # Making greedy swaps helps maintain welfare of the solution
+                        sorted_available_revs = sorted(available_reviewers,
+                                                       key=lambda x: -self.affinity_matrix[x, p_prime])
+                        for available_reviewer in sorted_available_revs:
+                            if ((self.allow_zero_score_assignments or
+                                 not math.isclose(self.affinity_matrix[available_reviewer, p_prime], 0)) and
+                                    matrix_alloc[available_reviewer, p_prime] < 0.5 and
+                                    self.constraint_matrix[available_reviewer, p_prime] == 0
+                            ):
+                                # We found our trade
+                                self.logger.debug(
+                                    "#info FairSequence:Trading sequence found: %s. Search completed in %s s"
+                                    % (path + [(r_prime, p_prime), (available_reviewer, -1)], time.time() - st)
+                                )
+                                return path + [(r_prime, p_prime), (available_reviewer, -1)]
+                            else:
+                                self.logger.debug(
+                                    ("#info FairSequence:Unable to terminate by trading %d to %d in exchange for %d. " +
+                                     "allow_zero: %d, affin: %.2f, assigned: %d, constrained: %d")
+                                    % (available_reviewer,
+                                       p_prime,
+                                       r_prime,
+                                       self.allow_zero_score_assignments,
+                                       self.affinity_matrix[available_reviewer, p_prime],
+                                       matrix_alloc[available_reviewer, p_prime],
+                                       self.constraint_matrix[available_reviewer, p_prime]
+                                       )
+                                )
+                        nonterminal_nodes.add((r_prime, p_prime))
+            curr_depth += 1
+            generated_paths = new_paths
 
         raise TradingException(
             "Could not find an existing reviewer-paper pair to trade with."
@@ -436,40 +478,43 @@ class FairSequence(object):
                 else:
                     self.logger.debug(
                         "#info FairSequence:Failed to find a reviewer to assign directly to a paper. "
-                        "Searching for an already assigned reviewer-paper pair to use as intermediary..."
+                        "Searching for a sequence of already assigned reviewer-paper pairs to use as intermediaries..."
                     )
                     st = time.time()
                     try:
-                        (
-                            (r_prime, p_prime),
-                            next_paper,
-                            next_rev
-                        ) = self._find_trade(
+                        trading_path = self._find_trade(
                             matrix_alloc,
                             maximums_copy,
                             paper_priorities,
                         )
                         self.logger.debug(
-                            "#info FairSequence:Found a pair to trade in %s s"
+                            "#info FairSequence:Found a sequence of trades in %s s"
                             % (time.time() - st)
                         )
 
-                        # Now we want to assign next_rev to p_prime and r_prime to next_paper
-                        # We do not need to bother updating previous_attained_scores, since safe_mode is off
-                        assert matrix_alloc[r_prime, p_prime] > 0.5
-                        assert r_prime in dict_alloc[p_prime]
-                        matrix_alloc[r_prime, p_prime] = 0
-                        dict_alloc[p_prime].remove(r_prime)
+                        # We obtained a sequence [(-1, p), (r1, p1), (r2, p2), ... (rn, -1)]
+                        # such that we can transfer the reviewers to the left, p is a paper that needs
+                        # a new reviewer, and rn is a reviewer that has an open reviewing slot.
+                        for idx in range(len(trading_path) - 1):
+                            (r1, p1) = trading_path[idx]
+                            (r2, p2) = trading_path[idx + 1]
+                            # drop the current reviewer
+                            if r1 != -1:
+                                assert matrix_alloc[r1, p1] > 0.5
+                                assert r1 in dict_alloc[p1]
+                                matrix_alloc[r1, p1] = 0
+                                dict_alloc[p1].remove(r1)
 
-                        matrix_alloc[r_prime, next_paper] = 1
-                        dict_alloc[next_paper].append(r_prime)
+                            # add the new reviewer
+                            matrix_alloc[r2, p1] = 1
+                            dict_alloc[p1].append(r2)
 
-                        matrix_alloc[next_rev, p_prime] = 1
-                        dict_alloc[p_prime].append(next_rev)
-
+                        # This will be used for updating maximums_copy and paper_priorities.
+                        next_rev = trading_path[-1][0]
+                        next_paper = trading_path[0][1]
                     except TradingException as e:
                         raise PickingSequenceException(
-                            "Could not find a picking sequence with single-hop transfers:\n%s"
+                            "Could not find a picking sequence with transfer paths:\n%s"
                             % e
                         )
 
@@ -488,8 +533,8 @@ class FairSequence(object):
             )
 
             if (
-                not been_restricted
-                and demand_required_for_min >= remaining_demand
+                    not been_restricted
+                    and demand_required_for_min >= remaining_demand
             ):
                 self.logger.debug(
                     "#info FairSequence:remaining paper demand (%d) equals total remaining reviewer load LBs ("
