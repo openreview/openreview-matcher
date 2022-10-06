@@ -1053,7 +1053,7 @@ def test_integration_group_with_email(
         },
         "status": {"value": "Initialized"},
         "solver": {"value": "FairSequence"},
-        "allow_zero_score_assignments": {"value": "Yes"}
+        "allow_zero_score_assignments": {"value": "Yes"},
     }
 
     config_note = openreview_client.post_note_edit(

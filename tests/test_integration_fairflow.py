@@ -1249,7 +1249,7 @@ def test_integration_group_with_email(
         },
         "status": "Initialized",
         "solver": "FairFlow",
-        "allow_zero_score_assignments": "Yes"
+        "allow_zero_score_assignments": "Yes",
     }
 
     config_note = openreview.Note(
