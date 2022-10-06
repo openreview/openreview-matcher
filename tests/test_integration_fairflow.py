@@ -1184,7 +1184,7 @@ def test_integration_group_not_found_error(
     )
 
 
-def test_integration_group_validity_error(
+def test_integration_group_with_email(
     openreview_context, celery_app, celery_worker
 ):
     """
@@ -1197,7 +1197,7 @@ def test_integration_group_validity_error(
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
-    max_papers = 5
+    max_papers = 7
     min_papers = 1
     alternates = 0
 
@@ -1249,6 +1249,7 @@ def test_integration_group_validity_error(
         },
         "status": "Initialized",
         "solver": "FairFlow",
+        "allow_zero_score_assignments": "Yes"
     }
 
     config_note = openreview.Note(
@@ -1270,11 +1271,7 @@ def test_integration_group_validity_error(
         content_type="application/json",
         headers=openreview_client.headers,
     )
-    assert response.status_code == 500
+    assert response.status_code == 200
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status.content["status"] == "Error"
-    assert (
-        matcher_status.content["error_message"]
-        == "All members of the group, AKBC.ws/2029/Conference/Reviewers, must have an OpenReview Profile"
-    )
+    assert matcher_status.content["status"] == "Complete"
