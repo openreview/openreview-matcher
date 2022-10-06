@@ -871,3 +871,49 @@ def test_solvers_fairsequence_make_trades():
     )
     assert np.all(res_A == expected_solution)
 
+
+def test_solvers_fairsequence_make_trades_2():
+    """
+    Tests 4 papers, 4 reviewers.
+    Reviewers review min: 0, max: [3,1,1,3] papers.
+    The 4 Papers need 2,1,3,1 reviews.
+    Papers 1 and 2 cannot receive reviewer 4.
+    Purpose: The original WEF1 picking sequence should fail.
+    Then we ensure that by trading around reviewers,
+    we can still return an allocation. We should have to make a 2-hop
+    trade, where reviewer 4 goes to paper 4, who trades reviewer 1 to paper
+    2, who trades reviewer 3 to paper 3.
+    """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4, 1.0],
+                [0.5, 0.2, 0.4, 0.1],
+                [0.7, 0.9, 0.1, 0.1],
+                [0.2, 0.9, 0.6, 0.1],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    constraint_matrix[0, 3] = 1
+    constraint_matrix[1, 3] = 1
+    demands = [2, 1, 3, 1]
+    solver_A = FairSequence(
+        [0, 0, 0, 0],
+        [3, 1, 1, 3],
+        demands,
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+    )
+    res_A = solver_A.solve()
+    assert res_A.shape == (4, 4)
+    result = [assignments for assignments in np.sum(res_A, axis=1)]
+    assert_arrays(result, demands)
+    expected_solution = np.array(
+        [
+            [1, 1, 0, 0],
+            [1, 0, 0, 0],
+            [1, 0, 1, 1],
+            [0, 0, 0, 1],
+        ]
+    )
+    assert np.all(res_A == expected_solution)
