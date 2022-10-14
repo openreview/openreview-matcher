@@ -19,6 +19,7 @@ setup(
         "ortools==8.1.8487",
         "pytest",
         "sortedcontainers>=2.4.0",
+        "flake8 >=4.0.0",
         "Flask",
         "flask-cors==3.0.9",
         "cffi>=1.0.0",
