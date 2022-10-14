@@ -25,7 +25,7 @@ setup(
         "pre-commit",
         "celery",
         "redis",
-        "importlib-metadata<5.0",
+        'importlib-metadata==4.13.0'
     ],
     extras_require={
         "full": ["flower"],
