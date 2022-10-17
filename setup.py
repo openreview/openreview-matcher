@@ -27,7 +27,8 @@ setup(
         "redis==3.*",
         "MarkupSafe==2.*",
         "gunicorn==19.*",
-        "importlib-metadata>=1.1.0,<4.3"
+        "importlib-metadata>=1.1.0,<4.3",
+        "flake8==3.8.4"
     ],
     extras_require={
         "full": ["flower"],
