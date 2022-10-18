@@ -980,7 +980,7 @@ def test_integration_group_not_found_error(
     )
 
 
-def test_integration_group_validity_error(
+def test_integration_group_with_email(
     openreview_context, celery_app, celery_worker
 ):
     """
@@ -993,7 +993,7 @@ def test_integration_group_validity_error(
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
-    max_papers = 5
+    max_papers = 7
     min_papers = 1
     alternates = 0
 
@@ -1011,7 +1011,7 @@ def test_integration_group_validity_error(
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-validity"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -1049,6 +1049,7 @@ def test_integration_group_validity_error(
         },
         "status": {"value": "Initialized"},
         "solver": {"value": "FairFlow"},
+        "allow_zero_score_assignments": {"value": "Yes"},
     }
 
     config_note = openreview_client.post_note_edit(
@@ -1064,13 +1065,9 @@ def test_integration_group_validity_error(
         content_type="application/json",
         headers=openreview_client.headers,
     )
-    assert response.status_code == 500
+    assert response.status_code == 200
 
     matcher_status = wait_for_status(
-        openreview_client, config_note["note"]["id"]
+        openreview_client, config_note["note"]["id"], api_version=2
     )
-    assert matcher_status.content["status"]["value"] == "Error"
-    assert (
-        matcher_status.content["error_message"]["value"]
-        == "All members of the group, AKBD.ws/2029/Conference/Reviewers, must have an OpenReview Profile"
-    )
+    assert matcher_status.content["status"]["value"] == "Complete"

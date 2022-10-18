@@ -130,16 +130,16 @@ def clean_start_conference_v2(
 
     now = datetime.datetime.utcnow()
 
-    venue.set_submission_stage(
-        openreview.builder.SubmissionStage(
-            readers=[
-                openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED
-            ],
-            due_date=now + datetime.timedelta(minutes=10),
-            withdrawn_submission_reveal_authors=True,
-            desk_rejected_submission_reveal_authors=True,
-        )
+    venue.submission_stage = openreview.stages.SubmissionStage(
+        double_blind=True,
+        readers=[
+            openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED
+        ],
+        due_date=now + datetime.timedelta(minutes=10),
+        withdrawn_submission_reveal_authors=True,
+        desk_rejected_submission_reveal_authors=True,
     )
+    venue.create_submission_stage()
 
     reviewers = set()
 

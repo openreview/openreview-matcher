@@ -37,13 +37,6 @@ class BaseConfigNoteInterface:
             group = openreview.tools.replace_members_with_ids(
                 self.client, group
             )
-            for member in group.members:
-                if not member.startswith("~"):
-                    raise openreview.OpenReviewException(
-                        "All members of the group, {group}, must have an OpenReview Profile".format(
-                            group=group_id
-                        )
-                    )
         except openreview.OpenReviewException as error_handle:
             self.set_status(MatcherStatus.ERROR, message=str(error_handle))
             raise error_handle
