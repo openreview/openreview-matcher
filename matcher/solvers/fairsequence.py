@@ -390,19 +390,6 @@ class FairSequence(object):
                                     % (path + [(r_prime, p_prime), (available_reviewer, -1)], time.time() - st)
                                 )
                                 return path + [(r_prime, p_prime), (available_reviewer, -1)]
-                            else:
-                                self.logger.debug(
-                                    ("#info FairSequence:Unable to terminate by trading %d to %d in exchange for %d. " +
-                                     "allow_zero: %d, affin: %.2f, assigned: %d, constrained: %d")
-                                    % (available_reviewer,
-                                       p_prime,
-                                       r_prime,
-                                       self.allow_zero_score_assignments,
-                                       self.affinity_matrix[available_reviewer, p_prime],
-                                       matrix_alloc[available_reviewer, p_prime],
-                                       self.constraint_matrix[available_reviewer, p_prime]
-                                       )
-                                )
             curr_depth += 1
             generated_paths = new_paths
             if len(visited_nodes) == num_visited:
