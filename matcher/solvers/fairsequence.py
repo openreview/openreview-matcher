@@ -279,7 +279,9 @@ class FairSequence(object):
                 return next_paper, next_rev, best_revs_map
         return next_paper, next_rev, best_revs_map
 
-    def _find_trade(self, matrix_alloc, current_reviewer_maximums, paper_priorities):
+    def _find_trade(
+        self, matrix_alloc, current_reviewer_maximums, paper_priorities
+    ):
         """Find a sequence of reviewer-paper pairs so that we can trade reviewers around
             to assign a reviewer from the set of available reviewers and get a new reviewer
             assigned to a paper with remaining demand.
@@ -309,9 +311,9 @@ class FairSequence(object):
         st = time.time()
 
         self.logger.debug(
-            "#info FairSequence:Looking for a sequence of papers which can swap an assigned reviewer " +
-            "for an available reviewer. " +
-            "Available reviewers: %s, Papers who can be assigned to: %s"
+            "#info FairSequence:Looking for a sequence of papers which can swap an assigned reviewer "
+            + "for an available reviewer. "
+            + "Available reviewers: %s, Papers who can be assigned to: %s"
             % (available_reviewers, choice_set)
         )
 
@@ -320,8 +322,7 @@ class FairSequence(object):
         while not search_finished:
 
             self.logger.debug(
-                "#info FairSequence:Search depth is %d"
-                % curr_depth
+                "#info FairSequence:Search depth is %d" % curr_depth
             )
 
             num_visited = len(visited_nodes)
@@ -332,8 +333,7 @@ class FairSequence(object):
                 (r, p) = path[-1]
 
                 self.logger.debug(
-                    "#info FairSequence:Checking the path %s"
-                    % path
+                    "#info FairSequence:Checking the path %s" % path
                 )
 
                 # Generete reviewer-paper pairs (r_prime, p_prime) where paper p can exchange r for r_prime.
@@ -343,9 +343,13 @@ class FairSequence(object):
                 reviewer_paper_pairs[:, choice_set] = 0
 
                 # Can't swap out for a reviewer that we can't assign to p
-                reviewer_paper_pairs[self.constraint_matrix[:, p].astype(dtype=bool), :] = 0
+                reviewer_paper_pairs[
+                    self.constraint_matrix[:, p].astype(dtype=bool), :
+                ] = 0
                 if not self.allow_zero_score_assignments:
-                    reviewer_paper_pairs[np.isclose(self.affinity_matrix[:, p], 0), :] = 0
+                    reviewer_paper_pairs[
+                        np.isclose(self.affinity_matrix[:, p], 0), :
+                    ] = 0
 
                 # Can't swap out for a reviewer that p has already been assigned
                 p_revs = np.where(matrix_alloc[:, p])[0].tolist()
@@ -360,7 +364,9 @@ class FairSequence(object):
                 pairs_list = zip(pairs_list[0], pairs_list[1])
                 sorted_pairs = []
                 for pair in pairs_list:
-                    sorted_pairs.append((pair, self.affinity_matrix[pair[0], p]))
+                    sorted_pairs.append(
+                        (pair, self.affinity_matrix[pair[0], p])
+                    )
                 sorted_pairs = sorted(sorted_pairs, key=lambda x: -x[1])
 
                 self.logger.debug(
@@ -376,20 +382,44 @@ class FairSequence(object):
                         new_paths.append(path + [(r_prime, p_prime)])
 
                         # Making greedy swaps helps maintain welfare of the solution
-                        sorted_available_revs = sorted(available_reviewers,
-                                                       key=lambda x: -self.affinity_matrix[x, p_prime])
+                        sorted_available_revs = sorted(
+                            available_reviewers,
+                            key=lambda x: -self.affinity_matrix[x, p_prime],
+                        )
                         for available_reviewer in sorted_available_revs:
-                            if ((self.allow_zero_score_assignments or
-                                 not math.isclose(self.affinity_matrix[available_reviewer, p_prime], 0)) and
-                                    matrix_alloc[available_reviewer, p_prime] < 0.5 and
-                                    self.constraint_matrix[available_reviewer, p_prime] == 0
+                            if (
+                                (
+                                    self.allow_zero_score_assignments
+                                    or not math.isclose(
+                                        self.affinity_matrix[
+                                            available_reviewer, p_prime
+                                        ],
+                                        0,
+                                    )
+                                )
+                                and matrix_alloc[available_reviewer, p_prime]
+                                < 0.5
+                                and self.constraint_matrix[
+                                    available_reviewer, p_prime
+                                ]
+                                == 0
                             ):
                                 # We found our trade
                                 self.logger.debug(
                                     "#info FairSequence:Trading sequence found: %s. Search completed in %s s"
-                                    % (path + [(r_prime, p_prime), (available_reviewer, -1)], time.time() - st)
+                                    % (
+                                        path
+                                        + [
+                                            (r_prime, p_prime),
+                                            (available_reviewer, -1),
+                                        ],
+                                        time.time() - st,
+                                    )
                                 )
-                                return path + [(r_prime, p_prime), (available_reviewer, -1)]
+                                return path + [
+                                    (r_prime, p_prime),
+                                    (available_reviewer, -1),
+                                ]
             curr_depth += 1
             generated_paths = new_paths
             if len(visited_nodes) == num_visited:
