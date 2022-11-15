@@ -33,14 +33,14 @@ class FairSequence(object):
     """
 
     def __init__(
-            self,
-            minimums,
-            maximums,
-            demands,
-            encoder,
-            allow_zero_score_assignments=False,
-            solution=None,
-            logger=logging.getLogger(__name__),
+        self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        allow_zero_score_assignments=False,
+        solution=None,
+        logger=logging.getLogger(__name__),
     ):
         """
         Initialize a FairSequence matcher
@@ -201,13 +201,13 @@ class FairSequence(object):
         return True
 
     def _select_next_paper(
-            self,
-            matrix_alloc,
-            dict_alloc,
-            best_revs_map,
-            current_reviewer_maximums,
-            previous_attained_scores,
-            paper_priorities,
+        self,
+        matrix_alloc,
+        dict_alloc,
+        best_revs_map,
+        current_reviewer_maximums,
+        previous_attained_scores,
+        paper_priorities,
     ):
         """Select the next paper to be assigned a reviewer
 
@@ -245,12 +245,12 @@ class FairSequence(object):
             removal_set = []
             for r in best_revs_map[p]:
                 if (
-                        current_reviewer_maximums[r] <= 0
-                        or self.constraint_matrix[r, p] != 0
-                        or (
+                    current_reviewer_maximums[r] <= 0
+                    or self.constraint_matrix[r, p] != 0
+                    or (
                         math.isclose(self.affinity_matrix[r, p], 0)
                         and not self.allow_zero_score_assignments
-                )
+                    )
                 ):
                     removal_set.append(r)
                 elif matrix_alloc[r, p] > 0.5:
@@ -262,7 +262,7 @@ class FairSequence(object):
                     # Check if this is a valid assignment, then make it the greedy choice if so.
                     # If not a valid assignment, go to the next reviewer for this agent.
                     if not self.safe_mode or self._is_valid_assignment(
-                            r, p, dict_alloc, previous_attained_scores
+                        r, p, dict_alloc, previous_attained_scores
                     ):
                         next_paper = p
                         next_rev = r
@@ -524,8 +524,8 @@ class FairSequence(object):
             )
 
             if (
-                    not been_restricted
-                    and demand_required_for_min >= remaining_demand
+                not been_restricted
+                and demand_required_for_min >= remaining_demand
             ):
                 self.logger.debug(
                     "#info FairSequence:remaining paper demand (%d) equals total remaining reviewer load LBs ("
