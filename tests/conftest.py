@@ -124,7 +124,7 @@ def clean_start_conference_v2(
     reviews_per_paper,
 ):
 
-    venue = Venue(openreview_client, conference_id)
+    venue = Venue(openreview_client, conference_id, support_user='openreview.net/Support')
     venue.use_area_chairs = True
     venue.setup()
 
