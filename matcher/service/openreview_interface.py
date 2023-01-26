@@ -688,7 +688,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                 for element in elements[1:]:
                     if element:
                         if element.startswith("content.") and "=" in element:
-                            key, value = element.split(".")[1].split("=")
+                            key, value = element.replace('content.', '').split("=")
                             content_dict[key] = value
                         else:
                             self.logger.debug(
