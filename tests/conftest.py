@@ -84,6 +84,17 @@ def initialize_superuser():
         username="openreview.net",
         password="1234",
     )
+    client_v2.post_invitation_edit(invitations=None,
+        readers=['openreview.net'],
+        writers=['openreview.net'],
+        signatures=['~Super_User1'],
+        invitation=openreview.api.Invitation(id='openreview.net/-/Edit',
+            invitees=['openreview.net'],
+            readers=['openreview.net'],
+            signatures=['~Super_User1'],
+            edit=True
+        )
+    )    
     return client, client_v2
 
 
