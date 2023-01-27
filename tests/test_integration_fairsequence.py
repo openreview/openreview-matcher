@@ -1100,7 +1100,7 @@ def test_integration_group_not_found_error(
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "NIPS.cc/2029/Conference"
+    conference_id = "NIPS.cc/2030/Conference"
     num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
@@ -1144,7 +1144,7 @@ def test_integration_group_not_found_error(
         "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
             reviewers_id
         ),
-        "match_group": "NIPS.cc/2029/Conference/NoReviewers",
+        "match_group": "NIPS.cc/2030/Conference/NoReviewers",
         "scores_specification": {
             conference.get_affinity_score_id(reviewers_id): {
                 "weight": 1.0,
@@ -1179,6 +1179,6 @@ def test_integration_group_not_found_error(
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content["status"] == "Error"
     assert (
-        "Group Not Found: NIPS.cc/2029/Conference/NoReviewers"
+        "Group Not Found: NIPS.cc/2030/Conference/NoReviewers"
         in matcher_status.content["error_message"]
     )

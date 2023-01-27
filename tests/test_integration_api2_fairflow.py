@@ -859,9 +859,16 @@ def test_integration_empty_reviewers_list_error(
     assert config_note
 
     # Empty the list of reviewers before calling the matching
-    reviewers_group = openreview_client.get_group(reviewers_id)
-    reviewers_group.members = []
-    openreview_client.post_group(reviewers_group)
+    openreview_client.post_group_edit(
+            invitation = venue.get_meta_invitation_id(),
+            readers = [venue.venue_id],
+            writers = [venue.venue_id],
+            signatures = [venue.venue_id],
+            group = openreview.api.Group(
+                id = reviewers_id,
+                members = []
+            )
+        )
 
     response = test_client.post(
         "/match",
