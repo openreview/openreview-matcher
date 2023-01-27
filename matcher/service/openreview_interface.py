@@ -815,7 +815,7 @@ class Deployment:
         try:
             venue = None
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
-            support_user = 'openreview.net/Support'
+            support_user = 'OpenReview.net/Support'
             urls = openreview.tools.get_base_urls(self.config_note_interface.client)
             client_v1 = openreview.Client(baseurl = urls[0], token=self.config_note_interface.client.token)
 
