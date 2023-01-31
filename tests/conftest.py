@@ -67,6 +67,15 @@ def wait_for_status(client, config_note_id, api_version=1):
 
     raise TimeoutError("matcher did not finish")
 
+def await_queue_edit(super_client, edit_id=None, invitation=None):
+    while True:
+        process_logs = super_client.get_process_logs(id=edit_id, invitation=invitation)
+        if process_logs:
+            break
+
+        time.sleep(0.5)
+
+    assert process_logs[0]['status'] == 'ok'
 
 def initialize_superuser():
     """register and activate the superuser account"""
@@ -84,6 +93,17 @@ def initialize_superuser():
         username="openreview.net",
         password="1234",
     )
+    client_v2.post_invitation_edit(invitations=None,
+        readers=['openreview.net'],
+        writers=['openreview.net'],
+        signatures=['~Super_User1'],
+        invitation=openreview.api.Invitation(id='openreview.net/-/Edit',
+            invitees=['openreview.net'],
+            readers=['openreview.net'],
+            signatures=['~Super_User1'],
+            edit=True
+        )
+    )    
     return client, client_v2
 
 
@@ -124,10 +144,9 @@ def clean_start_conference_v2(
     reviews_per_paper,
 ):
 
-    venue = Venue(openreview_client, conference_id)
+    venue = Venue(openreview_client, conference_id, support_user='openreview.net/Support')
     venue.use_area_chairs = True
-    venue.setup()
-
+    
     now = datetime.datetime.utcnow()
 
     venue.submission_stage = openreview.stages.SubmissionStage(
@@ -139,23 +158,25 @@ def clean_start_conference_v2(
         withdrawn_submission_reveal_authors=True,
         desk_rejected_submission_reveal_authors=True,
     )
+    venue.setup()
     venue.create_submission_stage()
 
     reviewers = set()
 
     scores_string = ""
     with open(AFFINITY_SCORE_FILE, "w") as file_handle:
+        authors = []
+        authorids = []
+        for letter in ["a", "b", "c"]:
+            authors.append(f'Matching Author{letter.upper()}')
+            authorids.append(f'~Matching_Author{letter.upper()}1')
+        
+        user_client = openreview.api.OpenReviewClient(username='author@maila.com', password='1234')
+
         for paper_number in range(num_papers):
-
-            authorids = [
-                "~Test_Author{1}{0}".format(paper_number, author_code)
-                for author_code in ["a", "b", "c"]
-            ]
-            authors = ["Author Author" for _ in ["A", "B", "C"]]
-
-            posted_submission = openreview_client.post_note_edit(
+            posted_submission = user_client.post_note_edit(
                 invitation=f"{conference_id}/-/Submission",
-                signatures=["~Super_User1"],
+                signatures=["~Matching_AuthorA1"],
                 note=Note(
                     content={
                         "title": {
@@ -169,6 +190,7 @@ def clean_start_conference_v2(
                     }
                 ),
             )
+            await_queue_edit(openreview_client, posted_submission['id'])
 
             for index in range(0, num_reviewers):
                 reviewer = "~User{0}_Reviewer1".format(chr(97 + index))
@@ -323,6 +345,10 @@ def openreview_context():
             "User{0}".format(chr(97 + index)),
             "Reviewer",
         )
+
+    for letter in ["a", "b", "c"]:
+        create_user(f'author@mail{letter}.com', 'Matching', f'Author{letter.upper()}')
+
     with app.app_context():
         yield {
             "app": app,
