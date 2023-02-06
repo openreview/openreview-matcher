@@ -826,7 +826,7 @@ class Deployment:
             self.logger.debug('request form notes found', len(notes))
             if notes:
                 venue = openreview.helpers.get_conference(
-                    client_v1, notes[0].id, support_user = support_user
+                    client_v1, notes[0].id, support_user = support_user, setup=False
                 )
             else:
                 client_v2 = openreview.api.OpenReviewClient(baseurl = urls[1], token=self.config_note_interface.client.token)
