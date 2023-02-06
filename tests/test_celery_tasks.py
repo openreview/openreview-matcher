@@ -93,11 +93,11 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
     assert matcher_status.content["status"] == "Complete"
     assert task.status == "SUCCESS"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
