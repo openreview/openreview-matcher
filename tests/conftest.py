@@ -218,7 +218,7 @@ def clean_start_conference_v2(
         compute_affinity_scores=byte_stream,
         compute_conflicts=True,
     )
-    edges = openreview_client.get_edges(
+    edges = openreview_client.get_edges_count(
         invitation=venue.get_affinity_score_id(venue.get_reviewers_id())
     )
 
