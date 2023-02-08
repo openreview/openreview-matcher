@@ -98,12 +98,12 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     )
     assert matcher_status.content["status"]["value"] == "Complete"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 
 def test_integration_supply_mismatch_error(
