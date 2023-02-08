@@ -4,7 +4,7 @@ import numpy as np
 import time
 import logging
 
-class PR4ASOLVER:
+class PR4ASolver:
     # tolerance for integrality check
     _EPS = 1e-3
 
@@ -32,15 +32,14 @@ class PR4ASOLVER:
         self.iter_limit = iter_limit
         self.time_limit = time_limit
 
-        print(f"Number of reviewers: {self.numrev}")
-        print(f"Number of papers: {self.numpapers}")
-
         self.logger.debug(f"Number of reviewers: {self.numrev}")
         self.logger.debug(f"Number of papers: {self.numpapers}")
+        self.logger.debug("End Init PR4A")
 
     # initialize the flow network in the subroutine
     def _initialize_model(self):    
-
+        
+        self.logger.debug("Initializing model")
         problem = Model()
         problem.setParam('OutputFlag', False)
 
@@ -61,9 +60,6 @@ class PR4ASOLVER:
 
         problem.update()
 
-        all_vars = problem.getVars()
-        #print (all_vars)
-
         # flow balance equations for reviewers' nodes
         self._balance_reviewers = problem.addConstrs((self._source_vars[i] == self._mix_vars.sum(i, '*')
                                                       for i in range(self.numrev)))
@@ -74,6 +70,8 @@ class PR4ASOLVER:
         problem.update()
 
         self._problem = problem
+
+        self.logger.debug("End initializing model")
 
     # compute the order in which subroutine adds edges to the network
     def _ranking_of_pairs(self, simmatrix):
@@ -90,6 +88,7 @@ class PR4ASOLVER:
     def _subroutine(self, simmatrix, kappa, abilities, not_assigned, lower_bound, *args):
 
         # set up the max flow objective
+        self.logger.debug(f"Running subroutine for assignment demand {kappa}")
         self._problem.setObjective(sum([self._source_vars[i] for i in range(self.numrev)]), GRB.MAXIMIZE)
 
         # if paper is not fixed in the final output yet, assign it with kappa reviewers
@@ -185,6 +184,8 @@ class PR4ASOLVER:
                 self._mix_vars[reviewer, paper].ub = 0
         self._problem.update()
 
+        self.logger.debug(f"Ending subroutine")
+
         return assignment, current_solution
 
     # Join two assignments
@@ -210,6 +211,7 @@ class PR4ASOLVER:
     # Full algorithm
     def _fair_assignment(self):
         
+        self.logger.debug(f"Starting PR4A algorithm")
         # Counter for number of performed iterations
         iter_counter = 0
         # Start time
@@ -226,6 +228,7 @@ class PR4ASOLVER:
         while not_assigned != set() and iter_counter < self.iter_limit and (time.time() < start_time + self.time_limit or iter_counter == 0):
             
             iter_counter += 1
+            self.logger.debug(f"PR4A Iteration: {iter_counter}")
             
             lower_bound = 0
             upper_bound = len(not_assigned) * self.numrev
@@ -257,6 +260,8 @@ class PR4ASOLVER:
                     current_best = assignment
                     current_best_score = self.quality(assignment)
 
+            self.logger.debug(f"Finish iterating through possible demands")
+
             # Steps 4 to 6
             for paper in not_assigned.copy():
                 # For every paper not yet fixed in the final assignment we update the assignment
@@ -279,17 +284,18 @@ class PR4ASOLVER:
                         if reviewer in final_assignment[paper]:
                             local_abilities[reviewer] -= 1
             
+            self.logger.debug(f"Finish updating existing assignments with new ones")
             current_best_score = self.quality(current_best)
             self._problem.update()
 
         self.fa = final_assignment
         self.best_quality = self.quality(final_assignment)
 
+        self.logger.debug(f"Ending PR4A algorithm")
+
     def solve(self):
         self._initialize_model()
         self._fair_assignment()
-
-        print(f"orig sol: {self.fa}")
 
         # Cast fair assignment to numpy
         assert len(self.fa.items()) > 0, "No solution"
