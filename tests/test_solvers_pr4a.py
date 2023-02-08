@@ -1,6 +1,7 @@
 # TODO: This is a leftover module from the days of David. Clean this up / make it readable!
 from collections import namedtuple
 import pytest
+from matcher.core import SolverException
 import numpy as np
 from matcher.solvers import PR4ASolver
 from conftest import assert_arrays
@@ -29,6 +30,37 @@ def test_solvers_pr4a_random():
     res_A = solver_A.solve()
     print(res_A)
     assert res_A.shape == (3,4)
+
+def test_solvers_pr4a_custom_demands():
+    """
+    Tests 3 papers, 4 reviewers.
+    Reviewers review min: 1, max: 2 papers.
+    Papers need [2,1,3] reviews.
+    No constraints.
+    Purpose: Assert that papers demands are matched.
+
+    Issue: PR4A does not support custom demands
+    """
+    aggregate_score_matrix_A = np.transpose(
+        np.array(
+            [
+                [0.2, 0.1, 0.4],
+                [0.5, 0.2, 0.3],
+                [0.2, 0.0, 0.6],
+                [0.7, 0.9, 0.3],
+            ]
+        )
+    )
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    demands = [2, 1, 3]
+
+    with pytest.raises(SolverException, match=r'PR4A does not support custom paper demands, all demands must be the same'):
+            assert PR4ASolver(
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    demands,
+                    encoder(aggregate_score_matrix_A, constraint_matrix),
+                )
 
 def test_solvers_pr4a_custom_supply():
     """

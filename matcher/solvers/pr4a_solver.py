@@ -3,6 +3,7 @@ from itertools import product
 import numpy as np
 import time
 import logging
+from .core import SolverException
 
 class PR4ASolver:
     # tolerance for integrality check
@@ -26,6 +27,12 @@ class PR4ASolver:
         self.abilities = maximums
         self.demands = demands
         self.demand = max(demands)
+
+        # Validate demand
+        for d in demands:
+            if d != self.demand:
+                raise SolverException('PR4A does not support custom paper demands, all demands must be the same')
+
         self.function = function
         if iter_limit < 1:
             raise ValueError('Maximum number of iterations must be at least 1')
