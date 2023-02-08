@@ -10,6 +10,7 @@ from .solvers import (
     FairFlow,
     RandomizedSolver,
     FairSequence,
+    PR4ASolver
 )
 from .encoder import Encoder
 
@@ -18,6 +19,7 @@ SOLVER_MAP = {
     "FairFlow": FairFlow,
     "Randomized": RandomizedSolver,
     "FairSequence": FairSequence,
+    "PR4ASolver": PR4ASolver
 }
 
 
