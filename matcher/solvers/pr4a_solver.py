@@ -25,48 +25,52 @@ class PR4ASOLVER:
         self.numpapers = self.simmatrix.shape[1]
         self.abilities = maximums
         self.demands = demands
+        self.demand = max(demands)
         self.function = function
         if iter_limit < 1:
             raise ValueError('Maximum number of iterations must be at least 1')
         self.iter_limit = iter_limit
         self.time_limit = time_limit
 
+        print(f"Number of reviewers: {self.numrev}")
+        print(f"Number of papers: {self.numpapers}")
+
+        self.logger.debug(f"Number of reviewers: {self.numrev}")
+        self.logger.debug(f"Number of papers: {self.numpapers}")
+
     # initialize the flow network in the subroutine
-    def _initialize_model(self):
+    def _initialize_model(self):    
 
         problem = Model()
         problem.setParam('OutputFlag', False)
 
         # edges from source to reviewers, capacity controls maximum reviewer load
-        # self._source_vars = problem.addVars(self.numrev, vtype=GRB.CONTINUOUS, lb=0.0, ub=7, name='reviewers')
 
-        self._source_vars = tupledict
-        for r_idx in range(self.numrev):
-            self._source_vars[r_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=self.abilities[r_idx], name='reviewers')    
+        self._source_vars = problem.addVars(list(range(self.numrev)), vtype=GRB.CONTINUOUS, lb=0.0,
+                                            ub=self.abilities, name='reviewers')
 
         # edges from papers to sink, capacity controls a number of reviewers per paper
-        self._sink_vars = tupledict
-        for p_idx in range(self.numpapers):
-            self._sink_vars[p_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=self.demands[p_idx], name='papers')
+
+        self._sink_vars = problem.addVars(list(range(self.numpapers)), vtype=GRB.CONTINUOUS, lb=0.0,
+                                          ub=self.demands, name='papers')
 
         # edges between reviewers and papers. Initially capacities are set to 0 (no edge is added in the network)
-        self._mix_vars = tupledict
-        for r_idx in range(self.numrev):
-            for p_idx in range(self.numpapers):
-                self._mix_vars[r_idx, p_idx] = problem.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=0.0, name='assignment')
+
+        self._mix_vars = problem.addVars(self.numrev, self.numpapers, vtype=GRB.CONTINUOUS,
+                                         lb=0.0, ub=0.0, name='assignment')
 
         problem.update()
 
         all_vars = problem.getVars()
-        print (all_vars)
+        #print (all_vars)
 
         # flow balance equations for reviewers' nodes
-        self._balance_reviewers = problem.addConstrs(
-            (self._source_vars[i] == self._mix_vars.sum(i, '*') \
-                for i in range(self.numrev)))
+        self._balance_reviewers = problem.addConstrs((self._source_vars[i] == self._mix_vars.sum(i, '*')
+                                                      for i in range(self.numrev)))
 
         # flow balance equations for papers' nodes
-        self._balance_papers = problem.addConstrs((self._sink_vars[i] == self._mix_vars.sum('*', i) for i in range(self.numpapers)))
+        self._balance_papers = problem.addConstrs((self._sink_vars[i] == self._mix_vars.sum('*', i)
+                                                   for i in range(self.numpapers)))
         problem.update()
 
         self._problem = problem
@@ -154,8 +158,8 @@ class PR4ASOLVER:
         # check if binary search succesfully converged
         if maxflow != len(not_assigned) * kappa or lower_bound != current_solution:
             # shouldn't enter here
-            print
-            maxflow, len(not_assigned), lower_bound, current_solution
+            #print
+            #maxflow, len(not_assigned), lower_bound, current_solution
             raise ValueError('An error occured3')
 
         # prepare for max-cost max-flow -- we enforce each paper to be reviewed by kappa reviewers
@@ -283,5 +287,17 @@ class PR4ASOLVER:
 
     def solve(self):
         self._initialize_model()
-        # self._fair_assignment()
-        # return self.fa
+        self._fair_assignment()
+
+        print(f"orig sol: {self.fa}")
+
+        # Cast fair assignment to numpy
+        assert len(self.fa.items()) > 0, "No solution"
+        solved = np.zeros(
+            (self.numpapers, self.numrev)
+        )
+        for paper_idx in self.fa.keys():
+            for idx, assignment in enumerate(self.fa[paper_idx]):
+                solved[paper_idx][assignment] = 1
+
+        return solved
