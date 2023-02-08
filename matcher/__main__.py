@@ -1,6 +1,6 @@
-'''
+"""
 CLI interface for the matcher
-'''
+"""
 
 import argparse
 import csv
@@ -14,88 +14,108 @@ import time
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
-log_format = '%(asctime)s %(levelname)s: [in %(pathname)s:%(lineno)d] %(message)s'
+log_format = (
+    "%(asctime)s %(levelname)s: [in %(pathname)s:%(lineno)d] %(message)s"
+)
 logging.basicConfig(filename="default.log", format=log_format)
 
 consoleHandler = logging.StreamHandler()
 logger.addHandler(consoleHandler)
 
 t0 = time.time()
-logger.info('Starting time={}'.format(t0))
+logger.info("Starting time={}".format(t0))
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    '--scores',
-    nargs='+',
-    help='''
+    "--scores",
+    nargs="+",
+    help="""
         One or more score files,
         with each row containing comma-separated paperID, userID, and score (in that order).
         e.g. "paper1,reviewer1,0.5"
-        '''
+        """,
 )
 
 parser.add_argument(
-    '--constraints',
-    help='''
+    "--constraints",
+    help="""
         One or more constraint files,
         with each row containing comma-separated paperID, userID, and constraint (in that order).
         Constraint values must be -1 (conflict), 1 (forced assignment), or 0 (no effect).
         e.g. "paper1,reviewer1,-1"
-        '''
+        """,
 )
 
 parser.add_argument(
-    '--max_papers',
-    help='''
+    "--max_papers",
+    help="""
         max paper files,
         with each row containing comma-separated userID, and max_papers that can be assigned to this user (in that order).
-        e.g. "reviewer1,2''')
+        e.g. "reviewer1,2""",
+)
 
 
-parser.add_argument('--weights', nargs='+', type=float)
-parser.add_argument('--min_papers_default', default=0, type=int)
-parser.add_argument('--max_papers_default', type=int)
-parser.add_argument('--num_reviewers', default=3, type=int)
-parser.add_argument('--num_alternates', default=3, type=int)
-parser.add_argument('--user_group', type=str)
+parser.add_argument("--weights", nargs="+", type=float)
+parser.add_argument("--min_papers_default", default=0, type=int)
+parser.add_argument("--max_papers_default", type=int)
+parser.add_argument("--num_reviewers", default=3, type=int)
+parser.add_argument("--num_alternates", default=3, type=int)
+parser.add_argument(
+    "--allow_zero_score_assignments",
+    action="store_true",
+    help="""Use flag to allow 0 affinity (unknown scores default to 0) pairs in solver solution""",
+)
+parser.add_argument("--user_group", type=str)
 
 parser.add_argument(
-    '--user_group_file',
-    help='''Pass a csv file with each line in the form: "Group1, user_email"'''
+    "--user_group_file",
+    help="""Pass a csv file with each line in the form: \"Group1, user_email\"""",
+)
+
+parser.add_argument(
+    "--probability_limits",
+    help="""
+        One or more probability limit files for use with the Randomized Solver,
+        with each row containing comma-separated paperID, userID, and limit on the marginal probability of that assignment,
+        OR a single float representing the limit on the marginal assignment probability for all assignments.
+        """,
 )
 
 # TODO: dynamically populate solvers list
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
-    '--solver',
-    help='Choose from: {}'.format(['MinMax', 'FairFlow']),
-    default='MinMax'
+    "--solver",
+    help="Choose from: {}".format(["MinMax", "FairFlow", "Randomized"]),
+    default="MinMax",
 )
 
 args = parser.parse_args()
 
 # Main Logic
-logger.info('Setting solver class')
+logger.info("Setting solver class")
 solver_class = None
-if args.solver == 'MinMax':
-    solver_class = 'MinMax'
-if args.solver == 'FairFlow':
-    solver_class = 'FairFlow'
+if args.solver == "MinMax":
+    solver_class = "MinMax"
+if args.solver == "FairFlow":
+    solver_class = "FairFlow"
+if args.solver == "Randomized":
+    solver_class = "Randomized"
 
 if not solver_class:
-    raise ValueError('Invalid solver class {}'.format(args.solver))
-logger.info('Using solver={}'.format(solver_class))
+    raise ValueError("Invalid solver class {}".format(args.solver))
+logger.info("Using solver={}".format(solver_class))
 
 reviewer_set = set()
 paper_set = set()
-logger.info('Using weights={}'.format(args.weights))
+logger.info("Using weights={}".format(args.weights))
 weight_by_type = {
-    score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)}
+    score_file: args.weights[idx] for idx, score_file in enumerate(args.scores)
+}
 
-scores_by_type = {score_file: {'edges': []} for score_file in args.scores}
+scores_by_type = {score_file: {"edges": []} for score_file in args.scores}
 
 for score_file in args.scores:
-    logger.info('processing file={}'.format(score_file))
+    logger.info("processing file={}".format(score_file))
     file_reviewers = []
     file_papers = []
 
@@ -108,7 +128,9 @@ for score_file in args.scores:
 
             file_reviewers.append(profile_id)
             file_papers.append(paper_id)
-            scores_by_type[score_file]['edges'].append((paper_id, profile_id, score))
+            scores_by_type[score_file]["edges"].append(
+                (paper_id, profile_id, score)
+            )
 
     reviewer_set.update(file_reviewers)
     paper_set.update(file_papers)
@@ -162,48 +184,70 @@ if args.max_papers:
             else:
                 missing_reviewers.append(profile_id)
     if missing_reviewers:
-        logger.info('Reviewers missing in all score files: ' + ', '.join(profile_id))
+        logger.info(
+            "Reviewers missing in all score files: " + ", ".join(profile_id)
+        )
 
 demands = [args.num_reviewers] * len(papers)
 num_alternates = args.num_alternates
 
-logger.info('Count of reviewers={} '.format(len(reviewers)))
-logger.info('Count of papers={}'.format(len(papers)))
+probability_limits = []
+if args.probability_limits:
+    try:
+        probability_limits = float(args.probability_limits)
+    except ValueError:  # read from file
+        missing_reviewers = set()
+        missing_papers = set()
+        with open(args.probability_limits) as file_handle:
+            for row in csv.reader(file_handle):
+                paper_id = row[0].strip()
+                profile_id = row[1].strip()
+                limit = row[2].strip()
+
+                if profile_id in reviewer_set and paper_id in paper_set:
+                    probability_limits.append((paper_id, profile_id, limit))
+
+                if profile_id not in reviewer_set:
+                    missing_reviewers.add(profile_id)
+                if paper_id not in paper_set:
+                    missing_papers.add(paper_id)
+
+        if missing_reviewers:
+            logger.info(
+                "Reviewers with probability limits but missing in all score files: "
+                + ", ".join(missing_reviewers)
+            )
+        if missing_papers:
+            logger.info(
+                "Papers with probability limits but missing in all score files: "
+                + ", ".join(missing_papers)
+            )
+
+
+logger.info("Count of reviewers={} ".format(len(reviewers)))
+logger.info("Count of papers={}".format(len(papers)))
 
 match_data = {
-    'reviewers': reviewers,
-    'papers': papers,
-    'constraints': constraints,
-    'scores_by_type': scores_by_type,
-    'weight_by_type': weight_by_type,
-    'minimums': minimums,
-    'maximums': maximums,
-    'demands': demands,
-    'num_alternates': num_alternates
+    "reviewers": reviewers,
+    "papers": papers,
+    "constraints": constraints,
+    "scores_by_type": scores_by_type,
+    "weight_by_type": weight_by_type,
+    "minimums": minimums,
+    "maximums": maximums,
+    "demands": demands,
+    "probability_limits": probability_limits,
+    "num_alternates": num_alternates,
+    "allow_zero_score_assignments": args.allow_zero_score_assignments,
+    "assignments_output": "assignments.json",
+    "alternates_output": "alternates.json",
+    "logger": logger,
 }
 
-def write_assignments(assignments):
-    logger.info('Writing assignments to file')
-    with open('./assignments.json', 'w') as f:
-        f.write(json.dumps(assignments, indent=2))
-
-def write_alternates(alternates):
-    logger.info('Writing alternates to file')
-    with open('./alternates.json', 'w') as f:
-        f.write(json.dumps(alternates, indent=2))
-
-def on_set_status(status, message):
-    logger.info('status={0}, message={1}'.format(status, message))
-
 matcher = Matcher(
-    datasource=match_data,
-    on_set_status=on_set_status,
-    on_set_assignments=write_assignments,
-    on_set_alternates=write_alternates,
-    solver_class=solver_class,
-    logger=logger
+    datasource=match_data, solver_class=solver_class, logger=logger
 )
 
 matcher.run()
 t1 = time.time()
-logger.info('Overall execution time: {0} seconds'.format(t1-t0))
+logger.info("Overall execution time: {0} seconds".format(t1 - t0))
