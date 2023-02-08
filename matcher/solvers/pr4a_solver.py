@@ -9,7 +9,7 @@ class PR4ASolver:
     # tolerance for integrality check
     _EPS = 1e-3
 
-    def __init__(self, minimums, maximums, demands, encoder, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf, logger=logging.getLogger(__name__)):
+    def __init__(self, minimums, maximums, demands, encoder, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf, logger=logging.getLogger(__name__), allow_zero_score_assignments=False):
     # initialize the parameters
     # demand - requested number of reviewers per paper
     # ability - the maximum number of papers reviewer can review
@@ -33,11 +33,14 @@ class PR4ASolver:
             if d != self.demand:
                 raise SolverException('PR4A does not support custom paper demands, all demands must be the same')
 
+        # TODO: Handle constraint matrix
+
         self.function = function
         if iter_limit < 1:
             raise ValueError('Maximum number of iterations must be at least 1')
         self.iter_limit = iter_limit
         self.time_limit = time_limit
+        self.solved = False
 
         self.logger.debug(f"Number of reviewers: {self.numrev}")
         self.logger.debug(f"Number of papers: {self.numpapers}")
@@ -299,6 +302,7 @@ class PR4ASolver:
         self.best_quality = self.quality(final_assignment)
 
         self.logger.debug(f"Ending PR4A algorithm")
+        self.solved = True
 
     def solve(self):
         self._initialize_model()

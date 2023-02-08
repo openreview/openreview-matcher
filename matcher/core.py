@@ -19,7 +19,7 @@ SOLVER_MAP = {
     "FairFlow": FairFlow,
     "Randomized": RandomizedSolver,
     "FairSequence": FairSequence,
-    "PR4ASolver": PR4ASolver
+    "PeerReview4All": PR4ASolver
 }
 
 
