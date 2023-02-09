@@ -24,6 +24,7 @@ class PR4ASolver:
         self.simmatrix = encoder.aggregate_score_matrix.transpose()
         self.numrev = self.simmatrix.shape[0]
         self.numpapers = self.simmatrix.shape[1]
+        self.minimums = minimums
         self.abilities = maximums
         self.demands = demands
         self.demand = max(demands)
@@ -34,6 +35,8 @@ class PR4ASolver:
                 raise SolverException('PR4A does not support custom paper demands, all demands must be the same')
 
         # TODO: Handle constraint matrix
+        # TODO: Handle minimums
+        # TODO: Handle custom demands
 
         self.function = function
         if iter_limit < 1:
@@ -45,6 +48,29 @@ class PR4ASolver:
         self.logger.debug(f"Number of reviewers: {self.numrev}")
         self.logger.debug(f"Number of papers: {self.numpapers}")
         self.logger.debug("End Init PR4A")
+
+    def _validate_input_range(self):
+        """Validate if demand is in the range of min supply and max supply"""
+        self.logger.debug("Checking if demand is in range")
+
+        min_supply = sum(self.minimums)
+        max_supply = sum(self.abilities)
+        demand = sum(self.demands)
+
+        self.logger.debug(
+            "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
+                demand, min_supply, max_supply
+            )
+        )
+
+        if demand > max_supply or demand < min_supply:
+            raise SolverException(
+                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                    demand, min_supply, max_supply
+                )
+            )
+
+        self.logger.debug("Finished checking graph inputs")
 
     # initialize the flow network in the subroutine
     def _initialize_model(self):    
@@ -305,6 +331,7 @@ class PR4ASolver:
         self.solved = True
 
     def solve(self):
+        self._validate_input_range()
         self._initialize_model()
         self._fair_assignment()
 
