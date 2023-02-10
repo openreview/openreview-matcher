@@ -59,6 +59,24 @@ def test_solvers_pr4a_conflict():
     for paper_idx in range(3):
         assert res_A[paper_idx][conflicted_reviewer_idx] == 0
 
+def test_solvers_pr4a_zero_scores():
+    '''No similarities while not allowing zero score assignments will raise an exception'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    with pytest.raises(SolverException, match=r"4 members found with no affinity scores while not allowing zero score assignments"):
+            assert PR4ASolver(
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    [2,2,2],
+                    encoder(aggregate_score_matrix_A, constraint_matrix),
+                    allow_zero_score_assignments=False
+                )
+
 def test_solvers_pr4a_custom_demands():
     """
     Tests 3 papers, 4 reviewers.

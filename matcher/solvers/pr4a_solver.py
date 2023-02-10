@@ -9,7 +9,7 @@ class PR4ASolver:
     # tolerance for integrality check
     _EPS = 1e-3
 
-    def __init__(self, minimums, maximums, demands, encoder, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf, logger=logging.getLogger(__name__), allow_zero_score_assignments=False):
+    def __init__(self, minimums, maximums, demands, encoder, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf, logger=logging.getLogger(__name__), allow_zero_score_assignments=True):
     # initialize the parameters
     # demand - requested number of reviewers per paper
     # ability - the maximum number of papers reviewer can review
@@ -25,6 +25,7 @@ class PR4ASolver:
         self.abilities = maximums
         self.demands = demands
         self.demand = max(demands)
+        self.constraint_matrix = encoder.constraint_matrix
 
         # Modify simmatrix with respect to constraint matrix
         # 1) Get matrix where -1 when <= -1 in the constraints and 0 elsewhere
@@ -36,6 +37,19 @@ class PR4ASolver:
         self.simmatrix = conflict_sims + allowed_sims
         self.numrev = self.simmatrix.shape[0]
         self.numpapers = self.simmatrix.shape[1]
+
+        if not allow_zero_score_assignments:
+            # Find reviewers with no non-zero affinity edges after constraints are applied and remove their load_lb
+            bad_affinity_reviewers = np.where(
+                np.all(
+                    (self.simmatrix * (self.constraint_matrix == 0).T)
+                    == 0,
+                    axis=1,
+                )
+            )[0]
+            print(bad_affinity_reviewers)
+            if len(bad_affinity_reviewers) > 0:
+                raise SolverException(f"{len(bad_affinity_reviewers)} members found with no affinity scores while not allowing zero score assignments")
 
         # Validate demand
         for d in demands:
