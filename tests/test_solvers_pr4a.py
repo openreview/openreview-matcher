@@ -31,6 +31,34 @@ def test_solvers_pr4a_random():
     print(res_A)
     assert res_A.shape == (3,4)
 
+def test_solvers_pr4a_conflict():
+    '''When reviewer[1] has conflicts with all papers, assert that no assignments were made to them'''
+    conflicted_reviewer_idx = 1
+
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.transpose(np.array([
+        [0, 0, 0],
+        [-1, -1, -1],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    solver_A = PR4ASolver(
+        [1,1,1,1],
+        [2,2,2,2],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    assert res_A.shape == (3,4)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][conflicted_reviewer_idx] == 0
+
 def test_solvers_pr4a_custom_demands():
     """
     Tests 3 papers, 4 reviewers.

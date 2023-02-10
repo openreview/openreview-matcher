@@ -21,20 +21,27 @@ class PR4ASolver:
 
         self.logger = logger
         self.logger.debug('Init PR4A')
-        self.simmatrix = encoder.aggregate_score_matrix.transpose()
-        self.numrev = self.simmatrix.shape[0]
-        self.numpapers = self.simmatrix.shape[1]
         self.minimums = minimums
         self.abilities = maximums
         self.demands = demands
         self.demand = max(demands)
+
+        # Modify simmatrix with respect to constraint matrix
+        # 1) Get matrix where -1 when <= -1 in the constraints and 0 elsewhere
+        # 2) Get matrix with similarity when > -1 in the constraints, 0 elsewhere
+        # 3) Add the matricies
+
+        conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T
+        allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix > -1).T
+        self.simmatrix = conflict_sims + allowed_sims
+        self.numrev = self.simmatrix.shape[0]
+        self.numpapers = self.simmatrix.shape[1]
 
         # Validate demand
         for d in demands:
             if d != self.demand:
                 raise SolverException('PR4A does not support custom paper demands, all demands must be the same')
 
-        # TODO: Handle constraint matrix
         # TODO: Handle minimums
         # TODO: Handle custom demands
 
