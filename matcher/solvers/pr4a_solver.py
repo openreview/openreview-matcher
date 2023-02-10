@@ -9,13 +9,25 @@ class PR4ASolver:
     # tolerance for integrality check
     _EPS = 1e-3
 
-    def __init__(self, minimums, maximums, demands, encoder, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf, logger=logging.getLogger(__name__), allow_zero_score_assignments=True):
+    def __init__(self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        function=lambda x: x,
+        iter_limit=np.inf,
+        time_limit=np.inf,
+        logger=logging.getLogger(__name__),
+        allow_zero_score_assignments=True,
+        attr_constraints=None):
     # initialize the parameters
     # demand - requested number of reviewers per paper
     # ability - the maximum number of papers reviewer can review
     # function - transformation function of similarities
     # iter_limit - maximum number of iterations of Steps 2 to 7
     # time_limit - time limit in seconds. The algorithm performs iterations of Steps 2 to 7 until the time limit is exceeded
+    # allow_zero_score_assignments - bool to allow pairs with zero affinity in the solution.
+    # attr_constraints - expressions as constraints, commonly to require/upper/lower bound the number of a certain type of reviewer per paper
     
     # simmatrix, demand=3, ability=3, function=lambda x: x, iter_limit=np.inf, time_limit=np.inf):
 
@@ -26,6 +38,24 @@ class PR4ASolver:
         self.demands = demands
         self.demand = max(demands)
         self.constraint_matrix = encoder.constraint_matrix
+        self.attr_constraints = attr_constraints
+        # Example attr_constraints schema
+        '''
+        [{
+            'name': 'Seniority',
+            'type': '<=',
+            'bound': 1
+            'members': [bool] * len(reviewers)
+        }]
+        '''
+
+        # Probe constraints
+        '''
+        print('Checking updated expression constraints')
+        for constraint_dict in self._balance_attributes:
+            for _, constraint in constraint_dict.items():
+                print(f"{self._problem.getRow(constraint)} {constraint.Sense} {constraint.RHS}")
+        '''
 
         # Modify simmatrix with respect to constraint matrix
         # 1) Get matrix where -1 when <= -1 in the constraints and 0 elsewhere
@@ -34,7 +64,7 @@ class PR4ASolver:
 
         conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T
         allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix > -1).T
-        self.simmatrix = conflict_sims + allowed_sims
+        self.simmatrix = conflict_sims + allowed_sims ## R x P
         self.numrev = self.simmatrix.shape[0]
         self.numpapers = self.simmatrix.shape[1]
 
@@ -124,6 +154,33 @@ class PR4ASolver:
         # flow balance equations for papers' nodes
         self._balance_papers = problem.addConstrs((self._sink_vars[i] == self._mix_vars.sum('*', i)
                                                    for i in range(self.numpapers)))
+
+        # Initialize attribute constraints and their initial bounds
+        self._balance_attributes = []
+        self._attribute_bounds = []
+        if self.attr_constraints is not None:
+            for constraint_dict in self.attr_constraints:
+                comparison, bound, has_attr = constraint_dict['type'], constraint_dict['bound'], constraint_dict['members']
+                members_with_attr = [idx for idx, attr_val in enumerate(has_attr) if attr_val]
+                self._attribute_bounds.append([bound] * self.numpapers)
+
+                if comparison == '<=':
+                    self._balance_attributes.append(
+                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) <= bound
+                                                    for i in range(self.numpapers)))
+                    )
+                elif comparison == '==':
+                    self._balance_attributes.append(
+                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) == bound
+                                                    for i in range(self.numpapers)))
+                    )
+                elif comparison == '>=':
+                    self._balance_attributes.append(
+                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) >= bound
+                                                    for i in range(self.numpapers)))
+                    )
+                problem.update()
+
         problem.update()
 
         self._problem = problem
@@ -293,6 +350,18 @@ class PR4ASolver:
             # Step 2
             for kappa in range(1, self.demand + 1):
 
+                # Beginning demand attempt - for all attributes set constraints to stored bounds
+                if self.attr_constraints is not None:
+                    for idx, constraint_dict in enumerate(self.attr_constraints):
+                        attribute_bounds = self._attribute_bounds[idx]
+                        has_attr = constraint_dict['members']
+                        members_with_attr = [idx for idx, attr_val in enumerate(has_attr) if attr_val]
+
+                        # Reset all paper constraints
+                        for paper_idx in self._balance_attributes[idx].keys():
+                            self._balance_attributes[idx][paper_idx].RHS = attribute_bounds[paper_idx]
+                            self._problem.update()
+
                 # Step 2(a)
                 tmp_abilities = local_abilities.copy()
                 tmp_simmatrix = local_simmatrix.copy()
@@ -305,6 +374,19 @@ class PR4ASolver:
                     for reviewer in assignment1[paper]:
                         tmp_simmatrix[reviewer, paper] = -1
                         tmp_abilities[reviewer] -= 1
+
+                        # Check if the attribute constraints need updating - this is to keep
+                        # continuity of the constraints between these 2 separate matchings when they are added
+                        if self.attr_constraints is not None:
+                            for idx, meta_constraint_dict in enumerate(self.attr_constraints):
+                                has_attr = meta_constraint_dict['members']
+                                members_with_attr = [idx for idx, attr_val in enumerate(has_attr) if attr_val]
+
+                                # For each attribute, if the assigned reviewer has this attribute
+                                # decrement the RHS of this attribute constraint
+                                if reviewer in members_with_attr:
+                                    self._balance_attributes[idx][paper].RHS = max(self._balance_attributes[idx][paper].RHS - 1, 0)
+                                    self._problem.update()
 
                 # Step 2(d)
                 assignment2 = self._subroutine(tmp_simmatrix, self.demand - kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)[0]
@@ -339,8 +421,21 @@ class PR4ASolver:
                         self._mix_vars[reviewer, paper].ub = 0
                         self._mix_vars[reviewer, paper].lb = 0
                         if reviewer in final_assignment[paper]:
+                            # This reviewer assignment is finalized, reduce the stored bounds
+                            # The change to the stored bounds will propagate back up to the main loop
+                            if self.attr_constraints is not None:
+                                for idx, meta_constraint_dict in enumerate(self.attr_constraints):
+                                    has_attr = meta_constraint_dict['members']
+                                    members_with_attr = [idx for idx, attr_val in enumerate(has_attr) if attr_val]
+
+                                    # If the assigned reviewer has the flagged attribute,
+                                    # decrement this paper's stored bound
+                                    if reviewer in members_with_attr:
+                                        self._attribute_bounds[idx][paper] = max(self._attribute_bounds[idx][paper] - 1, 0)
+                                        self._problem.update()
+
                             local_abilities[reviewer] -= 1
-            
+
             self.logger.debug(f"Finish updating existing assignments with new ones")
             current_best_score = self.quality(current_best)
             self._problem.update()
@@ -359,10 +454,10 @@ class PR4ASolver:
         # Cast fair assignment to numpy
         assert len(self.fa.items()) > 0, "No solution"
         solved = np.zeros(
-            (self.numpapers, self.numrev)
+            (self.numrev, self.numpapers)
         )
-        for paper_idx in self.fa.keys():
-            for idx, assignment in enumerate(self.fa[paper_idx]):
-                solved[paper_idx][assignment] = 1
+        for reviewer_idx in self.fa.keys():
+            for idx, paper_idx in enumerate(self.fa[reviewer_idx]):
+                solved[paper_idx][reviewer_idx] = 1
 
-        return solved
+        return solved.transpose()

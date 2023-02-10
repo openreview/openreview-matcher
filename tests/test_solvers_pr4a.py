@@ -31,6 +31,64 @@ def test_solvers_pr4a_random():
     print(res_A)
     assert res_A.shape == (3,4)
 
+def test_solvers_pr4a_simple_attribute_constraint():
+    '''Test constraint that each paper must have reviewer[3] as a reviewer'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = PR4ASolver(
+        [0,0,0,0],
+        [2,2,2,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+        attr_constraints=[{
+            'name': 'Seniority',
+            'type': '<=',
+            'bound': 1,
+            'members': [True, True, True, False]
+        }]
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][3] == 1
+    assert res_A.shape == (3,4)
+
+def test_solvers_pr4a_structure_attribute_constraint():
+    '''Test constraint that each paper must have reviewer[3] as a reviewer as well as obey similarity structure'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.5, 0, 0],
+        [0, 0.5, 0],
+        [0, 0, 0.5],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = PR4ASolver(
+        [0,0,0,0],
+        [2,2,2,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+        attr_constraints=[{
+            'name': 'Seniority',
+            'type': '<=',
+            'bound': 1,
+            'members': [True, True, True, False]
+        }]
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][3] == 1
+
+    assert res_A[0][0] == 1
+    assert res_A[1][1] == 1
+    assert res_A[2][2] == 1
+    assert res_A.shape == (3,4)
+
 def test_solvers_pr4a_conflict():
     '''When reviewer[1] has conflicts with all papers, assert that no assignments were made to them'''
     conflicted_reviewer_idx = 1
