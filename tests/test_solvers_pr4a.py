@@ -89,6 +89,39 @@ def test_solvers_pr4a_structure_attribute_constraint():
     assert res_A[2][2] == 1
     assert res_A.shape == (3,4)
 
+def test_solvers_pr4a_attribute_constraint_over_similarity():
+    '''Test multiple constraint sets that go against highest similarity'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.5, 0, 0],
+        [0.5, 0, 0],
+        [0, 0, 0.5],
+        [0, 0, 0.5]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    solver_A = PR4ASolver(
+        [0,0,0,0],
+        [2,2,2,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix),
+        attr_constraints=[{
+            'name': 'constr1',
+            'type': '<=',
+            'bound': 1,
+            'members': [True, True, False, False]
+        },
+        {
+            'name': 'constr2',
+            'type': '<=',
+            'bound': 1,
+            'members': [False, False, True, True]
+        }]
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    assert res_A.shape == (3,4)
+    assert bool(res_A[0][0] == 1) ^ bool(res_A[0][1] == 1)
+    assert bool(res_A[2][2] == 1) ^ bool(res_A[2][3] == 1)
+
 def test_solvers_pr4a_conflict():
     '''When reviewer[1] has conflicts with all papers, assert that no assignments were made to them'''
     conflicted_reviewer_idx = 1
