@@ -47,7 +47,6 @@ def test_solvers_pr4a_simple_attribute_constraint():
         encoder(aggregate_score_matrix_A, constraint_matrix),
         attr_constraints=[{
             'name': 'Seniority',
-            'type': '<=',
             'bound': 1,
             'members': [True, True, True, False]
         }]
@@ -74,7 +73,6 @@ def test_solvers_pr4a_structure_attribute_constraint():
         encoder(aggregate_score_matrix_A, constraint_matrix),
         attr_constraints=[{
             'name': 'Seniority',
-            'type': '<=',
             'bound': 1,
             'members': [True, True, True, False]
         }]
@@ -111,7 +109,6 @@ def test_solvers_pr4a_attribute_constraint_over_similarity():
         },
         {
             'name': 'constr2',
-            'type': '<=',
             'bound': 1,
             'members': [False, False, True, True]
         }]

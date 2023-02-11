@@ -43,7 +43,6 @@ class PR4ASolver:
         '''
         [{
             'name': 'Seniority',
-            'type': '<=',
             'bound': 1
             'members': [bool] * len(reviewers)
         }]
@@ -160,25 +159,14 @@ class PR4ASolver:
         self._attribute_bounds = []
         if self.attr_constraints is not None:
             for constraint_dict in self.attr_constraints:
-                comparison, bound, has_attr = constraint_dict['type'], constraint_dict['bound'], constraint_dict['members']
+                bound, has_attr = constraint_dict['bound'], constraint_dict['members']
                 members_with_attr = [idx for idx, attr_val in enumerate(has_attr) if attr_val]
                 self._attribute_bounds.append([bound] * self.numpapers)
 
-                if comparison == '<=':
-                    self._balance_attributes.append(
-                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) <= bound
-                                                    for i in range(self.numpapers)))
-                    )
-                elif comparison == '==':
-                    self._balance_attributes.append(
-                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) == bound
-                                                    for i in range(self.numpapers)))
-                    )
-                elif comparison == '>=':
-                    self._balance_attributes.append(
-                        problem.addConstrs((self._mix_vars.sum(members_with_attr, i) >= bound
-                                                    for i in range(self.numpapers)))
-                    )
+                self._balance_attributes.append(
+                    problem.addConstrs((self._mix_vars.sum(members_with_attr, i) <= bound
+                                                for i in range(self.numpapers)))
+                )
                 problem.update()
 
         problem.update()
