@@ -688,7 +688,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                 for element in elements[1:]:
                     if element:
                         if element.startswith("content.") and "=" in element:
-                            key, value = element.split(".")[1].split("=")
+                            key, value = element.replace('content.', '').split("=")
                             content_dict[key] = value
                         else:
                             self.logger.debug(
@@ -815,23 +815,28 @@ class Deployment:
         try:
             venue = None
             self.config_note_interface.set_status(MatcherStatus.DEPLOYING)
+            support_user = 'OpenReview.net/Support'
+            urls = openreview.tools.get_base_urls(self.config_note_interface.client)
+            client_v1 = openreview.Client(baseurl = urls[0], token=self.config_note_interface.client.token)
 
-            notes = self.config_note_interface.client.get_notes(
-                invitation="OpenReview.net/Support/-/Request_Form",
+            notes = client_v1.get_notes(
+                invitation=f"{support_user}/-/Request_Form",
                 content={"venue_id": self.config_note_interface.venue_id},
             )
+            self.logger.debug('request form notes found', len(notes))
             if notes:
                 venue = openreview.helpers.get_conference(
-                    self.config_note_interface.client, notes[0].id
+                    client_v1, notes[0].id, support_user = support_user, setup=False
                 )
             else:
-                notes = self.config_note_interface.client.get_notes(
-                    invitation="OpenReview.net/Support/-/Journal_Request",
+                client_v2 = openreview.api.OpenReviewClient(baseurl = urls[1], token=self.config_note_interface.client.token)
+                notes = client_v2.get_notes(
+                    invitation=f"{support_user}/-/Journal_Request",
                     content={"venue_id": self.config_note_interface.venue_id},
                 )
                 if notes:
                     venue = openreview.journal.JournalRequest.get_journal(
-                        self.config_note_interface.client, notes[0].id
+                        client_v2, notes[0].id
                     )
                 else:
                     raise openreview.OpenReviewException(

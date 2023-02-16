@@ -100,14 +100,14 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     matcher_status = wait_for_status(openreview_client, config_note.id)
     assert matcher_status.content["status"] == "Complete"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 
 def test_integration_no_solution_due_to_conflicts(
@@ -216,14 +216,14 @@ def test_integration_no_solution_due_to_conflicts(
         == "Solver could not find a solution. Adjust your parameters"
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 def test_integration_supply_mismatch_error(
@@ -318,14 +318,14 @@ def test_integration_supply_mismatch_error(
         == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 def test_integration_demand_out_of_supply_range_error(
@@ -420,14 +420,14 @@ def test_integration_demand_out_of_supply_range_error(
         == "Total demand (30) is out of range when min review supply is (40) and max review supply is (50)"
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 def test_integration_no_scores(openreview_context, celery_app, celery_worker):
@@ -513,14 +513,14 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     config_note = openreview_client.get_note(config_note.id)
     assert matcher_status.content["status"] == "Complete"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
         invitation=conference.get_paper_assignment_id(
             conference.get_reviewers_id()
         ),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 
 def test_routes_invalid_invitation(

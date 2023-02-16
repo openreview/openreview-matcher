@@ -48,13 +48,13 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -98,12 +98,12 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     )
     assert matcher_status.content["status"]["value"] == "Complete"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 
 def test_integration_supply_mismatch_error(
@@ -144,13 +144,13 @@ def test_integration_supply_mismatch_error(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -198,12 +198,12 @@ def test_integration_supply_mismatch_error(
         == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test-2",
-        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 def test_integration_demand_out_of_supply_range_error(
@@ -244,13 +244,13 @@ def test_integration_demand_out_of_supply_range_error(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -298,12 +298,12 @@ def test_integration_demand_out_of_supply_range_error(
         == "Total demand (30) is out of range when min review supply is (40) and max review supply is (50)"
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 def test_integration_no_scores(openreview_context, celery_app, celery_worker):
@@ -342,13 +342,13 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -387,12 +387,12 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     config_note = openreview_client.get_note(config_note["note"]["id"])
     assert matcher_status.content["status"]["value"] == "Complete"
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == num_papers * reviews_per_paper
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 
 def test_routes_invalid_invitation(
@@ -431,13 +431,13 @@ def test_routes_invalid_invitation(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -515,13 +515,13 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -628,13 +628,13 @@ def test_routes_already_running_or_complete(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -734,13 +734,13 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -821,13 +821,13 @@ def test_integration_empty_reviewers_list_error(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -859,9 +859,16 @@ def test_integration_empty_reviewers_list_error(
     assert config_note
 
     # Empty the list of reviewers before calling the matching
-    reviewers_group = openreview_client.get_group(reviewers_id)
-    reviewers_group.members = []
-    openreview_client.post_group(reviewers_group)
+    openreview_client.post_group_edit(
+            invitation = venue.get_meta_invitation_id(),
+            readers = [venue.venue_id],
+            writers = [venue.venue_id],
+            signatures = [venue.venue_id],
+            group = openreview.api.Group(
+                id = reviewers_id,
+                members = []
+            )
+        )
 
     response = test_client.post(
         "/match",
@@ -880,12 +887,12 @@ def test_integration_empty_reviewers_list_error(
         == "Reviewers List can not be empty."
     )
 
-    paper_assignment_edges = openreview_client.get_edges(
+    paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
-        invitation=venue.get_paper_assignment_id(venue.get_reviewers_id()),
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert len(paper_assignment_edges) == 0
+    assert paper_assignment_edges == 0
 
 
 # Change the error and remove the check for status - status is unable to be updated
@@ -930,13 +937,13 @@ def test_integration_group_not_found_error(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
@@ -1025,13 +1032,13 @@ def test_integration_group_with_email(
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)

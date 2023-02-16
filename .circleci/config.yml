@@ -94,7 +94,7 @@ jobs:
           cd ~/openreview-matcher-repo
           mkdir reports
           mkdir reports/pytest
-          python -m pytest -s tests --junitxml=reports/pytest/pytest-report.xml
+          python -m pytest -x tests --junitxml=reports/pytest/pytest-report.xml
     - store_test_results:
         path: reports
     - store_artifacts:

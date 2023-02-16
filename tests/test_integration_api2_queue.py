@@ -47,13 +47,13 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
         },
         "paper_invitation": {"value": venue.get_submission_id()},
         "assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id)
+            "value": venue.get_assignment_id(reviewers_id)
         },
         "deployed_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, deployed=True)
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
         },
         "invite_assignment_invitation": {
-            "value": venue.get_paper_assignment_id(reviewers_id, invite=True)
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
         },
         "aggregate_score_invitation": {
             "value": "{}/-/Aggregate_Score".format(reviewers_id)
