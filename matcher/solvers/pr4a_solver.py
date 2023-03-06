@@ -3,11 +3,15 @@ from itertools import product
 import numpy as np
 import time
 import logging
+import random
+import math
 from .core import SolverException
 
 class PR4ASolver:
     # tolerance for integrality check
     _EPS = 1e-3
+    _GAMMA = 0.7
+    _INITIAL_ALPHA = 0
 
     def __init__(self,
         minimums,
@@ -77,8 +81,6 @@ class PR4ASolver:
                 )
             )[0]
             print(bad_affinity_reviewers)
-            if len(bad_affinity_reviewers) > 0:
-                raise SolverException(f"{len(bad_affinity_reviewers)} members found with no affinity scores while not allowing zero score assignments")
 
         # Validate demand
         for d in demands:
@@ -188,6 +190,8 @@ class PR4ASolver:
     # not_assigned - a set of papers to be assigned
     # lower_bound - internal variable to start the binary search from
     def _subroutine(self, simmatrix, kappa, abilities, not_assigned, lower_bound, *args):
+        
+        gurobi_time = 0
 
         # set up the max flow objective
         self.logger.debug(f"Running subroutine for assignment demand {kappa}")
@@ -244,7 +248,10 @@ class PR4ASolver:
                     self._mix_vars[cur_pair[0], cur_pair[1]].ub = 0
 
             # check maxflow in the current estimate
+            start = time.time()
             self._problem.optimize()
+            gurobi_time += (time.time() - start)
+            #self.logger.debug(f"Gurobi Step (1): {time.time() - start:.2f} seconds")
             maxflow = self._problem.objVal
 
             # if maxflow equals to the required flow, decrease the upper bound on the solution
@@ -271,7 +278,10 @@ class PR4ASolver:
         self._problem.setObjective(sum([sum([simmatrix[reviewer, paper] * self._mix_vars[reviewer, paper]
                                              for paper in not_assigned])
                                         for reviewer in range(self.numrev)]), GRB.MAXIMIZE)
+        start = time.time()
         self._problem.optimize()
+        gurobi_time += (time.time() - start)
+        #self.logger.debug(f"Gurobi Step (2): {time.time() - start:.2f} seconds")
 
         # return assignment
         assignment = {}
@@ -288,7 +298,7 @@ class PR4ASolver:
 
         self.logger.debug(f"Ending subroutine")
 
-        return assignment, current_solution
+        return assignment, current_solution, gurobi_time
 
     # Join two assignments
     @staticmethod
@@ -330,7 +340,15 @@ class PR4ASolver:
         while not_assigned != set() and iter_counter < self.iter_limit and (time.time() < start_time + self.time_limit or iter_counter == 0):
             
             iter_counter += 1
+            iter_start = time.time()
             self.logger.debug(f"PR4A Iteration: {iter_counter}")
+            gurobi_time = 0
+            time_labels = ['2a', '2b', '2c', '2d', '2e', '4-6']
+            time_vals = [0] * len(time_labels)
+
+            alpha = self._INITIAL_ALPHA if iter_counter == 1 else alpha
+            delta_alpha = 0 if iter_counter == 1 else delta_alpha
+            nu = 0 if iter_counter == 1 else nu
             
             lower_bound = 0
             upper_bound = len(not_assigned) * self.numrev
@@ -351,13 +369,19 @@ class PR4ASolver:
                             self._problem.update()
 
                 # Step 2(a)
+                tmp_start = time.time()
                 tmp_abilities = local_abilities.copy()
                 tmp_simmatrix = local_simmatrix.copy()
+                time_vals[0] = time.time() - tmp_start
 
                 # Step 2(b)
-                assignment1, lower_bound = self._subroutine(tmp_simmatrix, kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)
+                tmp_start = time.time()
+                assignment1, lower_bound, g_time = self._subroutine(tmp_simmatrix, kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)
+                gurobi_time += g_time
+                time_vals[1] = time.time() - tmp_start
 
                 # Step 2(c)
+                tmp_start = time.time()
                 for paper in assignment1:
                     for reviewer in assignment1[paper]:
                         tmp_simmatrix[reviewer, paper] = -1
@@ -375,12 +399,18 @@ class PR4ASolver:
                                 if reviewer in members_with_attr:
                                     self._balance_attributes[idx][paper].RHS = max(self._balance_attributes[idx][paper].RHS - 1, 0)
                                     self._problem.update()
+                time_vals[2] = time.time() - tmp_start
 
                 # Step 2(d)
-                assignment2 = self._subroutine(tmp_simmatrix, self.demand - kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)[0]
+                tmp_start = time.time()
+                assignment2, _, g_time = self._subroutine(tmp_simmatrix, self.demand - kappa, tmp_abilities, not_assigned, lower_bound, upper_bound)
+                gurobi_time += g_time
+                time_vals[3] = time.time() - tmp_start
 
                 # Step 2(e)
+                tmp_start = time.time()
                 assignment = self._join_assignment(assignment1, assignment2)
+                time_vals[4] = time.time() - tmp_start
 
                 # Keep track of the best candidate assignment (including the one from the prev. iteration)
                 if self.quality(assignment) > current_best_score or current_best_score == 0:
@@ -390,11 +420,16 @@ class PR4ASolver:
             self.logger.debug(f"Finish iterating through possible demands")
 
             # Steps 4 to 6
+            tmp_start = time.time()
+
+            ## NOTE: TESTING LOSSY ALGORITHM
+            initial_not_assigned = len(not_assigned)
+
             for paper in not_assigned.copy():
                 # For every paper not yet fixed in the final assignment we update the assignment
                 final_assignment[paper] = current_best[paper]
                 # Find the most worst-off paper
-                if self.quality(current_best, paper) == current_best_score:
+                if self.quality(current_best, paper) <= (current_best_score * (1 + alpha)):
                     # Delete it from current candidate assignment and from the set of papers which are
                     # not yet fixed in the final output
                     del current_best[paper]
@@ -423,8 +458,21 @@ class PR4ASolver:
                                         self._problem.update()
 
                             local_abilities[reviewer] -= 1
+            # Update alpha
+            self.logger.debug(f"alpha: {alpha}")
+            frac_papers_total_assigned = 1 - (len(not_assigned) / self.numpapers)
+            frac_papers_assigned = (initial_not_assigned - len(not_assigned)) / initial_not_assigned
+            alpha_proposed = (1 - 0.85*frac_papers_total_assigned) * (math.exp(-9 * (frac_papers_assigned + 0.05)) + 0.008)
+            alpha = alpha_proposed if iter_counter == 1 else self._GAMMA * alpha + (1 - self._GAMMA) * alpha_proposed
+            self.logger.debug(f"x (frac_assigned): {frac_papers_assigned}")
+            self.logger.debug(f"y (frac_total_assigned): {frac_papers_total_assigned}")
+            self.logger.debug(f"new alpha: {alpha}")
 
-            self.logger.debug(f"Finish updating existing assignments with new ones")
+            time_vals[5] = time.time() - tmp_start
+            self.logger.debug(f"{len(not_assigned) / self.numpapers * 100:.2f}% ({len(not_assigned)}/{self.numpapers}) of papers left to be assigned")
+            self.logger.debug(f"Iteration finished in {(time.time() - iter_start)/60:.2f} minutes")
+            self.logger.debug(f"Time taken by Gurobi: {gurobi_time/(time.time() - iter_start)*100:.2f}% ({gurobi_time/60:.2f}) minutes")
+            self.logger.debug(','.join([str(e) for e in time_vals]))
             current_best_score = self.quality(current_best)
             self._problem.update()
 
