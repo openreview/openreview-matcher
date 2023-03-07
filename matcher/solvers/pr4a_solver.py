@@ -19,7 +19,7 @@ class PR4ASolver:
         demands,
         encoder,
         function=lambda x: x,
-        iter_limit=np.inf,
+        iter_limit=1,
         time_limit=np.inf,
         logger=logging.getLogger(__name__),
         allow_zero_score_assignments=True,
