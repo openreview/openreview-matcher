@@ -1,39 +1,75 @@
 import numpy as np
 import time
 import uuid
+import logging
 
 from .basic_gurobi import Basic
 from gurobipy import *
-
 
 class FairIR(Basic):
     """Fair paper matcher via iterative relaxation.
 
     """
 
-    def __init__(self, loads, loads_lb, coverages, weights, thresh=0.0):
+    def __init__(
+        self,
+        minimums,
+        maximums,
+        demands,
+        encoder,
+        thresh=0.0,
+        allow_zero_score_assignments=False,
+        logger=logging.getLogger(__name__)
+        ):
         """Initialize.
 
         Args:
-            loads - a list of integers specifying the maximum number of papers
+            loads (maximums) - a list of integers specifying the maximum number of papers
                   for each reviewer.
-            loads_lb - a list of ints specifying the minimum number of papers
+            loads_lb (minimums) - a list of ints specifying the minimum number of papers
                   for each reviewer.
-            coverages - a list of integers specifying the number of reviews per
+            coverages (demands) - a list of integers specifying the number of reviews per
                  paper.
-            weights - the affinity matrix (np.array) of papers to reviewers.
+            weights (stored in encoder) - the affinity matrix (np.array) of papers to reviewers.
                    Rows correspond to reviewers and columns correspond to
                    papers.
 
             Returns:
                 initialized makespan matcher.
         """
+
+        conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T
+        allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix > -1).T
+        weights = conflict_sims + allowed_sims ## R x P
+
         self.n_rev = np.size(weights, axis=0)
         self.n_pap = np.size(weights, axis=1)
-        self.loads = loads
-        self.loads_lb = loads_lb
-        self.coverages = coverages
+        self.solved = False
+        self.loads = maximums
+        self.loads_lb = minimums
+        self.coverages = demands
+        self.allow_zero_score_assignments = allow_zero_score_assignments
+        ## TODO: Fetch weights from encoder object
         self.weights = weights
+
+        if not self.allow_zero_score_assignments:
+            # Find reviewers with no non-zero affinity edges after constraints are applied and remove their load_lb
+            bad_affinity_reviewers = np.where(
+                np.all(
+                    (encoder.aggregate_score_matrix.T * (encoder.constraint_matrix == 0).T)
+                    == 0,
+                    axis=1,
+                )
+            )[0]
+            logging.debug(
+                "Setting minimum load for {} reviewers to 0 "
+                "because they do not have known affinity with any paper".format(
+                    len(bad_affinity_reviewers)
+                )
+            )
+            for rev_id in bad_affinity_reviewers:
+                self.loads_lb[rev_id] = 0
+
         self.id = uuid.uuid4()
         self.m = Model("%s : FairIR" % str(self.id))
         self.makespan = thresh
@@ -118,6 +154,7 @@ class FairIR(Basic):
         Returns:
             Nothing.
         """
+        print('#info FairIR:MAKESPAN call')
         for c in self.m.getConstrs():
             if c.getAttr("ConstrName").startswith(self.ms_constr_prefix):
                 self.m.remove(c)
@@ -129,9 +166,12 @@ class FairIR(Basic):
                              self.ms_constr_prefix + str(p))
         self.makespan = new_makespan
         self.m.update()
+        print('#info RETURN FairIR:MAKESPAN call')
 
     def sol_as_mat(self):
+        print('#info FairIR:SOL_AS_MAT call')
         if self.m.status == GRB.OPTIMAL or self.m.status == GRB.SUBOPTIMAL:
+            self.solved = True
             solution = np.zeros((self.n_rev, self.n_pap))
             for v in self.m.getVars():
                 i, j = self.indices_of_var(v)
@@ -144,6 +184,7 @@ class FairIR(Basic):
                 'before calling this function.')
 
     def integral_sol_found(self):
+        print('#info FairIR:INTEGRAL_SOL_FOUND call')
         """Return true if all lp variables are integral."""
         sol = self.sol_as_dict()
         return all(sol[self.var_name(i, j)] == 1.0 or
@@ -156,6 +197,7 @@ class FairIR(Basic):
         self.lp_vars[i][j].lb = val
 
     def find_ms(self):
+        print('#info FairIR:FIND_MS call')
         """Find an the highest possible makespan.
 
         Perform a binary search on the makespan value. Each time, solve the
@@ -189,9 +231,15 @@ class FairIR(Basic):
                 ms += (mx - ms) / 2.0
             self.change_makespan(ms)
             self.m.optimize()
-        return best
+        print('#info RETURN FairIR:FIND_MS call')
+
+        if best is None:
+            return 0.0
+        else:
+            return best
 
     def solve(self):
+        print('#info FairIR:SOLVE call')
         """Find a makespan and solve the ILP.
 
         Run a binary search to find an appropriate makespan and then solve the
@@ -219,7 +267,11 @@ class FairIR(Basic):
         for v in self.m.getVars():
             sol[v.varName] = v.x
 
+        print('#info RETURN FairIR:SOLVE call')
+        return self.sol_as_mat().transpose()
+
     def sol_as_dict(self):
+        print('#info FairIR:SOL_AS_DICT call')
         """Return the solution to the optimization as a dictionary.
 
         If the matching has not be solved optimally or suboptimally, then raise
@@ -232,6 +284,7 @@ class FairIR(Basic):
             A dictionary from var_name to value (either 0 or 1)
         """
         if self.m.status == GRB.OPTIMAL or self.m.status == GRB.SUBOPTIMAL:
+            self.solved = True
             _sol = {}
             for v in self.m.getVars():
                 _sol[v.varName] = v.x
@@ -243,6 +296,7 @@ class FairIR(Basic):
                     self.m.status, self.makespan))
 
     def round_fractional(self, integral_assignments=None, count=0):
+        print('#info FairIR:ROUND_FRACTIONAL call')
         """Round a fractional solution.
 
         This is the meat of the iterative relaxation approach.  First, if the
@@ -269,6 +323,8 @@ class FairIR(Basic):
         self.m.optimize()
 
         if self.m.status != GRB.OPTIMAL and self.m.status != GRB.SUBOPTIMAL:
+            self.m.computeIIS()
+            self.m.write("model.ilp")
             assert False, '%s\t%s' % (self.m.status, self.makespan)
 
         if self.integral_sol_found():
@@ -325,4 +381,6 @@ class FairIR(Basic):
                                     c.ConstrName == self.llb_constr_name(rev):
                                 self.m.remove(c)
             self.m.update()
+
+            print('#info RETURN FairIR:ROUND_FRACTIONAL call')
             return self.round_fractional(integral_assignments, count + 1)
