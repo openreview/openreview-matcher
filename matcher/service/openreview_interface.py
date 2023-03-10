@@ -468,6 +468,8 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
 
+        self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
+
         # Lazy variables
         self._reviewers = None
         self._papers = None
@@ -662,6 +664,8 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
+
+        self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
 
         # Lazy variables
         self._reviewers = None

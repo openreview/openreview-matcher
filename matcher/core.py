@@ -55,6 +55,7 @@ class KeywordDatasource:
         num_alternates=0,
         probability_limits=[],
         allow_zero_score_assignments=False,
+        attribute_constraints=None,
         assignments_output="assignments.json",
         alternates_output="alternates.json",
         logger=logging.getLogger(__name__),
@@ -71,6 +72,7 @@ class KeywordDatasource:
         self.probability_limits = probability_limits
         self.num_alternates = num_alternates
         self.allow_zero_score_assignments = allow_zero_score_assignments
+        self.attribute_constraints = attribute_constraints
         self.normalization_types = []
         self.assignments_output = assignments_output
         self.alternates_output = alternates_output
@@ -158,6 +160,7 @@ class Matcher:
                 weight_by_type=self.datasource.weight_by_type,
                 normalization_types=self.datasource.normalization_types,
                 probability_limits=self.datasource.probability_limits,
+                attribute_constraints=self.datasource.attribute_constraints,
                 logger=self.logger,
             )
 

@@ -6,6 +6,7 @@ Responsible for:
 
 from collections import defaultdict, namedtuple
 import numpy as np
+import json
 import logging
 
 
@@ -67,6 +68,7 @@ class Encoder:
         weight_by_type,
         normalization_types=[],
         probability_limits=[],
+        attribute_constraints=None,
         logger=logging.getLogger(__name__),
     ):
         self.logger = logger
@@ -81,6 +83,7 @@ class Encoder:
         self.papers = papers
 
         self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
+        self.user_by_index = {v: k for k, v in self.index_by_user.items()}
         self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
 
         self.logger.debug("Init encoding")
@@ -106,6 +109,22 @@ class Encoder:
         self.prob_limit_matrix = self._encode_probability_limits(
             probability_limits
         )
+
+        # Parse attribute constraints -> reviewers to indices
+        constraints_list = []
+        for name, constraint_dict in attribute_constraints.items():
+            try:
+                members = [self.index_by_user[member] for member in constraint_dict['members']]
+            except Exception as e:
+                raise EncoderError(f"Not all members are in the reviewers")
+            constraints_list.append({
+                'name': name,
+                'comparator': constraint_dict['comparator'],
+                'bound': constraint_dict['bound'],
+                'members': members
+            })
+        self.logger.debug(f"Parsed attribute constraints: {constraints_list}")
+        self.attribute_constraints = constraints_list
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
         self.aggregate_score_matrix = np.full(

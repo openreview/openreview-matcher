@@ -2,6 +2,9 @@ import numpy as np
 import time
 import uuid
 import logging
+import math
+import json
+from .core import SolverException
 
 from .basic_gurobi import Basic
 from gurobipy import *
@@ -42,6 +45,7 @@ class FairIR(Basic):
         allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix > -1).T
         weights = conflict_sims + allowed_sims ## R x P
 
+        self.logger = logger
         self.n_rev = np.size(weights, axis=0)
         self.n_pap = np.size(weights, axis=1)
         self.solved = False
@@ -49,8 +53,17 @@ class FairIR(Basic):
         self.loads_lb = minimums
         self.coverages = demands
         self.allow_zero_score_assignments = allow_zero_score_assignments
-        ## TODO: Fetch weights from encoder object
         self.weights = weights
+        self.attr_constraints = encoder.attribute_constraints
+        # Example attr_constraints schema
+        '''
+        [{
+            'name': 'Seniority',
+            'bound': 1,
+            'comparator': '>=',
+            'members': [reviewer_indicies]
+        }]
+        '''
 
         if not self.allow_zero_score_assignments:
             # Find reviewers with no non-zero affinity edges after constraints are applied and remove their load_lb
@@ -121,6 +134,28 @@ class FairIR(Basic):
                                   for i in range(self.n_rev)]) == cov,
                              self.cov_constr_name(p))
 
+        # attribute constraints.
+        if self.attr_constraints is not None:
+            self.logger.debug(f"Attribute constraints detected")
+            for constraint_dict in self.attr_constraints:
+                name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
+                self.logger.debug(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
+                for p in range(self.n_pap):
+                    if comparator == '==':
+                        self.m.addConstr(sum([self.lp_vars[i][p]
+                                    for i in members]) == bound,
+                                    self.attr_constr_name(name, p))
+                    elif comparator == '>=':
+                        self.m.addConstr(sum([self.lp_vars[i][p]
+                                    for i in members]) >= bound,
+                                    self.attr_constr_name(name, p))
+                    elif comparator == '<=':
+                        self.m.addConstr(sum([self.lp_vars[i][p]
+                                    for i in members]) <= bound,
+                                    self.attr_constr_name(name, p))
+
+                self.m.update()
+
         # makespan constraints.
         for p in range(self.n_pap):
             self.m.addConstr(sum([self.lp_vars[i][p] * self.weights[i][p]
@@ -128,6 +163,10 @@ class FairIR(Basic):
                              self.ms_constr_name(p))
         self.m.update()
         print('#info FairIR:Time to add constr %s' % (time.time() - start))
+
+    def attr_constr_name(self, n, p):
+        """Name of the makespan constraint for paper p."""
+        return '%s%s' % (n, p)
 
     def ms_constr_name(self, p):
         """Name of the makespan constraint for paper p."""
@@ -195,6 +234,42 @@ class FairIR(Basic):
         """Round the variable x_ij to val."""
         self.lp_vars[i][j].ub = val
         self.lp_vars[i][j].lb = val
+        
+    def fix_assignment_to_one_with_constraints(self, i, j, integral_assignments):
+        """Round the variable x_ij to 1 if the attribute constraints are obeyed : i - reviewer, j - paper"""
+        # NOTE
+        ## FIRST check integral assignments only - these should correspond to the true assignments
+        ## SECOND check lb == 1 or ub == 0 to check for assignments
+        if self.attr_constraints is not None:
+            for constraint_dict in self.attr_constraints:
+                bound, comparator, members =  constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
+                s = sum([integral_assignments[k][j] for k in members]) + 1 ## s = current total + 1 more assignment
+
+                # If leq constraint and adding 1 does not violate the bound, fix assignment
+                if comparator == '<=' and s < bound:
+                    self.fix_assignment(i, j, 1.0)
+                    integral_assignments[i][j] = 1.0
+        else:
+            self.fix_assignment(i, j, 1.0)
+            integral_assignments[i][j] = 1.0
+
+    def fix_assignment_to_zero_with_constraints(self, i, j, integral_assignments):
+        """Round the variable x_ij to 1 if the attribute constraints are obeyed : i - reviewer, j - paper"""
+        # NOTE
+        ## FIRST check integral assignments only - these should correspond to the true assignments
+        ## SECOND check lb == 1 or ub == 0 to check for assignments
+        if self.attr_constraints is not None:
+            for constraint_dict in self.attr_constraints:
+                bound, comparator, members =  constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
+                s = sum([integral_assignments[k][j] for k in members]) + 1 ## s = current total + 1 more assignment
+
+                # If geq or eq constraint and the bound is already satisfied, allow assignment to be 0
+                if (comparator == '==' or comparator == '>=') and s >= bound:
+                    self.fix_assignment(i, j, 0.0)
+                    integral_assignments[i][j] = 0.0
+        else:
+            self.fix_assignment(i, j, 0.0)
+            integral_assignments[i][j] = 0.0
 
     def find_ms(self):
         print('#info FairIR:FIND_MS call')
@@ -327,6 +402,40 @@ class FairIR(Basic):
             self.m.write("model.ilp")
             assert False, '%s\t%s' % (self.m.status, self.makespan)
 
+        # Check that the constraints are obeyed when fetching sol
+        # attribute constraints.
+        self.logger.debug('Checking if attribute constraints exist')
+        sol = self.sol_as_dict()
+        if self.attr_constraints is not None:
+            self.logger.debug('Attribute constraints exists - checking post-Gurobi solution')
+            for constraint_dict in self.attr_constraints:
+                name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
+                self.logger.debug(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
+                obeyed = {}
+                for p in range(self.n_pap):
+                    s = 0
+                    for i in members:
+                        if sol[self.var_name(i, p)] > 0:
+                            obeyed[p] = i
+                    if comparator == '==':
+                        s = sum([sol[self.var_name(i, p)] for i in members])
+                        if s != bound:
+                            raise SolverException(
+                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
+                            )
+                    elif comparator == '>=':
+                        s = sum([sol[self.var_name(i, p)] for i in members])
+                        if s < bound:
+                            raise SolverException(
+                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
+                            )
+                    elif comparator == '<=':
+                        s = sum([sol[self.var_name(i, p)] for i in members])
+                        if s > bound:
+                            raise SolverException(
+                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
+                            )
+
         if self.integral_sol_found():
             return
         else:
@@ -343,24 +452,21 @@ class FairIR(Basic):
                     if i not in frac_assign_r:
                         frac_assign_r[i] = []
 
-                    if sol[self.var_name(i, j)] == 0.0 and \
-                                    integral_assignments[i][j] != 0.0:
-                        self.fix_assignment(i, j, 0.0)
-                        integral_assignments[i][j] = 0.0
+                    if sol[self.var_name(i, j)] == 0.0 and integral_assignments[i][j] != 0.0:
+                        self.fix_assignment_to_zero_with_constraints(i, j, integral_assignments)
 
-                    elif sol[self.var_name(i, j)] == 1.0 and \
-                                    integral_assignments[i][j] != 1.0:
-                        self.fix_assignment(i, j, 1.0)
-                        integral_assignments[i][j] = 1.0
+                    elif sol[self.var_name(i, j)] == 1.0 and integral_assignments[i][j] != 1.0:
+                        self.fix_assignment_to_one_with_constraints(i, j, integral_assignments)
 
-                    elif sol[self.var_name(i, j)] != 1.0 and \
-                                    sol[self.var_name(i, j)] != 0.0:
+                    elif sol[self.var_name(i, j)] != 1.0 and sol[self.var_name(i, j)] != 0.0:
                         frac_assign_p[j].append(
-                            (i, j, sol[self.var_name(i, j)]))
+                            (i, j, sol[self.var_name(i, j)])
+                        )
                         frac_assign_r[i].append(
-                            (i, j, sol[self.var_name(i, j)]))
-                        fractional_vars.append((i, j, sol[self.var_name(i, j)]))
+                            (i, j, sol[self.var_name(i, j)])
+                        )
 
+                        fractional_vars.append((i, j, sol[self.var_name(i, j)]))
                         integral_assignments[i][j] = sol[self.var_name(i, j)]
 
             # First try to elim a makespan constraint.
