@@ -222,10 +222,10 @@ class FairIR(Basic):
                 'You must have solved the model optimally or suboptimally '
                 'before calling this function.')
 
-    def integral_sol_found(self):
+    def integral_sol_found(self, precalculated=None):
         print('#info FairIR:INTEGRAL_SOL_FOUND call')
         """Return true if all lp variables are integral."""
-        sol = self.sol_as_dict()
+        sol = self.sol_as_dict() if precalculated is None else precalculated
         return all(sol[self.var_name(i, j)] == 1.0 or
                    sol[self.var_name(i, j)] == 0.0
                    for i in range(self.n_rev) for j in range(self.n_pap))
@@ -436,12 +436,11 @@ class FairIR(Basic):
                                 f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
                             )
 
-        if self.integral_sol_found():
+        if self.integral_sol_found(precalculated=sol):
             return
         else:
             frac_assign_p = {}
             frac_assign_r = {}
-            sol = self.sol_as_dict()
             fractional_vars = []
 
             # Find fractional vars.
