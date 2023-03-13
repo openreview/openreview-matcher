@@ -445,6 +445,7 @@ class FairIR(Basic):
 
             # Find fractional vars.
             for i in range(self.n_rev):
+                print(f'#info FairIR:ROUND_FRACTIONAL O(RP) loop target=reviewer{i}')
                 for j in range(self.n_pap):
                     if j not in frac_assign_p:
                         frac_assign_p[j] = []
@@ -467,6 +468,8 @@ class FairIR(Basic):
 
                         fractional_vars.append((i, j, sol[self.var_name(i, j)]))
                         integral_assignments[i][j] = sol[self.var_name(i, j)]
+                
+            print('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
 
             # First try to elim a makespan constraint.
             removed = False
