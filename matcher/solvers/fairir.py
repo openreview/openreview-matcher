@@ -453,10 +453,14 @@ class FairIR(Basic):
                         frac_assign_r[i] = []
 
                     if sol[self.var_name(i, j)] == 0.0 and integral_assignments[i][j] != 0.0:
-                        self.fix_assignment_to_zero_with_constraints(i, j, integral_assignments)
+                        #self.fix_assignment_to_zero_with_constraints(i, j, integral_assignments)
+                        self.fix_assignment(i, j, 0.0)
+                        integral_assignments[i][j] = 0.0
 
                     elif sol[self.var_name(i, j)] == 1.0 and integral_assignments[i][j] != 1.0:
-                        self.fix_assignment_to_one_with_constraints(i, j, integral_assignments)
+                        #self.fix_assignment_to_one_with_constraints(i, j, integral_assignments)
+                        self.fix_assignment(i, j, 1.0)
+                        integral_assignments[i][j] = 1.0
 
                     elif sol[self.var_name(i, j)] != 1.0 and sol[self.var_name(i, j)] != 0.0:
                         frac_assign_p[j].append(
