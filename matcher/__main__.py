@@ -89,6 +89,11 @@ parser.add_argument(
     default="MinMax",
 )
 
+parser.add_argument(
+    "--attribute_constraints",
+    help="""JSON file with attribute constraints"""
+)
+
 args = parser.parse_args()
 
 # Main Logic
@@ -225,6 +230,11 @@ if args.probability_limits:
                 + ", ".join(missing_papers)
             )
 
+attr_constraints = None
+if args.attribute_constraints:
+    with open(args.attribute_constraints) as file_handle:
+        attr_constraints = json.load(file_handle)
+
 
 logger.info("Count of reviewers={} ".format(len(reviewers)))
 logger.info("Count of papers={}".format(len(papers)))
@@ -241,6 +251,7 @@ match_data = {
     "probability_limits": probability_limits,
     "num_alternates": num_alternates,
     "allow_zero_score_assignments": args.allow_zero_score_assignments,
+    "attribute_constraints": attr_constraints,
     "assignments_output": "assignments.json",
     "alternates_output": "alternates.json",
     "logger": logger,
