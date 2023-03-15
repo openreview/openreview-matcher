@@ -111,18 +111,20 @@ class Encoder:
         )
 
         # Parse attribute constraints -> reviewers to indices
-        constraints_list = []
-        for name, constraint_dict in attribute_constraints.items():
-            try:
-                members = [self.index_by_user[member] for member in constraint_dict['members']]
-            except Exception as e:
-                raise EncoderError(f"Not all members are in the reviewers")
-            constraints_list.append({
-                'name': name,
-                'comparator': constraint_dict['comparator'],
-                'bound': constraint_dict['bound'],
-                'members': members
-            })
+        constraints_list = None
+        if attribute_constraints:
+            constraints_list = []
+            for name, constraint_dict in attribute_constraints.items():
+                try:
+                    members = [self.index_by_user[member] for member in constraint_dict['members']]
+                except Exception as e:
+                    raise EncoderError(f"Not all members are in the reviewers")
+                constraints_list.append({
+                    'name': name,
+                    'comparator': constraint_dict['comparator'],
+                    'bound': constraint_dict['bound'],
+                    'members': members
+                })
         self.logger.debug(f"Parsed attribute constraints: {constraints_list}")
         self.attribute_constraints = constraints_list
 
