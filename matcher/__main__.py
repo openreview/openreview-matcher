@@ -85,7 +85,7 @@ parser.add_argument(
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
     "--solver",
-    help="Choose from: {}".format(["MinMax", "FairFlow", "Randomized"]),
+    help="Choose from: {}".format(["MinMax", "FairFlow", "Randomized", "FairIR"]),
     default="MinMax",
 )
 
@@ -100,6 +100,8 @@ if args.solver == "FairFlow":
     solver_class = "FairFlow"
 if args.solver == "Randomized":
     solver_class = "Randomized"
+if args.solver == "FairIR":
+    solver_class = "FairIR"
 
 if not solver_class:
     raise ValueError("Invalid solver class {}".format(args.solver))
