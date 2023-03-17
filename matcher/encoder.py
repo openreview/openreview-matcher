@@ -125,7 +125,6 @@ class Encoder:
                     'bound': constraint_dict['bound'],
                     'members': members
                 })
-        self.logger.debug(f"Parsed attribute constraints: {constraints_list}")
         self.attribute_constraints = constraints_list
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.

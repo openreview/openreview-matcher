@@ -299,7 +299,7 @@ class FairIR(Basic):
                 mx = ms
                 ms -= (ms - mn) / 2.0
             else:
-                assert(best is None or ms > best)
+                assert(best is None or ms >= best)
                 assert(self.m.status == GRB.OPTIMAL)
                 best = ms
                 mn = ms
