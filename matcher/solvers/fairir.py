@@ -41,8 +41,9 @@ class FairIR(Basic):
                 initialized makespan matcher.
         """
 
-        conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T
-        allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix > -1).T
+        conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T ## -1 where constraints are -1, 0 else
+        forced_matrix = (encoder.constraint_matrix >= 1).T ## 1 where constraints are 1, 0 else
+        allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix >= 0).T ## unconstrained sims
         weights = conflict_sims + allowed_sims ## R x P
 
         self.logger = logger
@@ -64,6 +65,15 @@ class FairIR(Basic):
             'members': [reviewer_indicies]
         }]
         '''
+
+        # Build set of forced tuples (r, p)
+        forced_list = []
+        for r in range(self.n_rev):
+            for p in range(self.n_pap):
+                if forced_matrix[r, p] == 1:
+                    forced_list.append(
+                        (r, p)
+                    )
 
         if not self.allow_zero_score_assignments:
             # Find reviewers with no non-zero affinity edges after constraints are applied and remove their load_lb
@@ -134,6 +144,11 @@ class FairIR(Basic):
                                   for i in range(self.n_rev)]) == cov,
                              self.cov_constr_name(p))
 
+        # forced assignment constraints.
+        for forced in forced_list:
+            self.fix_assignment(forced[0], forced[1], 1)
+
+
         # attribute constraints.
         if self.attr_constraints is not None:
             self.logger.debug(f"Attribute constraints detected")
@@ -141,17 +156,30 @@ class FairIR(Basic):
                 name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
                 self.logger.debug(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
                 for p in range(self.n_pap):
+
+                    # Check number of forced assignments and adjust bounds
+                    num_forced = 0
+                    for forced in forced_list:
+                        if p == forced[1]:
+                            num_forced += 1
+
+                    remaining_demand = self.coverages[p] - num_forced
+
                     if comparator == '==':
+                        adj_bound = bound if remaining_demand >= bound else remaining_demand
                         self.m.addConstr(sum([self.lp_vars[i][p]
-                                    for i in members]) == bound,
+                                    for i in members]) == adj_bound,
                                     self.attr_constr_name(name, p))
                     elif comparator == '>=':
+                        adj_bound = bound if remaining_demand >= bound else remaining_demand
+                        print(adj_bound)
                         self.m.addConstr(sum([self.lp_vars[i][p]
-                                    for i in members]) >= bound,
+                                    for i in members]) >= adj_bound,
                                     self.attr_constr_name(name, p))
                     elif comparator == '<=':
+                        adj_bound = bound if num_forced <= bound else min(bound + num_forced, self.coverages[p])
                         self.m.addConstr(sum([self.lp_vars[i][p]
-                                    for i in members]) <= bound,
+                                    for i in members]) <= adj_bound,
                                     self.attr_constr_name(name, p))
 
                 self.m.update()
@@ -406,35 +434,6 @@ class FairIR(Basic):
         # attribute constraints.
         self.logger.debug('Checking if attribute constraints exist')
         sol = self.sol_as_dict()
-        if self.attr_constraints is not None:
-            self.logger.debug('Attribute constraints exists - checking post-Gurobi solution')
-            for constraint_dict in self.attr_constraints:
-                name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
-                self.logger.debug(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
-                obeyed = {}
-                for p in range(self.n_pap):
-                    s = 0
-                    for i in members:
-                        if sol[self.var_name(i, p)] > 0:
-                            obeyed[p] = i
-                    if comparator == '==':
-                        s = sum([sol[self.var_name(i, p)] for i in members])
-                        if s != bound:
-                            raise SolverException(
-                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
-                            )
-                    elif comparator == '>=':
-                        s = sum([sol[self.var_name(i, p)] for i in members])
-                        if s < bound:
-                            raise SolverException(
-                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
-                            )
-                    elif comparator == '<=':
-                        s = sum([sol[self.var_name(i, p)] for i in members])
-                        if s > bound:
-                            raise SolverException(
-                                f"Paper {p} has violated {name} constraint. Expected: {bound} Found: {s}\nValues: {[sol[self.var_name(i, p)] for i in members]}"
-                            )
 
         if self.integral_sol_found(precalculated=sol):
             return
@@ -445,7 +444,6 @@ class FairIR(Basic):
 
             # Find fractional vars.
             for i in range(self.n_rev):
-                print(f'#info FairIR:ROUND_FRACTIONAL O(RP) loop target=reviewer{i}')
                 for j in range(self.n_pap):
                     if j not in frac_assign_p:
                         frac_assign_p[j] = []

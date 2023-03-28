@@ -57,6 +57,59 @@ def test_solvers_fairir_simple_attribute_constraint():
         assert res_A[paper_idx][3] == 1
     assert res_A.shape == (3,4)
 
+def test_solvers_fairir_positive_constraint():
+    '''Test constraint that each paper must have reviewer[3] as a reviewer via positive constraints'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    for i in range(3):
+        constraint_matrix[i, 3] = 1
+
+    solver_A = FairIR(
+        [0,0,0,0],
+        [2,2,2,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix, None)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][3] == 1
+    assert res_A.shape == (3,4)
+
+def test_solvers_fairir_two_positive_constraint():
+    '''Test constraint that each paper must have reviewer[3] and reviewer[2] as a reviewer via positive constraints'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+    for i in range(3):
+        constraint_matrix[i, 3] = 1
+        constraint_matrix[i, 2] = 1
+
+    solver_A = FairIR(
+        [0,0,0,0],
+        [2,2,3,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix, None)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][3] == 1
+
+    for paper_idx in range(3):
+        assert res_A[paper_idx][2] == 1
+
+    assert res_A.shape == (3,4)    
+
 def test_solvers_fairir_structure_attribute_constraint():
     '''Test constraint that each paper must have reviewer[3] as a reviewer as well as obey similarity structure'''
     aggregate_score_matrix_A = np.transpose(np.array([
@@ -68,7 +121,7 @@ def test_solvers_fairir_structure_attribute_constraint():
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     attr_constraints = [{
             'name': 'Seniority',
-            'comparator': '<=',
+            'comparator': '>=',
             'bound': 1,
             'members': [3]
     }]
@@ -86,6 +139,43 @@ def test_solvers_fairir_structure_attribute_constraint():
     assert res_A[0][0] == 1
     assert res_A[1][1] == 1
     assert res_A[2][2] == 1
+    assert res_A.shape == (3,4)
+
+def test_solvers_fairir_override_structure_attribute_constraint():
+    '''Test constraint that each paper must have reviewer[3] as a reviewer but gets relaxed since reviewer[2] and reviewer[1] are required'''
+    aggregate_score_matrix_A = np.transpose(np.array([
+        [0.5, 0, 0],
+        [0, 0.5, 0],
+        [0, 0, 0.5],
+        [0, 0, 0]
+    ]))
+    constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
+
+    for i in range(3):
+        constraint_matrix[i, 1] = 1
+        constraint_matrix[i, 2] = 1
+    print(constraint_matrix)
+
+    attr_constraints = [{
+            'name': 'Seniority',
+            'comparator': '>=',
+            'bound': 1,
+            'members': [3]
+    }]
+    solver_A = FairIR(
+        [0,0,0,0],
+        [2,3,3,3],
+        [2,2,2],
+        encoder(aggregate_score_matrix_A, constraint_matrix, attr_constraints)
+    )
+    res_A = solver_A.solve()
+    print(res_A)
+    for paper_idx in range(3):
+        assert res_A[paper_idx][2] == 1
+
+    for paper_idx in range(3):
+        assert res_A[paper_idx][1] == 1
+
     assert res_A.shape == (3,4)
 
 def test_solvers_fairir_attribute_constraint_over_similarity():
