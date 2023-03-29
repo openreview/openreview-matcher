@@ -151,6 +151,8 @@ class Matcher:
             self.set_status(MatcherStatus.RUNNING)
 
             self.logger.debug("Start encoding")
+            self.logger.debug(self.datasource.constraints)
+            self.logger.debug(self.datasource.attribute_constraints)
 
             encoder = Encoder(
                 reviewers=self.datasource.reviewers,

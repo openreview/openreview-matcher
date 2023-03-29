@@ -30,6 +30,28 @@ class BaseConfigNoteInterface:
                 self.set_status(MatcherStatus.ERROR, message=str(error_handle))
                 raise error_handle
 
+    def validate_constraints_spec(self):
+        for invitation_id in self.config_note.content.get(
+            "constraints_specification", {}
+        ):
+            try:
+                self.logger.debug("GET invitation id={}".format(invitation_id))
+                self.client.get_invitation(invitation_id)
+
+                constraint_list = self.config_note.content.get("constraints_specification", {}).get(invitation_id, [])
+                if len(constraint_list) == 0:
+                    raise openreview.OpenReviewException(f"{invitation_id} must have a list of associated constraints")
+
+                for idx, constraint in enumerate(constraint_list):
+                    if 'label' not in constraint.keys():
+                        raise openreview.OpenReviewException(f"Constraint {idx} for {invitation_id} must have a label")
+                    
+                    if not ('min_users' in constraint.keys() or 'max_users' in constraint.keys()):
+                        raise openreview.OpenReviewException(f"Constraint {idx} for {invitation_id} must specify either min_users or max_users")
+            except Exception as error_handle:
+                self.set_status(MatcherStatus.ERROR, message=str(error_handle))
+                raise error_handle
+
     def validate_group(self, group_id):
         try:
             self.logger.debug("GET group id={}".format(group_id))
@@ -185,6 +207,60 @@ class BaseConfigNoteInterface:
                 )
             ]
         return self._constraints
+
+    @property
+    def attribute_constraints(self):
+        constraints_specification = self.config_note.content.get(
+            "constraints_specification", {}
+        )
+
+        if not self._attribute_constraints and constraints_specification:
+            edges_by_invitation = {}
+            metadata_by_invitation = {}
+            for invitation_id, spec_list in constraints_specification.items():
+                edges_by_invitation[invitation_id] = self._get_all_edges(
+                    invitation_id
+                )
+                metadata_by_invitation[invitation_id] = [
+                    spec for spec in spec_list
+                ]
+
+            for inv_id, edges in edges_by_invitation.items():
+                name = inv_id.split('/-/')[1]
+                invitation_edges = [
+                    (
+                        edge["head"],
+                        edge["tail"],
+                        edge["label"],
+                    )
+                    for edge in edges
+                ]
+
+                for metadata in metadata_by_invitation[inv_id]:
+                    label, keys = metadata.get('label', ''), metadata.keys()
+
+                    comparator, bound = '', None
+                    if 'min_users' in keys and 'max_users' in keys:
+                        comparator = '=='
+                        bound = metadata.get('min_users')
+                    elif 'min_users' in keys:
+                        comparator = '>='
+                        bound = metadata.get('min_users')
+                    elif 'max_users' in keys:
+                        comparator = '<='
+                        bound = metadata.get('max_users')
+
+                    members = [edge[2] for edge in invitation_edges if edge[2] == label]
+                    if len(members) < 1:
+                        raise openreview.OpenReviewException(f"{name}/{label} has no corresponding members")
+
+                    self._attribute_constraints['name'] = {
+                            'comparator': comparator,
+                            'bound': bound,
+                            'members': members
+                    }
+
+        return self._attribute_constraints
 
     @property
     def scores_by_type(self):
@@ -468,7 +544,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
 
-        self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
+        # self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
 
         # Lazy variables
         self._reviewers = None
@@ -478,8 +554,12 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self._maximums = None
         self._demands = None
         self._constraints = None
+        self._attribute_constraints = []
 
         self.validate_score_spec()
+
+        if self.config_note.content.get('constraints_specification', None) is not None:
+            self.validate_constraints_spec()
 
     @property
     def papers(self):
@@ -665,7 +745,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
 
-        self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
+        # self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
 
         # Lazy variables
         self._reviewers = None
@@ -675,8 +755,12 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self._maximums = None
         self._demands = None
         self._constraints = None
+        self._attribute_constraints = None
 
         self.validate_score_spec()
+
+        if self.config_note.content.get('constraints_specification', None) is not None:
+            self.validate_constraints_spec()
 
     @property
     def papers(self):

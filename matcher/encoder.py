@@ -91,6 +91,7 @@ class Encoder:
 
         self.matrix_shape = (len(self.papers), len(self.reviewers))
 
+        self.logger.debug("Init score matrices")
         self.score_matrices = {
             score_type: self._encode_scores(scores)
             for score_type, scores in scores_by_type.items()
@@ -99,20 +100,25 @@ class Encoder:
         with_normalization_matrices = {}
         without_normalization_matrices = {}
 
+        self.logger.debug("Init normalization matricies")
         for score_type, scores in self.score_matrices.items():
             if score_type in normalization_types:
                 with_normalization_matrices[score_type] = scores
             else:
                 without_normalization_matrices[score_type] = scores
 
+        self.logger.debug("Init conflicts")
         self.constraint_matrix = self._encode_constraints(constraints)
         self.prob_limit_matrix = self._encode_probability_limits(
             probability_limits
         )
 
         # Parse attribute constraints -> reviewers to indices
+        self.logger.debug("Init attribute constraints")
         constraints_list = None
         if attribute_constraints:
+            self.logger.debug("Attribute constraints detected")
+            self.logger.debug(attribute_constraints)
             constraints_list = []
             for name, constraint_dict in attribute_constraints.items():
                 try:

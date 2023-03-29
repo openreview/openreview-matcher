@@ -192,6 +192,29 @@ class FairIR(Basic):
         self.m.update()
         print('#info FairIR:Time to add constr %s' % (time.time() - start))
 
+    def _validate_input_range(self):
+        """Validate if demand is in the range of min supply and max supply"""
+        self.logger.debug("Checking if demand is in range")
+
+        min_supply = sum(self.loads_lb)
+        max_supply = sum(self.loads)
+        demand = sum(self.coverages)
+
+        self.logger.debug(
+            "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
+                demand, min_supply, max_supply
+            )
+        )
+
+        if demand > max_supply or demand < min_supply:
+            raise SolverException(
+                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                    demand, min_supply, max_supply
+                )
+            )
+
+        self.logger.debug("Finished checking graph inputs")
+
     def attr_constr_name(self, n, p):
         """Name of the makespan constraint for paper p."""
         return '%s%s' % (n, p)
@@ -357,6 +380,7 @@ class FairIR(Basic):
         Returns:
             The solution as a matrix.
         """
+        self._validate_input_range()
         if self.makespan <= 0:
             print('#info FairIR: searching for fairness threshold')
             ms = self.find_ms()
