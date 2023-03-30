@@ -298,6 +298,24 @@ def clean_start_conference(
 
     return conference
 
+def post_fairir_to_api2(
+    client, conference_id
+):
+    inv = client.get_invitation(f"{conference_id}/Reviewers/-/Assignment_Configuration")
+    content = {
+        'solver': inv.edit['note']['content']['solver']
+    }
+    content['solver']['value']['param']['enum'].append('FairIR')
+    inv.edit['note']['content'] = content
+    client.post_invitation_edit(
+        invitations=f"{conference_id}/-/Edit",
+        readers=[conference_id],
+        writers=[conference_id],
+        signatures=[conference_id],
+        replacement=False,
+        invitation=inv
+    )
+
 def post_fairir_to_api1(
     client, conference_id
 ):
