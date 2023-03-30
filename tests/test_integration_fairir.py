@@ -7,7 +7,7 @@ import json
 import openreview
 import pytest
 
-from conftest import clean_start_conference, wait_for_status
+from conftest import clean_start_conference, wait_for_status, post_fairir_to_api1
 
 
 def test_integration_basic(openreview_context, celery_app, celery_worker):
@@ -32,6 +32,8 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
         num_papers,
         reviews_per_paper,
     )
+
+    post_fairir_to_api1(openreview_client, conference_id)
 
     reviewers_id = conference.get_reviewers_id()
 
@@ -129,6 +131,8 @@ def test_integration_supply_mismatch_error(
         num_papers,
         reviews_per_paper,
     )
+
+    post_fairir_to_api1(openreview_client, conference_id)
 
     reviewers_id = conference.get_reviewers_id()
 
@@ -232,6 +236,8 @@ def test_integration_demand_out_of_supply_range_error(
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -332,6 +338,8 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -425,6 +433,8 @@ def test_routes_invalid_invitation(
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -510,6 +520,8 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
         num_papers,
         reviews_per_paper,
     )
+
+    post_fairir_to_api1(openreview_client, conference_id)
 
     reviewers_id = conference.get_reviewers_id()
 
@@ -717,6 +729,8 @@ def test_routes_already_running_or_complete(
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -818,6 +832,8 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -906,6 +922,8 @@ def test_integration_empty_reviewers_list_error(
         num_papers,
         reviews_per_paper,
     )
+
+    post_fairir_to_api1(openreview_client, conference_id)
 
     reviewers_id = conference.get_reviewers_id()
 
@@ -1115,6 +1133,8 @@ def test_integration_group_not_found_error(
         reviews_per_paper,
     )
 
+    post_fairir_to_api1(openreview_client, conference_id)
+
     reviewers_id = conference.get_reviewers_id()
 
     config = {
@@ -1207,6 +1227,8 @@ def test_integration_group_with_email(
         num_papers,
         reviews_per_paper,
     )
+
+    post_fairir_to_api1(openreview_client, conference_id)
 
     openreview_client.add_members_to_group(
         conference_id + "/Reviewers", "reviewer@mail.com"
