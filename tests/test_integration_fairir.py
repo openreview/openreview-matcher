@@ -210,6 +210,152 @@ def test_integration_supply_mismatch_error(
 
     assert paper_assignment_edges == 0
 
+def test_integration_attribute_constraints(
+    openreview_context, celery_app, celery_worker
+):
+    """
+    Basic integration test. Makes use of the OpenReview Builder
+    """
+    openreview_client = openreview_context["openreview_client"]
+    test_client = openreview_context["test_client"]
+
+    conference_id = "ICLR.acb/2020/Conference"
+    num_reviewers = 3
+    num_papers = 1
+    reviews_per_paper = 3
+    max_papers = 1
+    min_papers = 1
+    alternates = 0
+
+    conference = clean_start_conference(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper,
+    )
+
+    post_fairir_to_api1(openreview_client, conference_id)
+
+    reviewers_id = conference.get_reviewers_id()
+    seniority_inv_id = "{}/-/Seniority".format(reviewers_id)
+
+    config = {
+        "title": "integration-test-constraints",
+        "user_demand": str(reviews_per_paper),
+        "max_papers": str(max_papers),
+        "min_papers": str(min_papers),
+        "alternates": str(alternates),
+        "config_invitation": "{}/-/Assignment_Configuration".format(
+            reviewers_id
+        ),
+        "paper_invitation": conference.get_blind_submission_id(),
+        "assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id
+        ),
+        "deployed_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, deployed=True
+        ),
+        "invite_assignment_invitation": conference.get_paper_assignment_id(
+            reviewers_id, invite=True
+        ),
+        "aggregate_score_invitation": "{}/-/Aggregate_Score".format(
+            reviewers_id
+        ),
+        "conflicts_invitation": conference.get_conflict_score_id(reviewers_id),
+        "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
+            reviewers_id
+        ),
+        "match_group": reviewers_id,
+        "scores_specification": {
+            conference.get_affinity_score_id(reviewers_id): {
+                "weight": 1.0,
+                "default": 0.0,
+            }
+        },
+        "constraints_specification": {
+            seniority_inv_id: [
+                { 
+                    "label": "Senior",
+                    "min_users": 1
+                }
+            ]
+        },
+        "status": "Initialized",
+        "solver": "FairIR",
+    }
+
+    config_note = openreview.Note(
+        **{
+            "invitation": "{}/-/Assignment_Configuration".format(reviewers_id),
+            "readers": [conference.get_id()],
+            "writers": [conference.get_id()],
+            "signatures": [conference.get_id()],
+            "content": config,
+        }
+    )
+
+    # Post Seniority edge invitation
+    matching = openreview.conference.matching.Matching(conference, openreview_client.get_group(reviewers_id), None)
+    matching._create_edge_invitation(seniority_inv_id)
+
+    inv = openreview_client.get_invitation(seniority_inv_id)
+    print(inv)
+    inv.reply['content']['head'] = {
+        'type': 'Group',
+        'query': {
+            'group': reviewers_id
+        }
+    }
+    openreview_client.post_invitation(inv)
+
+    senior_reviewer = openreview_client.get_group(reviewers_id).members[0]
+    openreview_client.post_edge(
+        openreview.Edge(
+            invitation=seniority_inv_id,
+            label="Senior",
+            head=reviewers_id,
+            tail=senior_reviewer,
+            signatures=[conference.id],
+            readers=[conference.id, senior_reviewer],
+            writers=[conference.id],
+        )
+    )
+
+    config_note = openreview_client.post_note(config_note)
+    assert config_note
+
+    response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note.id}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(openreview_client, config_note.id)
+    assert matcher_status.content["status"] == "Complete"
+
+    paper_assignment_edges = openreview_client.get_edges_count(
+        label="integration-test-constraints",
+        invitation=conference.get_paper_assignment_id(
+            conference.get_reviewers_id()
+        ),
+    )
+
+    grouped_edges = openreview_client.get_grouped_edges(
+        label="integration-test-constraints",
+        invitation=conference.get_paper_assignment_id(
+            conference.get_reviewers_id()
+        ),
+        groupby='head',
+        select='id,head,tail'
+    )
+
+    for edge_dict in grouped_edges:
+        assert True in [senior_reviewer == edge['tail'] for edge in edge_dict['values']], f"No senior reviewer found"
+
+    assert paper_assignment_edges == num_papers * reviews_per_paper
 
 def test_integration_demand_out_of_supply_range_error(
     openreview_context, celery_app, celery_worker

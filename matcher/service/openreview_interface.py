@@ -145,6 +145,24 @@ class BaseConfigNoteInterface:
 
         return custom_supply_edges
 
+    def _get_attribute_constraint_edges(self, inv_id):
+        """Helper function to get all the custom supply edges"""
+        constraint_edges = []
+        self.logger.debug(
+            "GET grouped edges invitation id={}".format(
+                inv_id
+            )
+        )
+
+        constraint_edges = self.client.get_grouped_edges(
+            invitation=inv_id,
+            groupby="head",
+            head=self.match_group,
+            select="head,tail,label",
+        )
+
+        return constraint_edges
+
     def _content_to_api1(self, note):
         new_content = {}
         for key, val in note.content.items():
@@ -215,12 +233,11 @@ class BaseConfigNoteInterface:
         )
 
         if not self._attribute_constraints and constraints_specification:
+            self._attribute_constraints = {}
             edges_by_invitation = {}
             metadata_by_invitation = {}
             for invitation_id, spec_list in constraints_specification.items():
-                edges_by_invitation[invitation_id] = self._get_all_edges(
-                    invitation_id
-                )
+                edges_by_invitation[invitation_id] = self._get_attribute_constraint_edges(invitation_id)[0]['values']
                 metadata_by_invitation[invitation_id] = [
                     spec for spec in spec_list
                 ]
@@ -235,6 +252,8 @@ class BaseConfigNoteInterface:
                     )
                     for edge in edges
                 ]
+                self.logger.debug(edges)
+                self.logger.debug(invitation_edges)
 
                 for metadata in metadata_by_invitation[inv_id]:
                     label, keys = metadata.get('label', ''), metadata.keys()
@@ -250,7 +269,7 @@ class BaseConfigNoteInterface:
                         comparator = '<='
                         bound = metadata.get('max_users')
 
-                    members = [edge[2] for edge in invitation_edges if edge[2] == label]
+                    members = [edge[1] for edge in invitation_edges if edge[2] == label]
                     if len(members) < 1:
                         raise openreview.OpenReviewException(f"{name}/{label} has no corresponding members")
 
@@ -444,11 +463,17 @@ class BaseConfigNoteInterface:
         self.logger.debug(
             "GET grouped edges invitation id={}".format(edge_invitation_id)
         )
+        self.logger.debug(
+            edges_grouped_by_paper
+        )
         filtered_edges_groups = list(
             filter(
                 lambda edge_group: edge_group["id"]["head"] in all_papers,
                 edges_grouped_by_paper,
             )
+        )
+        self.logger.debug(
+            filtered_edges_groups
         )
 
         for group in filtered_edges_groups:

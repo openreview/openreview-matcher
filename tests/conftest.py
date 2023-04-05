@@ -303,7 +303,8 @@ def post_fairir_to_api2(
 ):
     inv = client.get_invitation(f"{conference_id}/Reviewers/-/Assignment_Configuration")
     content = {
-        'solver': inv.edit['note']['content']['solver']
+        'solver': inv.edit['note']['content']['solver'],
+        'constraints_specification': inv.edit['note']['content']['scores_specification']
     }
     content['solver']['value']['param']['enum'].append('FairIR')
     inv.edit['note']['content'] = content
