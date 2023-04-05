@@ -124,7 +124,7 @@ class Encoder:
                 try:
                     members = [self.index_by_user[member] for member in constraint_dict['members']]
                 except Exception as e:
-                    raise EncoderError(f"Not all members are in the reviewers")
+                    raise EncoderError(f"Not all {name} members are in the reviewers")
                 constraints_list.append({
                     'name': name,
                     'comparator': constraint_dict['comparator'],
