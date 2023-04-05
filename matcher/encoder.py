@@ -118,7 +118,6 @@ class Encoder:
         constraints_list = None
         if attribute_constraints:
             self.logger.debug("Attribute constraints detected")
-            self.logger.debug(attribute_constraints)
             constraints_list = []
             for name, constraint_dict in attribute_constraints.items():
                 try:

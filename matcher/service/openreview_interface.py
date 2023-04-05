@@ -463,17 +463,11 @@ class BaseConfigNoteInterface:
         self.logger.debug(
             "GET grouped edges invitation id={}".format(edge_invitation_id)
         )
-        self.logger.debug(
-            edges_grouped_by_paper
-        )
         filtered_edges_groups = list(
             filter(
                 lambda edge_group: edge_group["id"]["head"] in all_papers,
                 edges_grouped_by_paper,
             )
-        )
-        self.logger.debug(
-            filtered_edges_groups
         )
 
         for group in filtered_edges_groups:
@@ -568,8 +562,6 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
-
-        # self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
 
         # Lazy variables
         self._reviewers = None
@@ -769,8 +761,6 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
-
-        # self.attribute_constraints = self.config_note.content.get('attribute_constraints', None)
 
         # Lazy variables
         self._reviewers = None
