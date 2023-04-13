@@ -298,6 +298,34 @@ def clean_start_conference(
 
     return conference
 
+def post_fairir_to_api2(
+    client, conference_id
+):
+    inv = client.get_invitation(f"{conference_id}/Reviewers/-/Assignment_Configuration")
+    content = {
+        'solver': inv.edit['note']['content']['solver'],
+        'constraints_specification': inv.edit['note']['content']['scores_specification']
+    }
+    content['solver']['value']['param']['enum'].append('FairIR')
+    inv.edit['note']['content'] = content
+    client.post_invitation_edit(
+        invitations=f"{conference_id}/-/Edit",
+        readers=[conference_id],
+        writers=[conference_id],
+        signatures=[conference_id],
+        replacement=False,
+        invitation=inv
+    )
+
+def post_fairir_to_api1(
+    client, conference_id
+):
+    # Update conftest to manually include the FairIR matcher and a constraints spec
+    # To be added to openreview-py if we can support Gurobi in the matcher
+    inv = client.get_invitation(f"{conference_id}/Reviewers/-/Assignment_Configuration")
+    inv.reply['content']['solver']['value-radio'].append('FairIR')
+    inv.reply['content']['constraints_specification'] = inv.reply['content']['scores_specification']
+    client.post_invitation(inv)
 
 def assert_arrays(array_A, array_B, is_string=False):
     if is_string:
