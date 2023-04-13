@@ -6,6 +6,7 @@ Responsible for:
 
 from collections import defaultdict, namedtuple
 import numpy as np
+import json
 import logging
 
 
@@ -67,6 +68,7 @@ class Encoder:
         weight_by_type,
         normalization_types=[],
         probability_limits=[],
+        attribute_constraints=None,
         logger=logging.getLogger(__name__),
     ):
         self.logger = logger
@@ -81,6 +83,7 @@ class Encoder:
         self.papers = papers
 
         self.index_by_user = {r: i for i, r in enumerate(self.reviewers)}
+        self.user_by_index = {v: k for k, v in self.index_by_user.items()}
         self.index_by_forum = {n: i for i, n in enumerate(self.papers)}
 
         self.logger.debug("Init encoding")
@@ -88,6 +91,7 @@ class Encoder:
 
         self.matrix_shape = (len(self.papers), len(self.reviewers))
 
+        self.logger.debug("Init score matrices")
         self.score_matrices = {
             score_type: self._encode_scores(scores)
             for score_type, scores in scores_by_type.items()
@@ -96,16 +100,37 @@ class Encoder:
         with_normalization_matrices = {}
         without_normalization_matrices = {}
 
+        self.logger.debug("Init normalization matricies")
         for score_type, scores in self.score_matrices.items():
             if score_type in normalization_types:
                 with_normalization_matrices[score_type] = scores
             else:
                 without_normalization_matrices[score_type] = scores
 
+        self.logger.debug("Init conflicts")
         self.constraint_matrix = self._encode_constraints(constraints)
         self.prob_limit_matrix = self._encode_probability_limits(
             probability_limits
         )
+
+        # Parse attribute constraints -> reviewers to indices
+        self.logger.debug("Init attribute constraints")
+        constraints_list = None
+        if attribute_constraints:
+            self.logger.debug("Attribute constraints detected")
+            constraints_list = []
+            for name, constraint_dict in attribute_constraints.items():
+                try:
+                    members = [self.index_by_user[member] for member in constraint_dict['members']]
+                except Exception as e:
+                    raise EncoderError(f"Not all {name} members are in the reviewers")
+                constraints_list.append({
+                    'name': name,
+                    'comparator': constraint_dict['comparator'],
+                    'bound': constraint_dict['bound'],
+                    'members': members
+                })
+        self.attribute_constraints = constraints_list
 
         # don't use numpy.sum() here. it will collapse the matrices into a single value.
         self.aggregate_score_matrix = np.full(

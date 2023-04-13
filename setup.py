@@ -28,7 +28,8 @@ setup(
         "MarkupSafe==2.*",
         "gunicorn==19.*",
         "importlib-metadata>=1.1.0,<4.3",
-        "flake8==3.8.4"
+        "flake8==3.8.4",
+        "gurobipy==10.0.1"
     ],
     extras_require={
         "full": ["flower"],
