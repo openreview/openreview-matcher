@@ -50,8 +50,6 @@ jobs:
           export_environment_variables: true
       - name: Install Google Cloud
         uses: google-github-actions/setup-gcloud@v1
-      # - name: Configure gcloud
-      #   run: gcloud config set compute/zone us-central1-c
       - name: Run deploy script
         run: |
           gcloud config set compute/zone us-central1-c
