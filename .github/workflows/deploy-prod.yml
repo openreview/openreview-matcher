@@ -31,8 +31,10 @@ jobs:
           create_credentials_file: true
           cleanup_credentials: true
           export_environment_variables: true
-      - name: Configure gcloud
-        run: gcloud config set compute/zone us-central1-c
+      # - name: Configure gcloud
+      #   run: gcloud config set compute/zone us-central1-c
+      - name: Install Google Cloud
+        uses: google-github-actions/setup-gcloud@v1
       - name: Run deploy script
         run: |
           gcloud compute ssh openreview@instance-matching-server --command '/bin/matcher_build.sh' --quiet
