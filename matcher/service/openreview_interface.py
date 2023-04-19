@@ -1,6 +1,8 @@
 import re
+import ast
 import openreview
 import logging
+import json
 from tqdm import tqdm
 from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
@@ -520,6 +522,26 @@ class BaseConfigNoteInterface:
 
         return score
 
+    def _parse_status_message(self, message):
+        # Catch none message
+        if message is None:
+            return ""
+        
+        # Try to parse JSON object (checks if error is from API)
+        self.logger.debug(f"Trying to read as JSON: {message}")
+        try:
+            message_json = ast.literal_eval(message)
+        except Exception as e:
+            self.logger.debug(f"Message cannot be read as JSON: {message}, exp={str(e)}")
+            return message
+
+        # Message is a valid JSON from the API, handle MultiError and non-MultiError cases
+        if message_json.get('name', "") == 'MultiError':
+            messages = [o.get('message', '') for o in message_json.get('errors', [])]
+            return "Multiple OpenReview API Errors: " + ', '.join(messages)
+        else:
+            return "OpenReview API Error: " + message_json.get('message', '')
+
 
 class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def __init__(
@@ -626,9 +648,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
 
-        # Catch none message
-        if message is None:
-            message = ""
+        message = self._parse_status_message(message)
 
         self.config_note.content["status"] = status.value
         self.config_note.content["error_message"] = message
@@ -825,9 +845,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
 
-        # Catch none message
-        if message is None:
-            message = ""
+        message = self._parse_status_message(message)
 
         casted_info = {}
         for key, value in additional_status_info.items():
