@@ -24,7 +24,7 @@ import matcher.service
 
 AFFINITY_SCORE_FILE = "./affinity_scores"
 pytest_plugins = ["celery.contrib.pytest"]
-
+strong_password = 'Or$3cur3P@ssw0rd'
 
 def ping_url(url):
     iterations = 300
@@ -81,17 +81,17 @@ def initialize_superuser():
     """register and activate the superuser account"""
 
     requests.put(
-        "http://localhost:3000/reset/openreview.net", json={"password": "1234"}
+        "http://localhost:3000/reset/openreview.net", json={"password": strong_password}
     )
     client = openreview.Client(
         baseurl="http://localhost:3000",
         username="openreview.net",
-        password="1234",
+        password=strong_password,
     )
     client_v2 = OpenReviewClient(
         baseurl="http://localhost:3001",
         username="openreview.net",
-        password="1234",
+        password=strong_password,
     )
     client_v2.post_invitation_edit(invitations=None,
         readers=['openreview.net'],
@@ -111,7 +111,7 @@ def create_user(email, first, last, alternates=[], institution=None):
     client = openreview.Client(baseurl="http://localhost:3000")
     assert client is not None, "Client is none"
     res = client.register_user(
-        email=email, first=first, last=last, password="1234"
+        email=email, first=first, last=last, password=strong_password
     )
     username = res.get("id")
     assert res, "Res i none"
@@ -171,7 +171,7 @@ def clean_start_conference_v2(
             authors.append(f'Matching Author{letter.upper()}')
             authorids.append(f'~Matching_Author{letter.upper()}1')
         
-        user_client = openreview.api.OpenReviewClient(username='author@maila.com', password='1234')
+        user_client = openreview.api.OpenReviewClient(username='author@maila.com', password=strong_password)
 
         for paper_number in range(num_papers):
             posted_submission = user_client.post_note_edit(
@@ -355,7 +355,7 @@ def openreview_context():
         config={
             "LOG_FILE": "pytest.log",
             "OPENREVIEW_USERNAME": "openreview.net",
-            "OPENREVIEW_PASSWORD": "1234",
+            "OPENREVIEW_PASSWORD": strong_password,
             "OPENREVIEW_BASEURL": "http://localhost:3000",
             "OPENREVIEW_BASEURL_V2": "http://localhost:3001",
             "SUPERUSER_FIRSTNAME": "Super",
@@ -417,7 +417,7 @@ def celery_worker_parameters():
 if __name__ == "__main__":
     config = {
         "OPENREVIEW_USERNAME": "openreview.net",
-        "OPENREVIEW_PASSWORD": "1234",
+        "OPENREVIEW_PASSWORD": strong_password,
         "OPENREVIEW_BASEURL": "http://localhost:3000",
         "SUPERUSER_FIRSTNAME": "Super",
         "SUPERUSER_LASTNAME": "User",
