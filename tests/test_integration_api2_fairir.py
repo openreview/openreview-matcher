@@ -180,6 +180,10 @@ def test_integration_attribute_constraints(
                     { 
                         "label": "Senior",
                         "min_users": 1
+                    },
+                    { 
+                        "label": "Super_Senior",
+                        "min_users": 1
                     }
                 ]
             }
@@ -208,7 +212,7 @@ def test_integration_attribute_constraints(
     )
 
     senior_reviewer = openreview_client.get_group(reviewers_id).members[0]
-    edge = openreview.api.Edge(
+    senior_edge = openreview.api.Edge(
         head=reviewers_id,
         tail=senior_reviewer,
         invitation=seniority_inv_id,
@@ -219,7 +223,20 @@ def test_integration_attribute_constraints(
         weight=1
     )
 
-    openreview.tools.post_bulk_edges(client=openreview_client, edges=[edge])
+
+    super_senior_reviewer = openreview_client.get_group(reviewers_id).members[0]
+    super_senior_edge = openreview.api.Edge(
+        head=reviewers_id,
+        tail=super_senior_reviewer,
+        invitation=seniority_inv_id,
+        readers=venue_matching._get_edge_readers(reviewers_id),
+        writers=[venue.id],
+        signatures=[venue.id],
+        label='Super_Senior',
+        weight=1
+    )
+
+    openreview.tools.post_bulk_edges(client=openreview_client, edges=[super_senior_edge, senior_edge])
 
     print(openreview_client.get_grouped_edges(invitation=seniority_inv_id, groupby='id'))
 
@@ -261,6 +278,7 @@ def test_integration_attribute_constraints(
 
     for edge_dict in grouped_edges:
         assert True in [senior_reviewer == edge['tail'] for edge in edge_dict['values']], f"No senior reviewer found"
+        assert True in [super_senior_reviewer == edge['tail'] for edge in edge_dict['values']], f"No super senior reviewer found"
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
