@@ -115,7 +115,7 @@ class FairIR(Basic):
                 self.lp_vars[i].append(self.m.addVar(ub=1.0,
                                                      name=self.var_name(i, j)))
         self.m.update()
-        print('#info FairIR:Time to add vars %s' % (time.time() - start))
+        self.logger.debug('#info FairIR:Time to add vars %s' % (time.time() - start))
 
         start = time.time()
         # set the objective
@@ -124,7 +124,7 @@ class FairIR(Basic):
             for j in range(self.n_pap):
                 obj += self.weights[i][j] * self.lp_vars[i][j]
         self.m.setObjective(obj, GRB.MAXIMIZE)
-        print('#info FairIR:Time to set obj %s' % (time.time() - start))
+        self.logger.debug('#info FairIR:Time to set obj %s' % (time.time() - start))
 
         start = time.time()
         # load upper bound constraints.
@@ -172,7 +172,7 @@ class FairIR(Basic):
                                     self.attr_constr_name(name, p))
                     elif comparator == '>=':
                         adj_bound = bound if remaining_demand >= bound else remaining_demand
-                        print(adj_bound)
+                        self.logger.debug(adj_bound)
                         self.m.addConstr(sum([self.lp_vars[i][p]
                                     for i in members]) >= adj_bound,
                                     self.attr_constr_name(name, p))
@@ -190,7 +190,7 @@ class FairIR(Basic):
                                   for i in range(self.n_rev)]) >= self.makespan,
                              self.ms_constr_name(p))
         self.m.update()
-        print('#info FairIR:Time to add constr %s' % (time.time() - start))
+        self.logger.debug('#info FairIR:Time to add constr %s' % (time.time() - start))
 
     def _validate_input_range(self):
         """Validate if demand is in the range of min supply and max supply"""
@@ -244,7 +244,7 @@ class FairIR(Basic):
         Returns:
             Nothing.
         """
-        print('#info FairIR:MAKESPAN call')
+        self.logger.debug('#info FairIR:MAKESPAN call')
         for c in self.m.getConstrs():
             if c.getAttr("ConstrName").startswith(self.ms_constr_prefix):
                 self.m.remove(c)
@@ -256,10 +256,10 @@ class FairIR(Basic):
                              self.ms_constr_prefix + str(p))
         self.makespan = new_makespan
         self.m.update()
-        print('#info RETURN FairIR:MAKESPAN call')
+        self.logger.debug('#info RETURN FairIR:MAKESPAN call')
 
     def sol_as_mat(self):
-        print('#info FairIR:SOL_AS_MAT call')
+        self.logger.debug('#info FairIR:SOL_AS_MAT call')
         if self.m.status == GRB.OPTIMAL or self.m.status == GRB.SUBOPTIMAL:
             self.solved = True
             solution = np.zeros((self.n_rev, self.n_pap))
@@ -274,7 +274,7 @@ class FairIR(Basic):
                 'before calling this function.')
 
     def integral_sol_found(self, precalculated=None):
-        print('#info FairIR:INTEGRAL_SOL_FOUND call')
+        self.logger.debug('#info FairIR:INTEGRAL_SOL_FOUND call')
         """Return true if all lp variables are integral."""
         sol = self.sol_as_dict() if precalculated is None else precalculated
         return all(sol[self.var_name(i, j)] == 1.0 or
@@ -323,7 +323,7 @@ class FairIR(Basic):
             integral_assignments[i][j] = 0.0
 
     def find_ms(self):
-        print('#info FairIR:FIND_MS call')
+        self.logger.debug('#info FairIR:FIND_MS call')
         """Find an the highest possible makespan.
 
         Perform a binary search on the makespan value. Each time, solve the
@@ -343,9 +343,9 @@ class FairIR(Basic):
         self.change_makespan(ms)
         start = time.time()
         self.m.optimize()
-        print('#info FairIR:Time to solve %s' % (time.time() - start))
+        self.logger.debug('#info FairIR:Time to solve %s' % (time.time() - start))
         for i in range(10):
-            print('#info FairIR:ITERATION %s ms %s' % (i, ms))
+            self.logger.debug('#info FairIR:ITERATION %s ms %s' % (i, ms))
             if self.m.status == GRB.INFEASIBLE:
                 mx = ms
                 ms -= (ms - mn) / 2.0
@@ -357,7 +357,7 @@ class FairIR(Basic):
                 ms += (mx - ms) / 2.0
             self.change_makespan(ms)
             self.m.optimize()
-        print('#info RETURN FairIR:FIND_MS call')
+        self.logger.debug('#info RETURN FairIR:FIND_MS call')
 
         if best is None:
             return 0.0
@@ -365,7 +365,7 @@ class FairIR(Basic):
             return best
 
     def solve(self):
-        print('#info FairIR:SOLVE call')
+        self.logger.debug('#info FairIR:SOLVE call')
         """Find a makespan and solve the ILP.
 
         Run a binary search to find an appropriate makespan and then solve the
@@ -382,10 +382,10 @@ class FairIR(Basic):
         """
         self._validate_input_range()
         if self.makespan <= 0:
-            print('#info FairIR: searching for fairness threshold')
+            self.logger.debug('#info FairIR: searching for fairness threshold')
             ms = self.find_ms()
         else:
-            print('#info FairIR: config fairness threshold: %s' % self.makespan)
+            self.logger.debug('#info FairIR: config fairness threshold: %s' % self.makespan)
             ms = self.makespan
         self.change_makespan(ms)
         self.round_fractional(np.ones((self.n_rev, self.n_pap)) * -1)
@@ -394,11 +394,11 @@ class FairIR(Basic):
         for v in self.m.getVars():
             sol[v.varName] = v.x
 
-        print('#info RETURN FairIR:SOLVE call')
+        self.logger.debug('#info RETURN FairIR:SOLVE call')
         return self.sol_as_mat().transpose()
 
     def sol_as_dict(self):
-        print('#info FairIR:SOL_AS_DICT call')
+        self.logger.debug('#info FairIR:SOL_AS_DICT call')
         """Return the solution to the optimization as a dictionary.
 
         If the matching has not be solved optimally or suboptimally, then raise
@@ -423,7 +423,7 @@ class FairIR(Basic):
                     self.m.status, self.makespan))
 
     def round_fractional(self, integral_assignments=None, count=0):
-        print('#info FairIR:ROUND_FRACTIONAL call')
+        self.logger.debug('#info FairIR:ROUND_FRACTIONAL call')
         """Round a fractional solution.
 
         This is the meat of the iterative relaxation approach.  First, if the
@@ -495,7 +495,7 @@ class FairIR(Basic):
                         fractional_vars.append((i, j, sol[self.var_name(i, j)]))
                         integral_assignments[i][j] = sol[self.var_name(i, j)]
                 
-            print('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
+            self.logger.debug('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
 
             # First try to elim a makespan constraint.
             removed = False
@@ -516,5 +516,5 @@ class FairIR(Basic):
                                 self.m.remove(c)
             self.m.update()
 
-            print('#info RETURN FairIR:ROUND_FRACTIONAL call')
+            self.logger.debug('#info RETURN FairIR:ROUND_FRACTIONAL call')
             return self.round_fractional(integral_assignments, count + 1)
