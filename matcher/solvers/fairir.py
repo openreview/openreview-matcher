@@ -197,7 +197,7 @@ class FairIR(Basic):
         conv = 1e9
         vmem = psutil.virtual_memory()
         smem = psutil.swap_memory()
-        self.logger.debug(f"{log_message} | Memory: {vmem.used/conv:.2f}/{vmem.available/conv:.2f}={vmem.percent} | Swap Memory: {smem.used/conv:.2f}/{smem.available/conv:.2f}={smem.percent}")
+        self.logger.debug(f"{log_message} | Memory: {vmem.used/conv:.2f}/{vmem.available/conv:.2f}={vmem.percent} | Swap Memory: {smem.used/conv:.2f}/{smem.free/conv:.2f}={smem.percent}")
 
     def _validate_input_range(self):
         """Validate if demand is in the range of min supply and max supply"""
