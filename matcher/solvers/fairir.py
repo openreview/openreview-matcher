@@ -172,7 +172,6 @@ class FairIR(Basic):
                                     self.attr_constr_name(name, p))
                     elif comparator == '>=':
                         adj_bound = bound if remaining_demand >= bound else remaining_demand
-                        self.logger.debug(adj_bound)
                         self.m.addConstr(sum([self.lp_vars[i][p]
                                     for i in members]) >= adj_bound,
                                     self.attr_constr_name(name, p))
@@ -512,7 +511,7 @@ class FairIR(Basic):
                     if len(frac_vars) == 2:
                         for c in self.m.getConstrs():
                             if c.ConstrName == self.lub_constr_name(rev) or \
-                                    c.ConstrName == self.llb_constr_name(rev):
+                                      c.ConstrName == self.llb_constr_name(rev):
                                 self.m.remove(c)
             self.m.update()
 
