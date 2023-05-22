@@ -4,6 +4,7 @@ import uuid
 import logging
 import math
 import json
+import psutil
 from .core import SolverException
 
 from .basic_gurobi import Basic
@@ -93,6 +94,7 @@ class FairIR(Basic):
             for rev_id in bad_affinity_reviewers:
                 self.loads_lb[rev_id] = 0
 
+        self._log_and_profile('Setting up model')
         self.id = uuid.uuid4()
         self.m = Model("%s : FairIR" % str(self.id))
         self.makespan = thresh
@@ -115,7 +117,7 @@ class FairIR(Basic):
                 self.lp_vars[i].append(self.m.addVar(ub=1.0,
                                                      name=self.var_name(i, j)))
         self.m.update()
-        self.logger.debug('#info FairIR:Time to add vars %s' % (time.time() - start))
+        self._log_and_profile('#info FairIR:Time to add vars %s' % (time.time() - start))
 
         start = time.time()
         # set the objective
@@ -124,7 +126,7 @@ class FairIR(Basic):
             for j in range(self.n_pap):
                 obj += self.weights[i][j] * self.lp_vars[i][j]
         self.m.setObjective(obj, GRB.MAXIMIZE)
-        self.logger.debug('#info FairIR:Time to set obj %s' % (time.time() - start))
+        self._log_and_profile('#info FairIR:Time to set obj %s' % (time.time() - start))
 
         start = time.time()
         # load upper bound constraints.
@@ -151,10 +153,10 @@ class FairIR(Basic):
 
         # attribute constraints.
         if self.attr_constraints is not None:
-            self.logger.debug(f"Attribute constraints detected")
+            self._log_and_profile(f"Attribute constraints detected")
             for constraint_dict in self.attr_constraints:
                 name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
-                self.logger.debug(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
+                self._log_and_profile(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
                 for p in range(self.n_pap):
 
                     # Check number of forced assignments and adjust bounds
@@ -189,17 +191,23 @@ class FairIR(Basic):
                                   for i in range(self.n_rev)]) >= self.makespan,
                              self.ms_constr_name(p))
         self.m.update()
-        self.logger.debug('#info FairIR:Time to add constr %s' % (time.time() - start))
+        self._log_and_profile('#info FairIR:Time to add constr %s' % (time.time() - start))
+
+    def _log_and_profile(self, log_message=""):
+        conv = 1e9
+        vmem = psutil.virtual_memory()
+        smem = psutil.swap_memory()
+        self.logger.debug(f"{log_message} | Memory: {vmem.used/conv:.2f}/{vmem.available/conv:.2f}={vmem.percent} | Swap Memory: {smem.used/conv:.2f}/{smem.available/conv:.2f}={smem.percent}")
 
     def _validate_input_range(self):
         """Validate if demand is in the range of min supply and max supply"""
-        self.logger.debug("Checking if demand is in range")
+        self._log_and_profile("Checking if demand is in range")
 
         min_supply = sum(self.loads_lb)
         max_supply = sum(self.loads)
         demand = sum(self.coverages)
 
-        self.logger.debug(
+        self._log_and_profile(
             "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
                 demand, min_supply, max_supply
             )
@@ -212,7 +220,7 @@ class FairIR(Basic):
                 )
             )
 
-        self.logger.debug("Finished checking graph inputs")
+        self._log_and_profile("Finished checking graph inputs")
 
     def attr_constr_name(self, n, p):
         """Name of the makespan constraint for paper p."""
@@ -243,7 +251,7 @@ class FairIR(Basic):
         Returns:
             Nothing.
         """
-        self.logger.debug('#info FairIR:MAKESPAN call')
+        self._log_and_profile('#info FairIR:MAKESPAN call')
         for c in self.m.getConstrs():
             if c.getAttr("ConstrName").startswith(self.ms_constr_prefix):
                 self.m.remove(c)
@@ -255,10 +263,10 @@ class FairIR(Basic):
                              self.ms_constr_prefix + str(p))
         self.makespan = new_makespan
         self.m.update()
-        self.logger.debug('#info RETURN FairIR:MAKESPAN call')
+        self._log_and_profile('#info RETURN FairIR:MAKESPAN call')
 
     def sol_as_mat(self):
-        self.logger.debug('#info FairIR:SOL_AS_MAT call')
+        self._log_and_profile('#info FairIR:SOL_AS_MAT call')
         if self.m.status == GRB.OPTIMAL or self.m.status == GRB.SUBOPTIMAL:
             self.solved = True
             solution = np.zeros((self.n_rev, self.n_pap))
@@ -273,7 +281,7 @@ class FairIR(Basic):
                 'before calling this function.')
 
     def integral_sol_found(self, precalculated=None):
-        self.logger.debug('#info FairIR:INTEGRAL_SOL_FOUND call')
+        self._log_and_profile('#info FairIR:INTEGRAL_SOL_FOUND call')
         """Return true if all lp variables are integral."""
         sol = self.sol_as_dict() if precalculated is None else precalculated
         return all(sol[self.var_name(i, j)] == 1.0 or
@@ -322,7 +330,7 @@ class FairIR(Basic):
             integral_assignments[i][j] = 0.0
 
     def find_ms(self):
-        self.logger.debug('#info FairIR:FIND_MS call')
+        self._log_and_profile('#info FairIR:FIND_MS call')
         """Find an the highest possible makespan.
 
         Perform a binary search on the makespan value. Each time, solve the
@@ -342,9 +350,9 @@ class FairIR(Basic):
         self.change_makespan(ms)
         start = time.time()
         self.m.optimize()
-        self.logger.debug('#info FairIR:Time to solve %s' % (time.time() - start))
+        self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
         for i in range(10):
-            self.logger.debug('#info FairIR:ITERATION %s ms %s' % (i, ms))
+            self._log_and_profile('#info FairIR:ITERATION %s ms %s' % (i, ms))
             if self.m.status == GRB.INFEASIBLE:
                 mx = ms
                 ms -= (ms - mn) / 2.0
@@ -356,7 +364,7 @@ class FairIR(Basic):
                 ms += (mx - ms) / 2.0
             self.change_makespan(ms)
             self.m.optimize()
-        self.logger.debug('#info RETURN FairIR:FIND_MS call')
+        self._log_and_profile('#info RETURN FairIR:FIND_MS call')
 
         if best is None:
             return 0.0
@@ -364,7 +372,7 @@ class FairIR(Basic):
             return best
 
     def solve(self):
-        self.logger.debug('#info FairIR:SOLVE call')
+        self._log_and_profile('#info FairIR:SOLVE call')
         """Find a makespan and solve the ILP.
 
         Run a binary search to find an appropriate makespan and then solve the
@@ -381,10 +389,10 @@ class FairIR(Basic):
         """
         self._validate_input_range()
         if self.makespan <= 0:
-            self.logger.debug('#info FairIR: searching for fairness threshold')
+            self._log_and_profile('#info FairIR: searching for fairness threshold')
             ms = self.find_ms()
         else:
-            self.logger.debug('#info FairIR: config fairness threshold: %s' % self.makespan)
+            self._log_and_profile('#info FairIR: config fairness threshold: %s' % self.makespan)
             ms = self.makespan
         self.change_makespan(ms)
         self.round_fractional(np.ones((self.n_rev, self.n_pap)) * -1)
@@ -393,11 +401,11 @@ class FairIR(Basic):
         for v in self.m.getVars():
             sol[v.varName] = v.x
 
-        self.logger.debug('#info RETURN FairIR:SOLVE call')
+        self._log_and_profile('#info RETURN FairIR:SOLVE call')
         return self.sol_as_mat().transpose()
 
     def sol_as_dict(self):
-        self.logger.debug('#info FairIR:SOL_AS_DICT call')
+        self._log_and_profile('#info FairIR:SOL_AS_DICT call')
         """Return the solution to the optimization as a dictionary.
 
         If the matching has not be solved optimally or suboptimally, then raise
@@ -422,7 +430,7 @@ class FairIR(Basic):
                     self.m.status, self.makespan))
 
     def round_fractional(self, integral_assignments=None, count=0):
-        self.logger.debug('#info FairIR:ROUND_FRACTIONAL call')
+        self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call')
         """Round a fractional solution.
 
         This is the meat of the iterative relaxation approach.  First, if the
@@ -446,7 +454,10 @@ class FairIR(Basic):
         if integral_assignments is None:
             integral_assignments = np.ones((self.n_rev, self.n_pap)) * -1
 
+        start = time.time()
         self.m.optimize()
+
+        self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
 
         if self.m.status != GRB.OPTIMAL and self.m.status != GRB.SUBOPTIMAL:
             self.m.computeIIS()
@@ -455,7 +466,7 @@ class FairIR(Basic):
 
         # Check that the constraints are obeyed when fetching sol
         # attribute constraints.
-        self.logger.debug('Checking if attribute constraints exist')
+        self._log_and_profile('Checking if attribute constraints exist')
         sol = self.sol_as_dict()
 
         if self.integral_sol_found(precalculated=sol):
@@ -494,7 +505,7 @@ class FairIR(Basic):
                         fractional_vars.append((i, j, sol[self.var_name(i, j)]))
                         integral_assignments[i][j] = sol[self.var_name(i, j)]
                 
-            self.logger.debug('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
+            self._log_and_profile('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
 
             # First try to elim a makespan constraint.
             removed = False
@@ -515,5 +526,5 @@ class FairIR(Basic):
                                 self.m.remove(c)
             self.m.update()
 
-            self.logger.debug('#info RETURN FairIR:ROUND_FRACTIONAL call')
+            self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
             return self.round_fractional(integral_assignments, count + 1)
