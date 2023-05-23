@@ -183,7 +183,8 @@ class FairIR(Basic):
                                     for i in members]) <= adj_bound,
                                     self.attr_constr_name(name, p))
 
-                self.m.update()
+                ## Don't call it for every consraint iteration
+                ## self.m.update()
 
         # makespan constraints.
         for p in range(self.n_pap):
