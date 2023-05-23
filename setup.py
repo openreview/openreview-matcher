@@ -30,7 +30,8 @@ setup(
         "importlib-metadata>=1.1.0,<4.3",
         "flake8==3.8.4",
         "gurobipy==10.0.1",
-        "psutil"
+        "psutil",
+        "scipy"
     ],
     extras_require={
         "full": ["flower"],

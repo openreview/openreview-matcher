@@ -116,7 +116,7 @@ def test_solvers_fairir_structure_attribute_constraint():
         [0.5, 0, 0],
         [0, 0.5, 0],
         [0, 0, 0.5],
-        [0, 0, 0]
+        [0.1, 0.1, 0.1]
     ]))
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     attr_constraints = [{
@@ -144,10 +144,10 @@ def test_solvers_fairir_structure_attribute_constraint():
 def test_solvers_fairir_override_structure_attribute_constraint():
     '''Test constraint that each paper must have reviewer[3] as a reviewer but gets relaxed since reviewer[2] and reviewer[1] are required'''
     aggregate_score_matrix_A = np.transpose(np.array([
-        [0.5, 0, 0],
-        [0, 0.5, 0],
-        [0, 0, 0.5],
-        [0, 0, 0]
+        [0.5, 0.01, 0.01],
+        [0.01, 0.5, 0.01],
+        [0.01, 0.01, 0.5],
+        [0.01, 0.01, 0.01]
     ]))
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
 
@@ -181,10 +181,10 @@ def test_solvers_fairir_override_structure_attribute_constraint():
 def test_solvers_fairir_attribute_constraint_over_similarity():
     '''Test multiple constraint sets that go against highest similarity'''
     aggregate_score_matrix_A = np.transpose(np.array([
-        [0.5, 0, 0],
-        [0.5, 0, 0],
-        [0, 0, 0.5],
-        [0, 0, 0.5]
+        [0.5, 0.01, 0.01],
+        [0.5, 0.01, 0.01],
+        [0.01, 0.01, 0.5],
+        [0.01, 0.01, 0.5]
     ]))
     constraint_matrix = np.zeros(np.shape(aggregate_score_matrix_A))
     attr_constraints = [{
@@ -220,7 +220,7 @@ def test_solvers_fairir_conflict():
         [0, 0, 0],
         [0, 0, 0],
         [0, 0, 0]
-    ]))
+    ])) + 0.01
     constraint_matrix = np.transpose(np.array([
         [0, 0, 0],
         [-1, -1, -1],
