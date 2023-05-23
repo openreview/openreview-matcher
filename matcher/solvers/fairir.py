@@ -470,7 +470,7 @@ class FairIR(Basic):
         sol = self.sol_as_dict()
 
         if self.integral_sol_found(precalculated=sol):
-            return
+            return True
         else:
             frac_assign_p = {}
             frac_assign_r = {}
@@ -527,7 +527,14 @@ class FairIR(Basic):
             self.m.update()
 
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
+            return False
         
     def round_fraction_iteration(self, integral_assignments):
-        for count in range(0, 10):
-            self.round_fractional(self, integral_assignments, count)        
+        solved = False
+        for count in range(10):
+            solved = self.round_fractional(self, integral_assignments, count)
+            if solved:
+                return
+        
+        if not solved:
+            raise Exception('No Solution.')
