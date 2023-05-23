@@ -2,6 +2,7 @@
 version: 2
 jobs:
   build:
+    parallelism: 10
     working_directory: ~/
     docker:
     - image: circleci/python:3.7-node
@@ -92,9 +93,9 @@ jobs:
         command: |
           source matcher/bin/activate
           cd ~/openreview-matcher-repo
-          mkdir reports
-          mkdir reports/pytest
-          python -m pytest -x tests --junitxml=reports/pytest/pytest-report.xml
+          TEST_FILES=$(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
+          mkdir -p reports/pytest
+          python -m pytest -x tests --junitxml=reports/pytest/pytest-report.xml $TEST_FILES
     - store_test_results:
         path: reports
     - store_artifacts:
