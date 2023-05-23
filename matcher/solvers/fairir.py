@@ -395,7 +395,7 @@ class FairIR(Basic):
             self._log_and_profile('#info FairIR: config fairness threshold: %s' % self.makespan)
             ms = self.makespan
         self.change_makespan(ms)
-        self.round_fraction_iteration(np.ones((self.n_rev, self.n_pap)) * -1)
+        self.round_fraction_iteration()
 
         sol = {}
         for v in self.m.getVars():
@@ -429,7 +429,7 @@ class FairIR(Basic):
                 'before calling this function.\nSTATUS %s\tMAKESPAN %f' % (
                     self.m.status, self.makespan))
 
-    def round_fractional(self, integral_assignments=None, count=0):
+    def round_fractional(self, integral_assignments, count=0):
         self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call')
         """Round a fractional solution.
 
@@ -451,8 +451,6 @@ class FairIR(Basic):
             Nothing--has the side effect or storing an assignment matrix in this
             class.
         """
-        if integral_assignments is None:
-            integral_assignments = np.ones((self.n_rev, self.n_pap)) * -1
 
         start = time.time()
         self.m.optimize()
@@ -529,8 +527,8 @@ class FairIR(Basic):
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
             return False
         
-    def round_fraction_iteration(self, integral_assignments):
-        solved = False
+    def round_fraction_iteration(self):
+        integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
         for count in range(10):
             solved = self.round_fractional(self, integral_assignments, count)
             if solved:
