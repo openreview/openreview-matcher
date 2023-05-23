@@ -21,7 +21,8 @@ class FairIR(Basic):
         maximums,
         demands,
         encoder,
-        thresh=0.005, ## default value for NeurIPS
+        thresh=0.0,
+        ##thresh=0.005, ## default value for NeurIPS
         allow_zero_score_assignments=False,
         logger=logging.getLogger(__name__)
         ):
