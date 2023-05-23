@@ -97,6 +97,7 @@ class FairIR(Basic):
         self._log_and_profile('Setting up model')
         self.id = uuid.uuid4()
         self.m = Model("%s : FairIR" % str(self.id))
+        self.m.setParam('Threads', 50)
         self.makespan = thresh
         self.solution = None
 
