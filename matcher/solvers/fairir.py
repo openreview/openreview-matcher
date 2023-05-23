@@ -395,7 +395,7 @@ class FairIR(Basic):
             self._log_and_profile('#info FairIR: config fairness threshold: %s' % self.makespan)
             ms = self.makespan
         self.change_makespan(ms)
-        self.round_fractional(np.ones((self.n_rev, self.n_pap)) * -1)
+        self.round_fraction_iteration(np.ones((self.n_rev, self.n_pap)) * -1)
 
         sol = {}
         for v in self.m.getVars():
@@ -527,4 +527,7 @@ class FairIR(Basic):
             self.m.update()
 
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
-            return self.round_fractional(integral_assignments, count + 1)
+        
+    def round_fraction_iteration(self, integral_assignments):
+        for count in range(0, 10):
+            self.round_fractional(self, integral_assignments, count)        
