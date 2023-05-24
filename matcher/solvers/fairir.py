@@ -544,7 +544,7 @@ class FairIR(Basic):
         
     def round_fraction_iteration(self):
         integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
-        for count in range(10):
+        for count in range(50):
             solved = self.round_fractional(integral_assignments, count)
             if solved:
                 return
