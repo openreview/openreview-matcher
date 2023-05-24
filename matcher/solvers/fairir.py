@@ -304,7 +304,7 @@ class FairIR(Basic):
         Returns:
             Nothing.
         """
-        self._log_and_profile('#info FairIR:MAKESPAN call')
+        self._log_and_profile('#info FairIR:CHANGE_MAKESPAN call')
         for c in self.m.getConstrs():
             if c.getAttr("ConstrName").startswith(self.ms_constr_prefix):
                 self.m.remove(c)
@@ -317,7 +317,7 @@ class FairIR(Basic):
                              self.ms_constr_prefix + str(p))
         self.makespan = new_makespan
         self.m.update()
-        self._log_and_profile('#info RETURN FairIR:MAKESPAN call')
+        self._log_and_profile('#info RETURN FairIR:CHANGE_MAKESPAN call')
 
     def sol_as_mat(self):
         self._log_and_profile('#info FairIR:SOL_AS_MAT call')
@@ -417,8 +417,10 @@ class FairIR(Basic):
                 mn = ms
                 ms += (mx - ms) / 2.0
             self.change_makespan(ms)
+            start = time.time()
             self.m.optimize()
-        self._log_and_profile('#info RETURN FairIR:FIND_MS call')
+            self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
+        self._log_and_profile(f'#info RETURN FairIR:FIND_MS call ms={best}')
 
         if best is None:
             return 0.0
