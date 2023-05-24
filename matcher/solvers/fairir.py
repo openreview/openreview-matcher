@@ -70,6 +70,7 @@ class FairIR(Basic):
         self.papers_by_reviewer = {r: [] for r in reviewer_idxs}
         self.reviewers_by_paper = {p: [] for p in paper_idxs}
         self.weights_by_rp = {}
+        self.rp_to_lp_idx = {r: {} for r in reviewer_idxs}
         for w, r, p in zip(weights_list, reviewer_idxs, paper_idxs):
             self.weights_by_rp[(r, p)] = w
             
@@ -148,7 +149,8 @@ class FairIR(Basic):
         for i in range(self.n_rev):
             self.lp_vars.append([])
             papers = self.papers_by_reviewer[i]
-            for j in papers:
+            for idx, j in enumerate(papers):
+                self.rp_to_lp_idx[i][j] = idx
                 self.lp_vars[i].append(self.m.addVar(ub=1.0,
                                                      name=self.var_name(i, j)))
         self.m.update()
@@ -237,7 +239,7 @@ class FairIR(Basic):
     def _paper_number_to_lp_idx(self, rev_num, paper_num):
         papers = self.papers_by_reviewer[rev_num]
         try:
-            return papers.index(paper_num)
+            return self.rp_to_lp_idx[rev_num][paper_num]
         except:
             raise SolverException(f"No score between paper {paper_num} and reviewer {rev_num}")
 
