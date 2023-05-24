@@ -185,6 +185,8 @@ class FairIR(Basic):
                                   for i in reviewers]) == cov,
                              self.cov_constr_name(p))
 
+        self._log_and_profile('#info FairIR:Time to set loads and coverage %s' % (time.time() - start))
+
         # forced assignment constraints.
         for forced in forced_list:
             reviewer, paper = forced[0], forced[1]
@@ -194,11 +196,11 @@ class FairIR(Basic):
         if self.attr_constraints is not None:
             self._log_and_profile(f"Attribute constraints detected")
             for constraint_dict in self.attr_constraints:
+                constraint_start = time.time()
                 name, bound, comparator, members = constraint_dict['name'], constraint_dict['bound'], constraint_dict['comparator'], constraint_dict['members']
-                self._log_and_profile(f"Requiring that all papers have {comparator} {bound} reviewer(s) of type {name} of which there are {len(members)} ")
                 for p in range(self.n_pap):
                     reviewers = self.reviewers_by_paper[p]
-                    overlap = [r for r in reviewers if r in members]
+                    overlap = set(reviewers).intersection(set(members))
 
                     # Check number of forced assignments and adjust bounds
                     num_forced = 0
@@ -223,6 +225,7 @@ class FairIR(Basic):
                         self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)]
                                     for i in overlap]) <= adj_bound,
                                     self.attr_constr_name(name, p))
+                self._log_and_profile(f"Time to add {len(members)} {name} constraints: {time.time() - constraint_start}")
 
                 ## Don't call it for every consraint iteration
                 ## self.m.update()
@@ -234,7 +237,7 @@ class FairIR(Basic):
                                   for i in reviewers]) >= self.makespan,
                              self.ms_constr_name(p))
         self.m.update()
-        self._log_and_profile('#info FairIR:Time to add constr %s' % (time.time() - start))
+        self._log_and_profile('#info FairIR:Time to add all constraints %s' % (time.time() - start))
 
     def _paper_number_to_lp_idx(self, rev_num, paper_num):
         papers = self.papers_by_reviewer[rev_num]
