@@ -23,7 +23,8 @@ class FairIR(Basic):
         maximums,
         demands,
         encoder,
-        thresh=0.0,#05, ## default value for NeurIPS
+        thresh=0.0,
+        ##thresh=0.005, ## default value for NeurIPS
         allow_zero_score_assignments=False,
         logger=logging.getLogger(__name__)
         ):
@@ -486,7 +487,7 @@ class FairIR(Basic):
                     self.m.status, self.makespan))
 
     def round_fractional(self, integral_assignments, count=0):
-        self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call')
+        self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call: %s' % count)
         """Round a fractional solution.
 
         This is the meat of the iterative relaxation approach.  First, if the
@@ -586,7 +587,7 @@ class FairIR(Basic):
         
     def round_fraction_iteration(self):
         integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
-        for count in range(10):
+        for count in range(50):
             solved = self.round_fractional(integral_assignments, count)
             if solved:
                 return
