@@ -124,9 +124,21 @@ class FairIR(Basic):
         start = time.time()
         # set the objective
         obj = LinExpr()
+        obj_values = []
         for i in range(self.n_rev):
             for j in range(self.n_pap):
-                obj += self.weights[i][j] * self.lp_vars[i][j]
+                obj_values.append(self.weights[i][j] * self.lp_vars[i][j])
+        # obj = sum(obj_values)
+        # compute quick sum by using a recursive function that consider half of the list at each call
+        def quicksum(obj_values):
+            if len(obj_values) == 1:
+                return obj_values[0]
+            elif len(obj_values) == 2:
+                return obj_values[0] + obj_values[1]
+            else:
+                return quicksum(obj_values[:len(obj_values)//2]) + quicksum(obj_values[len(obj_values)//2:])
+
+        obj = quicksum(obj_values)
         self.m.setObjective(obj, GRB.MAXIMIZE)
         self._log_and_profile('#info FairIR:Time to set obj %s' % (time.time() - start))
 
