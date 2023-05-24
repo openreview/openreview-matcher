@@ -79,9 +79,6 @@ class FairIR(Basic):
             self.papers_by_reviewer[r].append(p)
             self.reviewers_by_paper[p].append(r)
 
-        print(self.papers_by_reviewer)
-        print(self.reviewers_by_paper)
-
         self.logger = logger
         self.n_rev = np.size(weights, axis=0)
         self.n_pap = np.size(weights, axis=1)
