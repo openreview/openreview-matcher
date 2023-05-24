@@ -236,10 +236,10 @@ class FairIR(Basic):
 
     def _paper_number_to_lp_idx(self, rev_num, paper_num):
         papers = self.papers_by_reviewer[rev_num]
-        for idx, p in enumerate(papers):
-            if p == paper_num:
-                return idx
-        raise SolverException(f"No score between paper {paper_num} and reviewer {rev_num}")
+        try:
+            return papers.index(paper_num)
+        except:
+            raise SolverException(f"No score between paper {paper_num} and reviewer {rev_num}")
 
     def _log_and_profile(self, log_message=""):
         conv = 1e9
