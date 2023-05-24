@@ -445,7 +445,7 @@ class FairIR(Basic):
                     self.m.status, self.makespan))
 
     def round_fractional(self, integral_assignments, count=0):
-        self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call')
+        self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call: %s' % count)
         """Round a fractional solution.
 
         This is the meat of the iterative relaxation approach.  First, if the
