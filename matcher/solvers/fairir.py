@@ -130,7 +130,6 @@ class FairIR(Basic):
         self.id = uuid.uuid4()
         self.m = Model("%s : FairIR" % str(self.id))
         self.m.setParam('Threads', 50)
-        self.makespan = thresh
         self.solution = None
 
         self.m.setParam('OutputFlag', 0)
@@ -228,12 +227,6 @@ class FairIR(Basic):
                 ## Don't call it for every consraint iteration
                 ## self.m.update()
 
-        # makespan constraints.
-        for p in range(self.n_pap):
-            reviewers = self.reviewers_by_paper[p]
-            self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
-                                  for i in reviewers]) >= self.makespan,
-                             self.ms_constr_name(p))
         self.m.update()
         self._log_and_profile('#info FairIR:Time to add all constraints %s' % (time.time() - start))
 
@@ -297,30 +290,6 @@ class FairIR(Basic):
     def cov_constr_name(self, p):
         """Name of coverage constraint for paper p."""
         return '%s%s' % (self.cov_name, p)
-
-    def change_makespan(self, new_makespan):
-        """Change the current makespan to a new_makespan value.
-
-        Args:
-            new_makespan - the new makespan constraint.
-
-        Returns:
-            Nothing.
-        """
-        self._log_and_profile('#info FairIR:CHANGE_MAKESPAN call')
-        for c in self.m.getConstrs():
-            if c.getAttr("ConstrName").startswith(self.ms_constr_prefix):
-                self.m.remove(c)
-                # self.m.update()
-
-        for p in range(self.n_pap):
-            reviewers = self.reviewers_by_paper[p]
-            self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
-                                  for i in reviewers]) >= new_makespan,
-                             self.ms_constr_prefix + str(p))
-        self.makespan = new_makespan
-        self.m.update()
-        self._log_and_profile('#info RETURN FairIR:CHANGE_MAKESPAN call')
 
     def sol_as_mat(self):
         self._log_and_profile('#info FairIR:SOL_AS_MAT call')
@@ -386,50 +355,6 @@ class FairIR(Basic):
             self.fix_assignment(i, j, 0.0)
             integral_assignments[i][j] = 0.0
 
-    def find_ms(self):
-        self._log_and_profile('#info FairIR:FIND_MS call')
-        """Find an the highest possible makespan.
-
-        Perform a binary search on the makespan value. Each time, solve the
-        makespan LP without the integrality constraint. If we can find a
-        fractional value to one of these LPs, then we can round it.
-
-        Args:
-            None
-
-        Return:
-            Highest feasible makespan value found.
-        """
-        mn = 0.0
-        mx = np.max(self.weights) * np.max(self.coverages)
-        ms = mx
-        best = None
-        self.change_makespan(ms)
-        start = time.time()
-        self.m.optimize()
-        self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
-        for i in range(10):
-            self._log_and_profile('#info FairIR:ITERATION %s ms %s' % (i, ms))
-            if self.m.status == GRB.INFEASIBLE:
-                mx = ms
-                ms -= (ms - mn) / 2.0
-            else:
-                assert(best is None or ms >= best)
-                assert(self.m.status == GRB.OPTIMAL)
-                best = ms
-                mn = ms
-                ms += (mx - ms) / 2.0
-            self.change_makespan(ms)
-            start = time.time()
-            self.m.optimize()
-            self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
-        self._log_and_profile(f'#info RETURN FairIR:FIND_MS call ms={best}')
-
-        if best is None:
-            return 0.0
-        else:
-            return best
-
     def solve(self):
         self._log_and_profile('#info FairIR:SOLVE call')
         """Find a makespan and solve the ILP.
@@ -447,13 +372,6 @@ class FairIR(Basic):
             The solution as a matrix.
         """
         self._validate_input_range()
-        if self.makespan <= 0:
-            self._log_and_profile('#info FairIR: searching for fairness threshold')
-            ms = self.find_ms()
-        else:
-            self._log_and_profile('#info FairIR: config fairness threshold: %s' % self.makespan)
-            ms = self.makespan
-        self.change_makespan(ms)
         self.round_fraction_iteration()
 
         sol = {}
@@ -485,8 +403,8 @@ class FairIR(Basic):
         else:
             raise Exception(
                 'You must have solved the model optimally or suboptimally '
-                'before calling this function.\nSTATUS %s\tMAKESPAN %f' % (
-                    self.m.status, self.makespan))
+                'before calling this function.\nSTATUS %s' % (
+                    self.m.status))
 
     def round_fractional(self, integral_assignments, count=0):
         self._log_and_profile('#info FairIR:ROUND_FRACTIONAL call: %s' % count)
@@ -519,7 +437,7 @@ class FairIR(Basic):
         if self.m.status != GRB.OPTIMAL and self.m.status != GRB.SUBOPTIMAL:
             self.m.computeIIS()
             self.m.write("model.ilp")
-            assert False, '%s\t%s' % (self.m.status, self.makespan)
+            assert False, '%s' % (self.m.status)
 
         # Check that the constraints are obeyed when fetching sol
         # attribute constraints.
@@ -570,33 +488,6 @@ class FairIR(Basic):
                 
             self._log_and_profile(f'#info FairIR:ROUND_FRACTIONAL END O(RP) loop\nfixed={fixed}, frac={frac}')
 
-            # First try to elim a makespan constraint.
-            removed = False
-            self._log_and_profile(f'#info FairIR:ROUND_FRACTIONAL Relaxing local fairness n_papers={len(frac_assign_p.keys())}')
-            for (paper, frac_vars) in frac_assign_p.items():
-                if len(frac_vars) == 2 or len(frac_vars) == 3:
-                    try: ## Pass on KeyError, trying to remove a constraint that was already removed
-                        self.m.remove(self.name_to_constraint[self.ms_constr_name(paper)])
-                        del self.name_to_constraint[self.ms_constr_name(paper)]
-                        removed = True
-                    except KeyError:
-                        pass
-                    except Exception as e:
-                        raise e
-
-            # If necessary remove a load constraint.
-            if not removed:
-                for (rev, frac_vars) in frac_assign_r.items():
-                    if len(frac_vars) == 2:
-                        try: ## Pass on KeyError, trying to remove a constraint that was already removed
-                            self.m.remove(self.name_to_constraint[self.lub_constr_name(rev)])
-                            self.m.remove(self.name_to_constraint[self.llb_constr_name(rev)])
-                            del self.name_to_constraint[self.lub_constr_name(rev)]
-                            del self.name_to_constraint[self.llb_constr_name(rev)]
-                        except KeyError:
-                            pass
-                        except Exception as e:
-                            raise e
             self.m.update()
 
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
