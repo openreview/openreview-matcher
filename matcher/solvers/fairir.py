@@ -237,6 +237,11 @@ class FairIR(Basic):
         self.m.update()
         self._log_and_profile('#info FairIR:Time to add all constraints %s' % (time.time() - start))
 
+        # Store constraints
+        self.name_to_constraint = {}
+        for c in self.m.getConstrs():
+            self.name_to_constraint[c.ConstrName] = c
+
     def _paper_number_to_lp_idx(self, rev_num, paper_num):
         papers = self.papers_by_reviewer[rev_num]
         try:
@@ -570,19 +575,28 @@ class FairIR(Basic):
             self._log_and_profile(f'#info FairIR:ROUND_FRACTIONAL Relaxing local fairness n_papers={len(frac_assign_p.keys())}')
             for (paper, frac_vars) in frac_assign_p.items():
                 if len(frac_vars) == 2 or len(frac_vars) == 3:
-                    for c in self.m.getConstrs():
-                        if c.ConstrName == self.ms_constr_name(paper):
-                            self.m.remove(c)
-                            removed = True
+                    try: ## Pass on KeyError, trying to remove a constraint that was already removed
+                        self.m.remove(self.name_to_constraint[self.ms_constr_name(paper)])
+                        del self.name_to_constraint[self.ms_constr_name(paper)]
+                        removed = True
+                    except KeyError:
+                        pass
+                    except Exception as e:
+                        raise e
 
             # If necessary remove a load constraint.
             if not removed:
                 for (rev, frac_vars) in frac_assign_r.items():
                     if len(frac_vars) == 2:
-                        for c in self.m.getConstrs():
-                            if c.ConstrName == self.lub_constr_name(rev) or \
-                                      c.ConstrName == self.llb_constr_name(rev):
-                                self.m.remove(c)
+                        try: ## Pass on KeyError, trying to remove a constraint that was already removed
+                            self.m.remove(self.name_to_constraint[self.lub_constr_name(rev)])
+                            self.m.remove(self.name_to_constraint[self.llb_constr_name(rev)])
+                            del self.name_to_constraint[self.lub_constr_name(rev)]
+                            del self.name_to_constraint[self.llb_constr_name(rev)]
+                        except KeyError:
+                            pass
+                        except Exception as e:
+                            raise e
             self.m.update()
 
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
