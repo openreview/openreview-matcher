@@ -531,6 +531,8 @@ class FairIR(Basic):
             frac_assign_r = {}
             fractional_vars = []
 
+            fixed, frac = 0, 0
+
             # Find fractional vars.
             for i in range(self.n_rev):
                 papers = self.papers_by_reviewer[i]
@@ -544,11 +546,13 @@ class FairIR(Basic):
                         #self.fix_assignment_to_zero_with_constraints(i, j, integral_assignments)
                         self.fix_assignment(i, paper_idx, 0.0)
                         integral_assignments[i][j] = 0.0
+                        fixed += 1
 
                     elif sol[self.var_name(i, j)] == 1.0 and integral_assignments[i][j] != 1.0:
                         #self.fix_assignment_to_one_with_constraints(i, j, integral_assignments)
                         self.fix_assignment(i, paper_idx, 1.0)
                         integral_assignments[i][j] = 1.0
+                        fixed += 1
 
                     elif sol[self.var_name(i, j)] != 1.0 and sol[self.var_name(i, j)] != 0.0:
                         frac_assign_p[j].append(
@@ -560,11 +564,13 @@ class FairIR(Basic):
 
                         fractional_vars.append((i, j, sol[self.var_name(i, j)]))
                         integral_assignments[i][j] = sol[self.var_name(i, j)]
+                        frac += 1
                 
-            self._log_and_profile('#info FairIR:ROUND_FRACTIONAL END O(RP) loop ')
+            self._log_and_profile(f'#info FairIR:ROUND_FRACTIONAL END O(RP) loop\nfixed={fixed}, frac={frac}')
 
             # First try to elim a makespan constraint.
             removed = False
+            self._log_and_profile(f'#info FairIR:ROUND_FRACTIONAL Relaxing local fairness n_papers={len(frac_assign_p.keys())}')
             for (paper, frac_vars) in frac_assign_p.items():
                 if len(frac_vars) == 2 or len(frac_vars) == 3:
                     for c in self.m.getConstrs():
