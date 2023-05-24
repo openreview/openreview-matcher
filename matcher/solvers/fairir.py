@@ -293,6 +293,7 @@ class FairIR(Basic):
 
     def fix_assignment(self, i, j, val):
         """Round the variable x_ij to val."""
+        self._log_and_profile('#info FairIR:fix_assignment i: %s j: %s val: %s' % (i, j, val))
         self.lp_vars[i][j].ub = val
         self.lp_vars[i][j].lb = val
         
@@ -496,6 +497,7 @@ class FairIR(Basic):
                         integral_assignments[i][j] = 1.0
 
                     elif sol[self.var_name(i, j)] != 1.0 and sol[self.var_name(i, j)] != 0.0:
+                        self._log_and_profile('sol is not 0 or 1, i: %s j: %s val: %s' % (i, j, sol[self.var_name(i, j)]))
                         frac_assign_p[j].append(
                             (i, j, sol[self.var_name(i, j)])
                         )
@@ -514,6 +516,7 @@ class FairIR(Basic):
                 if len(frac_vars) == 2 or len(frac_vars) == 3:
                     for c in self.m.getConstrs():
                         if c.ConstrName == self.ms_constr_name(paper):
+                            self._log_and_profile('Removed makespan constraint')
                             self.m.remove(c)
                             removed = True
 
@@ -524,6 +527,7 @@ class FairIR(Basic):
                         for c in self.m.getConstrs():
                             if c.ConstrName == self.lub_constr_name(rev) or \
                                       c.ConstrName == self.llb_constr_name(rev):
+                                self._log_and_profile('Removed load constraint')
                                 self.m.remove(c)
             self.m.update()
 
