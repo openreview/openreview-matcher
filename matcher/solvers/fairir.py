@@ -587,8 +587,11 @@ class FairIR(Basic):
         
     def round_fraction_iteration(self):
         integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
+        demand = sum(self.coverages)
         for count in range(50):
             solved = self.round_fractional(integral_assignments, count)
+            num_assigned = np.count_nonzero(integral_assignments == 1)
+            self._log_and_profile(f"#info PROGRESS {num_assigned}/{demand}={num_assigned/demand:.2f}")
             if solved:
                 return
         
