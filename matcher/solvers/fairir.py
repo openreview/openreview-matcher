@@ -101,7 +101,7 @@ class FairIR(Basic):
 
         # Build set of forced tuples (r, p)
         forced_list = []
-        for r in range(self.n_rev):
+        for r in self.papers_by_reviewer.keys():
             for p in self.papers_by_reviewer[r]:
                 if forced_matrix[r, p] == 1:
                     forced_list.append(
@@ -144,7 +144,7 @@ class FairIR(Basic):
         # primal variables
         start = time.time()
         self.lp_vars = []
-        for i in range(self.n_rev):
+        for i in self.papers_by_reviewer.keys():
             self.lp_vars.append([])
             papers = self.papers_by_reviewer[i]
             for idx, j in enumerate(papers):
@@ -157,7 +157,7 @@ class FairIR(Basic):
         start = time.time()
         # set the objective
         obj = LinExpr()
-        for i in range(self.n_rev):
+        for i in self.papers_by_reviewer.keys():
             papers = self.papers_by_reviewer[i]
             for j in range(len(papers)):
                 obj += self.weights[i][j] * self.lp_vars[i][j]
@@ -348,7 +348,7 @@ class FairIR(Basic):
         sol = self.sol_as_dict() if precalculated is None else precalculated
         return all(sol[self.var_name(i, j)] == 1.0 or
                    sol[self.var_name(i, j)] == 0.0
-                   for i in range(self.n_rev) for j in self.papers_by_reviewer[i])
+                   for i in self.papers_by_reviewer.keys() for j in self.papers_by_reviewer[i])
 
     def fix_assignment(self, i, j, val):
         """Round the variable x_ij to val."""
@@ -541,7 +541,7 @@ class FairIR(Basic):
             fixed, frac = 0, 0
 
             # Find fractional vars.
-            for i in range(self.n_rev):
+            for i in self.papers_by_reviewer.keys():
                 papers = self.papers_by_reviewer[i]
                 for paper_idx, j in enumerate(papers):
                     if j not in frac_assign_p:
