@@ -121,7 +121,12 @@ class Encoder:
             constraints_list = []
             for name, constraint_dict in attribute_constraints.items():
                 try:
-                    members = [self.index_by_user[member] for member in constraint_dict['members']]
+                    members = []
+                    for member in constraint_dict['members']:
+                        if member not in self.index_by_user:
+                            raise EncoderError(f"Member {member} is not in the reviewers")
+                        else:
+                            members.append(self.index_by_user[member])
                 except Exception as e:
                     raise EncoderError(f"Not all {name} members are in the reviewers")
                 constraints_list.append({
