@@ -51,7 +51,8 @@ class FairIR(Basic):
         conflict_sims = encoder.constraint_matrix.T * (encoder.constraint_matrix <= -1).T ## -1 where constraints are -1, 0 else
         forced_matrix = (encoder.constraint_matrix >= 1).T ## 1 where constraints are 1, 0 else
         allowed_sims = encoder.aggregate_score_matrix.transpose() * (encoder.constraint_matrix >= 0).T ## unconstrained sims
-        weights = conflict_sims + allowed_sims ## R x P ## TODO: sparsify weights, build set of sparse tuples? group by paper?
+        #weights = conflict_sims + allowed_sims ## R x P ## TODO: sparsify weights, build set of sparse tuples? group by paper?
+        weights = allowed_sims
 
         # Sparsify weights
         sparse_weights = sparse.coo_matrix(weights)
@@ -524,6 +525,7 @@ class FairIR(Basic):
         self._log_and_profile('#info FairIR:Time to solve %s' % (time.time() - start))
 
         if self.m.status != GRB.OPTIMAL and self.m.status != GRB.SUBOPTIMAL:
+            # TODO: Dump more information
             self.m.computeIIS()
             self.m.write("model.ilp")
             assert False, '%s\t%s' % (self.m.status, self.makespan)
