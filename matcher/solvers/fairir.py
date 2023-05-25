@@ -619,7 +619,7 @@ class FairIR(Basic):
 
             # If progress has stalled, back off makespan by X%
             BACKOFF = 0.1
-            if not solved and previous_assigned >= 0 and previous_assigned <= num_assigned:
+            if not solved and previous_assigned >= 0 and (previous_assigned <= num_assigned and previous_assigned >= int(0.95 * num_assigned)):
                 ms = self.makespan * (1 - BACKOFF)
                 existing_constraints = [name for name in self.name_to_constraint.keys() if name.startswith(self.ms_constr_prefix)]
                 self._log_and_profile(f"#info PROGRESS STALLED RELAXING FAIRNESS {self.makespan} -> {ms} on {len(existing_constraints)} Papers")
