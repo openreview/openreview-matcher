@@ -145,12 +145,14 @@ class FairIR(Basic):
         # primal variables
         start = time.time()
         self.lp_vars = []
-        for i in self.papers_by_reviewer.keys():
+        self.r_to_lp_idx = {}
+        for rev_idx, i in enumerate(self.papers_by_reviewer.keys()):
             self.lp_vars.append([])
             papers = self.papers_by_reviewer[i]
+            self.r_to_lp_idx[i] = rev_idx
             for idx, j in enumerate(papers):
                 self.rp_to_lp_idx[i][j] = idx
-                self.lp_vars[i].append(self.m.addVar(ub=1.0,
+                self.lp_vars[rev_idx].append(self.m.addVar(ub=1.0,
                                                      name=self.var_name(i, j)))
         self.m.update()
         self._log_and_profile('#info FairIR:Time to add vars %s' % (time.time() - start))
@@ -158,29 +160,31 @@ class FairIR(Basic):
         start = time.time()
         # set the objective
         obj = LinExpr()
-        for i in self.papers_by_reviewer.keys():
+        for idx, i in enumerate(self.papers_by_reviewer.keys()):
             papers = self.papers_by_reviewer[i]
             for j in range(len(papers)):
-                obj += self.weights[i][j] * self.lp_vars[i][j]
+                obj += self.weights[i][j] * self.lp_vars[idx][j]
         self.m.setObjective(obj, GRB.MAXIMIZE)
         self._log_and_profile('#info FairIR:Time to set obj %s' % (time.time() - start))
 
         start = time.time()
         # load upper bound constraints.
-        for r, load in enumerate(self.loads):
-            self.m.addConstr(sum(self.lp_vars[r]) <= load,
+        for r_idx, r in enumerate(self.papers_by_reviewer.keys()):
+            load = self.loads[r]
+            self.m.addConstr(sum(self.lp_vars[r_idx]) <= load,
                              self.lub_constr_name(r))
 
         # load load bound constraints.
         if self.loads_lb is not None:
-            for r, load in enumerate(self.loads_lb):
-                self.m.addConstr(sum(self.lp_vars[r]) >= load,
+            for r_idx, r in enumerate(self.papers_by_reviewer.keys()):
+                load = self.loads_lb[r]
+                self.m.addConstr(sum(self.lp_vars[r_idx]) >= load,
                                  self.llb_constr_name(r))
 
         # coverage constraints.
         for p, cov in enumerate(self.coverages):
             reviewers = self.reviewers_by_paper[p]
-            self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)]
+            self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)]
                                   for i in reviewers]) == cov,
                              self.cov_constr_name(p))
 
@@ -189,7 +193,7 @@ class FairIR(Basic):
         # forced assignment constraints.
         for forced in forced_list:
             reviewer, paper = forced[0], forced[1]
-            self.fix_assignment(reviewer, self._paper_number_to_lp_idx(reviewer, paper), 1)
+            self.fix_assignment(self.r_to_lp_idx[reviewer], self._paper_number_to_lp_idx(reviewer, paper), 1)
 
         # attribute constraints.
         if self.attr_constraints is not None:
@@ -211,17 +215,17 @@ class FairIR(Basic):
 
                     if comparator == '==':
                         adj_bound = bound if remaining_demand >= bound else remaining_demand
-                        self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)]
+                        self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)]
                                     for i in overlap]) == adj_bound,
                                     self.attr_constr_name(name, p))
                     elif comparator == '>=':
                         adj_bound = bound if remaining_demand >= bound else remaining_demand
-                        self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)]
+                        self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)]
                                     for i in overlap]) >= adj_bound,
                                     self.attr_constr_name(name, p))
                     elif comparator == '<=':
                         adj_bound = bound if num_forced <= bound else min(bound + num_forced, self.coverages[p])
-                        self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)]
+                        self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)]
                                     for i in overlap]) <= adj_bound,
                                     self.attr_constr_name(name, p))
                 self._log_and_profile(f"Time to add {len(members)} {name} constraints: {time.time() - constraint_start}")
@@ -232,7 +236,7 @@ class FairIR(Basic):
         # makespan constraints.
         for p in range(self.n_pap):
             reviewers = self.reviewers_by_paper[p]
-            self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
+            self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
                                   for i in reviewers]) >= self.makespan,
                              self.ms_constr_name(p))
         self.m.update()
@@ -324,7 +328,7 @@ class FairIR(Basic):
                 constraint_name = self.ms_constr_prefix + str(p)
                 if existing_makespans and constraint_name not in existing_makespans:
                     continue
-                self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
+                self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
                                     for i in reviewers]) >= new_makespan,
                                 self.ms_constr_prefix + str(p))
             self.m.update()
@@ -545,7 +549,7 @@ class FairIR(Basic):
             fixed, frac = 0, 0
 
             # Find fractional vars.
-            for i in self.papers_by_reviewer.keys():
+            for rev_idx, i in enumerate(self.papers_by_reviewer.keys()):
                 papers = self.papers_by_reviewer[i]
                 for paper_idx, j in enumerate(papers):
                     if j not in frac_assign_p:
@@ -555,13 +559,13 @@ class FairIR(Basic):
 
                     if sol[self.var_name(i, j)] == 0.0 and integral_assignments[i][j] != 0.0:
                         #self.fix_assignment_to_zero_with_constraints(i, j, integral_assignments)
-                        self.fix_assignment(i, paper_idx, 0.0)
+                        self.fix_assignment(rev_idx, paper_idx, 0.0)
                         integral_assignments[i][j] = 0.0
                         fixed += 1
 
                     elif sol[self.var_name(i, j)] == 1.0 and integral_assignments[i][j] != 1.0:
                         #self.fix_assignment_to_one_with_constraints(i, j, integral_assignments)
-                        self.fix_assignment(i, paper_idx, 1.0)
+                        self.fix_assignment(rev_idx, paper_idx, 1.0)
                         integral_assignments[i][j] = 1.0
                         fixed += 1
 
