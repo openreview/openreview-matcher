@@ -315,16 +315,18 @@ class FairIR(Basic):
                 self.m.remove(c)
                 # self.m.update()
 
-        for p in range(self.n_pap):
-            reviewers = self.reviewers_by_paper[p]
-            constraint_name = self.ms_constr_prefix + str(p)
-            if existing_makespans and constraint_name not in existing_makespans:
-                continue
-            self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
-                                  for i in reviewers]) >= new_makespan,
-                             self.ms_constr_prefix + str(p))
         self.makespan = new_makespan
-        self.m.update()
+
+        if new_makespan != 0.0: ## Only add them back if the new makespan is non zero
+            for p in range(self.n_pap):
+                reviewers = self.reviewers_by_paper[p]
+                constraint_name = self.ms_constr_prefix + str(p)
+                if existing_makespans and constraint_name not in existing_makespans:
+                    continue
+                self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
+                                    for i in reviewers]) >= new_makespan,
+                                self.ms_constr_prefix + str(p))
+            self.m.update()
         self._log_and_profile('#info RETURN FairIR:CHANGE_MAKESPAN call')
 
     def sol_as_mat(self):
