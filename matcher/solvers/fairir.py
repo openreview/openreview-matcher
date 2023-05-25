@@ -298,11 +298,13 @@ class FairIR(Basic):
         """Name of coverage constraint for paper p."""
         return '%s%s' % (self.cov_name, p)
 
-    def change_makespan(self, new_makespan):
+    def change_makespan(self, new_makespan, existing_makespans=None):
         """Change the current makespan to a new_makespan value.
 
         Args:
             new_makespan - the new makespan constraint.
+            existing_makespans - if a list is provided, only add the existing ones back
+                               - this is to change makespan mid run without regenerating all the makespans
 
         Returns:
             Nothing.
@@ -315,6 +317,9 @@ class FairIR(Basic):
 
         for p in range(self.n_pap):
             reviewers = self.reviewers_by_paper[p]
+            constraint_name = self.ms_constr_prefix + str(p)
+            if existing_makespans and constraint_name not in existing_makespans:
+                continue
             self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
                                   for i in reviewers]) >= new_makespan,
                              self.ms_constr_prefix + str(p))
@@ -605,10 +610,22 @@ class FairIR(Basic):
     def round_fraction_iteration(self):
         integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
         demand = sum(self.coverages)
+        previous_assigned = -1
         for count in range(50):
             solved = self.round_fractional(integral_assignments, count)
             num_assigned = np.count_nonzero(integral_assignments == 1)
+
             self._log_and_profile(f"#info PROGRESS {num_assigned}/{demand}={num_assigned/demand:.2f}")
+
+            # If progress has stalled, back off makespan by X%
+            BACKOFF = 0.1
+            if not solved and previous_assigned >= 0 and previous_assigned <= num_assigned:
+                ms = self.makespan * (1 - BACKOFF)
+                existing_constraints = [name for name in self.name_to_constraint.keys() if name.startswith(self.ms_constr_prefix)]
+                self._log_and_profile(f"#info PROGRESS STALLED RELAXING FAIRNESS {self.makespan} -> {ms} on {len(existing_constraints)} Papers")
+                self.change_makespan(ms, existing_makespans=existing_constraints)
+            previous_assigned = num_assigned
+
             if solved:
                 return
         
