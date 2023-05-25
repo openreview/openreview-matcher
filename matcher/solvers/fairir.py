@@ -101,7 +101,7 @@ class FairIR(Basic):
 
         # Build set of forced tuples (r, p)
         forced_list = []
-        for r in range(self.n_rev):
+        for r in self.papers_by_reviewer.keys():
             for p in self.papers_by_reviewer[r]:
                 if forced_matrix[r, p] == 1:
                     forced_list.append(
@@ -144,7 +144,7 @@ class FairIR(Basic):
         # primal variables
         start = time.time()
         self.lp_vars = []
-        for i in range(self.n_rev):
+        for i in self.papers_by_reviewer.keys():
             self.lp_vars.append([])
             papers = self.papers_by_reviewer[i]
             for idx, j in enumerate(papers):
@@ -157,7 +157,7 @@ class FairIR(Basic):
         start = time.time()
         # set the objective
         obj = LinExpr()
-        for i in range(self.n_rev):
+        for i in self.papers_by_reviewer.keys():
             papers = self.papers_by_reviewer[i]
             for j in range(len(papers)):
                 obj += self.weights[i][j] * self.lp_vars[i][j]
@@ -298,11 +298,13 @@ class FairIR(Basic):
         """Name of coverage constraint for paper p."""
         return '%s%s' % (self.cov_name, p)
 
-    def change_makespan(self, new_makespan):
+    def change_makespan(self, new_makespan, existing_makespans=None):
         """Change the current makespan to a new_makespan value.
 
         Args:
             new_makespan - the new makespan constraint.
+            existing_makespans - if a list is provided, only add the existing ones back
+                               - this is to change makespan mid run without regenerating all the makespans
 
         Returns:
             Nothing.
@@ -315,6 +317,9 @@ class FairIR(Basic):
 
         for p in range(self.n_pap):
             reviewers = self.reviewers_by_paper[p]
+            constraint_name = self.ms_constr_prefix + str(p)
+            if existing_makespans and constraint_name not in existing_makespans:
+                continue
             self.m.addConstr(sum([self.lp_vars[i][self._paper_number_to_lp_idx(i, p)] * self.weights[i][p]
                                   for i in reviewers]) >= new_makespan,
                              self.ms_constr_prefix + str(p))
@@ -343,7 +348,7 @@ class FairIR(Basic):
         sol = self.sol_as_dict() if precalculated is None else precalculated
         return all(sol[self.var_name(i, j)] == 1.0 or
                    sol[self.var_name(i, j)] == 0.0
-                   for i in range(self.n_rev) for j in self.papers_by_reviewer[i])
+                   for i in self.papers_by_reviewer.keys() for j in self.papers_by_reviewer[i])
 
     def fix_assignment(self, i, j, val):
         """Round the variable x_ij to val."""
@@ -536,7 +541,7 @@ class FairIR(Basic):
             fixed, frac = 0, 0
 
             # Find fractional vars.
-            for i in range(self.n_rev):
+            for i in self.papers_by_reviewer.keys():
                 papers = self.papers_by_reviewer[i]
                 for paper_idx, j in enumerate(papers):
                     if j not in frac_assign_p:
@@ -605,10 +610,22 @@ class FairIR(Basic):
     def round_fraction_iteration(self):
         integral_assignments = np.ones((self.n_rev, self.n_pap), dtype=np.float16) * -1
         demand = sum(self.coverages)
+        previous_assigned = -1
         for count in range(50):
             solved = self.round_fractional(integral_assignments, count)
             num_assigned = np.count_nonzero(integral_assignments == 1)
+
             self._log_and_profile(f"#info PROGRESS {num_assigned}/{demand}={num_assigned/demand:.2f}")
+
+            # If progress has stalled, back off makespan by X%
+            BACKOFF = 0.1
+            if not solved and previous_assigned >= 0 and (previous_assigned <= num_assigned and previous_assigned >= int(0.95 * num_assigned)):
+                ms = self.makespan * (1 - BACKOFF)
+                existing_constraints = [name for name in self.name_to_constraint.keys() if name.startswith(self.ms_constr_prefix)]
+                self._log_and_profile(f"#info PROGRESS STALLED RELAXING FAIRNESS {self.makespan} -> {ms} on {len(existing_constraints)} Papers")
+                self.change_makespan(ms, existing_makespans=existing_constraints)
+            previous_assigned = num_assigned
+
             if solved:
                 return
         
