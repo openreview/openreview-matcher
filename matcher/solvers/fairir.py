@@ -160,10 +160,10 @@ class FairIR(Basic):
         start = time.time()
         # set the objective
         obj = LinExpr()
-        for idx, i in enumerate(self.papers_by_reviewer.keys()):
+        for rev_idx, i in enumerate(self.papers_by_reviewer.keys()):
             papers = self.papers_by_reviewer[i]
-            for j in range(len(papers)):
-                obj += self.weights[i][j] * self.lp_vars[idx][j]
+            for paper_idx, j in enumerate(papers):
+                obj += self.weights[i][j] * self.lp_vars[rev_idx][paper_idx]
         self.m.setObjective(obj, GRB.MAXIMIZE)
         self._log_and_profile('#info FairIR:Time to set obj %s' % (time.time() - start))
 
