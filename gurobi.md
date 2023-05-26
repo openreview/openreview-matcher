@@ -8,7 +8,7 @@
     1. `cd /home/openreview/tools`
     2. `python create_aggregate_scores.py --username your_username --password your_password --output_dir /home/openreview/gurobi_test`
 
-      This step download the Affinity_Score and Bid edges and it will aggregate them transforming the bids to a number first. If you want to change the bid invitation name or the translation map you can edit the script file.
+      This step downloads the Affinity_Score and Bid edges and it will aggregate them, transforming the bids to a number first. If you want to change the bid invitation name or the translation map you can edit the script file.
 
     4. `python create_conflict_scores.py --username your_username --password your_password --output_dir /home/openreview/gurobi_test` 
     
@@ -16,7 +16,7 @@
       
     5. `python create_constraints.py --username your_username --password your_password --output_dir /home/openreview/gurobi_test`
 
-      This step will download the Domain and Publications edges and create the constraint file, if you want to disable one of the constraints you should edit this file. The file contains a treshold variable to decide when the reviewer is senior or not, the current value is 12. 
+      This step will download the Domain and Publications edges and create the constraint file, if you want to disable one of the constraints you should edit this file. The file contains a threshold variable to decide when the reviewer is senior or not, the current value is 12. 
       
     6. `python create_custom_max_papers.py --username your_username --password your_password --output_dir /home/openreview/gurobi_test`
 
@@ -30,12 +30,12 @@
  10. `cd /home/openreview/tools`
  11. `python post_proposed_assignments.py --username your_username --password your_password --assignments_file /home/openreview/gurobi_test/assignments.json --label gurobi-test --alternates_file /home/openreview/gurobi_test/alternates.json`
 
-      Make sure the label argument is not repeated across the multiple matcher results, that is the way to indentify each different run. The output will print a url that you can use to visualize the results but you can also go to the Assignment page and check the different configutations there. It should appear one with that label.
+      Make sure the label argument is not repeated across the multiple matcher results, that is the way to identify each different run. The output will print a url that you can use to visualize the results but you can also go to the Assignment page and check the different configurations there. One should appear with that label.
       
       
  The instance is large enough and multiple matchers can be run in parallel, make sure you use different folders for each match. You can edit the python files to modify the aggregate scores or constraints at your preference, you can also change the command line parameter: num_reviewers, min_papers_default, max_papers_default, etc. 
  
- ### How to verify the results are satisfiying the domain and seniority constraints? 
+ ### How to verify the results are satisfying the domain and seniority constraints? 
  
 1. Load the assignments, make sure you use the same `label` parameter
 
