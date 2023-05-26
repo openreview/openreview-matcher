@@ -228,7 +228,7 @@ class FairIR(Basic):
                         self.m.addConstr(sum([self.lp_vars[self.r_to_lp_idx[i]][self._paper_number_to_lp_idx(i, p)]
                                     for i in overlap]) <= adj_bound,
                                     self.attr_constr_name(name, p))
-                self._log_and_profile(f"Time to add {len(members)} {name} constraints: {time.time() - constraint_start}")
+                # self._log_and_profile(f"Time to add {len(members)} {name} constraints: {time.time() - constraint_start}")
 
                 ## Don't call it for every consraint iteration
                 ## self.m.update()
@@ -532,7 +532,9 @@ class FairIR(Basic):
             # TODO: Dump more information
             self.m.computeIIS()
             self.m.write("model.ilp")
-            assert False, '%s\t%s' % (self.m.status, self.makespan)
+            self._log_and_profile('#info FairIR: The program is infeasible - check the model.ilp file for the problematic constraints.')
+            return False
+            #assert False, '%s\t%s' % (self.m.status, self.makespan)
 
         # Check that the constraints are obeyed when fetching sol
         # attribute constraints.
