@@ -597,19 +597,6 @@ class FairIR(Basic):
                     except Exception as e:
                         raise e
 
-            # If necessary remove a load constraint.
-            if not removed:
-                for (rev, frac_vars) in frac_assign_r.items():
-                    if len(frac_vars) == 2:
-                        try: ## Pass on KeyError, trying to remove a constraint that was already removed
-                            self.m.remove(self.name_to_constraint[self.lub_constr_name(rev)])
-                            self.m.remove(self.name_to_constraint[self.llb_constr_name(rev)])
-                            del self.name_to_constraint[self.lub_constr_name(rev)]
-                            del self.name_to_constraint[self.llb_constr_name(rev)]
-                        except KeyError:
-                            pass
-                        except Exception as e:
-                            raise e
             self.m.update()
 
             self._log_and_profile('#info RETURN FairIR:ROUND_FRACTIONAL call')
