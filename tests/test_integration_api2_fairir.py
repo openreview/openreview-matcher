@@ -1228,7 +1228,7 @@ def test_integration_group_with_email(
             "value": {
                 venue.get_affinity_score_id(reviewers_id): {
                     "weight": 1.0,
-                    "default": 0.0,
+                    "default": 0.01,
                 }
             }
         },
