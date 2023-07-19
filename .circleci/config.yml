@@ -68,6 +68,8 @@ jobs:
           name: install the local openreview-py as a dependency
           command: |
             source matcher/bin/activate
+            pip install selenium==4.2.0
+            pip install pytest-selenium
             cd ~/openreview-matcher-repo
             pip install -e ~/openreview-py
       - run:
