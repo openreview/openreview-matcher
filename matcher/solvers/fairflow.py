@@ -691,7 +691,7 @@ class FairFlow(object):
 
                 success_c1 = s3 == 0
                 success_c2 = np.all(
-                    self.affinity_matrix[self.solution.astype(np.bool)] != 0
+                    self.affinity_matrix[self.solution.astype(bool)] != 0
                 )
                 success = success_c1 & (
                     self.allow_zero_score_assignments | success_c2
