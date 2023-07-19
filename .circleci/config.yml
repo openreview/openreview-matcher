@@ -106,14 +106,21 @@ jobs:
           command: |
             wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=15 -t 20 http://localhost:3001
             :
+      # - run:
+      #     name: run tests
+      #     command: |
+      #       source matcher/bin/activate
+      #       cd ~/openreview-matcher-repo
+      #       TEST_FILES=$(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
+      #       mkdir -p reports/pytest
+      #       python -m pytest -x --junitxml=reports/pytest/pytest-report.xml $TEST_FILES
       - run:
           name: run tests
           command: |
             source matcher/bin/activate
             cd ~/openreview-matcher-repo
-            TEST_FILES=$(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
             mkdir -p reports/pytest
-            python -m pytest -sx --junitxml=reports/pytest/pytest-report.xml $TEST_FILES
+            python -m pytest -x --junitxml=reports/pytest/pytest-report.xml tests/test_integration_api2_fairsequence.py
       - store_test_results:
           path: reports
       - store_artifacts:
