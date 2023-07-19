@@ -103,7 +103,7 @@ jobs:
       - run:
           name: Start API V1
           command: |
-            source ~/miniconda/etc/profile.d/conda.sh
+            source matcher/bin/activate
             conda activate expertise
             cd ~/openreview
             npm run cleanStart
@@ -117,7 +117,7 @@ jobs:
       - run:
           name: Start API V2
           command: |
-            source ~/miniconda/etc/profile.d/conda.sh
+            source matcher/bin/activate
             conda activate expertise
             cd ~/openreview-v2
             npm run cleanStart
