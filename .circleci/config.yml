@@ -103,14 +103,6 @@ jobs:
           command: |
             wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=15 -t 20 http://localhost:3001
             :
-      # - run:
-      #     name: run tests
-      #     command: |
-      #       source matcher/bin/activate
-      #       cd ~/openreview-matcher-repo
-      #       mkdir reports
-      #       mkdir reports/pytest
-      #       python -m pytest -x tests --junitxml=reports/pytest/pytest-report.xml
       - run:
           name: run tests
           command: |
@@ -118,7 +110,15 @@ jobs:
             cd ~/openreview-matcher-repo
             mkdir reports
             mkdir reports/pytest
-            pytest --junitxml=reports/pytest/pytest-report.xml tests/test_interfaces.py
+            python -m pytest -x tests --junitxml=reports/pytest/pytest-report.xml
+      # - run:
+      #     name: run tests
+      #     command: |
+      #       source matcher/bin/activate
+      #       cd ~/openreview-matcher-repo
+      #       mkdir reports
+      #       mkdir reports/pytest
+      #       pytest --junitxml=reports/pytest/pytest-report.xml tests/test_interfaces.py
       - store_test_results:
           path: reports
       - store_artifacts:
