@@ -2,7 +2,7 @@
 version: 2
 jobs:
   build:
-    parallelism: 4
+    parallelism: 1
     working_directory: ~/
     docker:
       - image: cimg/python:3.9.17-node
