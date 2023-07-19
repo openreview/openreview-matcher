@@ -73,38 +73,32 @@ jobs:
             cd ~/openreview-matcher-repo
             pip install -e ~/openreview-py
       - run:
-          name: install api-v1
+          name: Start API V1
           command: |
+            source ~/miniconda/etc/profile.d/conda.sh
+            conda activate expertise
             cd ~/openreview
-            npm install
-      - run:
-          name: run api-v1
-          command: |
-            source matcher/bin/activate
-            cd ~/openreview
-            NODE_ENV=circleci node scripts/clean_start_app.js
+            npm run cleanStart
           background: true
       - run:
-          name: install api-v2
-          command: |
-            cd ~/openreview-v2
-            npm install
-      - run:
-          name: run api-v2
-          command: |
-            source matcher/bin/activate
-            cd ~/openreview-v2
-            NODE_ENV=circleci node scripts/setup_app.js
-          background: true
-      - run:
+          name: Wait for API V1 to start
           shell: /bin/sh
           command: |
             wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3000
             :
       - run:
+          name: Start API V2
+          command: |
+            source ~/miniconda/etc/profile.d/conda.sh
+            conda activate expertise
+            cd ~/openreview-v2
+            npm run cleanStart
+          background: true
+      - run:
+          name: Wait for API V2 to start
           shell: /bin/sh
           command: |
-            wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=15 -t 20 http://localhost:3001
+            wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 10 http://localhost:3001
             :
       # - run:
       #     name: run tests
