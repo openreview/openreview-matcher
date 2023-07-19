@@ -55,6 +55,10 @@ def wait_for_status(client, config_note_id, api_version=1):
             status = config_note.content["status"]
         elif api_version == 2:
             status = config_note.content["status"]["value"]
+        else:
+            raise ValueError("invalid api_version: {}".format(api_version))
+
+        print('STATUS:', status)
 
         if status in [
             "Initialized",
