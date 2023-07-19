@@ -185,7 +185,7 @@ def clean_start_conference_v2(
                         "title": {
                             "value": "Test_Paper_{}".format(paper_number)
                         },
-                        "abstract": {"value": "Paper abstract"},
+                        "abstract": {"value": f"Paper abstract {paper_number}"},
                         "authors": {"value": authors},
                         "authorids": {"value": authorids},
                         "pdf": {"value": "/pdf/" + "p" * 40 + ".pdf"},
