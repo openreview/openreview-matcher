@@ -104,7 +104,6 @@ jobs:
           name: Start API V1
           command: |
             source matcher/bin/activate
-            conda activate expertise
             cd ~/openreview
             npm run cleanStart
           background: true
@@ -118,7 +117,6 @@ jobs:
           name: Start API V2
           command: |
             source matcher/bin/activate
-            conda activate expertise
             cd ~/openreview-v2
             npm run cleanStart
           background: true
