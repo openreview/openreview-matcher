@@ -4,7 +4,7 @@ from openreview import openreview
 
 from matcher.service.celery_tasks import run_matching
 from matcher.service.openreview_interface import ConfigNoteInterfaceV1
-from tests.conftest import clean_start_conference, wait_for_status
+from conftest import clean_start_conference, wait_for_status
 
 
 def test_matching_task(openreview_context, celery_app, celery_worker):
