@@ -29,7 +29,10 @@ def mock_client(
         return mock_notes[id]
 
     def get_notes(invitation, limit=1000, offset=0, **kwargs):
-        return mock_notes[invitation][offset : offset + limit]
+        if kwargs.get('with_count'):
+            return mock_notes[invitation][offset : offset + limit], len(mock_notes[invitation])
+        else:
+            return mock_notes[invitation][offset : offset + limit]
 
     def post_note(note):
         mock_notes[note.id] = note
