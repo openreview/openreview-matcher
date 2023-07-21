@@ -22,7 +22,8 @@ def venue(openreview_context):
             openreview_client,
             conference_id,
             num_reviewers,
-            num_papers
+            num_papers,
+            0
         )
 
         assert len(openreview_client.get_group('AKBD.ws/2019/Conference/Reviewers').members) == num_reviewers
