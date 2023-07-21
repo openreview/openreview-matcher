@@ -1,5 +1,5 @@
 from collections import defaultdict
-from ortools.graph import pywrapgraph
+from ortools.graph.python import min_cost_flow
 import numpy as np
 import uuid
 import time
@@ -111,7 +111,7 @@ class FairFlow(object):
         self.big_c = 10000
         self.bigger_c = self.big_c**2
 
-        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+        self.min_cost_flow = min_cost_flow.SimpleMinCostFlow()
         self.start_inds = []
         self.end_inds = []
         self.caps = []
@@ -150,7 +150,7 @@ class FairFlow(object):
 
     def _refresh_internal_vars(self):
         """Set start, end, caps, costs to be empty."""
-        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+        self.min_cost_flow = min_cost_flow.SimpleMinCostFlow()
         self.start_inds = []
         self.end_inds = []
         self.caps = []
@@ -572,7 +572,7 @@ class FairFlow(object):
         source = n_rev + n_pap
         sink = n_rev + n_pap + 1
 
-        mcf = pywrapgraph.SimpleMinCostFlow()
+        mcf = min_cost_flow.SimpleMinCostFlow()
 
         # edges from source to reviewers.
         for i in range(n_rev):

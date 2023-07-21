@@ -60,7 +60,7 @@ from __future__ import print_function, division
 from collections import namedtuple
 import logging
 import numpy as np
-from ortools.graph import pywrapgraph
+from ortools.graph.python import min_cost_flow
 from .core import SolverException
 
 Node = namedtuple("Node", ["number", "index", "supply"])
@@ -318,7 +318,7 @@ class SimpleSolver:
         """
         self._check_graph_integrity()
 
-        self.min_cost_flow = pywrapgraph.SimpleMinCostFlow()
+        self.min_cost_flow = min_cost_flow.SimpleMinCostFlow()
 
         for arc_index in range(len(self.start_nodes)):
             self.min_cost_flow.AddArcWithCapacityAndUnitCost(
