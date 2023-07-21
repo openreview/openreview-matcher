@@ -622,10 +622,10 @@ class FairFlow(object):
         if solver_status == mcf.OPTIMAL:
             for arc in range(mcf.num_arcs()):
                 # Can ignore arcs leading out of source or into sink.
-                if mcf.Tail(arc) != source and mcf.Head(arc) != sink:
-                    if mcf.Flow(arc) > 0:
-                        rev = mcf.Tail(arc)
-                        pap = mcf.Head(arc) - n_rev
+                if mcf.tail(arc) != source and mcf.head(arc) != sink:
+                    if mcf.flow(arc) > 0:
+                        rev = mcf.tail(arc)
+                        pap = mcf.head(arc) - n_rev
                         assert self.solution[rev, pap] == 0.0
                         self.solution[rev, pap] = 1.0
             self.solved = True
