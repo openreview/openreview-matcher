@@ -31,6 +31,8 @@ def mock_client(
     def get_notes(invitation, limit=1000, offset=0, **kwargs):
         if kwargs.get('with_count'):
             return mock_notes[invitation][offset : offset + limit], len(mock_notes[invitation])
+        elif kwargs.get('after'):
+            return []
         else:
             return mock_notes[invitation][offset : offset + limit]
 
