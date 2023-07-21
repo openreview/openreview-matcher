@@ -403,14 +403,14 @@ class FairFlow(object):
         self.supplies[self.sink] = -flow
 
         for i in range(len(self.start_inds)):
-            self.min_cost_flow.AddArcWithCapacityAndUnitCost(
+            self.min_cost_flow.add_arcs_with_capacity_and_unit_cost(
                 self.start_inds[i],
                 self.end_inds[i],
                 self.caps[i],
                 self.costs[i],
             )
         for i in range(len(self.supplies)):
-            self.min_cost_flow.SetNodeSupply(i, int(self.supplies[i]))
+            self.min_cost_flow.set_nodes_supplies(i, int(self.supplies[i]))
 
     def solve_ms_improvement(self):
         """Reassign reviewers to improve the makespan.
@@ -421,19 +421,19 @@ class FairFlow(object):
         have flow leaving a reviewer and entering a paper, assign the reviewer
         to that paper.
         """
-        solver_status = self.min_cost_flow.Solve()
+        solver_status = self.min_cost_flow.solve()
         if solver_status == self.min_cost_flow.OPTIMAL:
             num_un = 0
-            for arc in range(self.min_cost_flow.NumArcs()):
+            for arc in range(self.min_cost_flow.num_arcs()):
                 # Can ignore arcs leading out of source or into sink.
                 if (
-                    self.min_cost_flow.Tail(arc) != self.source
-                    and self.min_cost_flow.Head(arc) != self.sink
+                    self.min_cost_flow.tail(arc) != self.source
+                    and self.min_cost_flow.head(arc) != self.sink
                 ):
-                    if self.min_cost_flow.Flow(arc) > 0:
+                    if self.min_cost_flow.flow(arc) > 0:
                         # flow goes from tail to head
-                        head = self.min_cost_flow.Head(arc)
-                        tail = self.min_cost_flow.Tail(arc)
+                        head = self.min_cost_flow.head(arc)
+                        tail = self.min_cost_flow.tail(arc)
                         if head >= self.num_reviewers + self.num_papers + 2:
                             # this is an edge that restricts flow to a paper
                             pap = head - (
@@ -466,17 +466,17 @@ class FairFlow(object):
 
     def solve_validifier(self):
         """Reassign reviewers to make the matching valid."""
-        solver_status = self.min_cost_flow.Solve()
+        solver_status = self.min_cost_flow.solve()
         if solver_status == self.min_cost_flow.OPTIMAL:
-            for arc in range(self.min_cost_flow.NumArcs()):
+            for arc in range(self.min_cost_flow.num_arcs()):
                 # Can ignore arcs leading out of source or into sink.
                 if (
-                    self.min_cost_flow.Tail(arc) != self.source
-                    and self.min_cost_flow.Head(arc) != self.sink
+                    self.min_cost_flow.tail(arc) != self.source
+                    and self.min_cost_flow.head(arc) != self.sink
                 ):
-                    if self.min_cost_flow.Flow(arc) > 0:
-                        rev = self.min_cost_flow.Tail(arc)
-                        pap = self.min_cost_flow.Head(arc) - self.num_reviewers
+                    if self.min_cost_flow.flow(arc) > 0:
+                        rev = self.min_cost_flow.tail(arc)
+                        pap = self.min_cost_flow.head(arc) - self.num_reviewers
                         assert self.solution[rev, pap] == 0.0
                         self.solution[rev, pap] = 1.0
 
@@ -577,7 +577,7 @@ class FairFlow(object):
         # edges from source to reviewers.
         for i in range(n_rev):
             if int(_caps[i]) > 0:
-                mcf.AddArcWithCapacityAndUnitCost(source, i, int(_caps[i]), 0)
+                mcf.add_arcs_with_capacity_and_unit_cost(source, i, int(_caps[i]), 0)
 
         # edges from reviewers to papers.
         for i in range(n_rev):
@@ -595,7 +595,7 @@ class FairFlow(object):
                     self.allow_zero_score_assignments or ws[i, j] != 0
                 ):
                     # Costs must be integers. Also, we have affinities so make the "costs" negative affinities.
-                    mcf.AddArcWithCapacityAndUnitCost(
+                    mcf.add_arcs_with_capacity_and_unit_cost(
                         i,
                         n_rev + j,
                         int(arc_cap),
@@ -605,7 +605,7 @@ class FairFlow(object):
         # edges from papers to sink.
         for j in range(n_pap):
             if int(_covs[j]) > 0:
-                mcf.AddArcWithCapacityAndUnitCost(
+                mcf.add_arcs_with_capacity_and_unit_cost(
                     n_rev + j, sink, int(_covs[j]), 0
                 )
 
@@ -615,12 +615,12 @@ class FairFlow(object):
 
         # set Node supply for this MCF.
         for i in range(len(supplies)):
-            mcf.SetNodeSupply(i, int(supplies[i]))
+            mcf.set_nodes_supplies(i, int(supplies[i]))
 
         # Solve.
-        solver_status = mcf.Solve()
+        solver_status = mcf.solve()
         if solver_status == mcf.OPTIMAL:
-            for arc in range(mcf.NumArcs()):
+            for arc in range(mcf.num_arcs()):
                 # Can ignore arcs leading out of source or into sink.
                 if mcf.Tail(arc) != source and mcf.Head(arc) != sink:
                     if mcf.Flow(arc) > 0:

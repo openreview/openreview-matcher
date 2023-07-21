@@ -153,8 +153,8 @@ class MinMaxSolver:
         self.solved = minimum_solver.solved and maximum_solver.solved
 
         self.optimal_cost = (
-            minimum_solver.min_cost_flow.OptimalCost()
-            + maximum_solver.min_cost_flow.OptimalCost()
+            minimum_solver.min_cost_flow.optimal_cost()
+            + maximum_solver.min_cost_flow.optimal_cost()
         )
 
         self.flow_matrix = minimum_result + maximum_result

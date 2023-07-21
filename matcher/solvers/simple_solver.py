@@ -321,7 +321,7 @@ class SimpleSolver:
         self.min_cost_flow = min_cost_flow.SimpleMinCostFlow()
 
         for arc_index in range(len(self.start_nodes)):
-            self.min_cost_flow.AddArcWithCapacityAndUnitCost(
+            self.min_cost_flow.add_arcs_with_capacity_and_unit_cost(
                 self.start_nodes[arc_index].number,
                 self.end_nodes[arc_index].number,
                 self.capacities[arc_index],
@@ -329,7 +329,7 @@ class SimpleSolver:
             )
 
         for node in self.node_by_number.values():
-            self.min_cost_flow.SetNodeSupply(node.number, node.supply)
+            self.min_cost_flow.set_nodes_supplies(node.number, node.supply)
 
     def solve(self):
         """
@@ -341,16 +341,16 @@ class SimpleSolver:
             self, "min_cost_flow"
         ), "Solver not constructed. Run self.construct_solver() first."
         self.cost = 0
-        solver_status = self.min_cost_flow.Solve()
+        solver_status = self.min_cost_flow.solve()
         if solver_status == self.min_cost_flow.OPTIMAL:
             self.solved = True
-            for i in range(self.min_cost_flow.NumArcs()):
-                self.cost += self.min_cost_flow.Flow(
+            for i in range(self.min_cost_flow.num_arcs()):
+                self.cost += self.min_cost_flow.flow(
                     i
-                ) * self.min_cost_flow.UnitCost(i)
-                r_node = self.node_by_number[self.min_cost_flow.Tail(i)]
-                p_node = self.node_by_number[self.min_cost_flow.Head(i)]
-                flow = self.min_cost_flow.Flow(i)
+                ) * self.min_cost_flow.unit_cost(i)
+                r_node = self.node_by_number[self.min_cost_flow.tail(i)]
+                p_node = self.node_by_number[self.min_cost_flow.head(i)]
+                flow = self.min_cost_flow.flow(i)
 
                 if (
                     r_node in self.reviewer_nodes
@@ -366,19 +366,19 @@ class SimpleSolver:
     def __str__(self):
         return_lines = []
         return_lines.append(
-            "Minimum cost: {}".format(self.min_cost_flow.OptimalCost())
+            "Minimum cost: {}".format(self.min_cost_flow.optimal_cost())
         )
         return_lines.append("")
         return_lines.append("   Arc    Flow / Capacity  Cost")
-        for i in range(self.min_cost_flow.NumArcs()):
-            cost = self.min_cost_flow.Flow(i) * self.min_cost_flow.UnitCost(i)
+        for i in range(self.min_cost_flow.num_arcs()):
+            cost = self.min_cost_flow.flow(i) * self.min_cost_flow.unit_cost(i)
             return_lines.append(
                 "%2s -> %2s   %3s  / %3s       %3s"
                 % (
-                    self.min_cost_flow.Tail(i),
-                    self.min_cost_flow.Head(i),
-                    self.min_cost_flow.Flow(i),
-                    self.min_cost_flow.Capacity(i),
+                    self.min_cost_flow.tail(i),
+                    self.min_cost_flow.head(i),
+                    self.min_cost_flow.flow(i),
+                    self.min_cost_flow.capacity(i),
                     cost,
                 )
             )

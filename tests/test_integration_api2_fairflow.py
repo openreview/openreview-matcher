@@ -96,7 +96,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     matcher_status = wait_for_status(
         openreview_client, config_note["note"]["id"], api_version=2
     )
-    assert matcher_status.content["status"]["value"] == "Complete"
+    assert matcher_status.content["status"]["value"] == "Complete", 'Error message: ' + matcher_status.content['error_message']
 
     paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
