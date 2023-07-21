@@ -58,8 +58,6 @@ def wait_for_status(client, config_note_id, api_version=1):
         else:
             raise ValueError("invalid api_version: {}".format(api_version))
 
-        print('STATUS:', status)
-
         if status in [
             "Initialized",
             "Running",
@@ -407,7 +405,7 @@ def celery_config():
 
 @pytest.fixture(scope="session")
 def celery_includes():
-    return ["matcher.service.celery_tasks", "tests.tasks"]
+    return ["matcher.service.celery_tasks", "tasks"]
 
 
 @pytest.fixture(scope="session")
@@ -418,6 +416,9 @@ def celery_worker_parameters():
         "concurrency": 4,
     }
 
+@pytest.fixture(scope='session')
+def celery_enable_logging():
+    return True
 
 if __name__ == "__main__":
     config = {
