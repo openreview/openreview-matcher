@@ -142,7 +142,8 @@ def clean_start_conference_v2(
     openreview_client,
     conference_id,
     num_reviewers,
-    num_papers
+    num_papers,
+    reviews_per_paper
 ):
 
     venue = Venue(openreview_client, conference_id, support_user='openreview.net/Support')
