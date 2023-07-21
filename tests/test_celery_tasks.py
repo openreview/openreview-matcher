@@ -7,7 +7,7 @@ from matcher.service.openreview_interface import ConfigNoteInterfaceV1
 from conftest import clean_start_conference, wait_for_status
 
 
-def test_matching_task(openreview_context, celery_app, celery_worker):
+def test_matching_task(openreview_context, celery_app, celery_session_worker):
     openreview_client = openreview_context["openreview_client"]
     openreview_client_v2 = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]

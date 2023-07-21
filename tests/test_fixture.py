@@ -24,7 +24,7 @@ def test_fixtures(openreview_context):
     assert conference.get_id() == "ICLR.cc/2018/Conference"
 
 
-def test_celery_fixtures(celery_app, celery_worker):
+def test_celery_fixtures(celery_app, celery_session_worker):
     """
     Simple test to ensure that celery fixtures are working.
     """
