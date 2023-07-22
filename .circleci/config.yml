@@ -34,7 +34,7 @@ jobs:
             hash -r
             sudo npm install -g n
       - run:
-          name: Initialize Replica Set
+          name: Initialize replica set
           command: |
             sudo apt-get install gnupg curl
             curl -fsSL https://pgp.mongodb.com/server-6.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor
@@ -44,12 +44,12 @@ jobs:
             sudo apt-get install -y mongodb-org=6.0.7
             mongosh mongodb://localhost:27017 --eval "rs.initiate()"
       - run:
-          name: Clone OpenReview V1 branch << pipeline.parameters.openreview-api-v1-branch >>
+          name: Clone OpenReview API V1 branch << pipeline.parameters.openreview-api-v1-branch >>
           command: |
             git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api-v1.git ~/openreview
             cd ~/openreview && git checkout << pipeline.parameters.openreview-api-v1-branch >>
       - run:
-          name: Clone OpenReview V2 branch << pipeline.parameters.openreview-api-v2-branch >>
+          name: Clone OpenReview API V2 branch << pipeline.parameters.openreview-api-v2-branch >>
           command: |
             git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api.git ~/openreview-v2
             cd ~/openreview-v2 && git checkout << pipeline.parameters.openreview-api-v2-branch >>
@@ -58,7 +58,7 @@ jobs:
           command: |
             git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-py.git ~/openreview-py
       - run:
-          name: Create Directories
+          name: Create API directories
           command: |
             mkdir -p ~/openreview/logs
             mkdir -p ~/openreview/files/attachments
@@ -71,7 +71,7 @@ jobs:
       - run:
           # source: https://support.mozilla.org/en-US/kb/install-firefox-linux#w_system-firefox-installation-for-advanced-users
           # source: https://ubuntu-mate.community/t/firefox-installation-guide-non-snap/25299
-          name: install firefox
+          name: Install Firefox
           command: |
             wget "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" -O firefox-latest.tar.bz2
             tar xjf firefox-*.tar.bz2
@@ -83,7 +83,7 @@ jobs:
             echo export PATH="$PATH:/usr/local/bin/firefox" >> ~/.bashrc
             source ~/.bashrc
       - run:
-          name: setup virtual environment
+          name: Setup Python virtual environment
           command: |
             python -m venv matcher
       - run:
@@ -93,7 +93,7 @@ jobs:
             cd ~/openreview-matcher-repo
             pip install -e .
       - run:
-          name: install the local openreview-py as a dependency
+          name: Install openreview-py
           command: |
             source matcher/bin/activate
             pip install selenium==4.2.0
@@ -127,7 +127,7 @@ jobs:
             wget --retry-connrefused --waitretry=2 --read-timeout=20 --timeout=150 http://localhost:3001
             :
       - run:
-          name: run tests
+          name: Run tests
           command: |
             source matcher/bin/activate
             cd ~/openreview-matcher-repo
