@@ -79,7 +79,7 @@ jobs:
           command: |
             python -m venv matcher
       - run:
-          name: install dependencies
+          name: Install dependencies
           command: |
             source matcher/bin/activate
             cd ~/openreview-matcher-repo
