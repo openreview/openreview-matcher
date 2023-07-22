@@ -26,14 +26,6 @@ jobs:
       - checkout:
           path: ~/openreview-matcher-repo
       - run:
-          name: Install Node
-          command: |
-            cd ~/
-            curl -Lk https://raw.githubusercontent.com/tj/n/master/bin/n -o n
-            sudo bash n 18.15.0
-            hash -r
-            sudo npm install -g n
-      - run:
           name: Initialize replica set
           command: |
             sudo apt-get install gnupg curl
