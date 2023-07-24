@@ -1090,3 +1090,149 @@ def test_integration_group_with_email(
         openreview_client, config_note["note"]["id"], api_version=2
     )
     assert matcher_status.content["status"]["value"] == "Complete"
+
+def test_integration_by_track(openreview_context, venue, celery_app, celery_session_worker):
+    """
+    Basic integration test. Makes use of the OpenReview Builder
+    """
+
+    openreview_client = openreview_context["openreview_client_v2"]
+    test_client = openreview_context["test_client"]
+
+    reviews_per_paper = 3
+    max_papers = 5
+    min_papers = 0
+    alternates = 0
+
+    reviewers_id = venue.get_reviewers_id()
+
+    config = {
+        "title": {"value": "integration-test-11"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id() + '&content.abstract=Paper abstract 1'},
+        "assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
+            }
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "FairFlow"},
+    }
+
+    config_note = openreview_client.post_note_edit(
+        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
+        signatures=[venue.get_id()],
+        note=Note(content=config),
+    )
+    assert config_note
+
+    response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
+    assert matcher_status.content["status"]["value"] == "Complete", matcher_status.content['error_message']['value']
+
+    paper_assignment_edges = openreview_client.get_edges_count(
+        label="integration-test-11",
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
+    )
+
+    assert paper_assignment_edges == 3
+
+    config = {
+        "title": {"value": "integration-test-11"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id() + '&content.track=Paper abstract 1'},
+        "assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
+            }
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "FairFlow"},
+    }
+
+    config_note = openreview_client.post_note_edit(
+        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
+        signatures=[venue.get_id()],
+        note=Note(content=config),
+    )
+    assert config_note
+
+    response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
+    assert matcher_status.content["status"]["value"] == "Error"
+    assert matcher_status.content['error_message']['value'] == "Papers List can not be empty."
+

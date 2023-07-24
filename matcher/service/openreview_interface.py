@@ -820,15 +820,11 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                                 )
                             )
             if "/-/" in paper_invitation:
-                paper_notes = list(
-                    openreview.tools.iterget_notes(
-                        self.client,
-                        invitation=paper_invitation,
-                        content=content_dict,
-                    )
+                paper_notes = self.client.get_all_notes(
+                    invitation=paper_invitation
                 )
 
-                paper_notes = [self._content_to_api1(n) for n in paper_notes]
+                paper_notes = [self._content_to_api1(n) for n in paper_notes if self._match_content(n.content, content_dict)]
                 self._papers = [n.id for n in paper_notes]
                 self.paper_numbers = {n.id: n.number for n in paper_notes}
                 self.logger.debug(
@@ -921,6 +917,19 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             return property_params.get("param", {}).get("default", [])
 
         return []
+    
+    def _match_content(self, content, match_content):
+        if not match_content:
+            return True
+        
+        for name, value in match_content.items():
+
+            paper_value = content.get(name, {}).get('value')
+        
+            if paper_value != value:
+                return False
+        
+        return True    
 
 
 class Deployment:
