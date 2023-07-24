@@ -4,7 +4,6 @@ import os
 
 import flask
 
-
 from celery import Celery
 
 os.environ.setdefault(

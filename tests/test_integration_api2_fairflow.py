@@ -10,30 +10,39 @@ import pytest
 
 from conftest import clean_start_conference_v2, wait_for_status
 
+@pytest.fixture(scope="module")
+def venue(openreview_context):
+        openreview_client = openreview_context["openreview_client_v2"]
 
-def test_integration_basic(openreview_context, celery_app, celery_worker):
+        conference_id = "AKBD.ws/2019/Conference"
+        num_reviewers = 10
+        num_papers = 10
+
+        venue = clean_start_conference_v2(
+            openreview_client,
+            conference_id,
+            num_reviewers,
+            num_papers,
+            0
+        )
+
+        assert len(openreview_client.get_group('AKBD.ws/2019/Conference/Reviewers').members) == num_reviewers
+        assert len(openreview_client.get_notes(invitation='AKBD.ws/2019/Conference/-/Submission')) == num_papers
+        return venue
+
+def test_integration_basic(openreview_context, venue, celery_app, celery_session_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
-
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 10
-    num_papers = 10
+    num_papers = 10    
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
 
     reviewers_id = venue.get_reviewers_id()
 
@@ -96,7 +105,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
     matcher_status = wait_for_status(
         openreview_client, config_note["note"]["id"], api_version=2
     )
-    assert matcher_status.content["status"]["value"] == "Complete"
+    assert matcher_status.content["status"]["value"] == "Complete", matcher_status.content['error_message']
 
     paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
@@ -107,7 +116,7 @@ def test_integration_basic(openreview_context, celery_app, celery_worker):
 
 
 def test_integration_supply_mismatch_error(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """
     Basic integration test. Makes use of the OpenReview Builder
@@ -115,21 +124,10 @@ def test_integration_supply_mismatch_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 10  # impossible!
     max_papers = 1
     min_papers = 1
     alternates = 0
-
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
 
     reviewers_id = venue.get_reviewers_id()
 
@@ -195,7 +193,7 @@ def test_integration_supply_mismatch_error(
     assert matcher_status.content["status"]["value"] == "No Solution"
     assert (
         matcher_status.content["error_message"]["value"]
-        == "Total demand (200) is out of range when min review supply is (10) and max review supply is (10)"
+        == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
@@ -306,7 +304,7 @@ def test_integration_api_error(
 
 
 def test_integration_demand_out_of_supply_range_error(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """
     Test to check that a No Solution is observed when demand is not in the range of min and max supply
@@ -314,26 +312,15 @@ def test_integration_demand_out_of_supply_range_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "ICLS.cc/2035/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 4
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-3"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -398,40 +385,30 @@ def test_integration_demand_out_of_supply_range_error(
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
-        label="integration-test",
+        label="integration-test-3",
         invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
     assert paper_assignment_edges == 0
 
 
-def test_integration_no_scores(openreview_context, celery_app, celery_worker):
+def test_integration_no_scores(openreview_context, venue, celery_app, celery_session_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2020/Conference"
-    num_reviewers = 10
     num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-4"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -487,7 +464,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
     assert matcher_status.content["status"]["value"] == "Complete"
 
     paper_assignment_edges = openreview_client.get_edges_count(
-        label="integration-test",
+        label="integration-test-4",
         invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
@@ -495,32 +472,21 @@ def test_integration_no_scores(openreview_context, celery_app, celery_worker):
 
 
 def test_routes_invalid_invitation(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """"""
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-5"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -580,31 +546,20 @@ def test_routes_invalid_invitation(
     assert config_note.content["status"]["value"] == "Error"
 
 
-def test_routes_missing_header(openreview_context, celery_app, celery_worker):
+def test_routes_missing_header(openreview_context, venue, celery_app, celery_session_worker):
     """request with missing header should response with 400"""
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-6"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -659,7 +614,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_worker):
     assert missing_header_response.status_code == 400
 
 
-def test_routes_missing_config(openreview_context, celery_app, celery_worker):
+def test_routes_missing_config(openreview_context, venue, celery_app, celery_session_worker):
     """should return 404 if config note doesn't exist"""
 
     openreview_client = openreview_context["openreview_client_v2"]
@@ -675,7 +630,7 @@ def test_routes_missing_config(openreview_context, celery_app, celery_worker):
 
 
 @pytest.mark.skip  # TODO: fix the authorization so that this test passes.
-def test_routes_bad_token(openreview_context, celery_app, celery_worker):
+def test_routes_bad_token(openreview_context, celery_app, celery_session_worker):
     """should return 400 if token is bad"""
     openreview_client = openreview_context["openreview_client"]
     test_client = openreview_context["test_client"]
@@ -691,33 +646,22 @@ def test_routes_bad_token(openreview_context, celery_app, celery_worker):
 
 
 def test_routes_already_running_or_complete(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """should return 400 if the match is already running or complete"""
 
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 1
-    num_papers = 1
     reviews_per_paper = 1
     max_papers = 1
     min_papers = 0
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-7"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -798,32 +742,21 @@ def test_routes_already_running_or_complete(
     assert config_note.content["status"]["value"] == "Complete"
 
 
-def test_routes_already_queued(openreview_context, celery_app, celery_worker):
+def test_routes_already_queued(openreview_context, venue, celery_app, celery_session_worker):
     """should return 400 if the match is already queued"""
 
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2019/Conference"
-    num_reviewers = 1
-    num_papers = 1
     reviews_per_paper = 1
     max_papers = 1
     min_papers = 0
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-8"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -883,7 +816,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_worker):
 
 
 def test_integration_empty_reviewers_list_error(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """
     Test to check en exception is thrown when the reviewers list is empty.
@@ -891,26 +824,15 @@ def test_integration_empty_reviewers_list_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2021/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-9"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -987,7 +909,7 @@ def test_integration_empty_reviewers_list_error(
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
-        label="integration-test",
+        label="integration-test-9",
         invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
@@ -995,7 +917,7 @@ def test_integration_empty_reviewers_list_error(
 
 
 def test_integration_group_not_found_error(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """
     Basic integration test. Makes use of the OpenReview Builder
@@ -1003,26 +925,15 @@ def test_integration_group_not_found_error(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2029/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 5
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
     reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": {"value": "integration-test"},
+        "title": {"value": "integration-test-10"},
         "user_demand": {"value": str(reviews_per_paper)},
         "max_papers": {"value": str(max_papers)},
         "min_papers": {"value": str(min_papers)},
@@ -1049,7 +960,7 @@ def test_integration_group_not_found_error(
         "custom_max_papers_invitation": {
             "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
         },
-        "match_group": {"value": "AKBD.ws/2029/Conference/NoReviewers"},
+        "match_group": {"value": "AKBD.ws/2019/Conference/NoReviewers"},
         "scores_specification": {
             "value": {
                 venue.get_affinity_score_id(reviewers_id): {
@@ -1081,13 +992,13 @@ def test_integration_group_not_found_error(
         openreview_client, config_note["note"]["id"]
     )
     assert (
-        "Group Not Found: AKBD.ws/2029/Conference/NoReviewers"
+        "Group Not Found: AKBD.ws/2019/Conference/NoReviewers"
         in matcher_status.content["error_message"]["value"]
     )
 
 
 def test_integration_group_with_email(
-    openreview_context, celery_app, celery_worker
+    openreview_context, venue, celery_app, celery_session_worker
 ):
     """
     Basic integration test. Makes use of the OpenReview Builder
@@ -1095,24 +1006,26 @@ def test_integration_group_with_email(
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
 
-    conference_id = "AKBD.ws/2029/Conference"
-    num_reviewers = 10
-    num_papers = 10
     reviews_per_paper = 3
     max_papers = 7
     min_papers = 1
     alternates = 0
 
-    venue = clean_start_conference_v2(
-        openreview_client,
-        conference_id,
-        num_reviewers,
-        num_papers,
-        reviews_per_paper,
-    )
-
+    ## add reviewers back to the group
     openreview_client.add_members_to_group(
-        conference_id + "/Reviewers", "reviewer@mail.com"
+        venue.id + "/Reviewers",[ 
+            '~Userf_Reviewer1', 
+            '~Userc_Reviewer1', 
+            '~Userg_Reviewer1', 
+            '~Userh_Reviewer1', 
+            '~Usere_Reviewer1', 
+            '~Useri_Reviewer1', 
+            '~Usera_Reviewer1', 
+            '~Userd_Reviewer1', 
+            '~Userj_Reviewer1', 
+            '~Userb_Reviewer1', 
+            "reviewer@mail.com"
+        ]
     )
     reviewers_id = venue.get_reviewers_id()
 

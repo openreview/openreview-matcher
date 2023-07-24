@@ -4,10 +4,10 @@ from openreview import openreview
 
 from matcher.service.celery_tasks import run_matching
 from matcher.service.openreview_interface import ConfigNoteInterfaceV1
-from tests.conftest import clean_start_conference, wait_for_status
+from conftest import clean_start_conference, wait_for_status
 
 
-def test_matching_task(openreview_context, celery_app, celery_worker):
+def test_matching_task(openreview_context, celery_app, celery_session_worker):
     openreview_client = openreview_context["openreview_client"]
     openreview_client_v2 = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
@@ -90,7 +90,7 @@ def test_matching_task(openreview_context, celery_app, celery_worker):
     task = run_matching.s(interface, solver_class, app.logger).apply()
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status.content["status"] == "Complete"
+    assert matcher_status.content["status"] == "Complete", 'Error status: ' + matcher_status.content['error_message']
     assert task.status == "SUCCESS"
 
     paper_assignment_edges = openreview_client.get_edges_count(
