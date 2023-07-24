@@ -208,7 +208,7 @@ def test_integration_supply_mismatch_error(
     assert paper_assignment_edges == 0
 
 def test_integration_supply_mismatch_error(
-    openreview_context, celery_app, celery_worker
+    openreview_context, celery_app, celery_session_worker
 ):
     """
     Basic integration test. Makes use of the OpenReview Builder
