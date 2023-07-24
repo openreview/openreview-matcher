@@ -55,6 +55,8 @@ def wait_for_status(client, config_note_id, api_version=1):
             status = config_note.content["status"]
         elif api_version == 2:
             status = config_note.content["status"]["value"]
+        else:
+            raise ValueError("invalid api_version: {}".format(api_version))
 
         if status in [
             "Initialized",
@@ -141,7 +143,7 @@ def clean_start_conference_v2(
     conference_id,
     num_reviewers,
     num_papers,
-    reviews_per_paper,
+    reviews_per_paper
 ):
 
     venue = Venue(openreview_client, conference_id, support_user='openreview.net/Support')
@@ -403,7 +405,7 @@ def celery_config():
 
 @pytest.fixture(scope="session")
 def celery_includes():
-    return ["matcher.service.celery_tasks", "tests.tasks"]
+    return ["matcher.service.celery_tasks", "tasks"]
 
 
 @pytest.fixture(scope="session")
@@ -414,6 +416,9 @@ def celery_worker_parameters():
         "concurrency": 4,
     }
 
+@pytest.fixture(scope='session')
+def celery_enable_logging():
+    return True
 
 if __name__ == "__main__":
     config = {
