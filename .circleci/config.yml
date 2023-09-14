@@ -90,6 +90,7 @@ jobs:
           name: Install openreview-py
           command: |
             source matcher/bin/activate
+            pip install py
             pip install selenium==4.2.0
             pip install pytest-selenium
             cd ~/openreview-matcher-repo
