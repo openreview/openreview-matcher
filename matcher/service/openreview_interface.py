@@ -275,7 +275,7 @@ class BaseConfigNoteInterface:
                     if len(members) < 1:
                         raise openreview.OpenReviewException(f"{name}/{label} has no corresponding members")
 
-                    self._attribute_constraints['name'] = {
+                    self._attribute_constraints[f"{name}/{label}"] = {
                             'comparator': comparator,
                             'bound': bound,
                             'members': members
