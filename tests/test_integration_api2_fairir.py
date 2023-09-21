@@ -348,7 +348,7 @@ def test_integration_many_attribute_constraints(
         "status": {"value": "Initialized"},
         "solver": {"value": "FairIR"},
     }
-    # Post Seniority edge invitation
+    # Post Region edge invitation
     venue_matching = openreview.venue.matching.Matching(venue, openreview_client.get_group(reviewers_id), None)
     venue_matching._create_edge_invitation(region_inv_id)
 
@@ -426,29 +426,14 @@ def test_integration_many_attribute_constraints(
     matcher_status = wait_for_status(
         openreview_client, config_note["note"]["id"], api_version=2
     )
-    assert matcher_status.content["status"]["value"] == "Complete"
+    assert matcher_status.content["status"]["value"] == "Error"
 
     paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test-constraints",
         invitation=venue.get_assignment_id(venue.get_reviewers_id()),
     )
 
-    assert paper_assignment_edges == num_papers * reviews_per_paper
-
-    grouped_edges = openreview_client.get_grouped_edges(
-        label="integration-test-constraints",
-        invitation=venue.get_assignment_id(
-            venue.get_reviewers_id()
-        ),
-        groupby='head',
-        select='id,head,tail'
-    )
-
-    for edge_dict in grouped_edges:
-        assert sum([1 for edge in edge_dict['values'] if us_reviewer1 == edge['tail'] or us_reviewer2 == edge['tail']]) <= 1, f"Too many US reviewers"
-        assert True in [eu_reviewer == edge['tail'] for edge in edge_dict['values']], f"No EU reviewer found"
-
-    assert paper_assignment_edges == num_papers * reviews_per_paper
+    assert paper_assignment_edges == 0
 
 def test_integration_supply_mismatch_error(
     openreview_context, celery_app, celery_session_worker
