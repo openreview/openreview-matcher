@@ -374,8 +374,7 @@ def openreview_context():
         openreview.tools.create_profile(
             superuser_client,
             "user{0}_reviewer@mail.com".format(chr(97 + index)),
-            "User{0}".format(chr(97 + index)),
-            "Reviewer",
+            "User{0} Reviewer".format(chr(97 + index))
         )
 
     for letter in ["a", "b", "c"]:
