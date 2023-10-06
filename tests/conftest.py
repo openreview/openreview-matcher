@@ -112,8 +112,9 @@ def initialize_superuser():
 def create_user(email, first, last, alternates=[], institution=None):
     client = openreview.Client(baseurl="http://localhost:3000")
     assert client is not None, "Client is none"
+    fullname = f'{first} {last}'
     res = client.register_user(
-        email=email, first=first, last=last, password=strong_password
+        email=email, fullname=fullname, password=strong_password
     )
     username = res.get("id")
     assert res, "Res i none"
@@ -373,8 +374,7 @@ def openreview_context():
         openreview.tools.create_profile(
             superuser_client,
             "user{0}_reviewer@mail.com".format(chr(97 + index)),
-            "User{0}".format(chr(97 + index)),
-            "Reviewer",
+            "User{0} Reviewer".format(chr(97 + index))
         )
 
     for letter in ["a", "b", "c"]:
