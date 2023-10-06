@@ -112,8 +112,9 @@ def initialize_superuser():
 def create_user(email, first, last, alternates=[], institution=None):
     client = openreview.Client(baseurl="http://localhost:3000")
     assert client is not None, "Client is none"
+    fullname = f'{first} {last}'
     res = client.register_user(
-        email=email, first=first, last=last, password=strong_password
+        email=email, fullname=fullname, password=strong_password
     )
     username = res.get("id")
     assert res, "Res i none"
