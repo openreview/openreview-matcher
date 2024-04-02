@@ -57,6 +57,9 @@ class Encoder:
          a list of triples, formatted as follows:
          (<str paper_ID>, <str reviewer_ID>, <float limit>)
          OR a float, indicating the probability limit for all reviewer-paper pairs
+
+     - `perturbation`:
+         a float, indicating the perturbation factor for the Perturbed Maximization Solver.
     """
 
     def __init__(
@@ -69,6 +72,7 @@ class Encoder:
         normalization_types=[],
         probability_limits=[],
         attribute_constraints=None,
+        perturbation=0.0,
         logger=logging.getLogger(__name__),
     ):
         self.logger = logger
@@ -112,6 +116,8 @@ class Encoder:
         self.prob_limit_matrix = self._encode_probability_limits(
             probability_limits
         )
+
+        self.perturbation = perturbation
 
         # Parse attribute constraints -> reviewers to indices
         self.logger.debug("Init attribute constraints")
