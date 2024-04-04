@@ -87,7 +87,12 @@ class PerturbedMaximizationSolver:
         assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
         for i in range(self.num_paps):
             for j in range(self.num_revs):
-                x = solver.addVar(lb=0, ub=1, name=f"{i} {j}")
+                if self.constraint_matrix[i][j] == -1:
+                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                elif self.constraint_matrix[i][j] == 1:
+                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                else:
+                    x = solver.addVar(lb=0, ub=1, name=f"{i} {j}")
                 assignment[i][j] = x
                 objective += x * self.cost_matrix[i][j]
         solver.setObjective(objective, gp.GRB.MINIMIZE)
@@ -155,11 +160,15 @@ class PerturbedMaximizationSolver:
             raise SolverException(
                 "Constraint matrix must be in shape [#papers, #reviewers]"
             )
-        if not np.all(np.logical_or(
-            self.constraint_matrix == 0,
-            self.constraint_matrix == 1,
-            self.constraint_matrix == -1
-        )):
+        if not np.all(
+            np.logical_or(
+                np.logical_or(
+                    self.constraint_matrix == 0,
+                    self.constraint_matrix == 1
+                ),
+                self.constraint_matrix == -1
+            )
+        ):
             self.logger.debug("[PerturbedMaximization]: ERROR: Invaild input")
             raise SolverException(
                 "Values in the constraint matrix must be in {-1, 0, 1}"
@@ -250,7 +259,7 @@ class PerturbedMaximizationSolver:
 
         self.logger.debug("[PerturbedMaximization]: Finished checking inputs")
 
-    def _sample_assignment(self):
+    def sample_assignment(self):
         """
         Sample an assignment from the fractional assignment matrix.
         """
@@ -344,7 +353,13 @@ class PerturbedMaximizationSolver:
         assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
         for i in range(self.num_paps):
             for j in range(self.num_revs):
-                x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], name=f"{i} {j}")
+                if self.constraint_matrix[i][j] == -1:
+                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                elif self.constraint_matrix[i][j] == 1:
+                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                else:
+                    x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
+                                      name=f"{i} {j}")
                 assignment[i][j] = x
                 objective += (x - self.perturbation * x * x) * self.cost_matrix[i][j]
         solver.setObjective(objective, gp.GRB.MINIMIZE)
@@ -379,7 +394,7 @@ class PerturbedMaximizationSolver:
         )
 
         # Sample the assignment and return the sampled assignment matrix
-        self._sample_assignment()
+        self.sample_assignment()
         return self.sampled_assignment_matrix
 
     def get_alternates(self, num_alternates):
