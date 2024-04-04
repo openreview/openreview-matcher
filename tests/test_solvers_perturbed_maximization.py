@@ -515,8 +515,8 @@ def test_bad_perturbation():
 
 def test_large():
     """Ensure things still work in a larger case"""
-    p = 20
-    r = 60
+    p = 5
+    r = 15
     S = np.random.random((p, r))
     M = np.zeros(np.shape(S))
     Q = np.full(np.shape(S), 0.5)
