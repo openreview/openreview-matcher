@@ -260,8 +260,9 @@ if args.perturbation:
         logger.info("Perturbation is non-numeric, defaulting to 0.0")
 
 bad_match_thresholds = []
-for threshold in args.bad_match_thresholds:
-    bad_match_thresholds.append(threshold)
+if args.bad_match_thresholds:
+    for threshold in args.bad_match_thresholds:
+        bad_match_thresholds.append(threshold)
 
 attr_constraints = None
 if args.attribute_constraints:
