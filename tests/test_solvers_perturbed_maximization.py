@@ -5,11 +5,19 @@ from matcher.solvers import SolverException, PerturbedMaximizationSolver
 
 
 class encoder:
-    def __init__(self, cost, constraint, prob_limit, perturbation):
+    def __init__(
+        self,
+        cost,
+        constraint,
+        prob_limit,
+        perturbation,
+        bad_match_thresholds = []
+    ):
         self.cost_matrix = cost
         self.constraint_matrix = constraint
         self.prob_limit_matrix = prob_limit
         self.perturbation = perturbation
+        self.bad_match_thresholds = bad_match_thresholds
 
 
 def check_sampled_solution(solver):
@@ -507,6 +515,58 @@ def test_bad_perturbation():
     try:
         solver = PerturbedMaximizationSolver(
             [0, 0], [1.1, 2], [1, 1], encoder(-S, M, Q, -1)
+        )
+        assert False  # should throw
+    except SolverException:
+        pass
+
+
+def test_thresholds():
+    """Cases to test that bad match ratio contraints are correctly applied"""
+    # Case 1
+    S = np.transpose(np.array([[0.5], [1]]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 1.0)
+    solver = PerturbedMaximizationSolver(
+        [0, 0], [1, 1], [1], encoder(-S, M, Q, 1.0, bad_match_thresholds = [-0.75]),
+    )
+    check_test_solution(solver)
+    # verify correct solution
+    solution = np.transpose(
+        np.array([[0.0], [1.0]])
+    )
+    assert np.all(
+        np.isclose(solver.fractional_assignment_matrix, solution)
+    ), "Fractional assignment should be correct"
+
+    # Case 2
+    S = np.transpose(np.array([[0.5], [0.5], [1]]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 0.8)
+    solver = PerturbedMaximizationSolver(
+        [0, 0, 0], [1, 1, 1], [1], encoder(-S, M, Q, 0.5, bad_match_thresholds = [-0.75])
+    )
+    check_test_solution(solver)
+    # verify correct solution
+    solution = np.transpose(
+        np.array([[0.1], [0.1], [0.8]])
+    )
+    assert np.all(
+        np.isclose(solver.fractional_assignment_matrix, solution)
+    ), "Fractional assignment should be correct"
+
+
+def test_bad_thresholds():
+    """Test for error-checking the bad match ratio contraints"""
+    S = np.transpose(np.array([
+        [1.0, 0.8], 
+        [0.7, 0.3],
+    ]))
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 1.0)
+    try:
+        solver = PerturbedMaximizationSolver(
+            [0, 0], [1.1, 2], [1, 1], encoder(-S, M, Q, -1, bad_match_thresholds = ["-0.75"])
         )
         assert False  # should throw
     except SolverException:

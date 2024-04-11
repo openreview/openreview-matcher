@@ -45,6 +45,7 @@ class PerturbedMaximizationSolver:
         self.constraint_matrix = encoder.constraint_matrix
         self.prob_limit_matrix = encoder.prob_limit_matrix
         self.perturbation = encoder.perturbation
+        self.bad_match_thresholds = encoder.bad_match_thresholds
 
         # Reduce the minimums of reviewers with no known affinity with any paper to 0
         if not self.allow_zero_score_assignments:
@@ -127,6 +128,62 @@ class PerturbedMaximizationSolver:
         self.logger.debug("[PerturbedMaximization]: Finished computing the optimal "
                           "deterministic assignment, total affinity score "
                           f"{-self.deterministic_assignment_cost:.6f}")
+
+        # Compute the max-affinity assignment subject only to probability limits
+        #     This is used to compute constraints on the number of bad matches or
+        #     insufficiently good matches in the randomized assignment. We require
+        #     that the fractional assignment with perturbation does not have more
+        #     bad matches than the fractional assignment without perturbation.
+        if len(self.bad_match_thresholds) != 0:
+            self.logger.debug("[PerturbedMaximization]: Computing the fractional "
+                              "assignment without perturbation ...")
+            solver = gp.Model()
+            solver.setParam('OutputFlag', 0)
+            # Initialize assignment matrix and objective function
+            objective  = 0.0
+            assignment = [
+                [0.0 for j in range(self.num_revs)] for i in range(self.num_paps)
+            ]
+            for i in range(self.num_paps):
+                for j in range(self.num_revs):
+                    if self.constraint_matrix[i][j] == -1:
+                        x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                    elif self.constraint_matrix[i][j] == 1:
+                        x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                    else:
+                        x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
+                                          name=f"{i} {j}")
+                    assignment[i][j] = x
+                    objective += x * self.cost_matrix[i][j]
+            solver.setObjective(objective, gp.GRB.MINIMIZE)
+            # Add constraints
+            for i in range(self.num_paps):
+                assigned = 0.0
+                for j in range(self.num_revs):
+                    assigned += assignment[i][j]
+                solver.addConstr(assigned == self.demands[i])
+            for j in range(self.num_revs):
+                load = 0.0
+                for i in range(self.num_paps):
+                    load += assignment[i][j]
+                solver.addConstr(load >= self.minimums[j])
+                solver.addConstr(load <= self.maximums[j])
+            # Run the Gurobi solver
+            solver.optimize()
+            if solver.status != gp.GRB.OPTIMAL:
+                self.fractional_assignment_solved = False
+                self.logger.debug(
+                    "[PerturbedMaximization]: ERROR: Fractional assignment without "
+                    "perturbation infeasible"
+                )
+                raise SolverException(
+                    "Fractional assignment without perturbation infeasible"
+                )
+            self.no_perturbation_assignment_matrix = np.array([
+                [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
+            ])
+            self.logger.debug("[PerturbedMaximization]: Finished computing the "
+                              "fractional assignment without perturbation")
                           
         self.logger.debug("[PerturbedMaximization]: Finished initializing")
 
@@ -256,6 +313,19 @@ class PerturbedMaximizationSolver:
             raise SolverException(
                 "Perturbation must be non-negative"
             )
+        
+        # Bad match thresholds
+        if not isinstance(self.bad_match_thresholds, list):
+            self.logger.debug("[PerturbedMaximization]: ERROR: Invaild input")
+            raise SolverException(
+                "Bad match thresholds must be of type list"
+            )
+        for threshold in self.bad_match_thresholds:
+            if not isinstance(threshold, float):
+                self.logger.debug("[PerturbedMaximization]: ERROR: Invaild input")
+                raise SolverException(
+                    "Bad match thresholds must be a list of floats"
+                )
 
         self.logger.debug("[PerturbedMaximization]: Finished checking inputs")
 
@@ -375,6 +445,15 @@ class PerturbedMaximizationSolver:
                 load += assignment[i][j]
             solver.addConstr(load >= self.minimums[j])
             solver.addConstr(load <= self.maximums[j])
+        for threshold in self.bad_match_thresholds:
+            no_perturbation_bad_matches = np.sum(
+                self.no_perturbation_assignment_matrix * (self.cost_matrix > threshold)
+            )
+            bad_matches = 0.0
+            for i in range(self.num_paps):
+                for j in range(self.num_revs):
+                    bad_matches += assignment[i][j] * (self.cost_matrix[i][j] > threshold)
+            solver.addConstr(bad_matches <= no_perturbation_bad_matches)
         # Run the Gurobi solver
         solver.optimize()
         if solver.status != gp.GRB.OPTIMAL:

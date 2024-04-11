@@ -57,6 +57,7 @@ class KeywordDatasource:
         num_alternates=0,
         probability_limits=[],
         perturbation=0.0,
+        bad_match_thresholds=[],
         allow_zero_score_assignments=False,
         attribute_constraints=None,
         assignments_output="assignments.json",
@@ -78,6 +79,7 @@ class KeywordDatasource:
         self.attribute_constraints = attribute_constraints
         self.normalization_types = []
         self.perturbation = perturbation
+        self.bad_match_thresholds = bad_match_thresholds
         self.assignments_output = assignments_output
         self.alternates_output = alternates_output
         self.logger = logger
@@ -166,6 +168,7 @@ class Matcher:
                 probability_limits=self.datasource.probability_limits,
                 attribute_constraints=self.datasource.attribute_constraints,
                 perturbation=self.datasource.perturbation,
+                bad_match_thresholds=self.datasource.bad_match_thresholds,
                 logger=self.logger,
             )
 
