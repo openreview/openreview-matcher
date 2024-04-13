@@ -327,6 +327,26 @@ class PerturbedMaximizationSolver:
                     "Bad match thresholds must be a list of floats"
                 )
 
+        # OR Validation
+        self.logger.debug("Checking if demand is in range")
+
+        min_supply = sum(self.minimums)
+        max_supply = sum(self.maximums)
+        demand = sum(self.demands)
+
+        self.logger.debug(
+            "Total demand is ({}), min review supply is ({}), and max review supply is ({})".format(
+                demand, min_supply, max_supply
+            )
+        )
+
+        if demand > max_supply or demand < min_supply:
+            raise SolverException(
+                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                    demand, min_supply, max_supply
+                )
+            )
+
         self.logger.debug("[PerturbedMaximization]: Finished checking inputs")
 
     def sample_assignment(self):

@@ -587,9 +587,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self.perturbation = float(
             self.config_note.content.get("randomized_perturbation", 0.0)
         )
-        self.bad_match_thresholds = eval(
-            self.config_note.content.get("bad_match_thresholds", "[]")
-        )
+        self.bad_match_thresholds = self.config_note.content.get("bad_match_thresholds", [])
 
         # Lazy variables
         self._reviewers = None
@@ -790,9 +788,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self.perturbation = float(
             self.config_note.content.get("randomized_perturbation", 0.0)
         )
-        self.bad_match_thresholds = eval(
-            self.config_note.content.get("bad_match_thresholds", "[]")
-        )
+        self.bad_match_thresholds = self.config_note.content.get("bad_match_thresholds", [])
 
         # Lazy variables
         self._reviewers = None
