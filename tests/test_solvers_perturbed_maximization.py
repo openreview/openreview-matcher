@@ -573,6 +573,22 @@ def test_bad_thresholds():
         pass
 
 
+def test_disallow_zero():
+    """Test that zero score assignments are correctly disallowed"""
+    S = np.eye(5)
+    M = np.zeros(np.shape(S))
+    Q = np.full(np.shape(S), 0.5)
+    solver = PerturbedMaximizationSolver(
+        [0, 0, 0, 0, 0],
+        [1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1],
+        encoder(-S, M, Q, 0.0),
+        False,  # Disallow zero score assignment
+    )
+    solver.solve()
+    assert not solver.solved
+
+
 def test_large():
     """Ensure things still work in a larger case"""
     p = 5

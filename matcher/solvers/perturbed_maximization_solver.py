@@ -49,6 +49,9 @@ class PerturbedMaximizationSolver:
 
         # Reduce the minimums of reviewers with no known affinity with any paper to 0
         if not self.allow_zero_score_assignments:
+            self.constraint_matrix[
+                np.where(self.cost_matrix == 0)
+            ] = -1
             bad_affinity_reviewers = np.where(
                 np.all(
                     (self.cost_matrix * (self.constraint_matrix >= 0)) == 0,
