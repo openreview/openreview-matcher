@@ -587,7 +587,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self.perturbation = float(
             self.config_note.content.get("perturbedmaximization_perturbation", 0.0)
         )
-         = self.config_note.content.get(
+        self.bad_match_thresholds = self.config_note.content.get(
             "perturbedmaximization_bad_match_thresholds", [0.1, 0.3, 0.5]
         )
 
