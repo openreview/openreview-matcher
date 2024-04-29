@@ -988,3 +988,58 @@ class Deployment:
             self.config_note_interface.set_status(
                 MatcherStatus.DEPLOYMENT_ERROR, str(e)
             )
+
+class Undeployment:
+    def __init__(
+        self, config_note_interface, logger=logging.getLogger(__name__)
+    ):
+
+        self.config_note_interface = config_note_interface
+        self.logger = logger
+
+    def run(self):
+
+        try:
+            venue = None
+            self.config_note_interface.set_status(MatcherStatus.UNDEPLOYING)
+            support_user = 'OpenReview.net/Support'
+            urls = openreview.tools.get_base_urls(self.config_note_interface.client)
+            client_v1 = openreview.Client(baseurl = urls[0], token=self.config_note_interface.client.token)
+
+            notes = client_v1.get_notes(
+                invitation=f"{support_user}/-/Request_Form",
+                content={"venue_id": self.config_note_interface.venue_id},
+            )
+            self.logger.debug('request form notes found', len(notes))
+            if notes:
+                venue = openreview.helpers.get_conference(
+                    client_v1, notes[0].id, support_user = support_user, setup=False
+                )
+            else:
+                client_v2 = openreview.api.OpenReviewClient(baseurl = urls[1], token=self.config_note_interface.client.token)
+                notes = client_v2.get_notes(
+                    invitation=f"{support_user}/-/Journal_Request",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+                if notes:
+                    venue = openreview.journal.JournalRequest.get_journal(
+                        client_v2, notes[0].id
+                    )
+                else:
+                    raise openreview.OpenReviewException(
+                        "Venue request not found"
+                    )
+
+            # impersonate user to get all the permissions to deploy the groups
+            venue.client.impersonate(self.config_note_interface.venue_id)
+            venue.unset_assignments(
+                assignment_title=self.config_note_interface.label,
+                committee_id=self.config_note_interface.match_group
+            )
+
+            self.config_note_interface.set_status(MatcherStatus.COMPLETE)
+        except Exception as e:
+            self.logger.error(str(e))
+            self.config_note_interface.set_status(
+                MatcherStatus.UNDEPLOYMENT_ERROR, str(e)
+            )            

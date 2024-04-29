@@ -8,6 +8,7 @@ from matcher.core import MatcherStatus
 from matcher.service.openreview_interface import (
     BaseConfigNoteInterface,
     Deployment,
+    Undeployment,
 )
 from matcher.service.server import celery_app as celery
 
@@ -103,3 +104,25 @@ def run_deployment(self, interface, logger):
         raise self.retry(
             exc=exc, countdown=300 * (self.request.retries + 1), max_retries=1
         )
+    
+@celery.task(
+    name="undeployment",
+    track_started=True,
+    bind=True,
+    time_limit=3600 * 24,
+    on_failure=on_task_failure,
+)
+def run_undeployment(self, interface, logger):
+    undeployment = Undeployment(config_note_interface=interface, logger=logger)
+    try:
+        undeployment.run()
+        return interface.config_note.content["status"]
+    except (
+        ConnectionError,
+        ConnectTimeoutError,
+        RequestError,
+        ConnectionRefusedError,
+    ) as exc:
+        raise self.retry(
+            exc=exc, countdown=300 * (self.request.retries + 1), max_retries=1
+        )    
