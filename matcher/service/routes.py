@@ -281,7 +281,7 @@ def deploy():
         return flask.jsonify(result), 200
 
 @BLUEPRINT.route("/undeploy", methods=["POST"])
-def deploy():
+def undeploy():
 
     flask.current_app.logger.debug("Undeploy request received")
 
