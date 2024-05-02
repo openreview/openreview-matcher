@@ -8,7 +8,7 @@ import openreview
 from openreview.api import Note
 import pytest
 
-from conftest import clean_start_conference_v2, wait_for_status, post_perturbed_to_api2
+from conftest import clean_start_conference_v2, wait_for_status
 
 @pytest.fixture(scope="module")
 def venue(openreview_context):
@@ -25,7 +25,6 @@ def venue(openreview_context):
             num_papers,
             0
         )
-        post_perturbed_to_api2(openreview_client, conference_id)
 
         assert len(openreview_client.get_group('PTBMX.ws/2024/Conference/Reviewers').members) == num_reviewers
         assert len(openreview_client.get_notes(invitation='PTBMX.ws/2024/Conference/-/Submission')) == num_papers
@@ -84,6 +83,8 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
                 }
             }
         },
+        "perturbedmaximization_perturbation": {"value": 0.9},
+        "perturbedmaximization_bad_match_thresholds": {"value": [0.1, 0.5]},
         "status": {"value": "Initialized"},
         "solver": {"value": "PerturbedMaximization"},
     }
@@ -230,7 +231,6 @@ def test_integration_api_error(
     )
 
     reviewers_id = venue.get_reviewers_id()
-    post_perturbed_to_api2(openreview_client, conference_id)
 
     config = {
         "title": {"value": "integration-test-3"},

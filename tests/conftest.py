@@ -302,44 +302,6 @@ def clean_start_conference(
 
     return conference
 
-def post_perturbed_to_api2(
-    client, conference_id
-):
-    inv = client.get_invitation(f"{conference_id}/Reviewers/-/Assignment_Configuration")
-    content = {
-        'solver': inv.edit['note']['content']['solver'],
-        'randomized_perturbation':{
-            'order': len(inv.edit['note']['content'].keys()) + 1,
-            'description': 'A single float representing the perturbation factor for the Perturbed Maximization Solver. The value should be between 0 and 1, increasing the value will trade assignment quality for randomization.',
-            'value': {
-                'param': {
-                    'type': 'float',
-                    'optional': True
-                }
-            }
-        },
-        'bad_match_thresholds': {
-            'order': len(inv.edit['note']['content'].keys()) + 2,
-            'description': ' One or more floating numbers representing the thresholds in affinity score for categorizing a paper-reviewer match. The Perturbed Maximization Solver uses these thresholds, and tries to randomize the assignment within the threshold range.',
-            'value': {
-                'param': {
-                    'type': 'float[]',
-                    'optional': True
-                }
-            }
-        }
-    }
-    content['solver']['value']['param']['enum'].append('PerturbedMaximization')
-    inv.edit['note']['content'] = content
-    client.post_invitation_edit(
-        invitations=f"{conference_id}/-/Edit",
-        readers=[conference_id],
-        writers=[conference_id],
-        signatures=[conference_id],
-        replacement=False,
-        invitation=inv
-    )
-
 def post_fairir_to_api2(
     client, conference_id
 ):
