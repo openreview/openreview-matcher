@@ -584,6 +584,12 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
+        self.perturbation = float(
+            self.config_note.content.get("perturbedmaximization_perturbation", 0.0)
+        )
+        self.bad_match_thresholds = self.config_note.content.get(
+            "perturbedmaximization_bad_match_thresholds", [0.1, 0.3, 0.5]
+        )
 
         # Lazy variables
         self._reviewers = None
@@ -780,6 +786,12 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         )
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
+        )
+        self.perturbation = float(
+            self.config_note.content.get("perturbedmaximization_perturbation", 0.0)
+        )
+        self.bad_match_thresholds = self.config_note.content.get(
+            "perturbedmaximization_bad_match_thresholds", [0.1, 0.3, 0.5]
         )
 
         # Lazy variables

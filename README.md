@@ -59,6 +59,12 @@ FairSequence (`--solver FairSequence` on the command line) attempts to create an
 
 For more information about the WEF1 fairness criterion, see [this paper](https://dl.acm.org/doi/abs/10.1145/3457166), and for more information about the adaptation to reviewer assignment, see [this paper](https://arxiv.org/abs/2108.02126).
 
+### PerturbedMaximization Solver
+
+PerturbedMaximization (`--solver PerturbedMaximization` on the command line) implements another randomized assignment algorithm. It aims to trade-off between the total affinity score and the randomness of the assignment (for the motivation and the metrics for randomness, see [this paper](https://arxiv.org/abs/2310.05995)). Like the Randomized Solver, PerturbedMaximization takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. It also takes in another perturbation factor, which controls the trade-off between the total affinity score and the randomness. The solver then finds a randomized assignment that maximizes a perturbed total affinity score, subject to the given probability limits. This is done with a convex Quadratic Program, implemented in `matcher/solvers/perturbed_maximization_solver.py`.
+
+Like the Randomized Solver, PerturbedMaximization returns a deterministic assignment that was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn_extension`. For more information, see [this paper](https://arxiv.org/abs/2310.05995).
+
 ## Running the Server
 The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:
 ```
