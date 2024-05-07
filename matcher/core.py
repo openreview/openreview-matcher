@@ -32,8 +32,10 @@ class MatcherStatus(Enum):
     NO_SOLUTION = "No Solution"
     COMPLETE = "Complete"
     DEPLOYING = "Deploying"
+    UNDEPLOYING = "Undeploying"
     DEPLOYED = "Deployed"
     DEPLOYMENT_ERROR = "Deployment Error"
+    UNDEPLOYMENT_ERROR = "Undeployment Error"
     QUEUED = "Queued"
 
 

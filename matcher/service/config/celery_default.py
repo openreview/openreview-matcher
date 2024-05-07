@@ -8,6 +8,9 @@ task_queues = (
         "deployment", routing_key="matcher.service.celery_tasks.run_deployment"
     ),
     Queue(
+        "undeployment", routing_key="matcher.service.celery_tasks.run_undeployment"
+    ),    
+    Queue(
         "failure", routing_key="matcher.service.celery_tasks.set_error_status"
     ),
 )
