@@ -7,3 +7,4 @@ from .randomized_solver import RandomizedSolver
 from .fairflow import FairFlow
 from .fairsequence import FairSequence
 from .fairir import FairIR
+from .perturbed_maximization_solver import PerturbedMaximizationSolver

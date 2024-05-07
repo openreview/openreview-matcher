@@ -81,11 +81,31 @@ parser.add_argument(
         """,
 )
 
+parser.add_argument(
+    "--perturbation",
+    help="""
+        A single float representing the perturbation factor for the Perturbed Maximization Solver. The value should be between 0 and 1, increasing the value will trade assignment quality for randomization.
+        """,
+)
+
+parser.add_argument(
+    "--bad_match_thresholds",
+    nargs="+",
+    type=float,
+    help="""
+        One or more floating numbers representing the thresholds in affinity score
+        for categorizing a paper-reviewer match. The Perturbed Maximization Solver 
+        uses these thresholds, and tries to randomize the assignment within the
+        threshold range. E.g., 0.1, 0.3, 0.5 means that the solver will try to 
+        randomize within [0, 0.1), [0.1, 0.3), [0.3, 0.5), [0.5, 1.0] score ranges.
+        """,
+)
+
 # TODO: dynamically populate solvers list
 # TODO: can argparse throw an error if the solver isn't in the list?
 parser.add_argument(
     "--solver",
-    help="Choose from: {}".format(["MinMax", "FairFlow", "Randomized", "FairIR"]),
+    help="Choose from: {}".format(["MinMax", "FairFlow", "Randomized", "FairIR", "PerturbedMaximization"]),
     default="MinMax",
 )
 
@@ -107,6 +127,8 @@ if args.solver == "Randomized":
     solver_class = "Randomized"
 if args.solver == "FairIR":
     solver_class = "FairIR"
+if args.solver == "PerturbedMaximization":
+    solver_class = "PerturbedMaximization"
 
 if not solver_class:
     raise ValueError("Invalid solver class {}".format(args.solver))
@@ -229,6 +251,18 @@ if args.probability_limits:
                 "Papers with probability limits but missing in all score files: "
                 + ", ".join(missing_papers)
             )
+        
+perturbation = 0.0
+if args.perturbation:
+    try:
+        perturbation = float(args.perturbation)
+    except ValueError:
+        logger.info("Perturbation is non-numeric, defaulting to 0.0")
+
+bad_match_thresholds = []
+if args.bad_match_thresholds:
+    for threshold in args.bad_match_thresholds:
+        bad_match_thresholds.append(threshold)
 
 attr_constraints = None
 if args.attribute_constraints:
@@ -249,6 +283,8 @@ match_data = {
     "maximums": maximums,
     "demands": demands,
     "probability_limits": probability_limits,
+    "perturbation": perturbation,
+    "bad_match_thresholds": bad_match_thresholds,
     "num_alternates": num_alternates,
     "allow_zero_score_assignments": args.allow_zero_score_assignments,
     "attribute_constraints": attr_constraints,
