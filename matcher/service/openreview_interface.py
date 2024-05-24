@@ -965,7 +965,7 @@ class Deployment:
                 invitation=f"{support_user}/-/Request_Form",
                 content={"venue_id": self.config_note_interface.venue_id},
             )
-            self.logger.debug('request form notes found', len(notes))
+            self.logger.debug('request form notes found: {}'.format(len(notes)))
             if notes:
                 venue = openreview.helpers.get_conference(
                     client_v1, notes[0].id, support_user = support_user, setup=False
@@ -1022,7 +1022,7 @@ class Undeployment:
                 invitation=f"{support_user}/-/Request_Form",
                 content={"venue_id": self.config_note_interface.venue_id},
             )
-            self.logger.debug('request form notes found', len(notes))
+            self.logger.debug('request form notes found: {}'.format(len(notes)))
             if notes:
                 venue = openreview.helpers.get_conference(
                     client_v1, notes[0].id, support_user = support_user, setup=False
