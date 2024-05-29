@@ -435,9 +435,7 @@ class BaseConfigNoteInterface:
                 index = map_reviewers_to_idx.get(reviewer, -1)
                 if index >= 0:
                     load = int(edge["weight"])
-                    maximums[index] = min(
-                        maximums[index], load if load > 0 else 0
-                    )
+                    maximums[index] = min(maximums[index], load if load > 0 else 0) if maximums[index] > 0 else load
                     minimums[index] = min(minimums[index], maximums[index])
                     count_processed_edges += 1
             self.logger.debug(
