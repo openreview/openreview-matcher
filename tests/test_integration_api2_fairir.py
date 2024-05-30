@@ -107,6 +107,119 @@ def test_integration_basic(openreview_context, celery_app, celery_session_worker
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
+def test_integration_zero_max_min(openreview_context, celery_app, celery_session_worker):
+    """
+    Basic integration test with 0 max and min papers, uses custom max paper edges only
+    """
+
+    openreview_client = openreview_context["openreview_client_v2"]
+    test_client = openreview_context["test_client"]
+
+    conference_id = "IMCLR.ws/2014/Conference"
+    num_reviewers = 10
+    num_papers = 10
+    reviews_per_paper = 3
+    max_papers = 0
+    min_papers = 0
+    alternates = 0
+
+    venue = clean_start_conference_v2(
+        openreview_client,
+        conference_id,
+        num_reviewers,
+        num_papers,
+        reviews_per_paper,
+    )
+
+    post_fairir_to_api2(openreview_client, conference_id)
+
+    reviewers_id = venue.get_reviewers_id()
+
+    config = {
+        "title": {"value": "integration-test"},
+        "user_demand": {"value": str(reviews_per_paper)},
+        "max_papers": {"value": str(max_papers)},
+        "min_papers": {"value": str(min_papers)},
+        "alternates": {"value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": {"value": reviewers_id},
+        "scores_specification": {
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
+            }
+        },
+        "status": {"value": "Initialized"},
+        "solver": {"value": "FairIR"},
+    }
+
+    # Post custom max papers edges to meet demand
+    cmp_invitation_id = "{}/-/Custom_Max_Papers".format(reviewers_id)
+    cmp_edges = []
+    for reviewer in openreview_client.get_group(reviewers_id).members:
+        cmp_edges.append(
+            openreview.api.Edge(
+                head=reviewers_id,
+                tail=reviewer,
+                invitation=cmp_invitation_id,
+                writers=[venue.id],
+                signatures=[venue.id],
+                weight=3
+            )
+        )
+
+    openreview.tools.post_bulk_edges(client=openreview_client, edges=cmp_edges)
+
+    config_note = openreview_client.post_note_edit(
+        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
+        signatures=[venue.get_id()],
+        note=Note(content=config),
+    )
+    assert config_note
+
+    response = test_client.post(
+        "/match",
+        data=json.dumps({"configNoteId": config_note["note"]["id"]}),
+        content_type="application/json",
+        headers=openreview_client.headers,
+    )
+    assert response.status_code == 200
+
+    matcher_status = wait_for_status(
+        openreview_client, config_note["note"]["id"], api_version=2
+    )
+    assert matcher_status.content["status"]["value"] == "Complete"
+
+    paper_assignment_edges = openreview_client.get_edges_count(
+        label="integration-test",
+        invitation=venue.get_assignment_id(venue.get_reviewers_id()),
+    )
+
+    assert paper_assignment_edges == num_papers * reviews_per_paper
+
 def test_integration_attribute_constraints(
     openreview_context, celery_app, celery_session_worker
 ):
