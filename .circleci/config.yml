@@ -126,9 +126,9 @@ jobs:
           command: |
             source matcher/bin/activate
             cd ~/openreview-matcher-repo
-            TEST_FILES=$(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
             mkdir -p reports/pytest
-            python -m pytest -x --junitxml=reports/pytest/pytest-report.xml $TEST_FILES
+            TEST_FILES=$(circleci tests glob "tests/test_*.py")
+            echo "$TEST_FILES" | circleci tests run --command="xargs pytest --durations=0 -o junit_family=legacy --junitxml=reports/pytest/pytest-report.xml" --verbose --split-by=timings
       - store_test_results:
           path: reports
       - store_artifacts:
