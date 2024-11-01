@@ -30,7 +30,7 @@ setup(
         "gunicorn==19.*",
         "importlib-metadata>=1.1.0,<4.3",
         "flake8==3.8.4",
-        "gurobipy==10.0.1",
+        "gurobipy",
         "kombu>=5.3.0,<6.0",
         "psutil",
         "scipy"
