@@ -276,9 +276,9 @@ class FairIR(Basic):
 
         if demand > max_supply or demand < min_supply:
             raise SolverException(
-                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                "Review demand ({}) must be between the min review supply is ({}) and max review supply is ({}).".format(
                     demand, min_supply, max_supply
-                )
+                ) + " Try (1) decreasing min papers (2) increasing max papers or (3) finding more reviewers"
             )
 
         self._log_and_profile("Finished checking graph inputs")
@@ -627,4 +627,4 @@ class FairIR(Basic):
                 return
         
         if not solved:
-            raise Exception('No Solution.')
+            raise Exception("Solver could not find a solution. Try (1) increasing max papers (2) adding more reviewers or (3) using only more recent history for computing conflicts in the Paper Matching Setup to reduce conflicts.")
