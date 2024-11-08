@@ -213,7 +213,7 @@ def test_integration_no_solution_due_to_conflicts(
     assert matcher_status.content["status"] == "No Solution"
     assert (
         matcher_status.content["error_message"]
-        == "Solver could not find a solution. Adjust your parameters"
+        == "Solver could not find a solution. Try (1) increasing max papers (2) adding more reviewers or (3) using only more recent history for computing conflicts in the Paper Matching Setup to reduce conflicts."
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
@@ -315,7 +315,7 @@ def test_integration_supply_mismatch_error(
     assert matcher_status.content["status"] == "No Solution"
     assert (
         matcher_status.content["error_message"]
-        == "Total demand (100) is out of range when min review supply is (10) and max review supply is (10)"
+        == "Review demand (100) must be between the min review supply is (10) and max review supply is (10). Try (1) decreasing min papers (2) increasing max papers or (3) finding more reviewers"
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
@@ -417,7 +417,7 @@ def test_integration_demand_out_of_supply_range_error(
     assert matcher_status.content["status"] == "No Solution"
     assert (
         matcher_status.content["error_message"]
-        == "Total demand (30) is out of range when min review supply is (40) and max review supply is (50)"
+        == "Review demand (30) must be between the min review supply is (40) and max review supply is (50). Try (1) decreasing min papers (2) increasing max papers or (3) finding more reviewers"
     )
 
     paper_assignment_edges = openreview_client.get_edges_count(
