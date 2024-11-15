@@ -231,7 +231,7 @@ class Matcher:
                 )
                 self.set_status(
                     MatcherStatus.NO_SOLUTION,
-                    message="Solver could not find a solution. Adjust your parameters",
+                    message="Solver could not find a solution. Try (1) increasing max papers (2) adding more reviewers or (3) using only more recent history for computing conflicts in the Paper Matching Setup to reduce conflicts.",
                 )
 
         except SolverException as error_handle:

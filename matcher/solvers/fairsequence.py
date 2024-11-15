@@ -131,9 +131,9 @@ class FairSequence(object):
 
         if demand > max_supply or demand < min_supply:
             raise SolverException(
-                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                "Review demand ({}) must be between the min review supply is ({}) and max review supply is ({}).".format(
                     demand, min_supply, max_supply
-                )
+                ) + " Try (1) decreasing min papers (2) increasing max papers or (3) finding more reviewers"
             )
 
         self.logger.debug("Finished checking input ranges")
@@ -621,7 +621,7 @@ class FairSequence(object):
                 )
             except PickingSequenceException:
                 raise SolverException(
-                    "Solver could not find a solution. Adjust your parameters."
+                    "Solver could not find a solution. Try (1) increasing max papers (2) adding more reviewers or (3) using only more recent history for computing conflicts in the Paper Matching Setup to reduce conflicts."
                 )
 
         if improper_papers:

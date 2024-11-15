@@ -162,9 +162,9 @@ class RandomizedSolver:
 
         if demand > max_supply or demand < min_supply:
             raise SolverException(
-                "Total demand ({}) is out of range when min review supply is ({}) and max review supply is ({})".format(
+                "Review demand ({}) must be between the min review supply is ({}) and max review supply is ({}).".format(
                     demand, min_supply, max_supply
-                )
+                ) + " Try (1) decreasing min papers (2) increasing max papers or (3) finding more reviewers"
             )
 
         self.logger.debug("Finished checking if demand is in range")

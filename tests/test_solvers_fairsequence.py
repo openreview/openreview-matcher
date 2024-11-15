@@ -825,7 +825,7 @@ def test_solver_fairsequence_avoid_zero_scores_get_no_solution():
 
     with pytest.raises(
         SolverException,
-        match=r"Solver could not find a solution. Adjust your parameters.",
+        match=r"Solver could not find a solution",
     ):
         res = solver.solve()
 
