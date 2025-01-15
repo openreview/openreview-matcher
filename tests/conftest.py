@@ -343,6 +343,45 @@ def assert_arrays(array_A, array_B, is_string=False):
             ]
         )
 
+def create_user(email, first, last, alternates=[], institution=None, fullname=None):
+
+    fullname = f'{first} {last}' if fullname is None else fullname
+
+    super_client = openreview.api.OpenReviewClient(baseurl='http://localhost:3001', username='openreview.net', password=strong_password)
+    profile = openreview.tools.get_profile(super_client, email)
+    if profile:
+        return Helpers.get_user(email)
+
+    client = openreview.api.OpenReviewClient(baseurl = 'http://localhost:3001')
+    assert client is not None, "Client is none"
+
+    res = client.register_user(email = email, fullname = fullname, password = strong_password)
+    username = res.get('id')
+    assert res, "Res i none"
+    profile_content={
+        'names': [
+                {
+                    'fullname': fullname,
+                    'username': username,
+                    'preferred': True
+                }
+            ],
+        'emails': [email] + alternates,
+        'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email,
+        'homepage': f"https://{fullname.replace(' ', '')}{int(time.time())}.openreview.net",
+    }
+    profile_content['history'] = [{
+        'position': 'PhD Student',
+        'start': 2017,
+        'end': None,
+        'institution': {
+            'country': 'US',
+            'domain': institution if institution else email.split('@')[1],
+        }
+    }]
+    res = client.activate_user(email, profile_content)
+    assert res, "Res i none"
+    return client
 
 @pytest.fixture(scope="session")
 def openreview_context():
@@ -372,10 +411,10 @@ def openreview_context():
 
     superuser_client, superuser_v2 = initialize_superuser()
     for index in range(0, 26):
-        openreview.tools.create_profile(
-            superuser_client,
+        create_user(
             "user{0}_reviewer@mail.com".format(chr(97 + index)),
-            "User{0} Reviewer".format(chr(97 + index))
+            "User{0}".format(chr(97 + index)),
+            "Reviewer"
         )
 
     for letter in ["a", "b", "c"]:
