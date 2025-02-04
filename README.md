@@ -49,7 +49,7 @@ For more information, see [this paper](https://arxiv.org/abs/1905.11924v1)
 
 FairIR solver finds a solution in the same way that FairFlow does. Both solvers address the issue of maximizing the global aggregate scores of all assignments, by requiring that the sum of the scores between a paper and its reviewers is at least some number (fairness threshold). This threshold is found through a binary search between the highest possible sum of scores for a paper and zero.
 
-Our implementation is optimized by reducing the problem size and relaxing the fairness to speed up . To reduce the space taken up by the affinity matrix, OpenReview only stores the top K scores for each reviewer and paper leading to a sparse matrix. We only initialize variables between reviewer-paper pairs that have scores, which shrinks the problem. Progress in the matching could also stall if the matcher tries to maintain the fairness threshold, so the threshold moves closer to zero each time the matching stalls.
+Our implementation is optimized by reducing the problem size and relaxing the fairness to speed up the matching. To reduce the space taken up by the affinity matrix, OpenReview only stores the top K scores for each reviewer and paper leading to a sparse matrix. We only initialize matcher variables between reviewer-paper pairs that have scores, which shrinks the problem. Progress in the matching could also stall if the matcher tries to maintain the fairness threshold, so the threshold moves closer to zero each time the matching stalls.
 
 ### Randomized Solver
 
