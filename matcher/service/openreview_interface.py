@@ -254,8 +254,6 @@ class BaseConfigNoteInterface:
                     )
                     for edge in edges
                 ]
-                self.logger.debug(edges)
-                self.logger.debug(invitation_edges)
 
                 for metadata in metadata_by_invitation[inv_id]:
                     label, keys = metadata.get('label', ''), metadata.keys()
