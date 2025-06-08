@@ -92,9 +92,9 @@ class PerturbedMaximizationSolver:
         for i in range(self.num_paps):
             for j in range(self.num_revs):
                 if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                    x = 0.0
                 elif self.constraint_matrix[i][j] == 1:
-                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                    x = 1.0
                 else:
                     x = solver.addVar(lb=0, ub=1, name=f"{i} {j}")
                 assignment[i][j] = x
@@ -123,7 +123,8 @@ class PerturbedMaximizationSolver:
         # Compute properties of the deterministic assignment
         self.deterministic_assignment_solved = True
         self.deterministic_assignment_matrix = np.array([
-            [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
+            [assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j] 
+             for j in range(self.num_revs)] for i in range(self.num_paps)
         ])
         self.deterministic_assignment_cost = self._compute_expected_cost(
             self.deterministic_assignment_matrix
@@ -150,9 +151,9 @@ class PerturbedMaximizationSolver:
             for i in range(self.num_paps):
                 for j in range(self.num_revs):
                     if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                        x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                        x = 0.0
                     elif self.constraint_matrix[i][j] == 1:
-                        x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                        x = 1.0
                     else:
                         x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
                                           name=f"{i} {j}")
@@ -183,7 +184,8 @@ class PerturbedMaximizationSolver:
                     "Fractional assignment without perturbation infeasible"
                 )
             self.no_perturbation_assignment_matrix = np.array([
-                [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
+                [assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j] 
+                 for j in range(self.num_revs)] for i in range(self.num_paps)
             ])
             self.logger.debug("[PerturbedMaximization]: Finished computing the "
                               "fractional assignment without perturbation")
@@ -447,9 +449,9 @@ class PerturbedMaximizationSolver:
         for i in range(self.num_paps):
             for j in range(self.num_revs):
                 if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
+                    x = 0.0
                 elif self.constraint_matrix[i][j] == 1:
-                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
+                    x = 1.0
                 else:
                     x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
                                       name=f"{i} {j}")
@@ -486,7 +488,8 @@ class PerturbedMaximizationSolver:
         # Compute properties of the fractional assignment
         self.solved = True
         self.fractional_assignment_matrix = np.array([
-            [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
+            [assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j] 
+             for j in range(self.num_revs)] for i in range(self.num_paps)
         ])
         self.fractional_assignment_cost = self._compute_expected_cost(self.fractional_assignment_matrix)
         self.logger.debug(
