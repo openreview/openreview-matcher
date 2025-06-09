@@ -107,13 +107,19 @@ class PerturbedMaximizationSolver:
                 assigned = 0.0
                 for j in range(self.num_revs):
                     assigned += assignment[i][j]
-                solver.addConstr(assigned == self.demands[i])
+                if isinstance(assigned, gp.Var):
+                    solver.addConstr(assigned == self.demands[i])
+                elif assigned != self.demands[i]:
+                    return None
             for j in range(self.num_revs):
                 load = 0.0
                 for i in range(self.num_paps):
                     load += assignment[i][j]
-                solver.addConstr(load >= self.minimums[j])
-                solver.addConstr(load <= self.maximums[j])
+                if isinstance(load, gp.Var):
+                    solver.addConstr(load >= self.minimums[j])
+                    solver.addConstr(load <= self.maximums[j])
+                elif load < self.minimums[j] or load > self.maximums[j]:
+                    return None
             # Run the Gurobi solver
             solver.optimize()
             if solver.status != gp.GRB.OPTIMAL:
@@ -166,7 +172,7 @@ class PerturbedMaximizationSolver:
                             x = 1.0
                         else:
                             x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
-                                            name=f"{i} {j}")
+                                              name=f"{i} {j}")
                         assignment[i][j] = x
                         objective += x * self.cost_matrix[i][j]
                 solver.setObjective(objective, gp.GRB.MINIMIZE)
@@ -175,13 +181,19 @@ class PerturbedMaximizationSolver:
                     assigned = 0.0
                     for j in range(self.num_revs):
                         assigned += assignment[i][j]
-                    solver.addConstr(assigned == self.demands[i])
+                    if isinstance(assigned, gp.Var):
+                        solver.addConstr(assigned == self.demands[i])
+                    elif assigned != self.demands[i]:
+                        return None
                 for j in range(self.num_revs):
                     load = 0.0
                     for i in range(self.num_paps):
                         load += assignment[i][j]
-                    solver.addConstr(load >= self.minimums[j])
-                    solver.addConstr(load <= self.maximums[j])
+                    if isinstance(load, gp.Var):
+                        solver.addConstr(load >= self.minimums[j])
+                        solver.addConstr(load <= self.maximums[j])
+                    elif load < self.minimums[j] or load > self.maximums[j]:
+                        return None
                 # Run the Gurobi solver
                 solver.optimize()
                 if solver.status != gp.GRB.OPTIMAL:
@@ -480,13 +492,19 @@ class PerturbedMaximizationSolver:
                 assigned = 0.0
                 for j in range(self.num_revs):
                     assigned += assignment[i][j]
-                solver.addConstr(assigned == self.demands[i])
+                if isinstance(assigned, gp.Var):
+                    solver.addConstr(assigned == self.demands[i])
+                elif assigned != self.demands[i]:
+                    return None
             for j in range(self.num_revs):
                 load = 0.0
                 for i in range(self.num_paps):
                     load += assignment[i][j]
-                solver.addConstr(load >= self.minimums[j])
-                solver.addConstr(load <= self.maximums[j])
+                if isinstance(load, gp.Var):
+                    solver.addConstr(load >= self.minimums[j])
+                    solver.addConstr(load <= self.maximums[j])
+                elif load < self.minimums[j] or load > self.maximums[j]:
+                    return None
             for threshold in self.bad_match_thresholds:
                 no_perturbation_bad_matches = np.sum(
                     self.no_perturbation_assignment_matrix * (self.cost_matrix > threshold)
@@ -495,7 +513,10 @@ class PerturbedMaximizationSolver:
                 for i in range(self.num_paps):
                     for j in range(self.num_revs):
                         bad_matches += assignment[i][j] * (self.cost_matrix[i][j] > threshold)
-                solver.addConstr(bad_matches <= no_perturbation_bad_matches)
+                if isinstance(bad_matches, gp.Var):
+                    solver.addConstr(bad_matches <= no_perturbation_bad_matches)
+                elif bad_matches > no_perturbation_bad_matches:
+                    return None
             # Run the Gurobi solver
             solver.optimize()
             if solver.status != gp.GRB.OPTIMAL:
