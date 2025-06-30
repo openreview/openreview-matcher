@@ -1,3 +1,4 @@
+import datetime
 import re
 import ast
 import openreview
@@ -937,7 +938,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             if paper_value != value:
                 return False
         
-        return True    
+        return True
 
 
 class Deployment:
@@ -977,9 +978,18 @@ class Deployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    raise openreview.OpenReviewException(
-                        "Venue request not found"
+                    notes = client_v2.get_notes(
+                        invitation=f"{support_user}/Venue_Request/-/Conference_Review_Workflow",
+                        content={"venue_id": self.config_note_interface.venue_id}
                     )
+                    if notes:
+                        venue = openreview.helpers.get_venue(
+                            client_v2, self.config_note_interface.venue_id, support_user)
+
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)
@@ -1034,9 +1044,17 @@ class Undeployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    raise openreview.OpenReviewException(
-                        "Venue request not found"
+                    notes = client_v2.get_notes(
+                        invitation=f"{support_user}/Venue_Request/-/Conference_Review_Workflow",
+                        content={"venue_id": self.config_note_interface.venue_id}
                     )
+                    if notes:
+                        venue = openreview.helpers.get_venue(
+                            client_v2, self.config_note_interface.venue_id, support_user)
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)
