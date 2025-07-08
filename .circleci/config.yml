@@ -66,6 +66,28 @@ jobs:
             mkdir -p ~/openreview-v2/files/pdfs
             mkdir -p ~/openreview-v2/files/temp
       - run:
+          name: Override API V1 database configuration
+          command: |
+            cd ~/openreview
+            # Create a backup of the original config
+            cp config/circleci.json config/circleci.json.backup
+            # Use Node.js to update the database configuration
+            node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('config/circleci.json', 'utf8'));
+            config.database = {
+              'url': 'localhost:27017',
+              'name': 'openreview_test',
+              'queryLimit': 10000,
+              'maxTimeMS': 50000,
+              'operationLimit': 100000,
+              'options': {
+                'maxPoolSize': 1000
+              }
+            };
+            fs.writeFileSync('config/circleci.json', JSON.stringify(config, null, 2));
+            "
+      - run:
           # source: https://support.mozilla.org/en-US/kb/install-firefox-linux#w_system-firefox-installation-for-advanced-users
           # source: https://ubuntu-mate.community/t/firefox-installation-guide-non-snap/25299
           name: Install Firefox
