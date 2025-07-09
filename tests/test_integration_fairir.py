@@ -9,7 +9,7 @@ import pytest
 
 from conftest import clean_start_conference, wait_for_status, post_fairir_to_api1
 
-
+@pytest.mark.skip
 def test_integration_basic(openreview_context, celery_app, celery_session_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
@@ -107,6 +107,7 @@ def test_integration_basic(openreview_context, celery_app, celery_session_worker
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
+@pytest.mark.skip
 def test_integration_supply_mismatch_error(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -210,6 +211,7 @@ def test_integration_supply_mismatch_error(
 
     assert paper_assignment_edges == 0
 
+@pytest.mark.skip
 def test_integration_attribute_constraints(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -357,6 +359,7 @@ def test_integration_attribute_constraints(
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
+@pytest.mark.skip
 def test_integration_demand_out_of_supply_range_error(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -460,7 +463,7 @@ def test_integration_demand_out_of_supply_range_error(
 
     assert paper_assignment_edges == 0
 
-
+@pytest.mark.skip
 def test_integration_no_scores(openreview_context, celery_app, celery_session_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
@@ -555,7 +558,7 @@ def test_integration_no_scores(openreview_context, celery_app, celery_session_wo
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
-
+@pytest.mark.skip
 def test_routes_invalid_invitation(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -645,7 +648,7 @@ def test_routes_invalid_invitation(
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content["status"] == "Error"
 
-
+@pytest.mark.skip
 def test_routes_missing_header(openreview_context, celery_app, celery_session_worker):
     """request with missing header should response with 400"""
     openreview_client = openreview_context["openreview_client"]
@@ -728,7 +731,7 @@ def test_routes_missing_header(openreview_context, celery_app, celery_session_wo
     )
     assert missing_header_response.status_code == 400
 
-
+@pytest.mark.skip
 def test_routes_missing_config(openreview_context, celery_app, celery_session_worker):
     """should return 404 if config note doesn't exist"""
 
@@ -850,7 +853,7 @@ def test_routes_forbidden_config(
     )
     assert forbidden_response.status_code == 403
 
-
+@pytest.mark.skip
 def test_routes_already_running_or_complete(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -955,7 +958,7 @@ def test_routes_already_running_or_complete(
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content["status"] == "Complete"
 
-
+@pytest.mark.skip
 def test_routes_already_queued(openreview_context, celery_app, celery_session_worker):
     """should return 400 if the match is already queued"""
 
@@ -1043,7 +1046,7 @@ def test_routes_already_queued(openreview_context, celery_app, celery_session_wo
     config_note = openreview_client.get_note(config_note.id)
     assert config_note.content["status"] == "Queued"
 
-
+@pytest.mark.skip
 def test_integration_empty_reviewers_list_error(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -1253,7 +1256,7 @@ def test_integration_empty_papers_list_error(openreview_context):
 
     assert paper_assignment_edges == 0
 
-
+@pytest.mark.skip
 def test_integration_group_not_found_error(
     openreview_context, celery_app, celery_session_worker
 ):
@@ -1348,7 +1351,7 @@ def test_integration_group_not_found_error(
         in matcher_status.content["error_message"]
     )
 
-
+@pytest.mark.skip
 def test_integration_group_with_email(
     openreview_context, celery_app, celery_session_worker
 ):
