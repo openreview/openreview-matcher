@@ -84,37 +84,57 @@ class PerturbedMaximizationSolver:
         #     the deterministic assignment problem as a linear program.
         self.logger.debug("[PerturbedMaximization]: Computing the optimal "
                           "deterministic assignment ...")
-        solver = gp.Model()
-        solver.setParam('OutputFlag', 0)
-        # Initialize assignment matrix and objective function
-        objective  = 0.0
-        assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
-        for i in range(self.num_paps):
-            for j in range(self.num_revs):
-                if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
-                elif self.constraint_matrix[i][j] == 1:
-                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
-                else:
-                    x = solver.addVar(lb=0, ub=1, name=f"{i} {j}")
-                assignment[i][j] = x
-                objective += x * self.cost_matrix[i][j]
-        solver.setObjective(objective, gp.GRB.MINIMIZE)
-        # Add constraints
-        for i in range(self.num_paps):
-            assigned = 0.0
-            for j in range(self.num_revs):
-                assigned += assignment[i][j]
-            solver.addConstr(assigned == self.demands[i])
-        for j in range(self.num_revs):
-            load = 0.0
+        def deterministic_assignment(consider_zeros=True):
+            solver = gp.Model()
+            solver.setParam('OutputFlag', 0)
+            # Initialize assignment matrix and objective function
+            objective  = 0.0
+            assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
             for i in range(self.num_paps):
-                load += assignment[i][j]
-            solver.addConstr(load >= self.minimums[j])
-            solver.addConstr(load <= self.maximums[j])
-        # Run the Gurobi solver
-        solver.optimize()
-        if solver.status != gp.GRB.OPTIMAL:
+                for j in range(self.num_revs):
+                    if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0 or \
+                       (not consider_zeros and self.cost_matrix[i][j] == 0):
+                        x = 0.0
+                    elif self.constraint_matrix[i][j] == 1:
+                        x = 1.0
+                    else:
+                        x = solver.addVar(lb=0, ub=1, name=f"{i} {j}")
+                    assignment[i][j] = x
+                    objective += x * self.cost_matrix[i][j]
+            solver.setObjective(objective, gp.GRB.MINIMIZE)
+            # Add constraints
+            for i in range(self.num_paps):
+                assigned = 0.0
+                for j in range(self.num_revs):
+                    assigned += assignment[i][j]
+                if isinstance(assigned, (int, float)):
+                    if assigned != self.demands[i]:
+                        return None
+                else:
+                    solver.addConstr(assigned == self.demands[i])
+            for j in range(self.num_revs):
+                load = 0.0
+                for i in range(self.num_paps):
+                    load += assignment[i][j]
+                if isinstance(load, (int, float)):
+                    if load < self.minimums[j] or load > self.maximums[j]:
+                        return None
+                else:
+                    solver.addConstr(load >= self.minimums[j])
+                    solver.addConstr(load <= self.maximums[j])
+            # Run the Gurobi solver
+            solver.optimize()
+            if solver.status != gp.GRB.OPTIMAL:
+                return None
+            else:
+                return np.array([
+                    [assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j]
+                     for j in range(self.num_revs)] for i in range(self.num_paps)
+                ])
+        self.deterministic_assignment_matrix = deterministic_assignment(False)
+        if self.deterministic_assignment_matrix is None:
+            self.deterministic_assignment_matrix = deterministic_assignment(True)
+        if self.deterministic_assignment_matrix is None:
             self.deterministic_assignment_solved = False
             self.logger.debug(
                 "[PerturbedMaximization]: ERROR: Deterministic assignment infeasible"
@@ -122,9 +142,6 @@ class PerturbedMaximizationSolver:
             raise SolverException("Deterministic assignment infeasible")
         # Compute properties of the deterministic assignment
         self.deterministic_assignment_solved = True
-        self.deterministic_assignment_matrix = np.array([
-            [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
-        ])
         self.deterministic_assignment_cost = self._compute_expected_cost(
             self.deterministic_assignment_matrix
         )
@@ -140,40 +157,59 @@ class PerturbedMaximizationSolver:
         if len(self.bad_match_thresholds) != 0:
             self.logger.debug("[PerturbedMaximization]: Computing the fractional "
                               "assignment without perturbation ...")
-            solver = gp.Model()
-            solver.setParam('OutputFlag', 0)
-            # Initialize assignment matrix and objective function
-            objective  = 0.0
-            assignment = [
-                [0.0 for j in range(self.num_revs)] for i in range(self.num_paps)
-            ]
-            for i in range(self.num_paps):
-                for j in range(self.num_revs):
-                    if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                        x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
-                    elif self.constraint_matrix[i][j] == 1:
-                        x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
-                    else:
-                        x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
-                                          name=f"{i} {j}")
-                    assignment[i][j] = x
-                    objective += x * self.cost_matrix[i][j]
-            solver.setObjective(objective, gp.GRB.MINIMIZE)
-            # Add constraints
-            for i in range(self.num_paps):
-                assigned = 0.0
-                for j in range(self.num_revs):
-                    assigned += assignment[i][j]
-                solver.addConstr(assigned == self.demands[i])
-            for j in range(self.num_revs):
-                load = 0.0
+            def fractional_assignment_without_perturbation(consider_zeros=True):
+                solver = gp.Model()
+                solver.setParam('OutputFlag', 0)
+                # Initialize assignment matrix and objective function
+                objective  = 0.0
+                assignment = [
+                    [0.0 for j in range(self.num_revs)] for i in range(self.num_paps)
+                ]
                 for i in range(self.num_paps):
-                    load += assignment[i][j]
-                solver.addConstr(load >= self.minimums[j])
-                solver.addConstr(load <= self.maximums[j])
-            # Run the Gurobi solver
-            solver.optimize()
-            if solver.status != gp.GRB.OPTIMAL:
+                    for j in range(self.num_revs):
+                        if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0 or \
+                           (not consider_zeros and self.cost_matrix[i][j] == 0):
+                            x = 0.0
+                        elif self.constraint_matrix[i][j] == 1:
+                            x = 1.0
+                        else:
+                            x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
+                                              name=f"{i} {j}")
+                        assignment[i][j] = x
+                        objective += x * self.cost_matrix[i][j]
+                solver.setObjective(objective, gp.GRB.MINIMIZE)
+                # Add constraints
+                for i in range(self.num_paps):
+                    assigned = 0.0
+                    for j in range(self.num_revs):
+                        assigned += assignment[i][j]
+                    if isinstance(assigned, (int, float)):
+                        if assigned != self.demands[i]:
+                            return None
+                    else:
+                        solver.addConstr(assigned == self.demands[i])
+                for j in range(self.num_revs):
+                    load = 0.0
+                    for i in range(self.num_paps):
+                        load += assignment[i][j]
+                    if isinstance(load, (int, float)):
+                        if load < self.minimums[j] or load > self.maximums[j]:
+                            return None
+                    else:
+                        solver.addConstr(load >= self.minimums[j])
+                        solver.addConstr(load <= self.maximums[j])
+                # Run the Gurobi solver
+                solver.optimize()
+                if solver.status != gp.GRB.OPTIMAL:
+                    return None
+                else:
+                    return np.array([[assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j]
+                                     for j in range(self.num_revs)] for i in range(self.num_paps)
+                    ])
+            self.no_perturbation_assignment_matrix = fractional_assignment_without_perturbation(False)
+            if self.no_perturbation_assignment_matrix is None:
+                self.no_perturbation_assignment_matrix = fractional_assignment_without_perturbation(True)
+            if self.no_perturbation_assignment_matrix is None:
                 self.fractional_assignment_solved = False
                 self.logger.debug(
                     "[PerturbedMaximization]: ERROR: Fractional assignment without "
@@ -182,9 +218,6 @@ class PerturbedMaximizationSolver:
                 raise SolverException(
                     "Fractional assignment without perturbation infeasible"
                 )
-            self.no_perturbation_assignment_matrix = np.array([
-                [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
-            ])
             self.logger.debug("[PerturbedMaximization]: Finished computing the "
                               "fractional assignment without perturbation")
                           
@@ -439,55 +472,75 @@ class PerturbedMaximizationSolver:
         #    pair. Let the marginal probability of reviewer j being assigned to paper
         #    i be x_ij. The objective function is sum_{i,j} c_ij * (x_ij - p * x_ij^2).
         #    The convex quadratic program is solved using Gurobi.
-        solver = gp.Model()
-        solver.setParam('OutputFlag', 0)
-        # Initialize assignment matrix and objective function
-        objective  = 0.0
-        assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
-        for i in range(self.num_paps):
-            for j in range(self.num_revs):
-                if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0:
-                    x = solver.addVar(lb=0, ub=0, name=f"{i} {j}")
-                elif self.constraint_matrix[i][j] == 1:
-                    x = solver.addVar(lb=1, ub=1, name=f"{i} {j}")
-                else:
-                    x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
-                                      name=f"{i} {j}")
-                assignment[i][j] = x
-                objective += (x - self.perturbation * x * x) * self.cost_matrix[i][j]
-        solver.setObjective(objective, gp.GRB.MINIMIZE)
-        # Add constraints
-        for i in range(self.num_paps):
-            assigned = 0.0
-            for j in range(self.num_revs):
-                assigned += assignment[i][j]
-            solver.addConstr(assigned == self.demands[i])
-        for j in range(self.num_revs):
-            load = 0.0
-            for i in range(self.num_paps):
-                load += assignment[i][j]
-            solver.addConstr(load >= self.minimums[j])
-            solver.addConstr(load <= self.maximums[j])
-        for threshold in self.bad_match_thresholds:
-            no_perturbation_bad_matches = np.sum(
-                self.no_perturbation_assignment_matrix * (self.cost_matrix > threshold)
-            )
-            bad_matches = 0.0
+        def fractional_assignment_with_perturbation(consider_zeros=True):
+            solver = gp.Model()
+            solver.setParam('OutputFlag', 0)
+            # Initialize assignment matrix and objective function
+            objective  = 0.0
+            assignment = [[0.0 for j in range(self.num_revs)] for i in range(self.num_paps)]
             for i in range(self.num_paps):
                 for j in range(self.num_revs):
-                    bad_matches += assignment[i][j] * (self.cost_matrix[i][j] > threshold)
-            solver.addConstr(bad_matches <= no_perturbation_bad_matches)
-        # Run the Gurobi solver
-        solver.optimize()
-        if solver.status != gp.GRB.OPTIMAL:
+                    if self.constraint_matrix[i][j] == -1 or self.cost_matrix[i][j] > 0 or \
+                       (not consider_zeros and self.cost_matrix[i][j] == 0):
+                        x = 0.0
+                    elif self.constraint_matrix[i][j] == 1:
+                        x = 1.0
+                    else:
+                        x = solver.addVar(lb=0, ub=self.prob_limit_matrix[i][j], 
+                                        name=f"{i} {j}")
+                    assignment[i][j] = x
+                    objective += (x - self.perturbation * x * x) * self.cost_matrix[i][j]
+            solver.setObjective(objective, gp.GRB.MINIMIZE)
+            # Add constraints
+            for i in range(self.num_paps):
+                assigned = 0.0
+                for j in range(self.num_revs):
+                    assigned += assignment[i][j]
+                if isinstance(assigned, (int, float)):
+                    if assigned != self.demands[i]:
+                        return None
+                else:
+                    solver.addConstr(assigned == self.demands[i])
+            for j in range(self.num_revs):
+                load = 0.0
+                for i in range(self.num_paps):
+                    load += assignment[i][j]
+                if isinstance(load, (int, float)):
+                    if load < self.minimums[j] or load > self.maximums[j]:
+                        return None
+                else:
+                    solver.addConstr(load >= self.minimums[j])
+                    solver.addConstr(load <= self.maximums[j])
+            for threshold in self.bad_match_thresholds:
+                no_perturbation_bad_matches = np.sum(
+                    self.no_perturbation_assignment_matrix * (self.cost_matrix > threshold)
+                )
+                bad_matches = 0.0
+                for i in range(self.num_paps):
+                    for j in range(self.num_revs):
+                        bad_matches += assignment[i][j] * (self.cost_matrix[i][j] > threshold)
+                if isinstance(bad_matches, (int, float)):
+                    if bad_matches > no_perturbation_bad_matches:
+                        return None
+                else:
+                    solver.addConstr(bad_matches <= no_perturbation_bad_matches)
+            # Run the Gurobi solver
+            solver.optimize()
+            if solver.status != gp.GRB.OPTIMAL:
+                return None
+            else:
+                return np.array([[assignment[i][j].x if isinstance(assignment[i][j], gp.Var) else assignment[i][j]
+                                 for j in range(self.num_revs)] for i in range(self.num_paps)
+                ])
+        self.fractional_assignment_matrix = fractional_assignment_with_perturbation(False)
+        if self.fractional_assignment_matrix is None:
+            self.fractional_assignment_matrix = fractional_assignment_with_perturbation(True)
+        if self.fractional_assignment_matrix is None:
             self.solved = False
             self.logger.debug("[PerturbedMaximization]: Gurobi solver failed")
             return None
         # Compute properties of the fractional assignment
         self.solved = True
-        self.fractional_assignment_matrix = np.array([
-            [assignment[i][j].x for j in range(self.num_revs)] for i in range(self.num_paps)
-        ])
         self.fractional_assignment_cost = self._compute_expected_cost(self.fractional_assignment_matrix)
         self.logger.debug(
             "[PerturbedMaximization]: Finished solving the fractional assignment "
