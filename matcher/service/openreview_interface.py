@@ -978,14 +978,11 @@ class Deployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    notes = client_v2.get_notes(
-                        invitation=f"{support_user}/Venue_Request/-/Conference_Review_Workflow",
-                        content={"venue_id": self.config_note_interface.venue_id}
-                    )
-                    if notes:
-                        venue = openreview.helpers.get_venue(
-                            client_v2, self.config_note_interface.venue_id, support_user)
-
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
             if not venue:
                 raise openreview.OpenReviewException(
                     "Venue request not found"
@@ -1044,13 +1041,11 @@ class Undeployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    notes = client_v2.get_notes(
-                        invitation=f"{support_user}/Venue_Request/-/Conference_Review_Workflow",
-                        content={"venue_id": self.config_note_interface.venue_id}
-                    )
-                    if notes:
-                        venue = openreview.helpers.get_venue(
-                            client_v2, self.config_note_interface.venue_id, support_user)
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
             if not venue:
                 raise openreview.OpenReviewException(
                     "Venue request not found"
