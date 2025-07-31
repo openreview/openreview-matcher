@@ -1,3 +1,4 @@
+import datetime
 import re
 import ast
 import openreview
@@ -937,7 +938,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             if paper_value != value:
                 return False
         
-        return True    
+        return True
 
 
 class Deployment:
@@ -977,9 +978,15 @@ class Deployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    raise openreview.OpenReviewException(
-                        "Venue request not found"
-                    )
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)
@@ -1034,9 +1041,15 @@ class Undeployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    raise openreview.OpenReviewException(
-                        "Venue request not found"
-                    )
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)
