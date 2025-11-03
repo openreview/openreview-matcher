@@ -45,6 +45,12 @@ Fairflow solver tries to more fairly assign reviewers to papers in a way that ea
 
 For more information, see [this paper](https://arxiv.org/abs/1905.11924v1)
 
+### FairIR Solver
+
+FairIR solver finds a solution in the same way that FairFlow does. Both solvers address the issue of maximizing the global aggregate scores of all assignments, by requiring that the sum of the scores between a paper and its reviewers is at least some number (fairness threshold). This threshold is found through a binary search between the highest possible sum of scores for a paper and zero.
+
+Our implementation is optimized by reducing the problem size and relaxing the fairness to speed up the matching. To reduce the space taken up by the affinity matrix, OpenReview only stores the top K scores for each reviewer and paper leading to a sparse matrix. We only initialize matcher variables between reviewer-paper pairs that have scores, which shrinks the problem. Progress in the matching could also stall if the matcher tries to maintain the fairness threshold, so the threshold moves closer to zero each time the matching stalls.
+
 ### Randomized Solver
 
 The randomized solver (`--solver Randomized` on the command line) implements a randomized assignment algorithm. It takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. The solver then finds a randomized assignment that maximizes expected total affinity, subject to the given probability limits. This randomized assignment is found with an LP, implemented in `matcher/solvers/randomized_solver.py`.
@@ -58,6 +64,12 @@ For more information, see [this paper](https://arxiv.org/abs/2006.16437).
 FairSequence (`--solver FairSequence` on the command line) attempts to create an allocation of reviewers that is fair according to the weighted envy-free up to 1 item (WEF1) criterion. This criterion implies that when one paper has a higher average affinity for another papers' reviewers, it is only due to a single reviewer rather than a larger overall imbalance in affinity scores. Reviewers are assigned to papers one-by-one in priority order, with priority given to the papers with the lowest ratio of allocation size to demand. Ties in priority are resolved to favor reviewer-paper assignments with higher affinity.
 
 For more information about the WEF1 fairness criterion, see [this paper](https://dl.acm.org/doi/abs/10.1145/3457166), and for more information about the adaptation to reviewer assignment, see [this paper](https://arxiv.org/abs/2108.02126).
+
+### PerturbedMaximization Solver
+
+PerturbedMaximization (`--solver PerturbedMaximization` on the command line) implements another randomized assignment algorithm. It aims to trade-off between the total affinity score and the randomness of the assignment (for the motivation and the metrics for randomness, see [this paper](https://arxiv.org/abs/2310.05995)). Like the Randomized Solver, PerturbedMaximization takes as additional input limits on the marginal probability of each reviewer-paper pair being matched. It also takes in another perturbation factor, which controls the trade-off between the total affinity score and the randomness. The solver then finds a randomized assignment that maximizes a perturbed total affinity score, subject to the given probability limits. This is done with a convex Quadratic Program, implemented in `matcher/solvers/perturbed_maximization_solver.py`.
+
+Like the Randomized Solver, PerturbedMaximization returns a deterministic assignment that was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn_extension`. For more information, see [this paper](https://arxiv.org/abs/2310.05995).
 
 ## Running the Server
 The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:

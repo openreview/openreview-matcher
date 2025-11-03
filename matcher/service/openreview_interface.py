@@ -1,6 +1,9 @@
+import datetime
 import re
+import ast
 import openreview
 import logging
+import json
 from tqdm import tqdm
 from matcher.encoder import EncoderError
 from matcher.core import MatcherError, MatcherStatus
@@ -252,8 +255,6 @@ class BaseConfigNoteInterface:
                     )
                     for edge in edges
                 ]
-                self.logger.debug(edges)
-                self.logger.debug(invitation_edges)
 
                 for metadata in metadata_by_invitation[inv_id]:
                     label, keys = metadata.get('label', ''), metadata.keys()
@@ -273,7 +274,7 @@ class BaseConfigNoteInterface:
                     if len(members) < 1:
                         raise openreview.OpenReviewException(f"{name}/{label} has no corresponding members")
 
-                    self._attribute_constraints['name'] = {
+                    self._attribute_constraints[f"{name}/{label}"] = {
                             'comparator': comparator,
                             'bound': bound,
                             'members': members
@@ -433,9 +434,7 @@ class BaseConfigNoteInterface:
                 index = map_reviewers_to_idx.get(reviewer, -1)
                 if index >= 0:
                     load = int(edge["weight"])
-                    maximums[index] = min(
-                        maximums[index], load if load > 0 else 0
-                    )
+                    maximums[index] = min(maximums[index], load if load > 0 else 0) if maximums[index] > 0 else load
                     minimums[index] = min(minimums[index], maximums[index])
                     count_processed_edges += 1
             self.logger.debug(
@@ -520,6 +519,26 @@ class BaseConfigNoteInterface:
 
         return score
 
+    def _parse_status_message(self, message):
+        # Catch none message
+        if message is None:
+            return ""
+        
+        # Try to parse JSON object (checks if error is from API)
+        self.logger.debug(f"Trying to read as JSON: {message}")
+        try:
+            message_json = ast.literal_eval(message)
+        except Exception as e:
+            self.logger.debug(f"Message cannot be read as JSON: {message}, exp={str(e)}")
+            return message
+
+        # Message is a valid JSON from the API, handle MultiError and non-MultiError cases
+        if message_json.get('name', "") == 'MultiError':
+            messages = [o.get('message', '') for o in message_json.get('errors', [])]
+            return "Multiple OpenReview API Errors: " + ', '.join(messages)
+        else:
+            return "OpenReview API Error: " + message_json.get('message', '')
+
 
 class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def __init__(
@@ -561,6 +580,12 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
         )
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
+        )
+        self.perturbation = float(
+            self.config_note.content.get("perturbedmaximization_perturbation", 0.0)
+        )
+        self.bad_match_thresholds = self.config_note.content.get(
+            "perturbedmaximization_bad_match_thresholds", [0.1, 0.5, 1.0]
         )
 
         # Lazy variables
@@ -626,9 +651,7 @@ class ConfigNoteInterfaceV1(BaseConfigNoteInterface):
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
 
-        # Catch none message
-        if message is None:
-            message = ""
+        message = self._parse_status_message(message)
 
         self.config_note.content["status"] = status.value
         self.config_note.content["error_message"] = message
@@ -761,6 +784,12 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
         self.probability_limits = float(
             self.config_note.content.get("randomized_probability_limits", 1.0)
         )
+        self.perturbation = float(
+            self.config_note.content.get("perturbedmaximization_perturbation", 0.0)
+        )
+        self.bad_match_thresholds = self.config_note.content.get(
+            "perturbedmaximization_bad_match_thresholds", [0.1, 0.5, 1.0]
+        )
 
         # Lazy variables
         self._reviewers = None
@@ -800,15 +829,11 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                                 )
                             )
             if "/-/" in paper_invitation:
-                paper_notes = list(
-                    openreview.tools.iterget_notes(
-                        self.client,
-                        invitation=paper_invitation,
-                        content=content_dict,
-                    )
+                paper_notes = self.client.get_all_notes(
+                    invitation=paper_invitation
                 )
 
-                paper_notes = [self._content_to_api1(n) for n in paper_notes]
+                paper_notes = [self._content_to_api1(n) for n in paper_notes if self._match_content(n.content, content_dict)]
                 self._papers = [n.id for n in paper_notes]
                 self.paper_numbers = {n.id: n.number for n in paper_notes}
                 self.logger.debug(
@@ -825,9 +850,7 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
     def set_status(self, status, message="", additional_status_info={}):
         """Set the status of the config note"""
 
-        # Catch none message
-        if message is None:
-            message = ""
+        message = self._parse_status_message(message)
 
         casted_info = {}
         for key, value in additional_status_info.items():
@@ -903,6 +926,19 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             return property_params.get("param", {}).get("default", [])
 
         return []
+    
+    def _match_content(self, content, match_content):
+        if not match_content:
+            return True
+        
+        for name, value in match_content.items():
+
+            paper_value = content.get(name, {}).get('value')
+        
+            if paper_value != value:
+                return False
+        
+        return True
 
 
 class Deployment:
@@ -942,9 +978,15 @@ class Deployment:
                         client_v2, notes[0].id
                     )
                 else:
-                    raise openreview.OpenReviewException(
-                        "Venue request not found"
-                    )
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
 
             # impersonate user to get all the permissions to deploy the groups
             venue.client.impersonate(self.config_note_interface.venue_id)
@@ -961,3 +1003,64 @@ class Deployment:
             self.config_note_interface.set_status(
                 MatcherStatus.DEPLOYMENT_ERROR, str(e)
             )
+
+class Undeployment:
+    def __init__(
+        self, config_note_interface, logger=logging.getLogger(__name__)
+    ):
+
+        self.config_note_interface = config_note_interface
+        self.logger = logger
+
+    def run(self):
+
+        try:
+            venue = None
+            self.config_note_interface.set_status(MatcherStatus.UNDEPLOYING)
+            support_user = 'OpenReview.net/Support'
+            urls = openreview.tools.get_base_urls(self.config_note_interface.client)
+            client_v1 = openreview.Client(baseurl = urls[0], token=self.config_note_interface.client.token)
+
+            notes = client_v1.get_notes(
+                invitation=f"{support_user}/-/Request_Form",
+                content={"venue_id": self.config_note_interface.venue_id},
+            )
+            self.logger.debug('request form notes found', len(notes))
+            if notes:
+                venue = openreview.helpers.get_conference(
+                    client_v1, notes[0].id, support_user = support_user, setup=False
+                )
+            else:
+                client_v2 = openreview.api.OpenReviewClient(baseurl = urls[1], token=self.config_note_interface.client.token)
+                notes = client_v2.get_notes(
+                    invitation=f"{support_user}/-/Journal_Request",
+                    content={"venue_id": self.config_note_interface.venue_id},
+                )
+                if notes:
+                    venue = openreview.journal.JournalRequest.get_journal(
+                        client_v2, notes[0].id
+                    )
+                else:
+                    venue_group = openreview.tools.get_group(client_v2, self.config_note_interface.venue_id)
+                    if venue_group and venue_group.content:
+                        request_invitation = venue_group.content.get('request_form_invitation', {}).get('value')
+                        if request_invitation:
+                            venue = openreview.helpers.get_venue(client_v2, venue_group.id, support_user)
+            if not venue:
+                raise openreview.OpenReviewException(
+                    "Venue request not found"
+                )
+
+            # impersonate user to get all the permissions to deploy the groups
+            venue.client.impersonate(self.config_note_interface.venue_id)
+            venue.unset_assignments(
+                assignment_title=self.config_note_interface.label,
+                committee_id=self.config_note_interface.match_group
+            )
+
+            self.config_note_interface.set_status(MatcherStatus.COMPLETE)
+        except Exception as e:
+            self.logger.error(str(e))
+            self.config_note_interface.set_status(
+                MatcherStatus.UNDEPLOYMENT_ERROR, str(e)
+            )            

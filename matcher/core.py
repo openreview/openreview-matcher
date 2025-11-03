@@ -10,7 +10,8 @@ from .solvers import (
     FairFlow,
     RandomizedSolver,
     FairSequence,
-    FairIR
+    FairIR,
+    PerturbedMaximizationSolver
 )
 from .encoder import Encoder
 
@@ -19,7 +20,8 @@ SOLVER_MAP = {
     "FairFlow": FairFlow,
     "Randomized": RandomizedSolver,
     "FairSequence": FairSequence,
-    "FairIR": FairIR
+    "FairIR": FairIR,
+    "PerturbedMaximization": PerturbedMaximizationSolver
 }
 
 
@@ -30,8 +32,10 @@ class MatcherStatus(Enum):
     NO_SOLUTION = "No Solution"
     COMPLETE = "Complete"
     DEPLOYING = "Deploying"
+    UNDEPLOYING = "Undeploying"
     DEPLOYED = "Deployed"
     DEPLOYMENT_ERROR = "Deployment Error"
+    UNDEPLOYMENT_ERROR = "Undeployment Error"
     QUEUED = "Queued"
 
 
@@ -54,6 +58,8 @@ class KeywordDatasource:
         demands=[],
         num_alternates=0,
         probability_limits=[],
+        perturbation=0.0,
+        bad_match_thresholds=[],
         allow_zero_score_assignments=False,
         attribute_constraints=None,
         assignments_output="assignments.json",
@@ -74,6 +80,8 @@ class KeywordDatasource:
         self.allow_zero_score_assignments = allow_zero_score_assignments
         self.attribute_constraints = attribute_constraints
         self.normalization_types = []
+        self.perturbation = perturbation
+        self.bad_match_thresholds = bad_match_thresholds
         self.assignments_output = assignments_output
         self.alternates_output = alternates_output
         self.logger = logger
@@ -161,6 +169,8 @@ class Matcher:
                 normalization_types=self.datasource.normalization_types,
                 probability_limits=self.datasource.probability_limits,
                 attribute_constraints=self.datasource.attribute_constraints,
+                perturbation=self.datasource.perturbation,
+                bad_match_thresholds=self.datasource.bad_match_thresholds,
                 logger=self.logger,
             )
 
@@ -221,7 +231,7 @@ class Matcher:
                 )
                 self.set_status(
                     MatcherStatus.NO_SOLUTION,
-                    message="Solver could not find a solution. Adjust your parameters",
+                    message="Solver could not find a solution. Try (1) increasing max papers (2) adding more reviewers or (3) using only more recent history for computing conflicts in the Paper Matching Setup to reduce conflicts.",
                 )
 
         except SolverException as error_handle:

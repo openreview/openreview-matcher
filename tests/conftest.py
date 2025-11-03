@@ -69,15 +69,16 @@ def wait_for_status(client, config_note_id, api_version=1):
 
     raise TimeoutError("matcher did not finish")
 
-def await_queue_edit(super_client, edit_id=None, invitation=None):
+def await_queue_edit(super_client, edit_id=None, invitation=None, count=1, error=False):
+    expected_status = 'error' if error else 'ok'
     while True:
         process_logs = super_client.get_process_logs(id=edit_id, invitation=invitation)
-        if process_logs:
+        if len(process_logs) >= count and all(process_log['status'] == expected_status for process_log in process_logs):
             break
 
         time.sleep(0.5)
 
-    assert process_logs[0]['status'] == 'ok'
+    assert process_logs[0]['status'] == (expected_status), process_logs[0]['log']
 
 def initialize_superuser():
     """register and activate the superuser account"""
@@ -112,8 +113,9 @@ def initialize_superuser():
 def create_user(email, first, last, alternates=[], institution=None):
     client = openreview.Client(baseurl="http://localhost:3000")
     assert client is not None, "Client is none"
+    fullname = f'{first} {last}'
     res = client.register_user(
-        email=email, first=first, last=last, password=strong_password
+        email=email, fullname=fullname, password=strong_password
     )
     username = res.get("id")
     assert res, "Res i none"
@@ -185,7 +187,7 @@ def clean_start_conference_v2(
                         "title": {
                             "value": "Test_Paper_{}".format(paper_number)
                         },
-                        "abstract": {"value": "Paper abstract"},
+                        "abstract": {"value": f"Paper abstract {paper_number}"},
                         "authors": {"value": authors},
                         "authorids": {"value": authorids},
                         "pdf": {"value": "/pdf/" + "p" * 40 + ".pdf"},
@@ -341,6 +343,45 @@ def assert_arrays(array_A, array_B, is_string=False):
             ]
         )
 
+def create_user(email, first, last, alternates=[], institution=None, fullname=None):
+
+    fullname = f'{first} {last}' if fullname is None else fullname
+
+    super_client = openreview.api.OpenReviewClient(baseurl='http://localhost:3001', username='openreview.net', password=strong_password)
+    profile = openreview.tools.get_profile(super_client, email)
+    if profile:
+        return Helpers.get_user(email)
+
+    client = openreview.api.OpenReviewClient(baseurl = 'http://localhost:3001')
+    assert client is not None, "Client is none"
+
+    res = client.register_user(email = email, fullname = fullname, password = strong_password)
+    username = res.get('id')
+    assert res, "Res i none"
+    profile_content={
+        'names': [
+                {
+                    'fullname': fullname,
+                    'username': username,
+                    'preferred': True
+                }
+            ],
+        'emails': [email] + alternates,
+        'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email,
+        'homepage': f"https://{fullname.replace(' ', '')}{int(time.time())}.openreview.net",
+    }
+    profile_content['history'] = [{
+        'position': 'PhD Student',
+        'start': 2017,
+        'end': None,
+        'institution': {
+            'country': 'US',
+            'domain': institution if institution else email.split('@')[1],
+        }
+    }]
+    res = client.activate_user(email, profile_content)
+    assert res, "Res i none"
+    return client
 
 @pytest.fixture(scope="session")
 def openreview_context():
@@ -370,11 +411,10 @@ def openreview_context():
 
     superuser_client, superuser_v2 = initialize_superuser()
     for index in range(0, 26):
-        openreview.tools.create_profile(
-            superuser_client,
+        create_user(
             "user{0}_reviewer@mail.com".format(chr(97 + index)),
             "User{0}".format(chr(97 + index)),
-            "Reviewer",
+            "Reviewer"
         )
 
     for letter in ["a", "b", "c"]:
