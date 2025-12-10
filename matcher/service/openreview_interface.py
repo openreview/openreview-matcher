@@ -448,45 +448,34 @@ class BaseConfigNoteInterface:
     def _get_all_edges(self, edge_invitation_id):
         """Helper function for retrieving and parsing all edges in bulk"""
 
-        all_edges = []
-        all_papers = {p: p for p in self.papers}
-        all_reviewers = {r: r for r in self.reviewers}
-        self.logger.debug("GET invitation id={}".format(edge_invitation_id))
+        self.logger.debug(f"Get edges for invitation id={edge_invitation_id}")
 
-        edges_grouped_by_paper = self.client.get_grouped_edges(
-            invitation=edge_invitation_id,
-            groupby="head",
-            select="tail,label,weight",
+        result = openreview.tools.concurrent_requests(
+            lambda paper: self.client.get_edges(invitation=edge_invitation_id, head=paper, select="tail,label,weight"),
+            self.papers, 
+            desc=f"Retrieving edges for {edge_invitation_id}"
         )
+
+        all_edges = []
+        all_reviewers = {r: r for r in self.reviewers}
+
+        for edges in result:
+            for edge in edges:
+                if edge['tail'] in all_reviewers:
+                    all_edges.append(
+                        {
+                            "invitation": edge_invitation_id,
+                            "head": edge['head'],
+                            "tail": edge["tail"],
+                            "weight": edge.get("weight"),
+                            "label": edge.get("label"),
+                        }
+                    )
 
         self.logger.debug(
-            "GET grouped edges invitation id={}".format(edge_invitation_id)
-        )
-        filtered_edges_groups = list(
-            filter(
-                lambda edge_group: edge_group["id"]["head"] in all_papers,
-                edges_grouped_by_paper,
-            )
+            f"Finished getting edges for invitation id={edge_invitation_id}"
         )
 
-        for group in filtered_edges_groups:
-            forum_id = group["id"]["head"]
-            filtered_edges = list(
-                filter(
-                    lambda group_value: group_value["tail"] in all_reviewers,
-                    group["values"],
-                )
-            )
-            for edge in filtered_edges:
-                all_edges.append(
-                    {
-                        "invitation": edge_invitation_id,
-                        "head": forum_id,
-                        "tail": edge["tail"],
-                        "weight": edge.get("weight"),
-                        "label": edge.get("label"),
-                    }
-                )
         return all_edges
 
     def _edge_to_score(self, edge, translate_map=None):
