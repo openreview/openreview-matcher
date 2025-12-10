@@ -24,7 +24,7 @@ setup(
         "flask-cors==3.*",
         "cffi==1.*",
         "pre-commit==2.*",
-        "celery==5.2.7",
+        "celery==5.4.0",
         "redis==5.0.8",
         "MarkupSafe==2.*",
         "gunicorn==19.*",
