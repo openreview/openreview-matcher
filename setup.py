@@ -19,7 +19,7 @@ setup(
         "ortools==9.*",
         "pytest==7.*",
         "sortedcontainers==2.*",
-        "Flask==2.2.2",
+        "Flask==2.2.5",
         "Werkzeug==2.3.7",
         "flask-cors==3.*",
         "cffi==1.*",
