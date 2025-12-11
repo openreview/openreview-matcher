@@ -10,7 +10,7 @@ on:
       tag:
         description: The branch, tag, or commit hash to deploy
         required: false
-        default: main
+        default: master
         type: string
       py_branch:
         description: 'openreview-py branch to deploy'
