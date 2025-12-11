@@ -83,7 +83,7 @@ def test_matching_task(openreview_context, celery_app, celery_session_worker):
         config_note_id=config_note.id,
         logger=app.logger,
     )    
-    solver_class = interface.config_note.content.get("solver", {}).get("value", "MinMax")
+    solver_class = interface.config_note.content.get("solver", "MinMax")
     task = run_matching.s(interface, solver_class, app.logger).apply()
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
