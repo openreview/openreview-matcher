@@ -1,4 +1,4 @@
-# This workflow deploys the master brance to the live site
+# This workflow deploys the master brance to the prod site
 
 name: prod-deployment
 
@@ -6,6 +6,15 @@ name: prod-deployment
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'master'
+      py_branch:
+        description: 'openreview-py branch to deploy'
+        required: false
+        default: 'master'
 jobs:
   deploy:
     # Allow the job to fetch a GitHub ID token
@@ -34,4 +43,4 @@ jobs:
       - name: Run deploy script
         run: |
           gcloud config set compute/zone us-central1-c
-          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server --command '/bin/matcher_build.sh' --quiet
+          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server --command '/bin/matcher_build_prod.sh -b ${{ github.event.inputs.branch }} -p ${{ github.event.inputs.py_branch }}' --quiet
