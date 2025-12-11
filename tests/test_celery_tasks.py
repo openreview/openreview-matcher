@@ -87,7 +87,7 @@ def test_matching_task(openreview_context, celery_app, celery_session_worker):
     task = run_matching.s(interface, solver_class, app.logger).apply()
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status.content["status"] == "Complete", 'Error status: ' + matcher_status.content['error_message']
+    assert matcher_status.content["status"]["value"] == "Complete", 'Error status: ' + matcher_status.content['error_message']['value']
     assert task.status == "SUCCESS"
 
     paper_assignment_edges = openreview_client.get_edges_count(
