@@ -3,14 +3,12 @@ import json
 from openreview import openreview
 
 from matcher.service.celery_tasks import run_matching
-from matcher.service.openreview_interface import ConfigNoteInterfaceV1
-from conftest import clean_start_conference, wait_for_status
+from matcher.service.openreview_interface import ConfigNoteInterfaceV2
+from conftest import clean_start_conference_v2, wait_for_status
 
 
 def test_matching_task(openreview_context, celery_app, celery_session_worker):
-    openreview_client = openreview_context["openreview_client"]
-    openreview_client_v2 = openreview_context["openreview_client_v2"]
-    test_client = openreview_context["test_client"]
+    openreview_client = openreview_context["openreview_client_v2"]
     app = openreview_context["app"]
 
     conference_id = "ICLR.cc/2018x/Conference"
@@ -21,72 +19,71 @@ def test_matching_task(openreview_context, celery_app, celery_session_worker):
     min_papers = 1
     alternates = 0
 
-    conference = clean_start_conference(
+    venue = clean_start_conference_v2(
         openreview_client,
         conference_id,
         num_reviewers,
         num_papers,
         reviews_per_paper,
-    )
+    )   
 
-    reviewers_id = conference.get_reviewers_id()
+    reviewers_id = venue.get_reviewers_id()
 
     config = {
-        "title": "integration-test",
-        "user_demand": str(reviews_per_paper),
-        "max_papers": str(max_papers),
-        "min_papers": str(min_papers),
-        "alternates": str(alternates),
-        "config_invitation": "{}/-/Assignment_Configuration".format(
-            reviewers_id
-        ),
-        "paper_invitation": conference.get_blind_submission_id(),
-        "assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id
-        ),
-        "deployed_assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id, deployed=True
-        ),
-        "invite_assignment_invitation": conference.get_paper_assignment_id(
-            reviewers_id, invite=True
-        ),
-        "aggregate_score_invitation": "{}/-/Aggregate_Score".format(
-            reviewers_id
-        ),
-        "conflicts_invitation": conference.get_conflict_score_id(reviewers_id),
-        "custom_max_papers_invitation": "{}/-/Custom_Max_Papers".format(
-            reviewers_id
-        ),
-        "match_group": reviewers_id,
+        "title": { "value": "integration-test"},
+        "user_demand": { "value": str(reviews_per_paper)},
+        "max_papers": { "value": str(max_papers)},
+        "min_papers": { "value": str(min_papers)},
+        "alternates": { "value": str(alternates)},
+        "config_invitation": {
+            "value": "{}/-/Assignment_Configuration".format(reviewers_id)
+        },
+        "paper_invitation": {"value": venue.get_submission_id()},
+        "assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id)
+        },
+        "deployed_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, deployed=True)
+        },
+        "invite_assignment_invitation": {
+            "value": venue.get_assignment_id(reviewers_id, invite=True)
+        },
+        "aggregate_score_invitation": {
+            "value": "{}/-/Aggregate_Score".format(reviewers_id)
+        },
+        "conflicts_invitation": {
+            "value": venue.get_conflict_score_id(reviewers_id)
+        },
+        "custom_max_papers_invitation": {
+            "value": "{}/-/Custom_Max_Papers".format(reviewers_id)
+        },
+        "match_group": { "value": reviewers_id},
         "scores_specification": {
-            conference.get_affinity_score_id(reviewers_id): {
-                "weight": 1.0,
-                "default": 0.0,
+            "value": {
+                venue.get_affinity_score_id(reviewers_id): {
+                    "weight": 1.0,
+                    "default": 0.0,
+                }
             }
         },
-        "status": "Initialized",
-        "solver": "MinMax",
+        "status": { "value": "Initialized"},
+        "solver": { "value": "MinMax"},
     }
 
-    config_note = openreview.Note(
-        **{
-            "invitation": "{}/-/Assignment_Configuration".format(reviewers_id),
-            "readers": [conference.get_id()],
-            "writers": [conference.get_id()],
-            "signatures": [conference.get_id()],
-            "content": config,
-        }
+    edit = openreview_client.post_note_edit(
+        invitation="{}/-/Assignment_Configuration".format(reviewers_id),
+        signatures=[venue.get_id()],
+        note=openreview.api.Note(content=config),
     )
 
-    config_note = openreview_client.post_note(config_note)
-    assert config_note
+    config_note = openreview_client.get_note(edit["note"]["id"])
 
-    interface = ConfigNoteInterfaceV1(
+    interface = ConfigNoteInterfaceV2(
         client=openreview_client,
         config_note_id=config_note.id,
         logger=app.logger,
-    )
-    solver_class = interface.config_note.content.get("solver", "MinMax")
+    )    
+    solver_class = interface.config_note.content.get("solver", {}).get("value", "MinMax")
     task = run_matching.s(interface, solver_class, app.logger).apply()
 
     matcher_status = wait_for_status(openreview_client, config_note.id)
@@ -95,9 +92,7 @@ def test_matching_task(openreview_context, celery_app, celery_session_worker):
 
     paper_assignment_edges = openreview_client.get_edges_count(
         label="integration-test",
-        invitation=conference.get_paper_assignment_id(
-            conference.get_reviewers_id()
-        ),
+        invitation=venue.get_assignment_id(reviewers_id),
     )
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
