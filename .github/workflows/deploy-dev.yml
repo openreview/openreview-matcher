@@ -7,10 +7,11 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Branch to deploy'
+      tag:
+        description: The branch, tag, or commit hash to deploy
         required: false
-        default: 'master'
+        default: main
+        type: string
       py_branch:
         description: 'openreview-py branch to deploy'
         required: false
@@ -25,6 +26,8 @@ jobs:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag }}    
     steps:
       - uses: actions/checkout@v2
       - name: Setup gcloud
@@ -46,4 +49,4 @@ jobs:
       - name: Run deploy script
         run: |
           gcloud config set compute/zone us-central1-c
-          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server --command '/bin/matcher_build_dev.sh -b ${{ github.event.inputs.branch }} -p ${{ github.event.inputs.py_branch }}' --quiet
+          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server --command '/bin/matcher_build_dev.sh -b ${{TAG}} -p ${{ github.event.inputs.py_branch }}' --quiet
