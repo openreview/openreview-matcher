@@ -28,7 +28,7 @@ setup(
         "redis==5.0.8",
         "MarkupSafe==2.*",
         "gunicorn==19.*",
-        "importlib-metadata>=1.1.0,<4.3",
+        "importlib-metadata>=1.1.0",
         "flake8==3.8.4",
         "gurobipy",
         "kombu>=5.3.0,<6.0",
