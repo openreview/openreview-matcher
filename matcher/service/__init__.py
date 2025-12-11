@@ -35,7 +35,7 @@ def configure_logger(app):
     stream_handler.setFormatter(formatter)
     stream_handler.setLevel(logging.DEBUG)
 
-    if app.config["ENV"] == "development":
+    if app.debug or os.getenv("FLASK_ENV") == "development":
         app.logger.addHandler(stream_handler)
 
     app.logger.setLevel(logging.DEBUG)
@@ -55,10 +55,11 @@ def create_app(config=None):
         instance_relative_config=True,
     )
 
-    # app.config['ENV'] is automatically set by the FLASK_ENV environment variable.
-    # by default, app.config['ENV'] == 'production'
+    # Load default config first, then environment-specific config if FLASK_ENV is set
     app.config.from_pyfile("default.cfg")
-    app.config.from_pyfile("{}.cfg".format(app.config.get("ENV")), silent=True)
+    flask_env = os.getenv("FLASK_ENV")
+    if flask_env:
+        app.config.from_pyfile("{}.cfg".format(flask_env), silent=True)
 
     if config and isinstance(config, dict):
         app.config.from_mapping(config)
