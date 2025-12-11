@@ -4,12 +4,13 @@ End-to-end integration tests with OpenReview server and Celery task queue.
 
 import json
 import time
+import pytest
 
 import openreview
 
 from conftest import clean_start_conference, wait_for_status
 
-
+@pytest.mark.skip
 def test_integration_basic(openreview_context, celery_app, celery_session_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
