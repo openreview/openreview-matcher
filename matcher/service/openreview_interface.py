@@ -450,8 +450,20 @@ class BaseConfigNoteInterface:
 
         self.logger.debug(f"Get edges for invitation id={edge_invitation_id}")
 
+        def get_paper_edges(paper_id):
+            grouped_edges = self.client.get_grouped_edges(
+                groupby="head",
+                invitation=edge_invitation_id,
+                head=paper_id,
+                select="head,tail,label,weight",
+            )
+            if grouped_edges and 'values' in grouped_edges[0]:
+                return grouped_edges[0]['values']
+            else:
+                return []
+
         result = openreview.tools.concurrent_requests(
-            lambda paper: self.client.get_all_edges(invitation=edge_invitation_id, head=paper, select="head,tail,label,weight"),
+            get_paper_edges,
             self.papers, 
             desc=f"Retrieving edges for {edge_invitation_id}"
         )
