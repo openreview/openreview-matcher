@@ -473,14 +473,14 @@ class BaseConfigNoteInterface:
 
         for edges in result:
             for edge in edges:
-                if edge.tail in all_reviewers:
+                if 'tail' in edge and edge['tail'] in all_reviewers:
                     all_edges.append(
                         {
                             "invitation": edge_invitation_id,
-                            "head": edge.head,
-                            "tail": edge.tail,
-                            "weight": edge.weight,
-                            "label": edge.label,
+                            "head": edge.get('head'),
+                            "tail": edge.get('tail'),
+                            "weight": edge.get('weight'),
+                            "label": edge.get('label'),
                         }
                     )
 
