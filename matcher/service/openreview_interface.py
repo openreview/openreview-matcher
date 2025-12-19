@@ -451,7 +451,7 @@ class BaseConfigNoteInterface:
         self.logger.debug(f"Get edges for invitation id={edge_invitation_id}")
 
         result = openreview.tools.concurrent_requests(
-            lambda paper: self.client.get_edges(invitation=edge_invitation_id, head=paper, select="head,tail,label,weight"),
+            lambda paper: self.client.get_all_edges(invitation=edge_invitation_id, head=paper, select="head,tail,label,weight"),
             self.papers, 
             desc=f"Retrieving edges for {edge_invitation_id}"
         )
