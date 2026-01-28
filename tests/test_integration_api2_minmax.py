@@ -174,16 +174,17 @@ def test_integration_no_solution_due_to_conflicts(
         "solver": {"value": "MinMax"},
     }
 
+    submission = venue.get_submissions()[-1]
     for reviewer in openreview_client.get_group(reviewers_id).members:
         openreview_client.post_edge(
             openreview.api.Edge(
                 invitation=venue.get_conflict_score_id(reviewers_id),
                 label="Personal",
                 weight=-1,
-                head=venue.get_submissions()[-1].id,
+                head=submission.id,
                 tail=reviewer,
                 signatures=[venue.id],
-                readers=[venue.id, venue.get_area_chairs_id(), reviewer],
+                readers=[venue.id, venue.get_area_chairs_id(submission.number), reviewer],
                 writers=[venue.id],
             )
         )

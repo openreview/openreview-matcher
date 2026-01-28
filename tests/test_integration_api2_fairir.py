@@ -302,7 +302,7 @@ def test_integration_attribute_constraints(
     }
     # Post Seniority edge invitation
     venue_matching = openreview.venue.matching.Matching(venue, openreview_client.get_group(reviewers_id), None)
-    venue_matching._create_edge_invitation(seniority_inv_id)
+    seniority_invitation = venue_matching._create_edge_invitation(seniority_inv_id)
 
     inv = openreview_client.get_invitation(seniority_inv_id)
     inv.edit['head'] = {
@@ -325,7 +325,7 @@ def test_integration_attribute_constraints(
         head=reviewers_id,
         tail=senior_reviewer,
         invitation=seniority_inv_id,
-        readers=venue_matching._get_edge_readers(reviewers_id),
+        readers=venue_matching._get_edge_readers(seniority_invitation, reviewers_id),
         writers=[venue.id],
         signatures=[venue.id],
         label='Senior',
@@ -463,7 +463,7 @@ def test_integration_many_attribute_constraints(
     }
     # Post Region edge invitation
     venue_matching = openreview.venue.matching.Matching(venue, openreview_client.get_group(reviewers_id), None)
-    venue_matching._create_edge_invitation(region_inv_id)
+    region_inv = venue_matching._create_edge_invitation(region_inv_id)
 
     inv = openreview_client.get_invitation(region_inv_id)
     inv.edit['head'] = {
@@ -486,7 +486,7 @@ def test_integration_many_attribute_constraints(
         head=reviewers_id,
         tail=us_reviewer1,
         invitation=region_inv_id,
-        readers=venue_matching._get_edge_readers(reviewers_id),
+        readers=venue_matching._get_edge_readers(region_inv, reviewers_id),
         writers=[venue.id],
         signatures=[venue.id],
         label='US',
@@ -498,7 +498,7 @@ def test_integration_many_attribute_constraints(
         head=reviewers_id,
         tail=us_reviewer2,
         invitation=region_inv_id,
-        readers=venue_matching._get_edge_readers(reviewers_id),
+        readers=venue_matching._get_edge_readers(region_inv, reviewers_id),
         writers=[venue.id],
         signatures=[venue.id],
         label='US',
@@ -510,7 +510,7 @@ def test_integration_many_attribute_constraints(
         head=reviewers_id,
         tail=eu_reviewer,
         invitation=region_inv_id,
-        readers=venue_matching._get_edge_readers(reviewers_id),
+        readers=venue_matching._get_edge_readers(region_inv, reviewers_id),
         writers=[venue.id],
         signatures=[venue.id],
         label='EU',
