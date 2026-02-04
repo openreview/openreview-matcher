@@ -16,7 +16,7 @@ jobs:
     parallelism: 10
     working_directory: ~/
     docker:
-      - image: cimg/python:3.10.12-node
+      - image: cimg/python:3.14.0-node
       - image: cimg/redis:6.2.6
       - image: mongo:6.0
         command: [ --replSet, rs0 ]
@@ -78,7 +78,7 @@ jobs:
             sudo mv firefox /opt
             sudo ln -s /opt/firefox/firefox /usr/local/bin/firefox
             retry sudo apt-get install libgtk-3-0
-            retry sudo apt-get install libasound2
+            retry sudo apt-get install libasound2t64
             retry sudo apt-get install libdbus-glib-1-2
             echo export PATH="$PATH:/usr/local/bin/firefox" >> ~/.bashrc
             source ~/.bashrc
