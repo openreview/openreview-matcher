@@ -78,7 +78,7 @@ jobs:
             sudo mv firefox /opt
             sudo ln -s /opt/firefox/firefox /usr/local/bin/firefox
             retry sudo apt-get install libgtk-3-0
-            retry sudo apt-get install libasound2
+            retry sudo apt-get install libasound2t64
             retry sudo apt-get install libdbus-glib-1-2
             echo export PATH="$PATH:/usr/local/bin/firefox" >> ~/.bashrc
             source ~/.bashrc
