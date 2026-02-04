@@ -14,9 +14,9 @@ setup(
         "matcher/solvers/bvn_extension/bvn_extension_build.py:ffibuilder"
     ],
     install_requires=[
-        "numpy==1.*",
+        "numpy",
         "openreview-py",
-        "ortools==9.14.*",
+        "ortools==9.*",
         "pytest==7.*",
         "sortedcontainers==2.*",
         "Flask==3.0.3",
