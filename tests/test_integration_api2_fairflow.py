@@ -115,6 +115,8 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
 
+    test_client.delete_cookie("openreview.accessToken")
+
 
 def test_integration_supply_mismatch_error(
     openreview_context, venue, celery_app, celery_session_worker
