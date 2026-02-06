@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/openreview/openreview-matcher.svg?style=svg&circle-token=d20a11c2cb9e46d2a244638d1646ebdf3aa56b39)](https://circleci.com/gh/openreview/openreview-matcher)
+[![CircleCI](https://circleci.com/gh/openreview/openreview-matcher.svg?style=svg)](https://circleci.com/gh/openreview/openreview-matcher)
 
 # OpenReview Matcher
 A tool for computing optimal paper-reviewer matches for peer review, subject to constraints and affinity scores. Comes with a simple web server designed for integration with the OpenReview server application.
