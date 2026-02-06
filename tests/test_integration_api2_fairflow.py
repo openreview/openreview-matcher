@@ -94,11 +94,12 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
     )
     assert config_note
 
+    test_client.set_cookie("openreview.accessToken", openreview_client.token)
+
     response = test_client.post(
         "/match",
         data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
-        headers=openreview_client.headers,
     )
     assert response.status_code == 200
 
@@ -113,6 +114,8 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
     )
 
     assert paper_assignment_edges == num_papers * reviews_per_paper
+
+    test_client.delete_cookie("openreview.accessToken")
 
 
 def test_integration_supply_mismatch_error(
