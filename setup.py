@@ -20,7 +20,7 @@ setup(
         "pytest==7.*",
         "sortedcontainers==2.*",
         "Flask==3.0.3",
-        "Werkzeug==3.1.4",
+        "Werkzeug==3.1.5",
         "flask-cors==3.*",
         "cffi==1.*",
         "pre-commit==2.*",
