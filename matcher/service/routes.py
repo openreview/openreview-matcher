@@ -35,7 +35,7 @@ def match():
     result = {}
     token = flask.request.headers.get("Authorization")
     if not token:
-        access_token = flask.request.cookies.get("openreview.accessToken")
+        access_token = flask.request.cookies.get(flask.current_app.config["ACCESS_TOKEN_NAME"])
         if access_token:
             token = f"Bearer {access_token}"
     if not token:
@@ -181,7 +181,7 @@ def deploy():
 
     token = flask.request.headers.get("Authorization")
     if not token:
-        access_token = flask.request.cookies.get("openreview.accessToken")
+        access_token = flask.request.cookies.get(flask.current_app.config["ACCESS_TOKEN_NAME"])
         if access_token:
             token = f"Bearer {access_token}"
     if not token:
@@ -297,7 +297,7 @@ def undeploy():
 
     token = flask.request.headers.get("Authorization")
     if not token:
-        access_token = flask.request.cookies.get("openreview.accessToken")
+        access_token = flask.request.cookies.get(flask.current_app.config["ACCESS_TOKEN_NAME"])
         if access_token:
             token = f"Bearer {access_token}"
     if not token:
