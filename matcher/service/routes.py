@@ -35,6 +35,10 @@ def match():
     result = {}
     token = flask.request.headers.get("Authorization")
     if not token:
+        access_token = flask.request.cookies.get("openreview.accessToken")
+        if access_token:
+            token = f"Bearer {access_token}"
+    if not token:
         flask.current_app.logger.error("No Authorization token in headers")
         result["error"] = "No Authorization token in headers"
         return flask.jsonify(result), 400
@@ -177,6 +181,10 @@ def deploy():
 
     token = flask.request.headers.get("Authorization")
     if not token:
+        access_token = flask.request.cookies.get("openreview.accessToken")
+        if access_token:
+            token = f"Bearer {access_token}"
+    if not token:
         flask.current_app.logger.error("No Authorization token in headers")
         result["error"] = "No Authorization token in headers"
         return flask.jsonify(result), 400
@@ -288,6 +296,10 @@ def undeploy():
     result = {}
 
     token = flask.request.headers.get("Authorization")
+    if not token:
+        access_token = flask.request.cookies.get("openreview.accessToken")
+        if access_token:
+            token = f"Bearer {access_token}"
     if not token:
         flask.current_app.logger.error("No Authorization token in headers")
         result["error"] = "No Authorization token in headers"
