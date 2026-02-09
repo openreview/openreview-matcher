@@ -1,4 +1,4 @@
-from conftest import clean_start_conference
+from conftest import clean_start_conference_v2
 from tasks import mul
 
 
@@ -13,15 +13,15 @@ def test_fixtures(openreview_context):
     reviews_per_paper = 1
     conference_id = "ICLR.cc/2018/Conference"
 
-    conference = clean_start_conference(
+    venue = clean_start_conference_v2(
         openreview_client,
         conference_id,
         num_reviewers,
         num_papers,
-        reviews_per_paper,
-    )
+        reviews_per_paper
+    )    
 
-    assert conference.get_id() == "ICLR.cc/2018/Conference"
+    assert venue.get_id() == "ICLR.cc/2018/Conference"
 
 
 def test_celery_fixtures(celery_app, celery_session_worker):
