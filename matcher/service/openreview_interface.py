@@ -122,6 +122,7 @@ class BaseConfigNoteInterface:
                 groupby="tail",
                 tail=self.match_group,
                 select="head,weight",
+                domain=self.config_note.domain,
             )
 
         return custom_demand_edges
@@ -144,6 +145,7 @@ class BaseConfigNoteInterface:
                 groupby="head",
                 head=self.match_group,
                 select="tail,weight",
+                domain=self.config_note.domain,
             )
 
         return custom_supply_edges
@@ -162,6 +164,7 @@ class BaseConfigNoteInterface:
             groupby="head",
             head=self.match_group,
             select="head,tail,label",
+            domain=self.config_note.domain,
         )
 
         return constraint_edges
@@ -456,6 +459,7 @@ class BaseConfigNoteInterface:
                 invitation=edge_invitation_id,
                 head=paper_id,
                 select="head,tail,label,weight",
+                domain=self.config_note.domain,
             )
             if grouped_edges and 'values' in grouped_edges[0]:
                 return grouped_edges[0]['values']
@@ -831,7 +835,8 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
                             )
             if "/-/" in paper_invitation:
                 paper_notes = self.client.get_all_notes(
-                    invitation=paper_invitation
+                    invitation=paper_invitation,
+                    domain=self.config_note.domain,
                 )
 
                 paper_notes = [self._content_to_api1(n) for n in paper_notes if self._match_content(n.content, content_dict)]
