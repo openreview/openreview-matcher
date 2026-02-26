@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="openreview-matcher",
-    version="2.0.4",
+    version="2.0.5",
     description="OpenReview matching library",
     url="https://github.com/openreview/openreview-matcher",
     author="Michael Spector",
