@@ -1019,7 +1019,7 @@ def test_integration_by_track(openreview_context, venue, celery_app, celery_sess
         "config_invitation": {
             "value": "{}/-/Assignment_Configuration".format(reviewers_id)
         },
-        "paper_invitation": {"value": venue.get_submission_id() + '&content.abstract=Paper abstract 1'},
+        "paper_invitation": {"value": venue.get_submission_id() + '&content.abstract=Paper abstract &1'},
         "assignment_invitation": {
             "value": venue.get_assignment_id(reviewers_id)
         },
@@ -1087,7 +1087,7 @@ def test_integration_by_track(openreview_context, venue, celery_app, celery_sess
         "config_invitation": {
             "value": "{}/-/Assignment_Configuration".format(reviewers_id)
         },
-        "paper_invitation": {"value": venue.get_submission_id() + '&content.track=Paper abstract 1'},
+        "paper_invitation": {"value": venue.get_submission_id() + '&content.track=Paper abstract &1'},
         "assignment_invitation": {
             "value": venue.get_assignment_id(reviewers_id)
         },
