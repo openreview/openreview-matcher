@@ -76,8 +76,8 @@ def match():
                 )
             else:
                 raise e
-        interface.validate_group(interface.match_group)
         openreview_client_v2.impersonate(interface.venue_id)
+        interface.validate_group(interface.match_group)
 
         if interface.config_note.content["status"] == "Running":
             raise MatcherStatusException("Matcher is already running")

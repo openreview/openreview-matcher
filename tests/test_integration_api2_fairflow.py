@@ -8,7 +8,7 @@ import openreview
 from openreview.api import Note
 import pytest
 
-from conftest import clean_start_conference_v2, wait_for_status
+from conftest import clean_start_conference_v2, wait_for_status, strong_password
 
 @pytest.fixture(scope="module")
 def venue(openreview_context):
@@ -35,6 +35,7 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
     Basic integration test. Makes use of the OpenReview Builder
     """
     openreview_client = openreview_context["openreview_client_v2"]
+    pc_client = openreview.api.OpenReviewClient(username='pc_matching@mail.com', password=strong_password)
     test_client = openreview_context["test_client"]
 
     num_papers = 10    
@@ -87,14 +88,14 @@ def test_integration_basic(openreview_context, venue, celery_app, celery_session
         "solver": {"value": "FairFlow"},
     }
 
-    config_note = openreview_client.post_note_edit(
+    config_note = pc_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
         note=Note(content=config),
     )
     assert config_note
 
-    test_client.set_cookie("openreview.accessToken", openreview_client.token)
+    test_client.set_cookie("openreview.accessToken", pc_client.token)
 
     response = test_client.post(
         "/match",
@@ -126,6 +127,7 @@ def test_integration_supply_mismatch_error(
     """
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
+    pc_client = openreview.api.OpenReviewClient(username='pc_matching@mail.com', password=strong_password)
 
     reviews_per_paper = 10  # impossible!
     max_papers = 1
@@ -175,7 +177,7 @@ def test_integration_supply_mismatch_error(
         "solver": {"value": "FairFlow"},
     }
 
-    config_note = openreview_client.post_note_edit(
+    config_note = pc_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
         note=Note(content=config),
@@ -186,7 +188,7 @@ def test_integration_supply_mismatch_error(
         "/match",
         data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
-        headers=openreview_client.headers,
+        headers=pc_client.headers,
     )
     assert response.status_code == 200
 
@@ -1008,6 +1010,7 @@ def test_integration_group_with_email(
     """
     openreview_client = openreview_context["openreview_client_v2"]
     test_client = openreview_context["test_client"]
+    pc_client = openreview.api.OpenReviewClient(username='pc_matching@mail.com', password=strong_password)
 
     reviews_per_paper = 3
     max_papers = 7
@@ -1074,7 +1077,7 @@ def test_integration_group_with_email(
         "allow_zero_score_assignments": {"value": "Yes"},
     }
 
-    config_note = openreview_client.post_note_edit(
+    config_note = pc_client.post_note_edit(
         invitation="{}/-/Assignment_Configuration".format(reviewers_id),
         signatures=[venue.get_id()],
         note=Note(content=config),
@@ -1085,7 +1088,7 @@ def test_integration_group_with_email(
         "/match",
         data=json.dumps({"configNoteId": config_note["note"]["id"]}),
         content_type="application/json",
-        headers=openreview_client.headers,
+        headers=pc_client.headers,
     )
     assert response.status_code == 200
 

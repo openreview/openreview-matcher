@@ -163,7 +163,7 @@ def clean_start_conference_v2(
         withdrawn_submission_reveal_authors=True,
         desk_rejected_submission_reveal_authors=True,
     )
-    venue.setup()
+    venue.setup(program_chair_ids=['pc_matching@mail.com'])
     venue.create_submission_stage()
 
     reviewers = set()
@@ -419,6 +419,9 @@ def openreview_context():
 
     for letter in ["a", "b", "c"]:
         create_user(f'author@mail{letter}.com', 'Matching', f'Author{letter.upper()}')
+
+
+    create_user('pc_matching@mail.com', 'PC', 'Matching')
 
     with app.app_context():
         yield {
