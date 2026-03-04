@@ -819,20 +819,19 @@ class ConfigNoteInterfaceV2(BaseConfigNoteInterface):
             self.logger.debug(
                 "Getting notes for invitation: {}".format(paper_invitation)
             )
-            if "&" in paper_invitation:
-                elements = paper_invitation.split("&")
-                paper_invitation = elements[0]
-                for element in elements[1:]:
-                    if element:
-                        if element.startswith("content.") and "=" in element:
-                            key, value = element.replace('content.', '').split("=")
-                            content_dict[key] = value
-                        else:
-                            self.logger.debug(
-                                'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
-                                    element
-                                )
+            if "&content." in paper_invitation:
+                parts = paper_invitation.split("&content.")
+                paper_invitation = parts[0]
+                for part in parts[1:]:
+                    if "=" in part:
+                        key, value = part.split("=", 1)
+                        content_dict[key] = value
+                    else:
+                        self.logger.debug(
+                            'Invalid filter provided in invitation: {}. Supported filter format "content.field_x=value1".'.format(
+                                part
                             )
+                        )
             if "/-/" in paper_invitation:
                 paper_notes = self.client.get_all_notes(
                     invitation=paper_invitation,
