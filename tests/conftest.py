@@ -157,7 +157,7 @@ def clean_start_conference_v2(
     venue.submission_stage = openreview.stages.SubmissionStage(
         double_blind=True,
         readers=[
-            openreview.builder.SubmissionStage.Readers.REVIEWERS_ASSIGNED
+            openreview.stages.SubmissionStage.Readers.REVIEWERS_ASSIGNED
         ],
         due_date=now + datetime.timedelta(minutes=10),
         withdrawn_submission_reveal_authors=True,
