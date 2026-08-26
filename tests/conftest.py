@@ -26,6 +26,27 @@ AFFINITY_SCORE_FILE = "./affinity_scores"
 pytest_plugins = ["celery.contrib.pytest"]
 strong_password = 'Or$3cur3P@ssw0rd'
 
+## Epoch milliseconds, UTC, matching what the API expects at registration. Anybody under 18 is
+## flagged a minor and always routed to moderation, so the default has to be clearly an adult.
+def dob_for_age(years):
+    today = datetime.datetime.now(datetime.timezone.utc)
+    try:
+        birth = datetime.datetime(today.year - years, today.month, today.day, tzinfo=datetime.timezone.utc)
+    except ValueError:
+        ## Feb 29 when the target year is not a leap year
+        birth = datetime.datetime(today.year - years, today.month, today.day - 1, tzinfo=datetime.timezone.utc)
+    return int(birth.timestamp() * 1000)
+
+## Memoized: registration and activation must send the identical value (dob is write-once), and
+## those two calls can land on either side of UTC midnight in a long run.
+_default_dob = None
+
+def default_dob():
+    global _default_dob
+    if _default_dob is None:
+        _default_dob = dob_for_age(30)
+    return _default_dob
+
 def ping_url(url):
     iterations = 300
     iteration_duration = 0.1
@@ -114,8 +135,9 @@ def create_user(email, first, last, alternates=[], institution=None):
     client = openreview.Client(baseurl="http://localhost:3000")
     assert client is not None, "Client is none"
     fullname = f'{first} {last}'
+    dob = default_dob()
     res = client.register_user(
-        email=email, fullname=fullname, password=strong_password
+        email=email, fullname=fullname, password=strong_password, dob=dob
     )
     username = res.get("id")
     assert res, "Res i none"
@@ -125,6 +147,9 @@ def create_user(email, first, last, alternates=[], institution=None):
         "preferredEmail": "info@openreview.net"
         if email == "openreview.net"
         else email,
+        ## Activation replaces the stored content wholesale, so the dob saved at registration has
+        ## to be repeated here. It is write-once, so it must be the same value.
+        "dob": dob,
     }
     if institution:
         profile_content["history"] = [
@@ -165,6 +190,17 @@ def clean_start_conference_v2(
     )
     venue.setup(program_chair_ids=['pc_matching@mail.com'])
     venue.create_submission_stage()
+
+    ## Submission invitations get a default human-verification rate limit (15 posts/hour per
+    ## user); the tests post more than that with the same author account, so remove it.
+    openreview_client.post_invitation_edit(
+        invitations=f"{conference_id}/-/Edit",
+        signatures=[conference_id],
+        invitation=Invitation(
+            id=f"{conference_id}/-/Submission",
+            humanVerificationRequired={'delete': True}
+        )
+    )
 
     reviewers = set()
 
@@ -350,12 +386,13 @@ def create_user(email, first, last, alternates=[], institution=None, fullname=No
     super_client = openreview.api.OpenReviewClient(baseurl='http://localhost:3001', username='openreview.net', password=strong_password)
     profile = openreview.tools.get_profile(super_client, email)
     if profile:
-        return Helpers.get_user(email)
+        return openreview.api.OpenReviewClient(baseurl='http://localhost:3001', username=email, password=strong_password)
 
     client = openreview.api.OpenReviewClient(baseurl = 'http://localhost:3001')
     assert client is not None, "Client is none"
 
-    res = client.register_user(email = email, fullname = fullname, password = strong_password)
+    dob = default_dob()
+    res = client.register_user(email = email, fullname = fullname, password = strong_password, dob = dob)
     username = res.get('id')
     assert res, "Res i none"
     profile_content={
@@ -369,6 +406,9 @@ def create_user(email, first, last, alternates=[], institution=None, fullname=No
         'emails': [email] + alternates,
         'preferredEmail': 'info@openreview.net' if email == 'openreview.net' else email,
         'homepage': f"https://{fullname.replace(' ', '')}{int(time.time())}.openreview.net",
+        ## Activation replaces the stored content wholesale, so the dob saved at registration has
+        ## to be repeated here. It is write-once, so it must be the same value.
+        'dob': dob,
     }
     profile_content['history'] = [{
         'position': 'PhD Student',
