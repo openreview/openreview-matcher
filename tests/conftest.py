@@ -191,6 +191,17 @@ def clean_start_conference_v2(
     venue.setup(program_chair_ids=['pc_matching@mail.com'])
     venue.create_submission_stage()
 
+    ## Submission invitations get a default human-verification rate limit (15 posts/hour per
+    ## user); the tests post more than that with the same author account, so remove it.
+    openreview_client.post_invitation_edit(
+        invitations=f"{conference_id}/-/Edit",
+        signatures=[conference_id],
+        invitation=Invitation(
+            id=f"{conference_id}/-/Submission",
+            humanVerificationRequired={'delete': True}
+        )
+    )
+
     reviewers = set()
 
     scores_string = ""
