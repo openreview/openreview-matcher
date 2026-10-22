@@ -56,19 +56,54 @@ jobs:
             retry sudo apt-get install -y mongodb-org=6.0.7
             mongosh mongodb://localhost:27017 --eval "rs.initiate()"
       - run:
+          name: Generate GitHub App token
+          command: |
+            pip install PyJWT==2.15.1 cryptography==50.0.2 --quiet
+
+            cat > /tmp/get_token.py \<< 'PYEOF'
+            import jwt, time, json, os, urllib.request
+
+            private_key = os.environ["GITHUB_APP_PRIVATE_KEY"]
+            app_id = os.environ["GITHUB_APP_ID"]
+            install_id = os.environ["GITHUB_APP_INSTALLATION_ID"]
+            now = int(time.time())
+
+            app_jwt = jwt.encode(
+                {"iat": now - 60, "exp": now + (9 * 60), "iss": app_id},
+                private_key,
+                algorithm="RS256"
+            )
+
+            req = urllib.request.Request(
+                f"https://api.github.com/app/installations/{install_id}/access_tokens",
+                method="POST",
+                headers={
+                    "Authorization": f"Bearer {app_jwt}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28"
+                }
+            )
+            with urllib.request.urlopen(req) as resp:
+                print(json.load(resp)["token"])
+            PYEOF
+
+            TOKEN=$(python3 /tmp/get_token.py)
+
+            echo "export GITHUB_TOKEN=$TOKEN" >> $BASH_ENV
+      - run:
           name: Clone OpenReview API V1 branch << pipeline.parameters.openreview-api-v1-branch >>
           command: |
-            git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api-v1.git ~/openreview
+            git clone https://x-access-token:$GITHUB_TOKEN@github.com/openreview/openreview-api-v1.git ~/openreview
             cd ~/openreview && git checkout << pipeline.parameters.openreview-api-v1-branch >>
       - run:
           name: Clone OpenReview API V2 branch << pipeline.parameters.openreview-api-v2-branch >>
           command: |
-            git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-api.git ~/openreview-v2
+            git clone https://x-access-token:$GITHUB_TOKEN@github.com/openreview/openreview-api.git ~/openreview-v2
             cd ~/openreview-v2 && git checkout << pipeline.parameters.openreview-api-v2-branch >>
       - run:
-          name: Clone openreview-py 
+          name: Clone openreview-py
           command: |
-            git clone https://$OPENREVIEW_GITHUB@github.com/openreview/openreview-py.git ~/openreview-py
+            git clone https://github.com/openreview/openreview-py.git ~/openreview-py
       - run:
           name: Create API directories
           command: |
