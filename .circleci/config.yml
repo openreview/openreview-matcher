@@ -66,23 +66,6 @@ jobs:
             mkdir -p ~/openreview-v2/files/pdfs
             mkdir -p ~/openreview-v2/files/temp
       - run:
-          # source: https://support.mozilla.org/en-US/kb/install-firefox-linux#w_system-firefox-installation-for-advanced-users
-          # source: https://ubuntu-mate.community/t/firefox-installation-guide-non-snap/25299
-          name: Install Firefox
-          command: |
-            # Source the utility functions  
-            source ~/openreview-matcher-repo/.circleci/ci-utils.sh
-
-            wget "https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US" -O firefox-latest.tar.bz2
-            tar -xvf firefox-*.tar.bz2
-            sudo mv firefox /opt
-            sudo ln -s /opt/firefox/firefox /usr/local/bin/firefox
-            retry sudo apt-get install libgtk-3-0
-            retry sudo apt-get install libasound2t64
-            retry sudo apt-get install libdbus-glib-1-2
-            echo export PATH="$PATH:/usr/local/bin/firefox" >> ~/.bashrc
-            source ~/.bashrc
-      - run:
           name: Setup Python virtual environment
           command: |
             python -m venv matcher
@@ -96,9 +79,6 @@ jobs:
           name: Install openreview-py
           command: |
             source matcher/bin/activate
-            pip install py
-            pip install selenium==4.2.0
-            pip install pytest-selenium
             cd ~/openreview-matcher-repo
             pip install -e ~/openreview-py
       - run:
