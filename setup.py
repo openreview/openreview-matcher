@@ -9,6 +9,7 @@ setup(
     author_email="spector@cs.umass.edu",
     license="MIT",
     packages=["matcher"],
+    python_requires=">=3.12",
     setup_requires=["cffi>=1.0.0"],
     cffi_modules=[
         "matcher/solvers/bvn_extension/bvn_extension_build.py:ffibuilder"
