@@ -18,7 +18,7 @@ setup(
         "numpy==2.*",
         "openreview-py",
         "ortools==9.*",
-        "pytest==9.*",
+        "pytest>=9.0.3,<10",
         "sortedcontainers==2.*",
         "Flask==3.1.3",
         "Werkzeug==3.1.9",
