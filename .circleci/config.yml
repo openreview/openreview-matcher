@@ -31,7 +31,8 @@ jobs:
     parallelism: 10
     working_directory: ~/
     docker:
-      - image: cimg/python:3.14.0-node
+      # Matches the Python of the prod conda env (openreview-310) on instance-matching-server.
+      - image: cimg/python:3.10-node
       - image: cimg/redis:6.2.6
       - image: mongo:6.0
         command: [ --replSet, rs0 ]
@@ -177,7 +178,7 @@ workflows:
       - install-package:
           matrix:
             parameters:
-              python-version: ["3.12", "3.13", "3.14"]
+              python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
       - build:
           requires:
             - install-package
