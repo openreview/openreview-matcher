@@ -45,5 +45,5 @@ jobs:
         uses: google-github-actions/setup-gcloud@v1
       - name: Run deploy script
         run: |
-          gcloud config set compute/zone us-central1-c
-          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server --command '/bin/matcher_build_dev.sh -b ${{ github.event.inputs.branch }} -p ${{ github.event.inputs.py_branch }}' --quiet
+          gcloud config set compute/zone us-central1-b
+          gcloud compute ssh --tunnel-through-iap openreview@openreview-matcher-dev --command '/bin/matcher_build_dev.sh -b ${{ github.event.inputs.branch }} -p ${{ github.event.inputs.py_branch }}' --quiet
