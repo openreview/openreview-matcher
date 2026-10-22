@@ -11,10 +11,6 @@ on:
         description: 'Branch to deploy'
         required: false
         default: 'master'
-      py_branch:
-        description: 'openreview-py branch to deploy'
-        required: false
-        default: 'master'
 jobs:
   deploy:
     # Allow the job to fetch a GitHub ID token
@@ -43,4 +39,4 @@ jobs:
       - name: Run deploy script
         run: |
           gcloud config set compute/zone us-central1-b
-          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server-1 --command '/bin/matcher_build_prod.sh -b ${{ github.event.inputs.branch }} -p ${{ github.event.inputs.py_branch }}' --quiet
+          gcloud compute ssh --tunnel-through-iap openreview@instance-matching-server-1 --command '/bin/matcher_build_prod.sh -b ${{ github.event.inputs.branch }}' --quiet
