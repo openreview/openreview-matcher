@@ -76,7 +76,7 @@ def execute_job(queue_name, data, config):
             logger=logger,
         )
         matcher.run()
-        return matcher.get_status()
+        return matcher.get_status().value
     if queue_name == DEPLOYMENT:
         Deployment(config_note_interface=interface, logger=logger).run()
     elif queue_name == UNDEPLOYMENT:
@@ -164,7 +164,7 @@ class MatcherWorker:
         self.logger = logger
         self.workers = []
         self.failure_queue = None
-        self.closing = False
+        self.closing = None
 
     async def run(self):
         if self.closing:
@@ -188,11 +188,18 @@ class MatcherWorker:
         try:
             await asyncio.gather(*(worker.run() for worker in self.workers))
         finally:
+            # bullmq's Worker.run() returns as soon as close() starts, before
+            # its teardown is done. Callers may stop the event loop when this
+            # method returns, which would leave that teardown hanging.
+            await self.close()
             await self.failure_queue.close()
 
     async def close(self):
-        self.closing = True
-        await asyncio.gather(*(worker.close() for worker in self.workers))
+        if self.closing is None:
+            self.closing = asyncio.ensure_future(
+                asyncio.gather(*(worker.close() for worker in self.workers))
+            )
+        await asyncio.shield(self.closing)
 
     def _processor(self, queue_name):
         if queue_name == FAILURE:
@@ -250,19 +257,11 @@ def main():
 
     async def run():
         loop = asyncio.get_running_loop()
-        stop_requested = asyncio.Event()
         for signal_number in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(signal_number, stop_requested.set)
-
-        running = asyncio.ensure_future(worker.run())
-        await asyncio.wait(
-            {running, asyncio.ensure_future(stop_requested.wait())},
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        # Close before leaving asyncio.run: it cancels pending tasks on exit,
-        # and a cancelled bullmq Worker.close() never finishes.
-        await worker.close()
-        await running
+            loop.add_signal_handler(
+                signal_number, lambda: asyncio.ensure_future(worker.close())
+            )
+        await worker.run()
 
     asyncio.run(run())
 
