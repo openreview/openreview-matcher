@@ -7,6 +7,7 @@ import flask
 import openreview
 from flask_cors import CORS
 
+from .job_queue import DEPLOYMENT, MATCHING, UNDEPLOYMENT, enqueue, job_data
 from .openreview_interface import ConfigNoteInterfaceV1, ConfigNoteInterfaceV2
 from ..core import MatcherStatus
 
@@ -116,17 +117,10 @@ def match():
 
         interface.set_status(MatcherStatus.QUEUED)
 
-        from .celery_tasks import run_matching
-
-        run_matching.apply_async(
-            kwargs={
-                "interface": interface,
-                "solver_class": solver_class,
-                "logger": flask.current_app.logger,
-            },
-            queue="matching",
-            ignore_result=False,
-            task_id=config_note_id,
+        enqueue(
+            flask.current_app.config,
+            MATCHING,
+            job_data(interface, solver_class=solver_class),
         )
 
         flask.current_app.logger.debug(
@@ -234,17 +228,7 @@ def deploy():
                 "Matcher configuration is not complete"
             )
 
-        from .celery_tasks import run_deployment
-
-        run_deployment.apply_async(
-            kwargs={
-                "interface": interface,
-                "logger": flask.current_app.logger,
-            },
-            queue="deployment",
-            ignore_result=False,
-            task_id=config_note_id,
-        )
+        enqueue(flask.current_app.config, DEPLOYMENT, job_data(interface))
 
         flask.current_app.logger.debug(
             "Deployment for configuration has started: {}".format(
@@ -346,17 +330,7 @@ def undeploy():
                 "Matcher configuration status is not Deployed"
             )
 
-        from .celery_tasks import run_undeployment
-
-        run_undeployment.apply_async(
-            kwargs={
-                "interface": interface,
-                "logger": flask.current_app.logger,
-            },
-            queue="undeployment",
-            ignore_result=False,
-            task_id=config_note_id,
-        )
+        enqueue(flask.current_app.config, UNDEPLOYMENT, job_data(interface))
 
         flask.current_app.logger.debug(
             "Undeployment for configuration has started: {}".format(

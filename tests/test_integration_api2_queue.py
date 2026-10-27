@@ -1,5 +1,5 @@
 """
-End-to-end integration tests with OpenReview server and Celery task queue.
+End-to-end integration tests with OpenReview server and BullMQ job queue.
 """
 
 import json
@@ -10,7 +10,7 @@ import openreview
 from conftest import clean_start_conference_v2, wait_for_status
 
 
-def test_integration_basic(openreview_context, celery_app, celery_session_worker):
+def test_integration_basic(openreview_context, matcher_worker):
     """
     Basic integration test. Makes use of the OpenReview Builder
     """
