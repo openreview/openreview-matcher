@@ -33,7 +33,7 @@ jobs:
     docker:
       # Matches the Python of the prod conda env (openreview-310) on instance-matching-server.
       - image: cimg/python:3.10-node
-      - image: cimg/redis:6.2.6
+      - image: cimg/redis:7.4.11
       - image: mongo:6.0
         command: [ --replSet, rs0 ]
       - image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
