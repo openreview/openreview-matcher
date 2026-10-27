@@ -486,25 +486,41 @@ async def obliterate_queues(config):
             await queue.close()
 
 
-@pytest.fixture(scope="session")
-def matcher_worker(openreview_context):
+def start_worker_in_thread(config, logger):
     """
-    Runs a worker on its own event loop in a background thread, on queues
-    emptied of jobs left over from earlier test sessions.
+    Runs a worker on its own event loop in a background thread. Returns the
+    worker and a function that stops it, failing instead of hanging if the
+    worker does not shut down.
     """
-    app = openreview_context["app"]
-    asyncio.run(obliterate_queues(app.config))
-
-    worker = MatcherWorker(app.config, app.logger)
+    worker = MatcherWorker(config, logger)
     loop = asyncio.new_event_loop()
     thread = threading.Thread(
         target=loop.run_until_complete, args=(worker.run(),), daemon=True
     )
     thread.start()
+
+    def stop():
+        asyncio.run_coroutine_threadsafe(worker.close(), loop).result(
+            timeout=60
+        )
+        thread.join(timeout=60)
+        assert not thread.is_alive(), "worker thread did not stop"
+        loop.close()
+
+    return worker, stop
+
+
+@pytest.fixture(scope="session")
+def matcher_worker(openreview_context):
+    """
+    Runs a worker on queues emptied of jobs left over from earlier test
+    sessions.
+    """
+    app = openreview_context["app"]
+    asyncio.run(obliterate_queues(app.config))
+    worker, stop = start_worker_in_thread(app.config, app.logger)
     yield worker
-    asyncio.run_coroutine_threadsafe(worker.close(), loop).result()
-    thread.join()
-    loop.close()
+    stop()
 
 if __name__ == "__main__":
     config = {

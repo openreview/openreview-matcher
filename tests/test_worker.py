@@ -8,6 +8,7 @@ import pytest
 from bullmq import Queue, UnrecoverableError
 from openreview import openreview
 
+from matcher.service import create_app
 from matcher.service import worker as worker_module
 from matcher.service.job_queue import (
     MATCHING,
@@ -22,7 +23,12 @@ from matcher.service.worker import (
     RetryableJobError,
     run_in_subprocess,
 )
-from conftest import clean_start_conference_v2, wait_for_status
+from conftest import (
+    clean_start_conference_v2,
+    obliterate_queues,
+    start_worker_in_thread,
+    wait_for_status,
+)
 
 
 def return_sum(x, y):
@@ -51,18 +57,50 @@ def survive_stop_signals():
     return "finished"
 
 
-async def finished_job(config, job_id):
+def complete_matching(queue_name, data, config):
+    return "Complete"
+
+
+async def finished_job(config, job_id, timeout=60):
     queue = Queue(MATCHING, queue_options(config))
+    deadline = time.monotonic() + timeout
     try:
-        for _ in range(50):
+        while time.monotonic() < deadline:
             state = await queue.getJobState(job_id)
             if state in ("completed", "failed"):
                 job = await queue.getJob(job_id)
-                return state, job.returnvalue
+                return state, job.returnvalue or job.failedReason
             await asyncio.sleep(0.1)
         return state, None
     finally:
         await queue.close()
+
+
+def test_worker_in_thread_completes_job_and_stops(monkeypatch):
+    app = create_app(
+        config={
+            "LOG_FILE": "pytest.log",
+            "BULLMQ_PREFIX": "bullmq:matcher-test-worker",
+        }
+    )
+    asyncio.run(obliterate_queues(app.config))
+    monkeypatch.setattr(worker_module, "execute_job", complete_matching)
+    worker, stop = start_worker_in_thread(app.config, app.logger)
+    try:
+        job = enqueue(
+            app.config,
+            MATCHING,
+            {"config_note_id": "note", "api_version": 2, "token": "token"},
+        )
+        assert asyncio.run(finished_job(app.config, job.id)) == (
+            "completed",
+            "Complete",
+        )
+    finally:
+        try:
+            stop()
+        finally:
+            asyncio.run(obliterate_queues(app.config))
 
 
 def test_subprocess_returns_result():
