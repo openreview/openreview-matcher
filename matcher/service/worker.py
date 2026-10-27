@@ -76,7 +76,7 @@ def execute_job(queue_name, data, config):
             logger=logger,
         )
         matcher.run()
-        return matcher.get_status().value
+        return matcher.get_status()
     if queue_name == DEPLOYMENT:
         Deployment(config_note_interface=interface, logger=logger).run()
     elif queue_name == UNDEPLOYMENT:
