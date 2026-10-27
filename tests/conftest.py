@@ -4,6 +4,7 @@ Defines pytest fixtures that maintain a persistent state
 """
 
 import asyncio
+import concurrent.futures
 import os
 import datetime
 import threading
@@ -486,11 +487,28 @@ async def obliterate_queues(config):
             await queue.close()
 
 
+async def describe_pending_tasks():
+    descriptions = []
+    for task in asyncio.all_tasks():
+        frames = " <- ".join(
+            "{}:{} {}".format(
+                os.path.basename(frame.f_code.co_filename),
+                frame.f_lineno,
+                frame.f_code.co_name,
+            )
+            for frame in task.get_stack(limit=4)
+        )
+        descriptions.append(
+            "{}: {}".format(task.get_coro().__qualname__, frames)
+        )
+    return "\n".join(descriptions)
+
+
 def start_worker_in_thread(config, logger):
     """
     Runs a worker on its own event loop in a background thread. Returns the
-    worker and a function that stops it, failing instead of hanging if the
-    worker does not shut down.
+    worker and a function that stops it, failing with the worker's pending
+    tasks instead of hanging if the worker does not shut down.
     """
     worker = MatcherWorker(config, logger)
     loop = asyncio.new_event_loop()
@@ -500,9 +518,19 @@ def start_worker_in_thread(config, logger):
     thread.start()
 
     def stop():
-        asyncio.run_coroutine_threadsafe(worker.close(), loop).result(
-            timeout=60
-        )
+        closing = asyncio.run_coroutine_threadsafe(worker.close(), loop)
+        try:
+            closing.result(timeout=60)
+        except concurrent.futures.TimeoutError:
+            try:
+                pending = asyncio.run_coroutine_threadsafe(
+                    describe_pending_tasks(), loop
+                ).result(timeout=5)
+            except concurrent.futures.TimeoutError:
+                pending = "none reported: the event loop is blocked"
+            raise AssertionError(
+                "worker did not close within 60s. Pending tasks:\n" + pending
+            )
         thread.join(timeout=60)
         assert not thread.is_alive(), "worker thread did not stop"
         loop.close()

@@ -289,8 +289,12 @@ def test_matching_task(openreview_context, matcher_worker):
         job_data(interface, solver_class=solver_class),
     )
 
-    matcher_status = wait_for_status(openreview_client, config_note.id)
-    assert matcher_status.content["status"]["value"] == "Complete", 'Error status: ' + matcher_status.content['error_message']['value']
+    matcher_status = wait_for_status(
+        openreview_client, config_note.id, api_version=2
+    )
+    assert matcher_status.content["status"]["value"] == "Complete", (
+        matcher_status.content
+    )
     assert asyncio.run(finished_job(app.config, job.id)) == (
         "completed",
         "Complete",
