@@ -77,14 +77,19 @@ jobs:
             echo "ERROR: elasticsearch did not become ready after 60s" >&2
             docker logs elasticsearch 2>&1 | tail -50
             exit 1
+      # The machine image puts an nvm-managed Node first on PATH, which would shadow
+      # a system-wide install, so select the version through nvm.
       - run:
           name: Install Node.js 24
           command: |
-            source ~/openreview-matcher-repo/.circleci/ci-utils.sh
-            curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-            retry sudo apt-get install -y nodejs
+            nvm install 24
+            nvm alias default 24
+      - run:
+          name: Check Node.js version
+          command: |
             node --version
             npm --version
+            node --version | grep -q '^v24\.'
       - run:
           # Matches the Python of the prod conda env (openreview-310) on instance-matching-server.
           name: Select Python 3.10
