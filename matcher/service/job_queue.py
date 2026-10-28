@@ -4,12 +4,26 @@ from bullmq import Queue
 
 from .openreview_interface import ConfigNoteInterfaceV1
 
+MATCHING_QUEUE = "matching"
+# BullMQ names its Redis connections after the queue, and Redis rejects
+# connection names with spaces.
+OPERATIONS_QUEUE = "matching-operations"
+
+QUEUE_NAMES = (MATCHING_QUEUE, OPERATIONS_QUEUE)
+
 MATCHING = "matching"
 DEPLOYMENT = "deployment"
 UNDEPLOYMENT = "undeployment"
-FAILURE = "failure"
+ERROR_STATUS = "error status"
 
-QUEUE_NAMES = (MATCHING, DEPLOYMENT, UNDEPLOYMENT, FAILURE)
+# Matching runs can take hours, so they get a queue of their own and cannot
+# hold up the short jobs.
+JOB_QUEUES = {
+    MATCHING: MATCHING_QUEUE,
+    DEPLOYMENT: OPERATIONS_QUEUE,
+    UNDEPLOYMENT: OPERATIONS_QUEUE,
+    ERROR_STATUS: OPERATIONS_QUEUE,
+}
 
 RETRY_OPTIONS = {
     MATCHING: {
@@ -24,7 +38,7 @@ RETRY_OPTIONS = {
         "attempts": 2,
         "backoff": {"type": "fixed", "delay": 300_000},
     },
-    FAILURE: {
+    ERROR_STATUS: {
         "attempts": 10,
         "backoff": {"type": "exponential", "delay": 10_000},
     },
@@ -42,9 +56,9 @@ def queue_options(config):
     }
 
 
-def job_options(config, queue_name):
+def job_options(config, job_name):
     return {
-        **RETRY_OPTIONS[queue_name],
+        **RETRY_OPTIONS[job_name],
         "removeOnComplete": {"age": config["BULLMQ_REMOVE_ON_COMPLETE_AGE"]},
         "removeOnFail": {"age": config["BULLMQ_REMOVE_ON_FAIL_AGE"]},
     }
@@ -65,17 +79,17 @@ def job_data(interface, **extra):
     }
 
 
-async def add_job(queue, config, data):
-    return await queue.add(queue.name, data, job_options(config, queue.name))
+async def add_job(queue, config, job_name, data):
+    return await queue.add(job_name, data, job_options(config, job_name))
 
 
-def enqueue(config, queue_name, data):
+def enqueue(config, job_name, data):
     """Adds a job from synchronous code, such as a Flask request handler."""
 
     async def add():
-        queue = Queue(queue_name, queue_options(config))
+        queue = Queue(JOB_QUEUES[job_name], queue_options(config))
         try:
-            return await add_job(queue, config, data)
+            return await add_job(queue, config, job_name, data)
         finally:
             await queue.close()
 

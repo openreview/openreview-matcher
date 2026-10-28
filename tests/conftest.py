@@ -518,6 +518,10 @@ def start_worker_in_thread(config, logger):
     thread.start()
 
     def stop():
+        assert thread.is_alive(), (
+            "worker thread exited before it was stopped; "
+            "its exception is reported as a thread warning"
+        )
         closing = asyncio.run_coroutine_threadsafe(worker.close(), loop)
         try:
             closing.result(timeout=60)

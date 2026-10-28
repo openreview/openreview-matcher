@@ -11,7 +11,11 @@ from openreview import openreview
 from matcher.service import create_app
 from matcher.service import worker as worker_module
 from matcher.service.job_queue import (
+    DEPLOYMENT,
+    ERROR_STATUS,
     MATCHING,
+    MATCHING_QUEUE,
+    OPERATIONS_QUEUE,
     enqueue,
     job_data,
     queue_options,
@@ -57,8 +61,12 @@ def survive_stop_signals():
     return "finished"
 
 
-def complete_matching(queue_name, data, config):
+def complete_matching(job_name, data, config):
     return "Complete"
+
+
+def fail_with_value_error(job_name, data, config):
+    raise ValueError("bad config")
 
 
 def count_root_handlers_after_solving():
@@ -82,8 +90,8 @@ def count_root_handlers_after_solving():
     return len(logging.getLogger().handlers)
 
 
-async def finished_job(config, job_id, timeout=60):
-    queue = Queue(MATCHING, queue_options(config))
+async def finished_job(config, job_id, queue_name=MATCHING_QUEUE, timeout=60):
+    queue = Queue(queue_name, queue_options(config))
     deadline = time.monotonic() + timeout
     try:
         while time.monotonic() < deadline:
@@ -117,6 +125,50 @@ def test_worker_in_thread_completes_job_and_stops(monkeypatch):
             "completed",
             "Complete",
         )
+    finally:
+        try:
+            stop()
+        finally:
+            asyncio.run(obliterate_queues(app.config))
+
+
+def test_failed_operation_queues_error_status_job(monkeypatch):
+    app = create_app(
+        config={
+            "LOG_FILE": "pytest.log",
+            "BULLMQ_PREFIX": "bullmq:matcher-test-worker",
+        }
+    )
+    asyncio.run(obliterate_queues(app.config))
+    monkeypatch.setattr(worker_module, "execute_job", fail_with_value_error)
+    error_statuses = []
+    monkeypatch.setattr(
+        worker_module,
+        "set_error_status",
+        lambda config, data, logger: error_statuses.append(data),
+    )
+    worker, stop = start_worker_in_thread(app.config, app.logger)
+    try:
+        job = enqueue(
+            app.config,
+            DEPLOYMENT,
+            {"config_note_id": "note", "api_version": 2, "token": "token"},
+        )
+        state, reason = asyncio.run(
+            finished_job(app.config, job.id, OPERATIONS_QUEUE)
+        )
+        assert (state, "ValueError" in reason) == ("failed", True)
+        deadline = time.monotonic() + 30
+        while not error_statuses and time.monotonic() < deadline:
+            time.sleep(0.1)
+        assert error_statuses == [
+            {
+                "config_note_id": "note",
+                "api_version": 2,
+                "token": "token",
+                "error": "ValueError",
+            }
+        ]
     finally:
         try:
             stop()
@@ -188,8 +240,8 @@ def failing_worker(monkeypatch):
 
     failure_jobs = []
 
-    async def add_job(queue, config, data):
-        failure_jobs.append(data)
+    async def add_job(queue, config, job_name, data):
+        failure_jobs.append((job_name, data))
 
     monkeypatch.setattr(worker_module, "add_job", add_job)
     worker = MatcherWorker({"JOB_TIMEOUT": 30}, types.SimpleNamespace(
@@ -201,6 +253,7 @@ def failing_worker(monkeypatch):
 def matching_job(attempts_made):
     return types.SimpleNamespace(
         id="1",
+        name=MATCHING,
         data={"config_note_id": "note"},
         attemptsMade=attempts_made,
         opts={"attempts": 4},
@@ -212,7 +265,7 @@ def test_retryable_error_is_retried_before_last_attempt(failing_worker):
     fail_with(RetryableJobError("ConnectionRefusedError", "API is down"))
 
     with pytest.raises(RetryableJobError):
-        asyncio.run(worker._run_job(MATCHING, matching_job(attempts_made=2)))
+        asyncio.run(worker._run_job(matching_job(attempts_made=2)))
     assert failure_jobs == []
 
 
@@ -221,9 +274,12 @@ def test_retryable_error_on_last_attempt_sets_error_status(failing_worker):
     fail_with(RetryableJobError("ConnectionRefusedError", "API is down"))
 
     with pytest.raises(UnrecoverableError):
-        asyncio.run(worker._run_job(MATCHING, matching_job(attempts_made=3)))
+        asyncio.run(worker._run_job(matching_job(attempts_made=3)))
     assert failure_jobs == [
-        {"config_note_id": "note", "error": "ConnectionRefusedError"}
+        (
+            ERROR_STATUS,
+            {"config_note_id": "note", "error": "ConnectionRefusedError"},
+        )
     ]
 
 
@@ -232,9 +288,9 @@ def test_other_error_sets_error_status_without_retrying(failing_worker):
     fail_with(JobError("TimeoutError", "Job exceeded 30 seconds"))
 
     with pytest.raises(UnrecoverableError):
-        asyncio.run(worker._run_job(MATCHING, matching_job(attempts_made=0)))
+        asyncio.run(worker._run_job(matching_job(attempts_made=0)))
     assert failure_jobs == [
-        {"config_note_id": "note", "error": "TimeoutError"}
+        (ERROR_STATUS, {"config_note_id": "note", "error": "TimeoutError"})
     ]
 
 
