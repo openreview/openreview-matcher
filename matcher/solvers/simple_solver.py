@@ -358,7 +358,7 @@ class SimpleSolver:
                 ):
                     self.flow_matrix[p_node.index, r_node.index] = flow
         else:
-            logging.debug("Solver status: {}".format(solver_status))
+            self.logger.debug("Solver status: {}".format(solver_status))
             self.solved = False
 
         return self.flow_matrix
