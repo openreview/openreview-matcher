@@ -78,10 +78,10 @@ jobs:
             docker logs elasticsearch 2>&1 | tail -50
             exit 1
       - run:
-          name: Install Node.js 22
+          name: Install Node.js 24
           command: |
             source ~/openreview-matcher-repo/.circleci/ci-utils.sh
-            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
             retry sudo apt-get install -y nodejs
             node --version
             npm --version
