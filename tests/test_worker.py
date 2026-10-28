@@ -61,6 +61,27 @@ def complete_matching(queue_name, data, config):
     return "Complete"
 
 
+def count_root_handlers_after_solving():
+    import logging
+    from collections import namedtuple
+
+    import numpy as np
+
+    from matcher.solvers import FairFlow
+
+    encoder = namedtuple(
+        "Encoder", ["aggregate_score_matrix", "constraint_matrix"]
+    )
+    scores = np.zeros((3, 4))
+    FairFlow(
+        [1, 1, 1, 1],
+        [2, 2, 2, 2],
+        [1, 1, 2],
+        encoder(scores, np.zeros(scores.shape)),
+    ).solve()
+    return len(logging.getLogger().handlers)
+
+
 async def finished_job(config, job_id, timeout=60):
     queue = Queue(MATCHING, queue_options(config))
     deadline = time.monotonic() + timeout
@@ -132,6 +153,17 @@ def test_subprocess_that_exits_without_result_fails():
         asyncio.run(run_in_subprocess(exit_abruptly, (), 30))
     assert error.value.error_type == "ProcessExited"
     assert "code 3" in str(error.value)
+
+
+def test_solving_does_not_configure_the_root_logger():
+    """
+    A handler on the root logger would print every matcher log line a second
+    time in the job process.
+    """
+    handlers = asyncio.run(
+        run_in_subprocess(count_root_handlers_after_solving, (), 60)
+    )
+    assert handlers == 0
 
 
 def test_subprocess_finishes_despite_stop_signals():
