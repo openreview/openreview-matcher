@@ -86,7 +86,10 @@ python -m matcher.service.worker
 
 Matching jobs go to the `matching` queue. Deployment, undeployment and the jobs that set a failed configuration's status to Error go to `matching-operations`, so long matching runs never hold up the short jobs. Each job runs in its own process, which is killed if it runs longer than `JOB_TIMEOUT` seconds. `WORKER_CONCURRENCY` sets how many jobs of each queue a worker runs at once. To add capacity, start more workers, on the same machine or on others that reach the same Redis. On `SIGINT` or `SIGTERM` a worker stops taking new jobs and exits once its running jobs finish.
 
-The server and the worker connect to Redis with `REDIS_ADDR`, `REDIS_PORT`, `REDIS_DB` and, when Redis requires one, `REDIS_PASSWORD`.
+The server and the worker connect to Redis with `REDIS_ADDR`, `REDIS_PORT`, `REDIS_DB` and, when Redis requires them, `REDIS_USERNAME` and `REDIS_PASSWORD`. A Redis ACL user limited to the queues needs these permissions, with the `BULLMQ_PREFIX` in the key pattern:
+```
+~bullmq:matcher:* resetchannels +@all -@dangerous +info
+```
 
 The queues can be inspected with any BullMQ dashboard, such as [Taskforce](https://taskforce.sh) or [bull-board](https://github.com/felixmosh/bull-board), pointed at the `BULLMQ_PREFIX` prefix.
 ### Configuration
