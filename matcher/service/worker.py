@@ -18,8 +18,9 @@ from matcher.core import MatcherStatus
 from matcher.service import create_app
 from matcher.service.job_queue import (
     DEPLOYMENT,
-    FAILURE,
+    ERROR_STATUS,
     MATCHING,
+    OPERATIONS_QUEUE,
     QUEUE_NAMES,
     UNDEPLOYMENT,
     add_job,
@@ -66,10 +67,10 @@ def build_interface(config, data, logger):
     )
 
 
-def execute_job(queue_name, data, config):
+def execute_job(job_name, data, config):
     logger = create_app(config).logger
     interface = build_interface(config, data, logger)
-    if queue_name == MATCHING:
+    if job_name == MATCHING:
         matcher = Matcher(
             datasource=interface,
             solver_class=data["solver_class"],
@@ -77,9 +78,9 @@ def execute_job(queue_name, data, config):
         )
         matcher.run()
         return matcher.get_status()
-    if queue_name == DEPLOYMENT:
+    if job_name == DEPLOYMENT:
         Deployment(config_note_interface=interface, logger=logger).run()
-    elif queue_name == UNDEPLOYMENT:
+    elif job_name == UNDEPLOYMENT:
         Undeployment(config_note_interface=interface, logger=logger).run()
     return interface.config_note.content["status"]
 
@@ -163,18 +164,18 @@ class MatcherWorker:
         self.config = dict(config)
         self.logger = logger
         self.workers = []
-        self.failure_queue = None
+        self.operations_queue = None
         self.closing = None
 
     async def run(self):
         if self.closing:
             return
         options = queue_options(self.config)
-        self.failure_queue = Queue(FAILURE, options)
+        self.operations_queue = Queue(OPERATIONS_QUEUE, options)
         self.workers = [
             Worker(
                 queue_name,
-                self._processor(queue_name),
+                self._process,
                 {
                     **options,
                     "autorun": False,
@@ -192,7 +193,7 @@ class MatcherWorker:
             # its teardown is done. Callers may stop the event loop when this
             # method returns, which would leave that teardown hanging.
             await self.close()
-            await self.failure_queue.close()
+            await self.operations_queue.close()
 
     async def close(self):
         if self.closing is None:
@@ -201,26 +202,24 @@ class MatcherWorker:
             )
         await asyncio.shield(self.closing)
 
-    def _processor(self, queue_name):
-        if queue_name == FAILURE:
-            return self._set_error_status
+    async def _process(self, job, token):
+        if job.name == ERROR_STATUS:
+            return await asyncio.to_thread(
+                set_error_status, self.config, job.data, self.logger
+            )
+        return await self._run_job(job)
 
-        async def process(job, token):
-            return await self._run_job(queue_name, job)
-
-        return process
-
-    async def _run_job(self, queue_name, job):
+    async def _run_job(self, job):
         config_note_id = job.data["config_note_id"]
         self.logger.debug(
             "{} job {} received for config note {}".format(
-                queue_name, job.id, config_note_id
+                job.name, job.id, config_note_id
             )
         )
         try:
             return await run_in_subprocess(
                 execute_job,
-                (queue_name, job.data, self.config),
+                (job.name, job.data, self.config),
                 self.config["JOB_TIMEOUT"],
             )
         except JobError as error:
@@ -229,26 +228,22 @@ class MatcherWorker:
             ):
                 self.logger.warning(
                     "{} job for config note {} will be retried: {}".format(
-                        queue_name, config_note_id, error.error_type
+                        job.name, config_note_id, error.error_type
                     )
                 )
                 raise
             self.logger.warning(
                 "{} job for config note {} failed: {}".format(
-                    queue_name, config_note_id, error
+                    job.name, config_note_id, error
                 )
             )
             await add_job(
-                self.failure_queue,
+                self.operations_queue,
                 self.config,
+                ERROR_STATUS,
                 {**job.data, "error": error.error_type},
             )
             raise UnrecoverableError(str(error)) from error
-
-    async def _set_error_status(self, job, token):
-        await asyncio.to_thread(
-            set_error_status, self.config, job.data, self.logger
-        )
 
 
 def main():
