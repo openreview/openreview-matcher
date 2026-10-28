@@ -77,13 +77,14 @@ jobs:
             echo "ERROR: elasticsearch did not become ready after 60s" >&2
             docker logs elasticsearch 2>&1 | tail -50
             exit 1
-      # The machine image puts an nvm-managed Node first on PATH, which would shadow
-      # a system-wide install, so select the version through nvm.
+      # The machine image puts its own Node first on PATH at the start of every
+      # step, which shadows both a system-wide install and nvm's default alias, so
+      # prepend Node 24 to PATH for all later steps.
       - run:
           name: Install Node.js 24
           command: |
             nvm install 24
-            nvm alias default 24
+            echo "export PATH=\"$(dirname "$(nvm which 24)"):\$PATH\"" >> "$BASH_ENV"
       - run:
           name: Check Node.js version
           command: |
