@@ -81,7 +81,7 @@ class FairFlow(object):
                     axis=1,
                 )
             )[0]
-            logging.debug(
+            self.logger.debug(
                 "Setting minimum load for {} reviewers to 0 "
                 "because they do not have known affinity with any paper".format(
                     len(bad_affinity_reviewers)
@@ -210,7 +210,7 @@ class FairFlow(object):
         # First solve flow with lower bounds as caps.
         # Construct edges between the source and each reviewer that must review.
         if self.minimums is not None:
-            logging.debug("Solving MCF with min load constraint")
+            self.logger.debug("Solving MCF with min load constraint")
             rev_caps = np.maximum(
                 self.minimums - np.sum(self.solution, axis=1), 0
             )
@@ -230,7 +230,7 @@ class FairFlow(object):
 
         # Now compute the residual flow that must be routed so that each paper
         # is sufficiently reviewed. Also compute residual maximums and demands.
-        logging.debug("solving MCF with max load constraint")
+        self.logger.debug("solving MCF with max load constraint")
         rev_caps = self.maximums - np.sum(self.solution, axis=1)
         pap_caps = np.maximum(self.demands - np.sum(self.solution, axis=0), 0)
         flow = np.sum(pap_caps)

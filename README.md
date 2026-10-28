@@ -72,36 +72,26 @@ PerturbedMaximization (`--solver PerturbedMaximization` on the command line) imp
 Like the Randomized Solver, PerturbedMaximization returns a deterministic assignment that was sampled from this randomized assignment. The sampling algorithm is implemented in `matcher/solvers/bvn_extension`. For more information, see [this paper](https://arxiv.org/abs/2310.05995).
 
 ## Running the Server
-The server is implemented in Flask and uses Celery to manage the matching tasks asynchronously and can be started from the command line:
+The server is implemented in Flask and queues the matching, deployment and undeployment jobs in Redis with [BullMQ](https://docs.bullmq.io/python/introduction). It can be started from the command line:
 ```
 python -m matcher.service --host localhost --port 5000
 ```
 
 By default, the app will run on `http://localhost:5000`. The endpoint `/match/test` should show a simple page indicating that Flask is running.
 
-The celery worker can be installed using:
+The queued jobs are processed by a separate worker, which reads the same configuration as the server:
 ```
- celery --app matcher.service.server.celery_app worker
+python -m matcher.service.worker
 ```
 
-To start multiple workers, run the same command with the name option for each worker as follows:
+Matching jobs go to the `matching` queue. Deployment, undeployment and the jobs that set a failed configuration's status to Error go to `matching-operations`, so long matching runs never hold up the short jobs. Each job runs in its own process, which is killed if it runs longer than `JOB_TIMEOUT` seconds. `WORKER_CONCURRENCY` sets how many jobs of each queue a worker runs at once. To add capacity, start more workers, on the same machine or on others that reach the same Redis. On `SIGINT` or `SIGTERM` a worker stops taking new jobs and exits once its running jobs finish.
 
+The server and the worker connect to Redis with `REDIS_ADDR`, `REDIS_PORT`, `REDIS_DB` and, when Redis requires them, `REDIS_USERNAME` and `REDIS_PASSWORD`. A Redis ACL user limited to the queues needs these permissions, with the `BULLMQ_PREFIX` in the key pattern:
 ```
-celery --app matcher.service.server.celery_app worker -n worker_name
+~bullmq:matcher:* resetchannels +@all -@dangerous +info
 ```
-For more options you may check the celery-worker documentation [here](https://docs.celeryproject.org/en/stable/reference/cli.html#celery-worker).
 
-There's also an option to monitor the celery workers using `flower`. Make sure to install the full package:
-```
-pip install ./openreview-matcher[full]
-```
-and the flower dashboard can be started after that using
-```
-celery --app matcher.service.server.celery_app flower --persistent=True --state_save_interval=60000
-```
-For more options you may check the flower documentation [here](https://flower.readthedocs.io/en/latest/config.html).
-
-By default, the flower dashboard will run on `http://localhost:5555`
+The queues can be inspected with any BullMQ dashboard, such as [Taskforce](https://taskforce.sh) or [bull-board](https://github.com/felixmosh/bull-board), pointed at the `BULLMQ_PREFIX` prefix.
 ### Configuration
 Configuration files are located in `/matcher/service/config`. When started, the server will search for a `.cfg` file in `/matcher/service/config` that matches the environment variable `FLASK_ENV`, and will default to the values in `default.cfg`.
 
