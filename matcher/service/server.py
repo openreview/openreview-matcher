@@ -1,4 +1,3 @@
-from matcher.service import create_app, create_celery
+from matcher.service import create_app
 
 app = create_app()
-celery_app = create_celery(app)

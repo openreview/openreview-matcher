@@ -85,7 +85,7 @@ class FairSequence(object):
                     axis=1,
                 )
             )[0]
-            logging.debug(
+            self.logger.debug(
                 "Setting minimum load for {} reviewers to 0 "
                 "because they do not have known affinity with any paper".format(
                     len(bad_affinity_reviewers)
