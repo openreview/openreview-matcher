@@ -24,6 +24,7 @@ from matcher.service.job_queue import (
     QUEUE_NAMES,
     UNDEPLOYMENT,
     add_job,
+    job_type_of,
     queue_options,
 )
 from matcher.service.openreview_interface import (
@@ -67,10 +68,10 @@ def build_interface(config, data, logger):
     )
 
 
-def execute_job(job_name, data, config):
+def execute_job(job_type, data, config):
     logger = create_app(config).logger
     interface = build_interface(config, data, logger)
-    if job_name == MATCHING:
+    if job_type == MATCHING:
         matcher = Matcher(
             datasource=interface,
             solver_class=data["solver_class"],
@@ -78,9 +79,9 @@ def execute_job(job_name, data, config):
         )
         matcher.run()
         return matcher.get_status()
-    if job_name == DEPLOYMENT:
+    if job_type == DEPLOYMENT:
         Deployment(config_note_interface=interface, logger=logger).run()
-    elif job_name == UNDEPLOYMENT:
+    elif job_type == UNDEPLOYMENT:
         Undeployment(config_note_interface=interface, logger=logger).run()
     return interface.config_note.content["status"]
 
@@ -203,23 +204,24 @@ class MatcherWorker:
         await asyncio.shield(self.closing)
 
     async def _process(self, job, token):
-        if job.name == ERROR_STATUS:
+        if job_type_of(job) == ERROR_STATUS:
             return await asyncio.to_thread(
                 set_error_status, self.config, job.data, self.logger
             )
         return await self._run_job(job)
 
     async def _run_job(self, job):
+        job_type = job_type_of(job)
         config_note_id = job.data["config_note_id"]
         self.logger.debug(
             "{} job {} received for config note {}".format(
-                job.name, job.id, config_note_id
+                job_type, job.id, config_note_id
             )
         )
         try:
             return await run_in_subprocess(
                 execute_job,
-                (job.name, job.data, self.config),
+                (job_type, job.data, self.config),
                 self.config["JOB_TIMEOUT"],
             )
         except JobError as error:
@@ -228,13 +230,13 @@ class MatcherWorker:
             ):
                 self.logger.warning(
                     "{} job for config note {} will be retried: {}".format(
-                        job.name, config_note_id, error.error_type
+                        job_type, config_note_id, error.error_type
                     )
                 )
                 raise
             self.logger.warning(
                 "{} job for config note {} failed: {}".format(
-                    job.name, config_note_id, error
+                    job_type, config_note_id, error
                 )
             )
             await add_job(

@@ -18,6 +18,8 @@ from matcher.service.job_queue import (
     OPERATIONS_QUEUE,
     enqueue,
     job_data,
+    job_title,
+    job_type_of,
     queue_options,
 )
 from matcher.service.openreview_interface import ConfigNoteInterfaceV2
@@ -105,6 +107,41 @@ async def finished_job(config, job_id, queue_name=MATCHING_QUEUE, timeout=60):
         await queue.close()
 
 
+async def job_names(config, queue_name):
+    queue = Queue(queue_name, queue_options(config))
+    try:
+        jobs = await queue.getJobs(["completed", "failed"])
+        return sorted(job.name for job in jobs)
+    finally:
+        await queue.close()
+
+
+QUEUED_DATA = {
+    "config_note_id": "note",
+    "api_version": 2,
+    "token": "token",
+    "match_group": "Venue/Reviewers",
+    "label": "test config",
+}
+
+
+def test_job_title_names_the_match_group_and_configuration():
+    assert job_title(MATCHING, QUEUED_DATA) == (
+        "matching: Venue/Reviewers (test config)"
+    )
+    assert job_title(MATCHING, {"config_note_id": "note"}) == "matching"
+
+
+def test_job_type_comes_from_data_and_falls_back_to_the_name():
+    labelled = types.SimpleNamespace(
+        name="matching: Venue/Reviewers (test config)",
+        data={"type": MATCHING},
+    )
+    queued_before_labels = types.SimpleNamespace(name=DEPLOYMENT, data={})
+    assert job_type_of(labelled) == MATCHING
+    assert job_type_of(queued_before_labels) == DEPLOYMENT
+
+
 def test_worker_in_thread_completes_job_and_stops(monkeypatch):
     app = create_app(
         config={
@@ -116,11 +153,8 @@ def test_worker_in_thread_completes_job_and_stops(monkeypatch):
     monkeypatch.setattr(worker_module, "execute_job", complete_matching)
     worker, stop = start_worker_in_thread(app.config, app.logger)
     try:
-        job = enqueue(
-            app.config,
-            MATCHING,
-            {"config_note_id": "note", "api_version": 2, "token": "token"},
-        )
+        job = enqueue(app.config, MATCHING, QUEUED_DATA)
+        assert job.name == "matching: Venue/Reviewers (test config)"
         assert asyncio.run(finished_job(app.config, job.id)) == (
             "completed",
             "Complete",
@@ -149,11 +183,7 @@ def test_failed_operation_queues_error_status_job(monkeypatch):
     )
     worker, stop = start_worker_in_thread(app.config, app.logger)
     try:
-        job = enqueue(
-            app.config,
-            DEPLOYMENT,
-            {"config_note_id": "note", "api_version": 2, "token": "token"},
-        )
+        job = enqueue(app.config, DEPLOYMENT, QUEUED_DATA)
         state, reason = asyncio.run(
             finished_job(app.config, job.id, OPERATIONS_QUEUE)
         )
@@ -162,12 +192,17 @@ def test_failed_operation_queues_error_status_job(monkeypatch):
         while not error_statuses and time.monotonic() < deadline:
             time.sleep(0.1)
         assert error_statuses == [
-            {
-                "config_note_id": "note",
-                "api_version": 2,
-                "token": "token",
-                "error": "ValueError",
-            }
+            {**QUEUED_DATA, "type": ERROR_STATUS, "error": "ValueError"}
+        ]
+        deadline = time.monotonic() + 30
+        while (
+            len(asyncio.run(job_names(app.config, OPERATIONS_QUEUE))) < 2
+            and time.monotonic() < deadline
+        ):
+            time.sleep(0.1)
+        assert asyncio.run(job_names(app.config, OPERATIONS_QUEUE)) == [
+            "deployment: Venue/Reviewers (test config)",
+            "error status: Venue/Reviewers (test config)",
         ]
     finally:
         try:
