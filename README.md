@@ -91,7 +91,7 @@ The server and the worker connect to Redis with `REDIS_ADDR`, `REDIS_PORT`, `RED
 ~bullmq:matcher:* resetchannels +@all -@dangerous +info
 ```
 
-The queues can be inspected with any BullMQ dashboard, such as [Taskforce](https://taskforce.sh) or [bull-board](https://github.com/felixmosh/bull-board), pointed at the `BULLMQ_PREFIX` prefix.
+The queues can be inspected with any BullMQ dashboard, such as [Taskforce](https://taskforce.sh) or [bull-board](https://github.com/felixmosh/bull-board), pointed at the `BULLMQ_PREFIX` prefix. Each job is named after its type, match group and configuration title, e.g. `matching: ICLR.cc/2027/Conference/Reviewers (reviewer-matching)`.
 ### Configuration
 Configuration files are located in `/matcher/service/config`. When started, the server will search for a `.cfg` file in `/matcher/service/config` that matches the environment variable `FLASK_ENV`, and will default to the values in `default.cfg`.
 

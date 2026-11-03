@@ -58,9 +58,9 @@ def queue_options(config):
     }
 
 
-def job_options(config, job_name):
+def job_options(config, job_type):
     return {
-        **RETRY_OPTIONS[job_name],
+        **RETRY_OPTIONS[job_type],
         "removeOnComplete": {"age": config["BULLMQ_REMOVE_ON_COMPLETE_AGE"]},
         "removeOnFail": {"age": config["BULLMQ_REMOVE_ON_FAIL_AGE"]},
     }
@@ -77,21 +77,45 @@ def job_data(interface, **extra):
         if isinstance(interface, ConfigNoteInterfaceV1)
         else 2,
         "token": interface.client.token,
+        "match_group": interface.match_group,
+        "label": interface.label,
         **extra,
     }
 
 
-async def add_job(queue, config, job_name, data):
-    return await queue.add(job_name, data, job_options(config, job_name))
+def job_title(job_type, data):
+    """The job's name in queue dashboards, e.g. matching: <group> (<title>)."""
+    if not data.get("match_group"):
+        return job_type
+    title = "{}: {}".format(job_type, data["match_group"])
+    if data.get("label"):
+        title += " ({})".format(data["label"])
+    return title
 
 
-def enqueue(config, job_name, data):
+def job_type_of(job):
+    """
+    The job's type, which the job name held before it became a label. Jobs
+    queued before that change have no type in their data.
+    """
+    return job.data.get("type", job.name)
+
+
+async def add_job(queue, config, job_type, data):
+    return await queue.add(
+        job_title(job_type, data),
+        {**data, "type": job_type},
+        job_options(config, job_type),
+    )
+
+
+def enqueue(config, job_type, data):
     """Adds a job from synchronous code, such as a Flask request handler."""
 
     async def add():
-        queue = Queue(JOB_QUEUES[job_name], queue_options(config))
+        queue = Queue(JOB_QUEUES[job_type], queue_options(config))
         try:
-            return await add_job(queue, config, job_name, data)
+            return await add_job(queue, config, job_type, data)
         finally:
             await queue.close()
 
