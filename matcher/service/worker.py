@@ -3,6 +3,7 @@ Processes the jobs queued by the API. Start it with:
 
     python -m matcher.service.worker
 """
+
 import asyncio
 import multiprocessing
 import signal
@@ -187,6 +188,12 @@ class MatcherWorker:
             )
             for queue_name in QUEUE_NAMES
         ]
+        for worker in self.workers:
+            # bullmq's Worker names its connections with CLIENT SETNAME and
+            # stops when Redis rejects it, as Memorystore does: it disables
+            # the CLIENT command. Marking the names as set skips the naming,
+            # as openreview/openreview-expertise#408 does.
+            worker._client_name_set = True
         try:
             await asyncio.gather(*(worker.run() for worker in self.workers))
         finally:

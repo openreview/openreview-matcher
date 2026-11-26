@@ -30,6 +30,7 @@ from matcher.service.worker import (
     run_in_subprocess,
 )
 from conftest import (
+    TEST_REDIS_PORT,
     clean_start_conference_v2,
     obliterate_queues,
     start_worker_in_thread,
@@ -147,6 +148,7 @@ def test_worker_in_thread_completes_job_and_stops(monkeypatch):
         config={
             "LOG_FILE": "pytest.log",
             "BULLMQ_PREFIX": "bullmq:matcher-test-worker",
+            "REDIS_PORT": TEST_REDIS_PORT,
         }
     )
     asyncio.run(obliterate_queues(app.config))
@@ -171,6 +173,7 @@ def test_failed_operation_queues_error_status_job(monkeypatch):
         config={
             "LOG_FILE": "pytest.log",
             "BULLMQ_PREFIX": "bullmq:matcher-test-worker",
+            "REDIS_PORT": TEST_REDIS_PORT,
         }
     )
     asyncio.run(obliterate_queues(app.config))
