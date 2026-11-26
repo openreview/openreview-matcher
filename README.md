@@ -91,6 +91,8 @@ The server and the worker connect to Redis with `REDIS_ADDR`, `REDIS_PORT`, `RED
 ~bullmq:matcher:* resetchannels +@all -@dangerous +info
 ```
 
+The worker leaves its Redis connections unnamed. bullmq would name them with `CLIENT SETNAME`, which Redis servers such as Google Cloud Memorystore reject because they disable the `CLIENT` command.
+
 The queues can be inspected with any BullMQ dashboard, such as [Taskforce](https://taskforce.sh) or [bull-board](https://github.com/felixmosh/bull-board), pointed at the `BULLMQ_PREFIX` prefix. Each job is named after its type, match group and configuration title, e.g. `matching: ICLR.cc/2027/Conference/Reviewers (reviewer-matching)`.
 ### Configuration
 Configuration files are located in `/matcher/service/config`. When started, the server will search for a `.cfg` file in `/matcher/service/config` that matches the environment variable `FLASK_ENV`, and will default to the values in `default.cfg`.
@@ -121,6 +123,8 @@ The `/tests` directory contains unit tests and integration tests (i.e. tests tha
 Running the tests requires MongDB and Redis to support the OpenReview server instance used in the integration tests.
 
 Before running integration tests, ensure that `mongod` and `redis-server` are running, and that no existing OpenReview instances are active.
+
+The matcher's queues use the Redis on port 6379 unless `MATCHER_TEST_REDIS_PORT` names another port. CI sets it to a second Redis started with `--rename-command CLIENT ""`, which disables the `CLIENT` command as production's Memorystore does.
 
 Also ensure that OpenReview environment variables are unset:
 

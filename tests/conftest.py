@@ -29,6 +29,9 @@ from matcher.service.job_queue import QUEUE_NAMES, queue_options
 from matcher.service.worker import MatcherWorker
 
 AFFINITY_SCORE_FILE = "./affinity_scores"
+# CI points the matcher at a Redis with the CLIENT command disabled, as
+# production's Memorystore has it.
+TEST_REDIS_PORT = int(os.environ.get("MATCHER_TEST_REDIS_PORT", "6379"))
 strong_password = 'Or$3cur3P@ssw0rd'
 
 ## Epoch milliseconds, UTC, matching what the API expects at registration. Anybody under 18 is
@@ -452,6 +455,7 @@ def openreview_context():
             "SUPERUSER_TILDE_ID": "~Super_User1",
             "SUPERUSER_EMAIL": "info@openreview.net",
             "BULLMQ_PREFIX": "bullmq:matcher-test",
+            "REDIS_PORT": TEST_REDIS_PORT,
         }
     )
 

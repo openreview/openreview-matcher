@@ -43,12 +43,24 @@ jobs:
           name: Start service containers
           command: |
             docker run -d --name redis --network host redis:7.4.11 redis-server --protected-mode no
+            # The matcher's Redis: the version production's Memorystore runs, with the
+            # CLIENT command disabled as Memorystore has it.
+            docker run -d --name matcher-redis --network host redis:7.2.4 \
+              redis-server --port 6380 --protected-mode no --rename-command CLIENT ""
             docker run -d --name mongo --network host mongo:8.0 --replSet rs0
             docker run -d --name elasticsearch --network host \
               -e discovery.type=single-node \
               -e xpack.security.enabled=false \
               -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
               elasticsearch:7.17.28
+      - run:
+          name: Check that the matcher's Redis rejects CLIENT
+          command: |
+            for i in $(seq 1 30); do
+              docker exec matcher-redis redis-cli -p 6380 PING 2>/dev/null | grep -q PONG && break
+              sleep 1
+            done
+            docker exec matcher-redis redis-cli -p 6380 CLIENT GETNAME | tee /dev/stderr | grep -q "unknown command 'CLIENT'"
       - run:
           name: Initialize MongoDB replica set
           command: |
@@ -209,6 +221,7 @@ jobs:
           command: |
             source matcher/bin/activate
             cd ~/openreview-matcher-repo
+            export MATCHER_TEST_REDIS_PORT=6380
             mkdir -p reports/pytest
             TEST_FILES=$(circleci tests glob "tests/test_*.py")
             echo "$TEST_FILES" | circleci tests run --command="xargs pytest --durations=0 -o junit_family=legacy --junitxml=reports/pytest/pytest-report.xml" --verbose --split-by=timings
