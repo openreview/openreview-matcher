@@ -3,8 +3,11 @@ Defines pytest fixtures that maintain a persistent state
 (in relation to the test openreview server) between tests.
 """
 
+import asyncio
+import concurrent.futures
 import os
 import datetime
+import threading
 import time
 import random
 import subprocess
@@ -12,6 +15,7 @@ import requests
 import pytest
 
 import openreview
+from bullmq import Queue
 
 from openreview.api import OpenReviewClient
 from openreview.api import Note
@@ -21,9 +25,10 @@ from openreview.api import Edge
 from openreview.venue import Venue
 
 import matcher.service
+from matcher.service.job_queue import QUEUE_NAMES, queue_options
+from matcher.service.worker import MatcherWorker
 
 AFFINITY_SCORE_FILE = "./affinity_scores"
-pytest_plugins = ["celery.contrib.pytest"]
 strong_password = 'Or$3cur3P@ssw0rd'
 
 ## Epoch milliseconds, UTC, matching what the API expects at registration. Anybody under 18 is
@@ -446,6 +451,7 @@ def openreview_context():
             "SUPERUSER_LASTNAME": "User",
             "SUPERUSER_TILDE_ID": "~Super_User1",
             "SUPERUSER_EMAIL": "info@openreview.net",
+            "BULLMQ_PREFIX": "bullmq:matcher-test",
         }
     )
 
@@ -472,36 +478,81 @@ def openreview_context():
         }
 
 
-@pytest.fixture(scope="session")
-def celery_config():
-    return {
-        "broker_url": "redis://localhost:6379/10",
-        "result_backend": "redis://localhost:6379/10",
-        "task_track_started": True,
-        "task_serializer": "pickle",
-        "result_serializer": "pickle",
-        "accept_content": ["pickle", "application/x-python-serialize"],
-        "result_accept_content": ["pickle", "application/x-python-serialize"],
-        "task_create_missing_queues": True,
-    }
+async def obliterate_queues(config):
+    for queue_name in QUEUE_NAMES:
+        queue = Queue(queue_name, queue_options(config))
+        try:
+            await queue.obliterate(force=True)
+        finally:
+            await queue.close()
+
+
+async def describe_pending_tasks():
+    descriptions = []
+    for task in asyncio.all_tasks():
+        frames = " <- ".join(
+            "{}:{} {}".format(
+                os.path.basename(frame.f_code.co_filename),
+                frame.f_lineno,
+                frame.f_code.co_name,
+            )
+            for frame in task.get_stack(limit=4)
+        )
+        descriptions.append(
+            "{}: {}".format(task.get_coro().__qualname__, frames)
+        )
+    return "\n".join(descriptions)
+
+
+def start_worker_in_thread(config, logger):
+    """
+    Runs a worker on its own event loop in a background thread. Returns the
+    worker and a function that stops it, failing with the worker's pending
+    tasks instead of hanging if the worker does not shut down.
+    """
+    worker = MatcherWorker(config, logger)
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(
+        target=loop.run_until_complete, args=(worker.run(),), daemon=True
+    )
+    thread.start()
+
+    def stop():
+        assert thread.is_alive(), (
+            "worker thread exited before it was stopped; "
+            "its exception is reported as a thread warning"
+        )
+        closing = asyncio.run_coroutine_threadsafe(worker.close(), loop)
+        try:
+            closing.result(timeout=60)
+        except concurrent.futures.TimeoutError:
+            try:
+                pending = asyncio.run_coroutine_threadsafe(
+                    describe_pending_tasks(), loop
+                ).result(timeout=5)
+            except concurrent.futures.TimeoutError:
+                pending = "none reported: the event loop is blocked"
+            raise AssertionError(
+                "worker did not close within 60s. Pending tasks:\n" + pending
+            )
+        thread.join(timeout=60)
+        assert not thread.is_alive(), "worker thread did not stop"
+        loop.close()
+
+    return worker, stop
 
 
 @pytest.fixture(scope="session")
-def celery_includes():
-    return ["matcher.service.celery_tasks", "tasks"]
-
-
-@pytest.fixture(scope="session")
-def celery_worker_parameters():
-    return {
-        "queues": ("default", "matching", "deployment", "failure"),
-        "perform_ping_check": False,
-        "concurrency": 4,
-    }
-
-@pytest.fixture(scope='session')
-def celery_enable_logging():
-    return True
+def matcher_worker(openreview_context):
+    """
+    Runs a worker on queues emptied of jobs left over from earlier test
+    sessions.
+    """
+    app = openreview_context["app"]
+    asyncio.run(obliterate_queues(app.config))
+    worker, stop = start_worker_in_thread(app.config, app.logger)
+    yield worker
+    stop()
 
 if __name__ == "__main__":
     config = {

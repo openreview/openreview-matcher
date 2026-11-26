@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="openreview-matcher",
-    version="2.0.9",
+    version="2.1.0",
     description="OpenReview matching library",
     url="https://github.com/openreview/openreview-matcher",
     author="Michael Spector",
@@ -25,18 +25,13 @@ setup(
         "flask-cors==6.*",
         "cffi==2.*",
         "pre-commit==4.*",
-        "celery==5.6.3",
-        "redis==6.4.0",
+        "bullmq==3.4.3",
         "MarkupSafe==3.*",
         "gunicorn==26.*",
         "flake8==7.*",
         "gurobipy",
-        "kombu==5.*",
         "psutil",
         "scipy"
     ],
-    extras_require={
-        "full": ["flower"],
-    },
     zip_safe=False,
 )
